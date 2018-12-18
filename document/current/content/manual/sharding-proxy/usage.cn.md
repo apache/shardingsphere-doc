@@ -40,3 +40,36 @@ weight = 1
 1. Sharding-Proxy默认使用3307端口，可以通过启动脚本追加参数作为启动端口号。如: `bin/start.sh 3308`
 1. Sharding-Proxy使用conf/server.yaml配置注册中心、认证信息以及公用属性。
 1. Sharding-Proxy支持多逻辑数据源，每个以config-前缀命名的yaml配置文件，即为一个逻辑数据源。
+
+### 分布式事务
+Sharding-Proxy原生支持XA事务，不需要额外的配置。
+
+1. 默认事务类型
+    Proxy默认的事务类型可以在server.yaml中进行配置，例如：`proxy.transaction.type:XA`
+
+1. 运行事务类型切换
+    1. 命令行模式
+        ```mysql
+            sctl: set transantcion_type=XA
+            sctl: show transaction_type
+        ```
+    1. 原生JDBC方式
+        如果通过JDBC-Driver的方式连接Proxy，可以在获取连接后，发送`sctl:set transaction_type=XA`的SQL进行切换。
+        
+    1. @ShardingTransactional方式
+        1. 添加sharding-spring依赖包
+            ```xml
+               <dependency>
+                   <groupId>io.shardingsphere</groupId>
+                   <artifactId>sharding-transaction-spring </artifactId>
+                   <version>${latest.release.version}</version>
+               </dependency>
+            ```
+        1. 然后在需要事务支出的方法或类中加上此注解即可，例如：`@ShardingTransactional(type = TransactionType.XA, environment = ShardingEnvironment.PROXY)`
+        
+    1. Atomikos参数配置（可选)
+    
+        同Sharding-JDBC
+        
+    1. 完整example
+        [SpringBootStarterTransactionExample](https://github.com/sharding-sphere/sharding-sphere-example/blob/dev/sharding-proxy-example/sharding-proxy-boot-mybatis-example/src/main/java/io/shardingsphere/example/proxy/spring/boot/mybatis/SpringBootStarterTransactionExample.java)

@@ -5,33 +5,33 @@ title = "Unsupported JDBC Items"
 weight = 3
 +++
 
-## DataSource
+## DataSource Interface
 
-- Do not support methods related to timeout
+- Do not support timeout related operations
 
-## Connection
+## Connection Interface
 
-- Do not support stored procedures, functions, cursor operation
-- Do not Native SQL
+- Do not support operations of stored procedure, function and cursor
+- Do not support native SQL
 - Do not support savepoint related operations
 - Do not support Schema / Catalog operation
-- Do not support Custom type mapping
+- Do not support self-defined mapping
 
-## Statement & PreparedStatement
+## Statement and PreparedStatement Interface
 
-- Do not support statements that return multiple result sets (That is, stored procedures)
-- Do not support using international characters
+- Do not support statements that return multiple result sets (stored procedures, multiple pieces of non-SELECT data)
+- Do not support the operation of international characters
 
-## ResultSet
+## Interface for ResultSet
 
 - Do not support getting result set pointer position
-- Do not support changing the position of the result pointer by none-next methods
-- Do not support modifying the content of result set 
-- Do not support using international characters
+- Do not support changing result pointer position through none-next method
+- Do not support revising the content of result set
+- Do not support acquiring international characters
 - Do not support getting Array
 
-## New interface of JDBC 4.1
+## JDBC 4.1
 
-- Do not support new interface for JDBC 4.1
+- Do not support new functions of JDBC 4.1 interface
 
-More details about unsupported items, please refer package `org.apache.shardingsphere.shardingjdbc.jdbc.unsupported`.
+For all the unsupported methods, please read `org.apache.shardingsphere.shardingjdbc.jdbc.unsupported` package.

@@ -3,6 +3,7 @@ pre = "<b>3.5. </b>"
 title = "SPI"
 weight = 5
 chapter = true
+
 +++
 
 ## Background
@@ -13,9 +14,9 @@ Apache ShardingSphere uses SPI to expand in order to optimize overall architectu
 
 This chapter has provided all the Apache ShardingSphere functional modules that are loaded through SPI. Users with no special requirements can use them to implement corresponding functions after simple configurations. Premier users can develop self-defined implementations, referring to interfaces of existing functional modules. Welcome to feed your self-defined implementations to the [open-source community](https://github.com/apache/incubator-shardingsphere/pulls), benefiting more users.
 
-### Data Desensitization
+### Data Masking
 
-Data desensitization interface is used to regulate the encryption, decryption, access type, property configuration and other methods of the encryptor. There are mainly two interfaces, `ShardingEncryptor` and `ShardingQueryAssistedEncryptor`, in which the built-in implementations of  `ShardingEncryptor` include `AESShardingEncryptor` and `MD5ShardingEncryptor`. Please refer to [Data Desensitization](https://shardingsphere.apache.org/document/current/en/features/orchestration/encrypt/) for the introduction of encryption.
+Data masking interface is used to regulate the encryption, decryption, access type, property configuration and other methods of the encryptor. There are mainly two interfaces, `ShardingEncryptor` and `ShardingQueryAssistedEncryptor`, in which the built-in implementations of  `ShardingEncryptor` include `AESShardingEncryptor` and `MD5ShardingEncryptor`. Please refer to [Data Masking](https://shardingsphere.apache.org/document/current/en/features/orchestration/encrypt/) for the introduction of encryption.
 
 ### Distributed Primary Key
 

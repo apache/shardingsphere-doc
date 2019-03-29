@@ -318,6 +318,53 @@ Decompress `apache-shardingsphere-incubating-4.0.0-RC1-bin.zip` and `apache-shar
 
 For the whole check list, please see [here](https://wiki.apache.org/incubator/IncubatorReleaseChecklist).
 
+## Call for a discussion
+
+Send the discussion e-mail to `dev@shardingsphere.apache.org`.
+
+### Discussion templates
+
+Title:
+
+```
+[DISCUSS] Apache ShardingSphere (Incubating) 4.0.0-RC1 release [ROUND x]
+```
+
+Body:
+
+```
+Hello ShardingSphere Community,
+
+This is a call for the xth round of discussion to release Apache ShardingSphere
+(Incubating) version 4.0.0-RC1
+
+Release notes:
+*https://github.com/apache/incubator-shardingsphere/releases/tag/untagged-a7276f4b3f5fb99f2c2b
+<https://github.com/apache/incubator-shardingsphere/releases/tag/untagged-a7276f4b3f5fb99f2c2b>*
+
+The release candidates:
+https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/4.0.0-RC1/
+
+Maven 2 staging repository:
+https://repository.apache.org/content/repositories/staging/org/apache/shardingsphere/
+
+Git tag for the release:
+https://github.com/apache/incubator-shardingsphere/tree/4.0.0-RC1
+
+Release Commit ID:
+*https://github.com/apache/incubator-shardingsphere/commit/709b5f58793be11e19309b59554ad5f7df19f9e0
+<https://github.com/apache/incubator-shardingsphere/commit/709b5f58793be11e19309b59554ad5f7df19f9e0>*
+
+Keys to verify the Release Candidate:
+https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/KEYS
+
+Checklist:
+https://shardingsphere.apache.org/community/en/contribute/release/
+
+Anyone who interested can do acceptance test and discuss whether this version
+should be release or not.
+```
+
 ## Call for a Vote
 
 ### Vote procedure

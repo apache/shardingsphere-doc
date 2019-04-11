@@ -70,7 +70,7 @@ sharding.jdbc.config.masterslave.name=ms
 sharding.jdbc.config.masterslave.master-data-source-name=master
 sharding.jdbc.config.masterslave.slave-data-source-names=slave0,slave1
 
-sharding.jdbc.config.props.sql.show=true
+spring.shardingsphere.props.sql.show=true
 ```
 
 ### 数据分片 + 读写分离
@@ -281,8 +281,8 @@ spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-class-name= #详见读写分离部分
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-type= #详见读写分离部分
 
-sharding.jdbc.config.props.sql.show= #是否开启SQL显示，默认值: false
-sharding.jdbc.config.props.executor.size= #工作线程数量，默认值: CPU核数
+spring.shardingsphere.props.sql.show= #是否开启SQL显示，默认值: false
+spring.shardingsphere.props.executor.size= #工作线程数量，默认值: CPU核数
 ```
 
 ### 读写分离
@@ -297,9 +297,9 @@ spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-class-name= #从库负载均衡算法类名称。该类需实现MasterSlaveLoadBalanceAlgorithm接口且提供无参数构造器
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-type= #从库负载均衡算法类型，可选值：ROUND_ROBIN，RANDOM。若`load-balance-algorithm-class-name`存在则忽略该配置
 
-sharding.jdbc.config.props.sql.show= #是否开启SQL显示，默认值: false
-sharding.jdbc.config.props.executor.size= #工作线程数量，默认值: CPU核数
-sharding.jdbc.config.props.check.table.metadata.enabled= #是否在启动时检查分表元数据一致性，默认值: false
+spring.shardingsphere.props.sql.show= #是否开启SQL显示，默认值: false
+spring.shardingsphere.props.executor.size= #工作线程数量，默认值: CPU核数
+spring.shardingsphere.props.check.table.metadata.enabled= #是否在启动时检查分表元数据一致性，默认值: false
 ```
 
 ### 数据脱敏

@@ -70,7 +70,7 @@ sharding.jdbc.config.masterslave.name=ms
 sharding.jdbc.config.masterslave.master-data-source-name=master
 sharding.jdbc.config.masterslave.slave-data-source-names=slave0,slave1
 
-sharding.jdbc.config.props.sql.show=true
+spring.shardingsphere.props.sql.show=true
 ```
 
 ### Data Sharding + Read-Write Split
@@ -282,8 +282,8 @@ spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-class-name= #Refer to read-write split part for more details
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-type= #Refer to read-write split part for more details
 
-sharding.jdbc.config.props.sql.show= #Show SQL or not; default value: false
-sharding.jdbc.config.props.executor.size= #Executing thread number; default value: CPU core number
+spring.shardingsphere.props.sql.show= #Show SQL or not; default value: false
+spring.shardingsphere.props.executor.size= #Executing thread number; default value: CPU core number
 ```
 
 ### Read-Write Split
@@ -298,9 +298,9 @@ spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-class-name= #Load balance algorithm class name; the class needs to implement MasterSlaveLoadBalanceAlgorithm interface and provide parameter-free constructor
 spring.shardingsphere.sharding.master-slave-rules.<master-slave-data-source-name>.load-balance-algorithm-type= #Load balance algorithm class of slave database; optional value: ROUND_ROBIN and RANDOM; if there is load-balance-algorithm-class-name, the configuration can be omitted
 
-sharding.jdbc.config.props.sql.show= #Show SQL or not; default value: false
-sharding.jdbc.config.props.executor.size= #Executing thread number; default value: CPU core number
-sharding.jdbc.config.props.check.table.metadata.enabled= #Whether to check meta-data consistency of sharding table when it initializes; default value: false
+spring.shardingsphere.props.sql.show= #Show SQL or not; default value: false
+spring.shardingsphere.props.executor.size= #Executing thread number; default value: CPU core number
+spring.shardingsphere.props.check.table.metadata.enabled= #Whether to check meta-data consistency of sharding table when it initializes; default value: false
 ```
 
 ### Data Masking

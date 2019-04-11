@@ -164,16 +164,16 @@ sharding.jdbc.datasource.ds1.url=jdbc:mysql://localhost:3306/ds1
 sharding.jdbc.datasource.ds1.username=root
 sharding.jdbc.datasource.ds1.password=
 
-sharding.jdbc.config.sharding.default-database-strategy.inline.sharding-column=user_id
-sharding.jdbc.config.sharding.default-database-strategy.inline.algorithm-expression=ds$->{user_id % 2}
+spring.shardingsphere.sharding.default-database-strategy.inline.sharding-column=user_id
+spring.shardingsphere.sharding.default-database-strategy.inline.algorithm-expression=ds$->{user_id % 2}
 
-sharding.jdbc.config.sharding.tables.t_order.actual-data-nodes=ds$->{0..1}.t_order$->{0..1}
-sharding.jdbc.config.sharding.tables.t_order.table-strategy.inline.sharding-column=order_id
-sharding.jdbc.config.sharding.tables.t_order.table-strategy.inline.algorithm-expression=t_order$->{order_id % 2}
+spring.shardingsphere.sharding.tables.t_order.actual-data-nodes=ds$->{0..1}.t_order$->{0..1}
+spring.shardingsphere.sharding.tables.t_order.table-strategy.inline.sharding-column=order_id
+spring.shardingsphere.sharding.tables.t_order.table-strategy.inline.algorithm-expression=t_order$->{order_id % 2}
 
-sharding.jdbc.config.sharding.tables.t_order_item.actual-data-nodes=ds$->{0..1}.t_order_item$->{0..1}
-sharding.jdbc.config.sharding.tables.t_order_item.table-strategy.inline.sharding-column=order_id
-sharding.jdbc.config.sharding.tables.t_order_item.table-strategy.inline.algorithm-expression=t_order_item$->{order_id % 2}
+spring.shardingsphere.sharding.tables.t_order_item.actual-data-nodes=ds$->{0..1}.t_order_item$->{0..1}
+spring.shardingsphere.sharding.tables.t_order_item.table-strategy.inline.sharding-column=order_id
+spring.shardingsphere.sharding.tables.t_order_item.table-strategy.inline.algorithm-expression=t_order_item$->{order_id % 2}
 ```
 
 ### 基于Spring命名空间的规则配置

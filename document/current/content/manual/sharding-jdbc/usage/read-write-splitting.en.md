@@ -134,25 +134,25 @@ try (
 ### Rule Configuration Based on Spring Boot
 
 ```properties
-sharding.jdbc.datasource.names=master,slave0,slave1
+spring.shardingsphere.datasource.names=master,slave0,slave1
 
-sharding.jdbc.datasource.ds-master.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds-master.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds-master.url=jdbc:mysql://localhost:3306/master
-sharding.jdbc.datasource.ds-master.username=root
-sharding.jdbc.datasource.ds-master.password=
+spring.shardingsphere.datasource.ds-master.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds-master.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds-master.url=jdbc:mysql://localhost:3306/master
+spring.shardingsphere.datasource.ds-master.username=root
+spring.shardingsphere.datasource.ds-master.password=
 
-sharding.jdbc.datasource.ds-slave0.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds-slave0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds-slave0.url=jdbc:mysql://localhost:3306/slave0
-sharding.jdbc.datasource.ds-slave0.username=root
-sharding.jdbc.datasource.ds-slave0.password=
+spring.shardingsphere.datasource.ds-slave0.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds-slave0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds-slave0.url=jdbc:mysql://localhost:3306/slave0
+spring.shardingsphere.datasource.ds-slave0.username=root
+spring.shardingsphere.datasource.ds-slave0.password=
 
-sharding.jdbc.datasource.ds-slave1.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds-slave1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds-slave1.url=jdbc:mysql://localhost:3306/slave1
-sharding.jdbc.datasource.ds-slave1.username=root
-sharding.jdbc.datasource.ds-slave1.password=
+spring.shardingsphere.datasource.ds-slave1.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds-slave1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds-slave1.url=jdbc:mysql://localhost:3306/slave1
+spring.shardingsphere.datasource.ds-slave1.username=root
+spring.shardingsphere.datasource.ds-slave1.password=
 
 sharding.jdbc.config.masterslave.name=ms
 sharding.jdbc.config.masterslave.master-data-source-name=master

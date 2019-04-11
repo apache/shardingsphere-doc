@@ -13,19 +13,19 @@ Inline expression identifier can use `${...}` or `$->{...}`, but `${...}` is con
 ### Data Sharding
 
 ```properties
-sharding.jdbc.datasource.names=ds0,ds1
+spring.shardingsphere.datasource.names=ds0,ds1
 
-sharding.jdbc.datasource.ds0.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds0.url=jdbc:mysql://localhost:3306/ds0
-sharding.jdbc.datasource.ds0.username=root
-sharding.jdbc.datasource.ds0.password=
+spring.shardingsphere.datasource.ds0.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds0.url=jdbc:mysql://localhost:3306/ds0
+spring.shardingsphere.datasource.ds0.username=root
+spring.shardingsphere.datasource.ds0.password=
 
-sharding.jdbc.datasource.ds1.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds1.url=jdbc:mysql://localhost:3306/ds1
-sharding.jdbc.datasource.ds1.username=root
-sharding.jdbc.datasource.ds1.password=
+spring.shardingsphere.datasource.ds1.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds1.url=jdbc:mysql://localhost:3306/ds1
+spring.shardingsphere.datasource.ds1.username=root
+spring.shardingsphere.datasource.ds1.password=
 
 spring.shardingsphere.sharding.tables.t_order.actual-data-nodes=ds$->{0..1}.t_order$->{0..1}
 spring.shardingsphere.sharding.tables.t_order.table-strategy.inline.sharding-column=order_id
@@ -45,25 +45,25 @@ spring.shardingsphere.sharding.default-database-strategy.inline.algorithm-expres
 ### Read-Write Split
 
 ```properties
-sharding.jdbc.datasource.names=master,slave0,slave1
+spring.shardingsphere.datasource.names=master,slave0,slave1
 
-sharding.jdbc.datasource.master.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.master.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.master.url=jdbc:mysql://localhost:3306/master
-sharding.jdbc.datasource.master.username=root
-sharding.jdbc.datasource.master.password=
+spring.shardingsphere.datasource.master.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.master.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.master.url=jdbc:mysql://localhost:3306/master
+spring.shardingsphere.datasource.master.username=root
+spring.shardingsphere.datasource.master.password=
 
-sharding.jdbc.datasource.slave0.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.slave0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.slave0.url=jdbc:mysql://localhost:3306/slave0
-sharding.jdbc.datasource.slave0.username=root
-sharding.jdbc.datasource.slave0.password=
+spring.shardingsphere.datasource.slave0.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.slave0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.slave0.url=jdbc:mysql://localhost:3306/slave0
+spring.shardingsphere.datasource.slave0.username=root
+spring.shardingsphere.datasource.slave0.password=
 
-sharding.jdbc.datasource.slave1.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.slave1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.slave1.url=jdbc:mysql://localhost:3306/slave1
-sharding.jdbc.datasource.slave1.username=root
-sharding.jdbc.datasource.slave1.password=
+spring.shardingsphere.datasource.slave1.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.slave1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.slave1.url=jdbc:mysql://localhost:3306/slave1
+spring.shardingsphere.datasource.slave1.username=root
+spring.shardingsphere.datasource.slave1.password=
 
 sharding.jdbc.config.masterslave.load-balance-algorithm-type=round_robin
 sharding.jdbc.config.masterslave.name=ms
@@ -76,41 +76,41 @@ spring.shardingsphere.props.sql.show=true
 ### Data Sharding + Read-Write Split
 
 ```properties
-sharding.jdbc.datasource.names=master0,master1,master0slave0,master0slave1,master1slave0,master1slave1
+spring.shardingsphere.datasource.names=master0,master1,master0slave0,master0slave1,master1slave0,master1slave1
 
-sharding.jdbc.datasource.master0.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.master0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.master0.url=jdbc:mysql://localhost:3306/master0
-sharding.jdbc.datasource.master0.username=root
-sharding.jdbc.datasource.master0.password=
+spring.shardingsphere.datasource.master0.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.master0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.master0.url=jdbc:mysql://localhost:3306/master0
+spring.shardingsphere.datasource.master0.username=root
+spring.shardingsphere.datasource.master0.password=
 
-sharding.jdbc.datasource.master0slave0.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.master0slave0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.master0slave0.url=jdbc:mysql://localhost:3306/master0slave0
-sharding.jdbc.datasource.master0slave0.username=root
-sharding.jdbc.datasource.master0slave0.password=
-sharding.jdbc.datasource.master0slave1.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.master0slave1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.master0slave1.url=jdbc:mysql://localhost:3306/master0slave1
-sharding.jdbc.datasource.master0slave1.username=root
-sharding.jdbc.datasource.master0slave1.password=
+spring.shardingsphere.datasource.master0slave0.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.master0slave0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.master0slave0.url=jdbc:mysql://localhost:3306/master0slave0
+spring.shardingsphere.datasource.master0slave0.username=root
+spring.shardingsphere.datasource.master0slave0.password=
+spring.shardingsphere.datasource.master0slave1.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.master0slave1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.master0slave1.url=jdbc:mysql://localhost:3306/master0slave1
+spring.shardingsphere.datasource.master0slave1.username=root
+spring.shardingsphere.datasource.master0slave1.password=
 
-sharding.jdbc.datasource.master1.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.master1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.master1.url=jdbc:mysql://localhost:3306/master1
-sharding.jdbc.datasource.master1.username=root
-sharding.jdbc.datasource.master1.password=
+spring.shardingsphere.datasource.master1.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.master1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.master1.url=jdbc:mysql://localhost:3306/master1
+spring.shardingsphere.datasource.master1.username=root
+spring.shardingsphere.datasource.master1.password=
 
-sharding.jdbc.datasource.master1slave0.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.master1slave0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.master1slave0.url=jdbc:mysql://localhost:3306/master1slave0
-sharding.jdbc.datasource.master1slave0.username=root
-sharding.jdbc.datasource.master1slave0.password=
-sharding.jdbc.datasource.master1slave1.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.master1slave1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.master1slave1.url=jdbc:mysql://localhost:3306/master1slave1
-sharding.jdbc.datasource.master1slave1.username=root
-sharding.jdbc.datasource.master1slave1.password=
+spring.shardingsphere.datasource.master1slave0.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.master1slave0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.master1slave0.url=jdbc:mysql://localhost:3306/master1slave0
+spring.shardingsphere.datasource.master1slave0.username=root
+spring.shardingsphere.datasource.master1slave0.password=
+spring.shardingsphere.datasource.master1slave1.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.master1slave1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.master1slave1.url=jdbc:mysql://localhost:3306/master1slave1
+spring.shardingsphere.datasource.master1slave1.username=root
+spring.shardingsphere.datasource.master1slave1.password=
 
 spring.shardingsphere.sharding.tables.t_order.actual-data-nodes=ds$->{0..1}.t_order$->{0..1}
 spring.shardingsphere.sharding.tables.t_order.table-strategy.inline.sharding-column=order_id
@@ -135,19 +135,19 @@ spring.shardingsphere.sharding.master-slave-rules.ds1.slave-data-source-names=ma
 ### Data Sharding + Data Masking
 
 ```properties
-sharding.jdbc.datasource.names=ds_0,ds_1
+spring.shardingsphere.datasource.names=ds_0,ds_1
 
-sharding.jdbc.datasource.ds_0.type=com.zaxxer.hikari.HikariDataSource
-sharding.jdbc.datasource.ds_0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds_0.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_0
-sharding.jdbc.datasource.ds_0.username=root
-sharding.jdbc.datasource.ds_0.password=
+spring.shardingsphere.datasource.ds_0.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.ds_0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds_0.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_0
+spring.shardingsphere.datasource.ds_0.username=root
+spring.shardingsphere.datasource.ds_0.password=
 
-sharding.jdbc.datasource.ds_1.type=com.zaxxer.hikari.HikariDataSource
-sharding.jdbc.datasource.ds_1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds_1.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_1
-sharding.jdbc.datasource.ds_1.username=root
-sharding.jdbc.datasource.ds_1.password=
+spring.shardingsphere.datasource.ds_1.type=com.zaxxer.hikari.HikariDataSource
+spring.shardingsphere.datasource.ds_1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds_1.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_1
+spring.shardingsphere.datasource.ds_1.username=root
+spring.shardingsphere.datasource.ds_1.password=
 
 spring.shardingsphere.sharding.default-database-strategy.inline.sharding-column=user_id
 spring.shardingsphere.sharding.default-database-strategy.inline.algorithm-expression=ds_$->{user_id % 2}
@@ -176,24 +176,24 @@ spring.shardingsphere.sharding.tables.t_order_encrypt.encryptor.assistedQueryCol
 ### Data Orchestration
 
 ```properties
-sharding.jdbc.datasource.names=ds,ds0,ds1
-sharding.jdbc.datasource.ds.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds.driver-class-name=org.h2.Driver
-sharding.jdbc.datasource.ds.url=jdbc:mysql://localhost:3306/ds
-sharding.jdbc.datasource.ds.username=root
-sharding.jdbc.datasource.ds.password=
+spring.shardingsphere.datasource.names=ds,ds0,ds1
+spring.shardingsphere.datasource.ds.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds.driver-class-name=org.h2.Driver
+spring.shardingsphere.datasource.ds.url=jdbc:mysql://localhost:3306/ds
+spring.shardingsphere.datasource.ds.username=root
+spring.shardingsphere.datasource.ds.password=
 
-sharding.jdbc.datasource.ds0.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds0.url=jdbc:mysql://localhost:3306/ds0
-sharding.jdbc.datasource.ds0.username=root
-sharding.jdbc.datasource.ds0.password=
+spring.shardingsphere.datasource.ds0.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds0.url=jdbc:mysql://localhost:3306/ds0
+spring.shardingsphere.datasource.ds0.username=root
+spring.shardingsphere.datasource.ds0.password=
 
-sharding.jdbc.datasource.ds1.type=org.apache.commons.dbcp.BasicDataSource
-sharding.jdbc.datasource.ds1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds1.url=jdbc:mysql://localhost:3306/ds1
-sharding.jdbc.datasource.ds1.username=root
-sharding.jdbc.datasource.ds1.password=
+spring.shardingsphere.datasource.ds1.type=org.apache.commons.dbcp.BasicDataSource
+spring.shardingsphere.datasource.ds1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds1.url=jdbc:mysql://localhost:3306/ds1
+spring.shardingsphere.datasource.ds1.username=root
+spring.shardingsphere.datasource.ds1.password=
 
 spring.shardingsphere.sharding.default-data-source-name=ds
 spring.shardingsphere.sharding.default-database-strategy.inline.sharding-column=user_id
@@ -223,14 +223,14 @@ sharding.jdbc.config.orchestration.registry.server-lists=localhost:2181
 ### Data Sharding
 
 ```properties
-sharding.jdbc.datasource.names= #Data source name; multiple data sources are separated by commas
+spring.shardingsphere.datasource.names= #Data source name; multiple data sources are separated by commas
 
-sharding.jdbc.datasource.<data-source-name>.type= #Database connection pool type name
-sharding.jdbc.datasource.<data-source-name>.driver-class-name= #Database driver class name
-sharding.jdbc.datasource.<data-source-name>.url= #Database url connection
-sharding.jdbc.datasource.<data-source-name>.username= #Database username
-sharding.jdbc.datasource.<data-source-name>.password= #Database password
-sharding.jdbc.datasource.<data-source-name>.xxx= #Other properties of database connection pool
+spring.shardingsphere.datasource.<data-source-name>.type= #Database connection pool type name
+spring.shardingsphere.datasource.<data-source-name>.driver-class-name= #Database driver class name
+spring.shardingsphere.datasource.<data-source-name>.url= #Database url connection
+spring.shardingsphere.datasource.<data-source-name>.username= #Database username
+spring.shardingsphere.datasource.<data-source-name>.password= #Database password
+spring.shardingsphere.datasource.<data-source-name>.xxx= #Other properties of database connection pool
 
 spring.shardingsphere.sharding.tables.<logic-table-name>.actual-data-nodes= #It is consisted of data source name + table name, separated by decimal points; multiple tables are separated by commas and support inline expressions; default means using existing data sources and logic table names to generate data nodes; it can be applied in broadcast tables (each database needs a same table for relevance query, dictionary table mostly) or the situation with sharding database but without sharding table (table structures of all the databases are consistent)
 

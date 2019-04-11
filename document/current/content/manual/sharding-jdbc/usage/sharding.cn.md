@@ -150,19 +150,19 @@ try (
 ### 基于Spring boot的规则配置
 
 ```properties
-sharding.jdbc.datasource.names=ds0,ds1
+spring.shardingsphere.datasource.names=ds0,ds1
 
-sharding.jdbc.datasource.ds0.type=org.apache.commons.dbcp2.BasicDataSource
-sharding.jdbc.datasource.ds0.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds0.url=jdbc:mysql://localhost:3306/ds0
-sharding.jdbc.datasource.ds0.username=root
-sharding.jdbc.datasource.ds0.password=
+spring.shardingsphere.datasource.ds0.type=org.apache.commons.dbcp2.BasicDataSource
+spring.shardingsphere.datasource.ds0.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds0.url=jdbc:mysql://localhost:3306/ds0
+spring.shardingsphere.datasource.ds0.username=root
+spring.shardingsphere.datasource.ds0.password=
 
-sharding.jdbc.datasource.ds1.type=org.apache.commons.dbcp2.BasicDataSource
-sharding.jdbc.datasource.ds1.driver-class-name=com.mysql.jdbc.Driver
-sharding.jdbc.datasource.ds1.url=jdbc:mysql://localhost:3306/ds1
-sharding.jdbc.datasource.ds1.username=root
-sharding.jdbc.datasource.ds1.password=
+spring.shardingsphere.datasource.ds1.type=org.apache.commons.dbcp2.BasicDataSource
+spring.shardingsphere.datasource.ds1.driver-class-name=com.mysql.jdbc.Driver
+spring.shardingsphere.datasource.ds1.url=jdbc:mysql://localhost:3306/ds1
+spring.shardingsphere.datasource.ds1.username=root
+spring.shardingsphere.datasource.ds1.password=
 
 spring.shardingsphere.sharding.default-database-strategy.inline.sharding-column=user_id
 spring.shardingsphere.sharding.default-database-strategy.inline.algorithm-expression=ds$->{user_id % 2}

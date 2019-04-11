@@ -96,9 +96,9 @@ spring.shardingsphere.datasource.ds.username=root
 spring.shardingsphere.datasource.ds.password=
 spring.shardingsphere.datasource.ds.max-total=100
 
-sharding.jdbc.config.encrypt.encryptors.order_encrypt.type=aes
-sharding.jdbc.config.encrypt.encryptors.order_encrypt.qualifiedColumns=t_order.user_id
-sharding.jdbc.config.encrypt.encryptors.order_encrypt.props.aes.key.value=123456
+spring.shardingsphere.encrypt.encryptors.order_encrypt.type=aes
+spring.shardingsphere.encrypt.encryptors.order_encrypt.qualifiedColumns=t_order.user_id
+spring.shardingsphere.encrypt.encryptors.order_encrypt.props.aes.key.value=123456
 ```
 
 ### 基于Spring命名空间的规则配置

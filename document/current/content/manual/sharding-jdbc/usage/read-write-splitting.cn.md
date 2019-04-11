@@ -153,9 +153,9 @@ spring.shardingsphere.datasource.slave1.url=jdbc:mysql://localhost:3306/slave1
 spring.shardingsphere.datasource.slave1.username=root
 spring.shardingsphere.datasource.slave1.password=
 
-sharding.jdbc.config.masterslave.name=ms
-sharding.jdbc.config.masterslave.master-data-source-name=master
-sharding.jdbc.config.masterslave.slave-data-source-names=slave0,slave1
+spring.shardingsphere.masterslave.name=ms
+spring.shardingsphere.masterslave.master-data-source-name=master
+spring.shardingsphere.masterslave.slave-data-source-names=slave0,slave1
 
 spring.shardingsphere.props.sql.show=true
 ```

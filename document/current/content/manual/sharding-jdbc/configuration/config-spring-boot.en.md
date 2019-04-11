@@ -212,10 +212,10 @@ spring.shardingsphere.sharding.broadcast-tables=t_config
 spring.shardingsphere.sharding.default-database-strategy.inline.sharding-column=user_id
 spring.shardingsphere.sharding.default-database-strategy.inline.algorithm-expression=master$->{user_id % 2}
 
-sharding.jdbc.config.orchestration.name=spring_boot_ds_sharding
-sharding.jdbc.config.orchestration.overwrite=true
-sharding.jdbc.config.orchestration.registry.namespace=orchestration-spring-boot-sharding-test
-sharding.jdbc.config.orchestration.registry.server-lists=localhost:2181
+spring.shardingsphere.orchestration.name=spring_boot_ds_sharding
+spring.shardingsphere.orchestration.overwrite=true
+spring.shardingsphere.orchestration.registry.namespace=orchestration-spring-boot-sharding-test
+spring.shardingsphere.orchestration.registry.server-lists=localhost:2181
 ```
 
 ## Configuration Item Explanation

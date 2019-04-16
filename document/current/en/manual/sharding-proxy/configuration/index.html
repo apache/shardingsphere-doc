@@ -12,19 +12,19 @@
     <title>Configuration Manual :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1555123479" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1555123479" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1555123479" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1555123479" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1555123479" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1555123479" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1555123479" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1555123479" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1555401714" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1555401714" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1555401714" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1555401714" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1555401714" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1555401714" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1555401714" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1555401714" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1555123479" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1555401714" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1555123479"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1555401714"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -178,13 +178,13 @@
  
   
     
-    <li data-nav-id="/en/features/sharding/" title="Data sharding" class="dd-item 
+    <li data-nav-id="/en/features/sharding/" title="Sharding" class="dd-item 
         
         
         
         ">
       <a href="https://shardingsphere.apache.org/document/current/en/features/sharding/">
-          <b>3.1. </b>Data sharding
+          <b>3.1. </b>Sharding
           
       </a>
       
@@ -1545,6 +1545,7 @@
 <li><a href="#data-sharding">Data Sharding</a></li>
 <li><a href="#read-write-split">Read-Write Split</a></li>
 <li><a href="#data-sharding-read-write-split">Data Sharding + Read-Write Split</a></li>
+<li><a href="#data-sharding-data-masking">Data Sharding + Data Masking</a></li>
 </ul></li>
 <li><a href="#overall-configuration-instance">Overall Configuration Instance</a>
 <ul>
@@ -1556,6 +1557,7 @@
 <ul>
 <li><a href="#data-sharding-1">Data Sharding</a></li>
 <li><a href="#read-write-split-1">Read-Write Split</a></li>
+<li><a href="#data-masking">Data Masking</a></li>
 </ul></li>
 <li><a href="#overall-configuration-explanation">Overall Configuration Explanation</a>
 <ul>
@@ -1801,6 +1803,70 @@ shardingRule:
         loadBalanceAlgorithmType: ROUND_ROBIN
 </code></pre>
 
+<h3 id="data-sharding-data-masking">Data Sharding + Data Masking</h3>
+
+<p>dataSources:</p>
+
+<pre><code class="language-yaml">schemaName: sharding_db
+
+dataSources:
+  ds0: 
+    url: jdbc:mysql://localhost:3306/ds0
+    username: root
+    password: 
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 65
+    minPoolSize: 1
+    maintenanceIntervalMilliseconds: 30000
+  ds1:
+    url: jdbc:mysql://localhost:3306/ds1
+    username: root
+    password: 
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 65
+    minPoolSize: 1
+    maintenanceIntervalMilliseconds: 30000
+
+shardingRule:  
+  tables:
+    t_order: 
+      actualDataNodes: ds${0..1}.t_order${0..1}
+      tableStrategy: 
+        inline:
+          shardingColumn: order_id
+          algorithmExpression: t_order${order_id % 2}
+      keyGenerator:
+        columnn: order_id
+    t_order_item:
+      actualDataNodes: ds${0..1}.t_order_item${0..1}
+      tableStrategy:
+        inline:
+          shardingColumn: order_id
+          algorithmExpression: t_order_item${order_id % 2}  
+  bindingTables:
+    - t_order,t_order_item
+  defaultDatabaseStrategy:
+    inline:
+      shardingColumn: user_id
+      algorithmExpression: ds${user_id % 2}
+  defaultTableStrategy:
+    none:
+  defaultKeyGenerator:
+    type: SNOWFLAKE
+    
+  encryptRule:
+    encryptors:
+      order_encryptor:
+        type: AES
+        qualifiedColumns: t_order.order_id
+        props:
+          aes.key.value: 123456  
+</code></pre>
+
 <h2 id="overall-configuration-instance">Overall Configuration Instance</h2>
 
 <p>Sharding-Proxy uses <code>conf/server.yaml</code> to configure the registry center, authentication information and common properties.</p>
@@ -1859,6 +1925,20 @@ shardingRule: #Omit data sharding configuration and be consistent with Sharding-
 dataSources: #Omit data source configurations; keep it consistent with data sharding
 
 masterSlaveRule: #Omit data source configurations; keep it consistent with Sharding-JDBC
+</code></pre>
+
+<h3 id="data-masking">Data Masking</h3>
+
+<pre><code class="language-yaml">dataSources: #Ignore data sources configuration
+shardingRule:
+  encryptRule:
+    encryptors:
+      encryptor_name: #Encryptor name
+        type: #Type of encryptor，use user-defined ones or built-in ones, e.g. MD5/AES
+        qualifiedColumns: #Column names to be encrypted, the format is `tableName`.`columnName`, e.g. tb.col1. When configuring multiple column names, separate them with commas
+        assistedQueryColumns: #AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data
+        props: #Properties, e.g. `aes.key.value` for AES encryptor
+          aes.key.value:
 </code></pre>
 
 <h2 id="overall-configuration-explanation">Overall Configuration Explanation</h2>
@@ -2912,20 +2992,20 @@ props:
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1555123479"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1555401714"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1555123479"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1555123479"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1555401714"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1555401714"></script>
 
-    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1555123479" type="text/css" rel="stylesheet" />
-    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1555123479"></script>
+    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1555401714" type="text/css" rel="stylesheet" />
+    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1555401714"></script>
     <script>
         mermaid.initialize({ startOnLoad: true });
     </script>

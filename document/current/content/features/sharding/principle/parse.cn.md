@@ -45,6 +45,6 @@ ShardingSphere的SQL解析器经历了3代产品的更新迭代。
 经过实例测试，ANTLR解析SQL的性能比自研的SQL解析引擎慢3-10倍左右。为了弥补这一差距，ShardingSphere将使用`PreparedStatement`的SQL解析的语法树放入缓存。
 因此建议采用`PreparedStatement`这种SQL预编译的方式提升性能。
 
-第三代SQL解析引擎的整体结构划分如下图所示。
+第四代SQL解析器从4.0.x版本开始，已经全面使用ANTLR。它的整体结构划分如下图所示。
 
 ![解析引擎结构](https://shardingsphere.apache.org/document/current/img/sharding/parsing_architecture_cn.png)

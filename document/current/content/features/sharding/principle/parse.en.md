@@ -34,6 +34,6 @@ The second generation of SQL parsing engine begins from 1.5.x version, ShardingS
 
 The third generation of SQL parsing engine begins from 3.0.x version. ShardingSphere tries to adopts ANTLR as the SQL parsing engine, and plans to replace the former parsing engine according to the order of `DDL -> TCL -> DAL –> DCL -> DML –>DQL`. It is still in the process of replacement and iteration. Hoping for a better compatibility with SQL, we use ANTLR in the parsing engine of ShardingSphere. Though complex expressions, recursions, sub-queries and other sentences are not focused by the sharding core of ShardingSphere, they can influence the friendliness to understand SQL. After being tested in actual cases, the performance of ANTLR is about 3-10 times slower than the self-developed parsing engine when parsing SQL. To compensate for this gap, ShardingSphere will put the SQL parsing tree of `PreparedStatement` in the cache. Therefore, `PreparedStatement` is recommended to be used as the pre-compile method to improve the performance.
 
-The overall structure of the third generation of SQL parser is shown in the following picture.
+The forth generation of SQL parsing engine begins from 4.0.x version. ShardingSphere has adopted fully ANTLR. This is overall structure of the forth generation of SQL parser is shown in the following picture.
 
 ![Parsing Engine](https://shardingsphere.apache.org/document/current/img/sharding/parsing_architecture_en.png)

@@ -12,19 +12,19 @@
     <title>Java Configuration :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1560403043" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1560403043" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1560403043" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1560403043" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1560403043" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1560403043" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1560403043" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1560403043" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1563336819" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1563336819" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1563336819" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1563336819" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1563336819" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1563336819" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1563336819" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1563336819" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1560403043" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1563336819" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1560403043"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1563336819"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -1771,6 +1771,7 @@
 <ul>
 <li><a href="#data-sharding">Data Sharding</a></li>
 <li><a href="#read-write-split">Read-Write Split</a></li>
+<li><a href="#data-masking">Data Masking</a></li>
 <li><a href="#data-sharding-read-write-split">Data Sharding + Read-Write Split</a></li>
 <li><a href="#data-sharding-data-masking">Data Sharding + Data Masking</a></li>
 <li><a href="#orchestration">Orchestration</a></li>
@@ -1797,10 +1798,16 @@
 <li><a href="#masterslaveruleconfiguration">MasterSlaveRuleConfiguration</a></li>
 <li><a href="#shardingpropertiesconstant-1">ShardingPropertiesConstant</a></li>
 </ul></li>
+<li><a href="#data-masking-1">Data Masking</a>
+<ul>
+<li><a href="#encryptdatasourcefactory">EncryptDataSourceFactory</a></li>
+<li><a href="#encryptruleconfiguration">EncryptRuleConfiguration</a></li>
+</ul></li>
 <li><a href="#orchestration-1">Orchestration</a>
 <ul>
 <li><a href="#orchestrationshardingdatasourcefactory">OrchestrationShardingDataSourceFactory</a></li>
 <li><a href="#orchestrationmasterslavedatasourcefactory">OrchestrationMasterSlaveDataSourceFactory</a></li>
+<li><a href="#orchestrationencryptdatasourcefactory">OrchestrationEncryptDataSourceFactory</a></li>
 <li><a href="#orchestrationconfiguration">OrchestrationConfiguration</a></li>
 <li><a href="#registrycenterconfiguration">RegistryCenterConfiguration</a></li>
 </ul></li>
@@ -1888,6 +1895,21 @@
          result.put(&quot;ds_slave1&quot;, DataSourceUtil.createDataSource(&quot;ds_slave1&quot;));
          return result;
      }
+</code></pre>
+
+<h3 id="data-masking">Data Masking</h3>
+
+<pre><code class="language-java">    DataSource getEncryptDataSource() throws SQLException {
+        return EncryptDataSourceFactory.createDataSource(DataSourceUtil.createDataSource(&quot;demo_ds&quot;), getOrderEncryptRuleConfiguration());
+    }
+
+    private static EncryptRuleConfiguration getOrderEncryptRuleConfiguration() {
+        EncryptRuleConfiguration encryptRuleConfiguration = new EncryptRuleConfiguration();
+        Properties properties = new Properties();
+        properties.setProperty(&quot;aes.key.value&quot;, &quot;123456&quot;);
+        EncryptorRuleConfiguration encryptorRuleConfiguration = new EncryptorRuleConfiguration(&quot;AES&quot;, &quot;t_order.order_id&quot;, properties);
+        encryptRuleConfiguration.getEncryptorRuleConfigs().put(&quot;user_encryptor&quot;, encryptorRuleConfiguration);
+    }
 </code></pre>
 
 <h3 id="data-sharding-read-write-split">Data Sharding + Read-Write Split</h3>
@@ -1992,6 +2014,7 @@
 <h3 id="orchestration">Orchestration</h3>
 
 <pre><code class="language-java">    DataSource getDataSource() throws SQLException {
+        // OrchestrationShardingDataSourceFactory can be replaced by OrchestrationMasterSlaveDataSourceFactory or OrchestrationEncryptDataSourceFactory
         return OrchestrationShardingDataSourceFactory.createDataSource(
                 createDataSourceMap(), createShardingRuleConfig(), new HashMap&lt;String, Object&gt;(), new Properties(), 
                 new OrchestrationConfiguration(&quot;orchestration-sharding-data-source&quot;, getRegistryCenterConfiguration(), false));
@@ -2497,6 +2520,60 @@
 </tbody>
 </table>
 
+<h3 id="data-masking-1">Data Masking</h3>
+
+<h4 id="encryptdatasourcefactory">EncryptDataSourceFactory</h4>
+
+<table>
+<thead>
+<tr>
+<th><em>Name</em></th>
+<th><em>DataType</em></th>
+<th><em>Explanation</em></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>dataSource</td>
+<td>DataSource</td>
+<td>Data source</td>
+</tr>
+
+<tr>
+<td>encryptRuleConfig</td>
+<td>EncryptRuleConfiguration</td>
+<td>encrypt rule configuration</td>
+</tr>
+
+<tr>
+<td>props (?)</td>
+<td>Properties</td>
+<td>Property configurations</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="encryptruleconfiguration">EncryptRuleConfiguration</h4>
+
+<table>
+<thead>
+<tr>
+<th><em>Name</em></th>
+<th><em>DataType</em></th>
+<th><em>Explanation</em></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>encryptorRuleConfigs</td>
+<td>Map&lt;String, EncryptorRuleConfiguration&gt;</td>
+<td>Map of encryptor names and configurations，encryptor Same as <code>EncryptorRuleConfiguration</code></td>
+</tr>
+</tbody>
+</table>
+
 <h3 id="orchestration-1">Orchestration</h3>
 
 <h4 id="orchestrationshardingdatasourcefactory">OrchestrationShardingDataSourceFactory</h4>
@@ -2571,6 +2648,44 @@
 <td>props (?)</td>
 <td>Properties</td>
 <td>Same as <code>ShardingDataSourceFactory</code></td>
+</tr>
+
+<tr>
+<td>orchestrationConfig</td>
+<td>OrchestrationConfiguration</td>
+<td>Orchestration rule configurations</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="orchestrationencryptdatasourcefactory">OrchestrationEncryptDataSourceFactory</h4>
+
+<table>
+<thead>
+<tr>
+<th><em>Name</em></th>
+<th><em>DataType</em></th>
+<th><em>Explanation</em></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>dataSource</td>
+<td>DataSource</td>
+<td>Same as <code>EncryptDataSourceFactory</code></td>
+</tr>
+
+<tr>
+<td>encryptRuleConfig</td>
+<td>EncryptRuleConfiguration</td>
+<td>Same as <code>EncryptDataSourceFactory</code></td>
+</tr>
+
+<tr>
+<td>props (?)</td>
+<td>Properties</td>
+<td>Same as <code>EncryptDataSourceFactory</code></td>
 </tr>
 
 <tr>
@@ -3831,20 +3946,20 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1560403043"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1563336819"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1560403043"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1560403043"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1563336819"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1563336819"></script>
 
-    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1560403043" type="text/css" rel="stylesheet" />
-    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1560403043"></script>
+    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1563336819" type="text/css" rel="stylesheet" />
+    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1563336819"></script>
     <script>
         mermaid.initialize({ startOnLoad: true });
     </script>

@@ -12,19 +12,19 @@
     <title>数据脱敏 :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1563337524" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1566361622" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1566361622" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1566361622" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1566361622" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1566361622" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1566361622" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1566361622" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1566361622" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1563337524" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1566361622" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1563337524"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1566361622"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -1831,12 +1831,15 @@
        // 配置脱敏规则
        Properties props = new Properties();
        props.setProperty(&quot;aes.key.value&quot;, &quot;123456&quot;);
-       EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration(&quot;aes&quot;, &quot;t_order.order_id&quot;, new Properties());
-       EncryptRuleConfiguration ruleConfiguration = new EncryptRuleConfiguration();
-       ruleConfiguration.getEncryptorRuleConfigs().put(&quot;order_encryptor&quot;, encryptorConfig);
+       EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration(&quot;AES&quot;, props);
+       EncryptColumnRuleConfiguration columnConfig = new EncryptColumnRuleConfiguration(&quot;plain_pwd&quot;, &quot;cipher_pwd&quot;, &quot;&quot;, &quot;aes&quot;);
+       EncryptTableRuleConfiguration tableConfig = new EncryptTableRuleConfiguration(Collections.singletonMap(&quot;pwd&quot;, columnConfig));
+       EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
+       encryptRuleConfig.getEncryptors().put(&quot;aes&quot;, encryptorConfig);
+       encryptRuleConfig.getTables().put(&quot;t_encrypt&quot;, tableConfig);
        
        // 获取数据源对象
-       DataSource dataSource = EncryptDataSourceFactory.createDataSource(dataSource, ruleConfiguration);
+       DataSource dataSource = EncryptDataSourceFactory.createDataSource(dataSource, encryptRuleConfig, new Properties());
 </code></pre>
 
 <h3 id="基于yaml的规则配置">基于Yaml的规则配置</h3>
@@ -1848,12 +1851,17 @@
   jdbcUrl: jdbc:mysql://127.0.0.1:3306/encrypt?serverTimezone=UTC&amp;useSSL=false
   username: root
   password:
-  
+
 encryptRule:
+  tables:
+    t_order:
+      columns:
+        user_id:
+          cipherColumn: user_cipher
+          encryptor: order_encryptor
   encryptors:
     order_encryptor:
       type: aes
-      qualifiedColumns: t_order.user_id
       props:
         aes.key.value: 123456
 </code></pre>
@@ -1891,9 +1899,15 @@ spring.shardingsphere.datasource.ds.username=root
 spring.shardingsphere.datasource.ds.password=
 spring.shardingsphere.datasource.ds.max-total=100
 
-spring.shardingsphere.encrypt.encryptors.order_encrypt.type=aes
-spring.shardingsphere.encrypt.encryptors.order_encrypt.qualifiedColumns=t_order.user_id
-spring.shardingsphere.encrypt.encryptors.order_encrypt.props.aes.key.value=123456
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.type=aes
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.props.aes.key.value=123456
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.plainColumn=user_decrypt
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.cipherColumn=user_encrypt
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.assistedQueryColumn=user_assisted
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.encryptor=encryptor_aes
+
+spring.shardingsphere.props.sql.show=true
+spring.shardingsphere.props.query.with.cipher.comlum=true
 </code></pre>
 
 <h4 id="基于spring-boot-jndi的规则配置">基于Spring boot + JNDI的规则配置</h4>
@@ -1905,9 +1919,15 @@ spring.shardingsphere.encrypt.encryptors.order_encrypt.props.aes.key.value=12345
 
 spring.shardingsphere.datasource.ds.jndi-name=java:comp/env/jdbc/ds
 
-spring.shardingsphere.encrypt.encryptors.order_encrypt.type=aes
-spring.shardingsphere.encrypt.encryptors.order_encrypt.qualifiedColumns=t_order.user_id
-spring.shardingsphere.encrypt.encryptors.order_encrypt.props.aes.key.value=123456
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.type=aes
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.props.aes.key.value=123456
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.plainColumn=user_decrypt
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.cipherColumn=user_encrypt
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.assistedQueryColumn=user_assisted
+spring.shardingsphere.encrypt.tables.t_order.columns.user_id.encryptor=encryptor_aes
+
+spring.shardingsphere.props.sql.show=true
+spring.shardingsphere.props.query.with.cipher.comlum=true
 </code></pre>
 
 <h3 id="基于spring命名空间的规则配置">基于Spring命名空间的规则配置</h3>
@@ -1937,8 +1957,22 @@ spring.shardingsphere.encrypt.encryptors.order_encrypt.props.aes.key.value=12345
     &lt;/bean:properties&gt;
     
     &lt;encrypt:data-source id=&quot;encryptDataSource&quot; data-source-name=&quot;db&quot; &gt;
-         &lt;encrypt:encryptor-rule id=&quot;user_encryptor&quot; type=&quot;MD5&quot; qualified-columns=&quot;t_order.user_id&quot; /&gt;
-         &lt;encrypt:encryptor-rule id=&quot;order_encryptor&quot; type=&quot;AES&quot; qualified-columns=&quot;t_order.order_id&quot; props-ref=&quot;props&quot; /&gt;
+        &lt;encrypt:encrypt-rule&gt;
+            &lt;encrypt:tables&gt;
+                &lt;encrypt:table name=&quot;t_order&quot;&gt;
+                    &lt;encrypt:column logic-column=&quot;user_id&quot; plain-column=&quot;user_decrypt&quot; cipher-column=&quot;user_encrypt&quot; assisted-query-column=&quot;user_assisted&quot; encryptor-ref=&quot;encryptor_aes&quot; /&gt;
+                    &lt;encrypt:column logic-column=&quot;order_id&quot; plain-column=&quot;order_decrypt&quot; cipher-column=&quot;order_encrypt&quot; assisted-query-column=&quot;order_assisted&quot; encryptor-ref=&quot;encryptor_md5&quot;/&gt;
+                &lt;/encrypt:table&gt;
+            &lt;/encrypt:tables&gt;
+            &lt;encrypt:encryptors&gt;
+                &lt;encrypt:encryptor id=&quot;encryptor_aes&quot; type=&quot;AES&quot; props-ref=&quot;props&quot;/&gt;
+                &lt;encrypt:encryptor id=&quot;encryptor_md5&quot; type=&quot;MD5&quot; /&gt;
+            &lt;/encrypt:encryptors&gt;
+        &lt;/encrypt:encrypt-rule&gt;
+        &lt;encrypt:props&gt;
+            &lt;prop key=&quot;sql.show&quot;&gt;${sql_show}&lt;/prop&gt;
+            &lt;prop key=&quot;query.with.cipher.column&quot;&gt;true&lt;/prop&gt;
+        &lt;/encrypt:props&gt;
     &lt;/encrypt:data-source&gt;
 &lt;/beans&gt;
 </code></pre>
@@ -3113,20 +3147,20 @@ private DataSource dataSource;
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1563337524"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1566361622"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1563337524"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1566361622"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1566361622"></script>
 
-    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1563337524" type="text/css" rel="stylesheet" />
-    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1563337524"></script>
+    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1566361622" type="text/css" rel="stylesheet" />
+    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1566361622"></script>
     <script>
         mermaid.initialize({ startOnLoad: true });
     </script>

@@ -12,19 +12,19 @@
     <title>Java Configuration :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1563337524" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1563337524" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1566361621" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1566361621" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1566361621" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1566361621" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1566361621" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1566361621" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1566361621" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1566361621" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1563337524" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1566361621" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1563337524"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1566361621"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -1789,7 +1789,10 @@
 <li><a href="#hintshardingstrategyconfiguration">HintShardingStrategyConfiguration</a></li>
 <li><a href="#noneshardingstrategyconfiguration">NoneShardingStrategyConfiguration</a></li>
 <li><a href="#keygeneratorconfiguration">KeyGeneratorConfiguration</a></li>
+<li><a href="#encryptruleconfiguration">EncryptRuleConfiguration</a></li>
 <li><a href="#encryptorruleconfiguration">EncryptorRuleConfiguration</a></li>
+<li><a href="#encrypttableruleconfiguration">EncryptTableRuleConfiguration</a></li>
+<li><a href="#encryptcolumnruleconfiguration">EncryptColumnRuleConfiguration</a></li>
 <li><a href="#shardingpropertiesconstant">ShardingPropertiesConstant</a></li>
 </ul></li>
 <li><a href="#read-write-split-1">Read-Write Split</a>
@@ -1801,7 +1804,8 @@
 <li><a href="#data-masking-1">Data Masking</a>
 <ul>
 <li><a href="#encryptdatasourcefactory">EncryptDataSourceFactory</a></li>
-<li><a href="#encryptruleconfiguration">EncryptRuleConfiguration</a></li>
+<li><a href="#encryptruleconfiguration-1">EncryptRuleConfiguration</a></li>
+<li><a href="#propertiesconstant">PropertiesConstant</a></li>
 </ul></li>
 <li><a href="#orchestration-1">Orchestration</a>
 <ul>
@@ -1846,27 +1850,22 @@
          shardingRuleConfig.getBroadcastTables().add(&quot;t_config&quot;);
          shardingRuleConfig.setDefaultDatabaseShardingStrategyConfig(new InlineShardingStrategyConfiguration(&quot;user_id&quot;, &quot;ds${user_id % 2}&quot;));
          shardingRuleConfig.setDefaultTableShardingStrategyConfig(new StandardShardingStrategyConfiguration(&quot;order_id&quot;, new ModuloShardingTableAlgorithm()));
-         return ShardingDataSourceFactory.createDataSource(createDataSourceMap(), shardingRuleConfig);
+         return ShardingDataSourceFactory.createDataSource(createDataSourceMap(), shardingRuleConfig, new Properties());
      }
      
      private static KeyGeneratorConfiguration getKeyGeneratorConfiguration() {
-                  KeyGeneratorConfiguration result = new KeyGeneratorConfiguration();
-                  result.setColumn(&quot;order_id&quot;);
-                  return result;
+         KeyGeneratorConfiguration result = new KeyGeneratorConfiguration(&quot;SNOWFLAKE&quot;, &quot;order_id&quot;);
+         return result;
      }
      
      TableRuleConfiguration getOrderTableRuleConfiguration() {
-         TableRuleConfiguration result = new TableRuleConfiguration();
-         result.setLogicTable(&quot;t_order&quot;);
-         result.setActualDataNodes(&quot;ds${0..1}.t_order${0..1}&quot;);
+         TableRuleConfiguration result = new TableRuleConfiguration(&quot;t_order&quot;, &quot;ds${0..1}.t_order${0..1}&quot;);
          result.setKeyGeneratorConfig(getKeyGeneratorConfiguration());
          return result;
      }
      
      TableRuleConfiguration getOrderItemTableRuleConfiguration() {
-         TableRuleConfiguration result = new TableRuleConfiguration();
-         result.setLogicTable(&quot;t_order_item&quot;);
-         result.setActualDataNodes(&quot;ds${0..1}.t_order_item${0..1}&quot;);
+         TableRuleConfiguration result = new TableRuleConfiguration(&quot;t_order_item&quot;, &quot;ds${0..1}.t_order_item${0..1}&quot;);
          return result;
      }
      
@@ -1900,15 +1899,18 @@
 <h3 id="data-masking">Data Masking</h3>
 
 <pre><code class="language-java">    DataSource getEncryptDataSource() throws SQLException {
-        return EncryptDataSourceFactory.createDataSource(DataSourceUtil.createDataSource(&quot;demo_ds&quot;), getOrderEncryptRuleConfiguration());
+        return EncryptDataSourceFactory.createDataSource(DataSourceUtil.createDataSource(&quot;demo_ds&quot;), getEncryptRuleConfiguration(), new Properties());
     }
 
-    private static EncryptRuleConfiguration getOrderEncryptRuleConfiguration() {
-        EncryptRuleConfiguration encryptRuleConfiguration = new EncryptRuleConfiguration();
-        Properties properties = new Properties();
-        properties.setProperty(&quot;aes.key.value&quot;, &quot;123456&quot;);
-        EncryptorRuleConfiguration encryptorRuleConfiguration = new EncryptorRuleConfiguration(&quot;AES&quot;, &quot;t_order.order_id&quot;, properties);
-        encryptRuleConfiguration.getEncryptorRuleConfigs().put(&quot;user_encryptor&quot;, encryptorRuleConfiguration);
+    private static EncryptRuleConfiguration getEncryptRuleConfiguration() {
+        Properties props = new Properties();
+        props.setProperty(&quot;aes.key.value&quot;, &quot;123456&quot;);
+        EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration(&quot;AES&quot;, props);
+        EncryptColumnRuleConfiguration columnConfig = new EncryptColumnRuleConfiguration(&quot;plain_pwd&quot;, &quot;cipher_pwd&quot;, &quot;&quot;, &quot;aes&quot;);
+        EncryptTableRuleConfiguration tableConfig = new EncryptTableRuleConfiguration(Collections.singletonMap(&quot;pwd&quot;, columnConfig));
+        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
+        encryptRuleConfig.getEncryptors().put(&quot;aes&quot;, encryptorConfig);
+        encryptRuleConfig.getTables().put(&quot;t_encrypt&quot;, tableConfig);
     }
 </code></pre>
 
@@ -1920,30 +1922,25 @@
         shardingRuleConfig.getTableRuleConfigs().add(getOrderItemTableRuleConfiguration());
         shardingRuleConfig.getBindingTableGroups().add(&quot;t_order, t_order_item&quot;);
         shardingRuleConfig.getBroadcastTables().add(&quot;t_config&quot;);
-        shardingRuleConfig.setDefaultDatabaseShardingStrategyConfig(new StandardShardingStrategyConfiguration(&quot;user_id&quot;, new ModuloShardingDatabaseAlgorithm()));
-        shardingRuleConfig.setDefaultTableShardingStrategyConfig(new StandardShardingStrategyConfiguration(&quot;order_id&quot;, new ModuloShardingTableAlgorithm()));
+        shardingRuleConfig.setDefaultDatabaseShardingStrategyConfig(new StandardShardingStrategyConfiguration(&quot;user_id&quot;, new PreciseModuloShardingDatabaseAlgorithm()));
+        shardingRuleConfig.setDefaultTableShardingStrategyConfig(new StandardShardingStrategyConfiguration(&quot;order_id&quot;, new PreciseModuloShardingTableAlgorithm()));
         shardingRuleConfig.setMasterSlaveRuleConfigs(getMasterSlaveRuleConfigurations());
         return ShardingDataSourceFactory.createDataSource(createDataSourceMap(), shardingRuleConfig, new HashMap&lt;String, Object&gt;(), new Properties());
     }
     
     private static KeyGeneratorConfiguration getKeyGeneratorConfiguration() {
-                 KeyGeneratorConfiguration result = new KeyGeneratorConfiguration();
-                 result.setColumn(&quot;order_id&quot;);
-                 return result;
+        KeyGeneratorConfiguration result = new KeyGeneratorConfiguration(&quot;SNOWFLAKE&quot;, &quot;order_id&quot;);
+        return result;
     }
     
     TableRuleConfiguration getOrderTableRuleConfiguration() {
-        TableRuleConfiguration result = new TableRuleConfiguration();
-        result.setLogicTable(&quot;t_order&quot;);
-        result.setActualDataNodes(&quot;ds_${0..1}.t_order_${[0, 1]}&quot;);
+        TableRuleConfiguration result = new TableRuleConfiguration(&quot;t_order&quot;, &quot;ds_${0..1}.t_order_${[0, 1]}&quot;);
         result.setKeyGeneratorConfig(getKeyGeneratorConfiguration());
         return result;
     }
     
     TableRuleConfiguration getOrderItemTableRuleConfiguration() {
-        TableRuleConfiguration result = new TableRuleConfiguration();
-        result.setLogicTable(&quot;t_order_item&quot;);
-        result.setActualDataNodes(&quot;ds_${0..1}.t_order_item_${[0, 1]}&quot;);
+        TableRuleConfiguration result = new TableRuleConfiguration(&quot;t_order_item&quot;, &quot;ds_${0..1}.t_order_item_${[0, 1]}&quot;);
         return result;
     }
     
@@ -1975,7 +1972,7 @@
             shardingRuleConfig.getBindingTableGroups().add(&quot;t_order, t_order_item&quot;);
             shardingRuleConfig.setDefaultDatabaseShardingStrategyConfig(new InlineShardingStrategyConfiguration(&quot;user_id&quot;, &quot;demo_ds_${user_id % 2}&quot;));
             shardingRuleConfig.setDefaultTableShardingStrategyConfig(new StandardShardingStrategyConfiguration(&quot;order_id&quot;, new PreciseModuloShardingTableAlgorithm()));
-            shardingRuleConfig.setEncryptRuleConfig(getOrderEncryptRuleConfiguration());
+            shardingRuleConfig.setEncryptRuleConfig(getEncryptRuleConfiguration());
             return ShardingDataSourceFactory.createDataSource(createDataSourceMap(), shardingRuleConfig, new Properties());
         }
         
@@ -1991,12 +1988,15 @@
             return result;
         }
         
-        private static EncryptRuleConfiguration getOrderEncryptRuleConfiguration() {
-            EncryptRuleConfiguration encryptRuleConfiguration = new EncryptRuleConfiguration();
-            Properties properties = new Properties();
-            properties.setProperty(&quot;aes.key.value&quot;, &quot;123456&quot;);
-            EncryptorRuleConfiguration encryptorRuleConfiguration = new EncryptorRuleConfiguration(&quot;AES&quot;, &quot;t_order.order_id&quot;, properties);
-            encryptRuleConfiguration.getEncryptorRuleConfigs().put(&quot;user_encryptor&quot;, encryptorRuleConfiguration);
+        private static EncryptRuleConfiguration getEncryptRuleConfiguration() {
+            Properties props = new Properties();
+            props.setProperty(&quot;aes.key.value&quot;, &quot;123456&quot;);
+            EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration(&quot;AES&quot;, props);
+            EncryptColumnRuleConfiguration columnConfig = new EncryptColumnRuleConfiguration(&quot;plain_order&quot;, &quot;cipher_order&quot;, &quot;&quot;, &quot;aes&quot;);
+            EncryptTableRuleConfiguration tableConfig = new EncryptTableRuleConfiguration(Collections.singletonMap(&quot;order_id&quot;, columnConfig));
+            EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
+            encryptRuleConfig.getEncryptors().put(&quot;aes&quot;, encryptorConfig);
+            encryptRuleConfig.getTables().put(&quot;t_order&quot;, tableConfig);
         }
         
         private static Map&lt;String, DataSource&gt; createDataSourceMap() {
@@ -2330,6 +2330,32 @@
 </tbody>
 </table>
 
+<h4 id="encryptruleconfiguration">EncryptRuleConfiguration</h4>
+
+<table>
+<thead>
+<tr>
+<th><em>Name</em></th>
+<th><em>DataType</em></th>
+<th><em>Explanation</em></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>encryptors</td>
+<td>Map<String, EncryptorRuleConfiguration></td>
+<td>Encryptor names and encryptors</td>
+</tr>
+
+<tr>
+<td>tables</td>
+<td>Map<String, EncryptTableRuleConfiguration></td>
+<td>Encrypt table names and encrypt tables</td>
+</tr>
+</tbody>
+</table>
+
 <h4 id="encryptorruleconfiguration">EncryptorRuleConfiguration</h4>
 
 <table>
@@ -2337,7 +2363,7 @@
 <tr>
 <th><em>Name</em></th>
 <th><em>DataType</em></th>
-<th><em>Description</em></th>
+<th><em>Explanation</em></th>
 </tr>
 </thead>
 
@@ -2349,21 +2375,67 @@
 </tr>
 
 <tr>
-<td>qualifiedColumns</td>
+<td>properties</td>
+<td>Properties</td>
+<td>Properties, Notice: when use AES encryptor, <code>aes.key.value</code> for AES encryptor need to be set</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="encrypttableruleconfiguration">EncryptTableRuleConfiguration</h4>
+
+<table>
+<thead>
+<tr>
+<th><em>Name</em></th>
+<th><em>DataType</em></th>
+<th><em>Explanation</em></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>tables</td>
+<td>Map<String, EncryptColumnRuleConfiguration></td>
+<td>Encrypt column names and encrypt column</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="encryptcolumnruleconfiguration">EncryptColumnRuleConfiguration</h4>
+
+<table>
+<thead>
+<tr>
+<th><em>Name</em></th>
+<th><em>DataType</em></th>
+<th><em>Explanation</em></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>plainColumn</td>
 <td>String</td>
-<td>Column names to be encrypted, the format is <code>tableName</code>.<code>columnName</code>, e.g. tb.col1. When configuring multiple column names, separate them with commas</td>
+<td>Plain column name</td>
 </tr>
 
 <tr>
-<td>assistedQueryColumns</td>
+<td>cipherColumn</td>
+<td>String</td>
+<td>Cipher column name</td>
+</tr>
+
+<tr>
+<td>assistedQueryColumn</td>
 <td>String</td>
 <td>AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data</td>
 </tr>
 
 <tr>
-<td>props</td>
-<td>Properties</td>
-<td>Properties, Notice: when use AES encryptor, <code>aes.key.value</code> for AES encryptor need to be set</td>
+<td>encryptor</td>
+<td>String</td>
+<td>Encryptor name</td>
 </tr>
 </tbody>
 </table>
@@ -2404,6 +2476,12 @@
 <td>check.table.metadata.enabled (?)</td>
 <td>boolean</td>
 <td>Check meta-data consistency or not in initialization, default value: false</td>
+</tr>
+
+<tr>
+<td>query.with.cipher.column (?)</td>
+<td>boolean</td>
+<td>When there is a plainColumn, use cipherColumn or not to query, default value: true</td>
 </tr>
 </tbody>
 </table>
@@ -2554,7 +2632,7 @@
 </tbody>
 </table>
 
-<h4 id="encryptruleconfiguration">EncryptRuleConfiguration</h4>
+<h4 id="encryptruleconfiguration-1">EncryptRuleConfiguration</h4>
 
 <table>
 <thead>
@@ -2567,9 +2645,43 @@
 
 <tbody>
 <tr>
-<td>encryptorRuleConfigs</td>
-<td>Map&lt;String, EncryptorRuleConfiguration&gt;</td>
-<td>Map of encryptor names and configurations，encryptor Same as <code>EncryptorRuleConfiguration</code></td>
+<td>encryptors</td>
+<td>Map<String, EncryptorRuleConfiguration></td>
+<td>Encryptor names and encryptors</td>
+</tr>
+
+<tr>
+<td>tables</td>
+<td>Map<String, EncryptTableRuleConfiguration></td>
+<td>Encrypt table names and encrypt tables</td>
+</tr>
+</tbody>
+</table>
+
+<h4 id="propertiesconstant">PropertiesConstant</h4>
+
+<p>Property configuration items, can be of the following properties.</p>
+
+<table>
+<thead>
+<tr>
+<th><em>Name</em></th>
+<th><em>DataType</em></th>
+<th><em>Explanation</em></th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>sql.show (?)</td>
+<td>boolean</td>
+<td>Print SQL parse and rewrite log or not, default value: false</td>
+</tr>
+
+<tr>
+<td>query.with.cipher.column (?)</td>
+<td>boolean</td>
+<td>When there is a plainColumn, use cipherColumn or not to query, default value: true</td>
 </tr>
 </tbody>
 </table>
@@ -3946,20 +4058,20 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1563337524"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1566361621"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1563337524"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1563337524"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1566361621"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1566361621"></script>
 
-    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1563337524" type="text/css" rel="stylesheet" />
-    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1563337524"></script>
+    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1566361621" type="text/css" rel="stylesheet" />
+    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1566361621"></script>
     <script>
         mermaid.initialize({ startOnLoad: true });
     </script>

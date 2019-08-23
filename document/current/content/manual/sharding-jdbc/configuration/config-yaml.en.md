@@ -106,14 +106,14 @@ encryptRule:
   encryptors:
     encryptor_aes:
       type: aes
-			qualifiedColumns: t_encrypt.pwd
-			assistedQueryColumns: pwd_assisted
+      qualifiedColumns: t_encrypt.pwd
+      assistedQueryColumns: pwd_assisted
       props:
         aes.key.value: 123456abc
     encryptor_md5:
       type: md5
-			qualifiedColumns: t_encrypt.md5_col
-			
+      qualifiedColumns: t_encrypt.md5_col
+
 ```
 
 ### Data Sharding + Read-Write Split
@@ -255,7 +255,7 @@ shardingRule:
     encryptors:
       encryptor_aes:
         type: aes
-				qualifiedColumns: t_encrypt.pwd
+        qualifiedColumns: t_encrypt.pwd
         props:
           aes.key.value: 123456abc
 
@@ -375,7 +375,7 @@ encryptRule:
     <encryptor-name>:
       type:  #encryptor type：MD5/AES 
       qualifiedColumns: #encrypt column name：<table-name>.<logic-column-name>
-			assistedQueryColumns: #AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data
+      assistedQueryColumns: #AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data
       props: #Properties, e.g. `aes.key.value` for AES encryptor
         aes.key.value: 
 

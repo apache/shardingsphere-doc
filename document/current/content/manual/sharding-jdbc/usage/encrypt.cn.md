@@ -30,12 +30,12 @@ weight = 6
        dataSource.setPassword("");
        
        // 配置脱敏规则
-	   Properties properties = new Properties();
+       Properties properties = new Properties();
        properties.setProperty("aes.key.value", "123456");
        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_encrypt.pwd", properties);
        encryptRuleConfig.getEncryptorRuleConfigs().put("aes", aesEncryptorRuleConfiguration);
-		
+
        // 获取数据源对象
        DataSource dataSource = EncryptDataSourceFactory.createDataSource(dataSource, encryptRuleConfig, new Properties());
 ```
@@ -55,7 +55,7 @@ encryptRule:
   encryptors:
     order_encryptor:
       type: aes
-	  qualifiedColumns: t_encrypt.pwd
+      qualifiedColumns: t_encrypt.pwd
       props:
         aes.key.value: 123456
 ```

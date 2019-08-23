@@ -105,14 +105,14 @@ encryptRule:
   encryptors:
     encryptor_aes:
       type: aes
-			qualifiedColumns: t_encrypt.pwd
-			assistedQueryColumns: pwd_assisted #辅助查询列
+      qualifiedColumns: t_encrypt.pwd
+      assistedQueryColumns: pwd_assisted #辅助查询列
       props:
         aes.key.value: 123456abc
     encryptor_md5:
       type: md5
-			qualifiedColumns: t_encrypt.md5_col
-			
+      qualifiedColumns: t_encrypt.md5_col
+
 ```
 
 ### 数据分片 + 读写分离
@@ -254,7 +254,7 @@ shardingRule:
     encryptors:
       encryptor_aes:
         type: aes
-				qualifiedColumns: t_encrypt.pwd
+        qualifiedColumns: t_encrypt.pwd
         props:
           aes.key.value: 123456abc
 
@@ -409,7 +409,7 @@ encryptRule:
     <encryptor-name>:
       type: #加解密器类型，可自定义或选择内置类型：MD5/AES 
       qualifiedColumns: #加解密栏位：<table-name>.<logic-column-name>
-			assistedQueryColumns: #辅助查询字段，针对ShardingQueryAssistedEncryptor类型的加解密器进行辅助查询
+      assistedQueryColumns: #辅助查询字段，针对ShardingQueryAssistedEncryptor类型的加解密器进行辅助查询
       props: #属性配置, 注意：使用AES加密器，需要配置AES加密器的KEY属性：aes.key.value
         aes.key.value: 
 

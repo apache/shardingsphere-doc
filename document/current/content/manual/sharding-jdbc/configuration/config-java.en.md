@@ -69,14 +69,14 @@ weight = 1
     }
 
     private static EncryptRuleConfiguration getEncryptRuleConfiguration() {
-        Properties props = new Properties();
-        props.setProperty("aes.key.value", "123456");
-        EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration("AES", props);
-        EncryptColumnRuleConfiguration columnConfig = new EncryptColumnRuleConfiguration("plain_pwd", "cipher_pwd", "", "aes");
-        EncryptTableRuleConfiguration tableConfig = new EncryptTableRuleConfiguration(Collections.singletonMap("pwd", columnConfig));
+        Properties properties = new Properties();
+        properties.setProperty("aes.key.value", "123456");
         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
-        encryptRuleConfig.getEncryptors().put("aes", encryptorConfig);
-        encryptRuleConfig.getTables().put("t_encrypt", tableConfig);
+        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_encrypt.pwd", "assisted_pwd",  properties);
+        EncryptorRuleConfiguration md5EncryptorRuleConfiguration = new EncryptorRuleConfiguration("MD5", "t_encrypt.md5_col", new Properties());
+        encryptRuleConfig.getEncryptorRuleConfigs().put("aes_encryptor", aesEncryptorRuleConfiguration);
+        encryptRuleConfig.getEncryptorRuleConfigs().put("md5_encryptor", md5EncryptorRuleConfiguration);
+        return encryptRuleConfig;
     }
 ```
 
@@ -157,8 +157,8 @@ weight = 1
         Properties properties = new Properties();
         properties.setProperty("aes.key.value", "123456");
         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
-        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_order_item.plain_order", "cipher_order",  properties);
-        EncryptorRuleConfiguration md5EncryptorRuleConfiguration = new EncryptorRuleConfiguration("MD5", "t_order_item.status", new Properties());
+        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_encrypt.pwd", "assisted_pwd",  properties);
+        EncryptorRuleConfiguration md5EncryptorRuleConfiguration = new EncryptorRuleConfiguration("MD5", "t_encrypt.md5_col", new Properties());
         encryptRuleConfig.getEncryptorRuleConfigs().put("aes_encryptor", aesEncryptorRuleConfiguration);
         encryptRuleConfig.getEncryptorRuleConfigs().put("md5_encryptor", md5EncryptorRuleConfiguration);
         return encryptRuleConfig;
@@ -292,7 +292,7 @@ The implementation class of `ShardingStrategyConfiguration`, used to configure n
 | ------------------- | ---------------------------- | ------------------------------------------------------------------------------------------- |
 | type                | String                       | Type of encryptor，use user-defined ones or built-in ones, e.g. MD5/AES                      |
 | qualifiedColumns    | String                       | Encrypt column names, e.g. tb.col1                                                              |
-| assistedQueryColumn | String                       | AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data  |
+| assistedQueryColumns| String                       | AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data  |
 | properties          | Properties                   | Properties, Notice: when use AES encryptor, `aes.key.value` for AES encryptor need to be set | 
 
 

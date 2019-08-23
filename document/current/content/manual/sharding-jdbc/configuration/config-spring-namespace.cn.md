@@ -191,7 +191,7 @@ weight = 4
     <encrypt:data-source id="encryptDataSource" data-source-name="db" >
 		<sharding:encrypt-rules>
 			<encrypt:encryptor-rule id="encryptor_aes" type="AES" qualified-columns="t_encrypt.pwd" props-ref="props"/>
-		    <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.user_id"/>
+		    <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.md5_col"/>
 		</sharding:encrypt-rules>  
         <encrypt:props>
             <prop key="sql.show">${sql_show}</prop>
@@ -394,7 +394,7 @@ weight = 4
 
 			<sharding:encrypt-rules>
 				<encrypt:encryptor-rule id="encryptor_aes" type="AES" qualified-columns="t_encrypt.pwd" props-ref="props"/>
-                <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.user_id"/>
+                <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.md5_col"/>
 			</sharding:encrypt-rules>           
         </sharding:sharding-rule>
         <sharding:props>

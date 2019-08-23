@@ -105,13 +105,13 @@ encryptRule:
   encryptors:
     encryptor_aes:
       type: aes
-			qualifiedColumns: t_encrypt.user_id
-			assistedQueryColumns: user_id_assisted #辅助查询列
+			qualifiedColumns: t_encrypt.pwd
+			assistedQueryColumns: pwd_assisted #辅助查询列
       props:
         aes.key.value: 123456abc
     encryptor_md5:
       type: md5
-			qualifiedColumns: t_encrypt.order_id
+			qualifiedColumns: t_encrypt.md5_col
 			
 ```
 
@@ -254,7 +254,7 @@ shardingRule:
     encryptors:
       encryptor_aes:
         type: aes
-				qualifiedColumns: t_order.order_id
+				qualifiedColumns: t_encrypt.pwd
         props:
           aes.key.value: 123456abc
 

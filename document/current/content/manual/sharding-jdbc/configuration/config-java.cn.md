@@ -69,15 +69,14 @@ weight = 1
     }
 
     private static EncryptRuleConfiguration getEncryptRuleConfiguration() {
-        Properties props = new Properties();
-        props.setProperty("aes.key.value", "123456");
-        EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration("AES", props);
-        EncryptColumnRuleConfiguration columnConfig = new EncryptColumnRuleConfiguration("plain_pwd", "cipher_pwd", "", "aes");
-        EncryptTableRuleConfiguration tableConfig = new EncryptTableRuleConfiguration(Collections.singletonMap("pwd", columnConfig));
+        Properties properties = new Properties();
+        properties.setProperty("aes.key.value", "123456");
         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
-        encryptRuleConfig.getEncryptors().put("aes", encryptorConfig);
-        encryptRuleConfig.getTables().put("t_encrypt", tableConfig);
-		return encryptRuleConfig;
+        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_encrypt.pwd", "assisted_pwd",  properties);
+        EncryptorRuleConfiguration md5EncryptorRuleConfiguration = new EncryptorRuleConfiguration("MD5", "t_encrypt.md5_col", new Properties());
+        encryptRuleConfig.getEncryptorRuleConfigs().put("aes_encryptor", aesEncryptorRuleConfiguration);
+        encryptRuleConfig.getEncryptorRuleConfigs().put("md5_encryptor", md5EncryptorRuleConfiguration);
+        return encryptRuleConfig;
     }
 ```
 
@@ -159,8 +158,8 @@ weight = 1
         Properties properties = new Properties();
         properties.setProperty("aes.key.value", "123456");
         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
-        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_order_item.plain_order", "cipher_order",  properties);
-        EncryptorRuleConfiguration md5EncryptorRuleConfiguration = new EncryptorRuleConfiguration("MD5", "t_order_item.status", new Properties());
+        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_encrypt.pwd", "assisted_pwd",  properties);
+        EncryptorRuleConfiguration md5EncryptorRuleConfiguration = new EncryptorRuleConfiguration("MD5", "t_encrypt.md5_col", new Properties());
         encryptRuleConfig.getEncryptorRuleConfigs().put("aes_encryptor", aesEncryptorRuleConfiguration);
         encryptRuleConfig.getEncryptorRuleConfigs().put("md5_encryptor", md5EncryptorRuleConfiguration);
         return encryptRuleConfig;
@@ -290,31 +289,17 @@ ShardingStrategyConfiguration的实现类，用于配置不分片的策略。
 #### EncryptRuleConfiguration
 
 | *名称*               |*数据类型*                                    | *说明*                                                                          |
-| ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------ |
-| encryptors          | Map<String, EncryptorRuleConfiguration>     | 加解密器配置列表，可自定义或选择内置类型：MD5/AES                                    |
-| tables              | Map<String, EncryptTableRuleConfiguration>  | 加密表配置列表                      |
+| -------------------  | ------------------------------------------- | ------------------------------------------------------------------------------ |
+| encryptors | Map<String, EncryptorRuleConfiguration>     | 加解密器配置列表，可自定义或选择内置类型：MD5/AES                                    |
 
 #### EncryptorRuleConfiguration
 
 | *名称*               |*数据类型*                    | *说明*                                                                          |
 | ------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
 | type                | String                       | 加解密器类型，可自定义或选择内置类型：MD5/AES                                       |
+| qualifiedColumns    | String                       | 加解密字段，格式为：表名.列名，例如：tb.col1。多个列，请用逗号分隔                       |
+| assistedQueryColumns| String                       | 辅助查询字段，针对ShardingQueryAssistedEncryptor类型的加解密器进行辅助查询            |
 | properties          | Properties                   | 属性配置, 注意：使用AES加密器，需要配置AES加密器的KEY属性：aes.key.value              | 
-
-#### EncryptTableRuleConfiguration
-
-| *名称*               |*数据类型*                                     | *说明*                            |
-| ------------------- | -------------------------------------------- | --------------------------------- |
-| tables              | Map<String, EncryptColumnRuleConfiguration>  | 加密列配置列表                      |
-
-#### EncryptColumnRuleConfiguration
-
-| *名称*               |*数据类型*                    | *说明*                                                                          |
-| ------------------- | ----------------------------  ------------------------------------------------------------------------------ |
-| plainColumn        | String                       | 存储明文的字段                                                                   |
-| cipherColumn       | String                       | 存储密文的字段                                                                   |
-| assistedQueryColumn| String                       | 辅助查询字段，针对ShardingQueryAssistedEncryptor类型的加解密器进行辅助查询            |
-| encryptor          | String                       | 加解密器名字                                                                      | 
 
 #### PropertiesConstant
 
@@ -370,14 +355,12 @@ ShardingStrategyConfiguration的实现类，用于配置不分片的策略。
 | --------------------- | ---------------------------- | ------------------ |
 | dataSource            | DataSource                   | 数据源，任意连接池    |
 | encryptRuleConfig     | EncryptRuleConfiguration     | 数据脱敏规则         |
-| props (?)             | Properties                   | 属性配置            |
 
 #### EncryptRuleConfiguration
 
 | *名称*               |*数据类型*                                    | *说明*                                                                          |
 | ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------ |
 | encryptors          | Map<String, EncryptorRuleConfiguration>     | 加解密器配置列表，可自定义或选择内置类型：MD5/AES                                    |
-| tables              | Map<String, EncryptTableRuleConfiguration>  | 加密表配置列表                      |
 
 #### PropertiesConstant
 

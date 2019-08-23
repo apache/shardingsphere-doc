@@ -189,18 +189,10 @@ Inline expression identifier can can use `${...} ` or `$->{...}`, but the former
     </bean:properties>
     
     <encrypt:data-source id="encryptDataSource" data-source-name="db" >
-        <encrypt:encrypt-rule>
-            <encrypt:tables>
-                <encrypt:table name="t_order">
-                    <encrypt:column logic-column="user_id" plain-column="user_decrypt" cipher-column="user_encrypt" assisted-query-column="user_assisted" encryptor-ref="encryptor_aes" />
-                    <encrypt:column logic-column="order_id" plain-column="order_decrypt" cipher-column="order_encrypt" assisted-query-column="order_assisted" encryptor-ref="encryptor_md5"/>
-                </encrypt:table>
-            </encrypt:tables>
-            <encrypt:encryptors>
-                <encrypt:encryptor id="encryptor_aes" type="AES" props-ref="props"/>
-                <encrypt:encryptor id="encryptor_md5" type="MD5" />
-            </encrypt:encryptors>
-        </encrypt:encrypt-rule>
+        <sharding:encrypt-rules>
+        	<encrypt:encryptor-rule id="encryptor_aes" type="AES" qualified-columns="t_encrypt.pwd" props-ref="props"/>
+            <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.md5_col"/>
+        </sharding:encrypt-rules>  
         <encrypt:props>
             <prop key="sql.show">${sql_show}</prop>
             <prop key="query.with.cipher.column">true</prop>
@@ -396,18 +388,10 @@ Inline expression identifier can can use `${...} ` or `$->{...}`, but the former
                 <sharding:table-rule logic-table="t_order" actual-data-nodes="demo_ds_${0..1}.t_order_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderTableStrategy" key-generator-ref="orderKeyGenerator" />
                 <sharding:table-rule logic-table="t_order_item" actual-data-nodes="demo_ds_${0..1}.t_order_item_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderItemTableStrategy" key-generator-ref="itemKeyGenerator" />
             </sharding:table-rules>
-            <sharding:encrypt-rule>
-                <encrypt:tables>
-                    <encrypt:table name="t_order">
-                        <encrypt:column logic-column="user_id" plain-column="user_decrypt" cipher-column="user_encrypt" assisted-query-column="user_assisted" encryptor-ref="encryptor_aes" />
-                        <encrypt:column logic-column="order_id" plain-column="order_decrypt" cipher-column="order_encrypt" assisted-query-column="order_assisted" encryptor-ref="encryptor_md5"/>
-                    </encrypt:table>
-                </encrypt:tables>
-                <encrypt:encryptors>
-                    <encrypt:encryptor id="encryptor_aes" type="AES" props-ref="props"/>
-                    <encrypt:encryptor id="encryptor_md5" type="MD5" />
-                </encrypt:encryptors>
-            </sharding:encrypt-rule>
+            <sharding:encrypt-rules>
+            	<encrypt:encryptor-rule id="encryptor_aes" type="AES" qualified-columns="t_encrypt.pwd" props-ref="props"/>
+                <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.md5_col"/>
+            </sharding:encrypt-rules>  
         </sharding:sharding-rule>
         <sharding:props>
             <prop key="sql.show">true</prop>
@@ -636,28 +620,9 @@ Namespace: http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encryp
 | ----------------------- | --------- | ----------------------------------------------------------- |
 | id                      | Attribute | Names of Encryptor                                          |
 | type                    | Attribute | Types of Encryptor, including MD5/AES or customize type     |
+| qualified-columns       | Attribute | Encrypt column names, e.g. tb.col1                                                              |
+| assisted-query-columns  | Attribute | AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data  |
 | props-re                | Attribute | Attribute configurations                                    |
-
-#### \<encrypt:tables />
-
-| *Name*                  | *Type* | *Explanation*                                             |
-| ----------------------- | -----  | --------------------------------------------------------- |
-| table(+)                | Tag    | Encrypt table configuration                               |
-
-#### \<encrypt:table />
-
-| *Name*                  | *Type* | *Explanation*                                            |
-| ----------------------- | ------ | ---------------------------------------------------------|
-| column(+)               | Tag    | Encrypt column configuration                             |
-
-#### \<encrypt:column />
-
-| *Name*                   | *Type*   | *Explanation*                                                                                       |
-| ----------------------- | --------- | --------------------------------------------------------------------------------------------------- |
-| logic-column            | Attribute | Logic column name                                                                                   |
-| plain-column            | Attribute | Plain column name                                                                                   |
-| cipher-column           | Attribute | Cipher column name                                                                                  |
-| assisted-query-columns  | Attribute | AssistedColumns for query，when use ShardingQueryAssistedEncryptor, it can help query encrypted data|
 
 #### \<encrypt:props />
 

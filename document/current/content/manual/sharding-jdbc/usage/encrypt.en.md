@@ -30,15 +30,12 @@ create ShardingDataSource, On another hand, when user only adopt the feather of 
        dataSource.setPassword("");
        
        // Configure the encrypt rule
-       Properties props = new Properties();
-       props.setProperty("aes.key.value", "123456");
-       EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration("AES", props);
-       EncryptColumnRuleConfiguration columnConfig = new EncryptColumnRuleConfiguration("plain_pwd", "cipher_pwd", "", "aes");
-       EncryptTableRuleConfiguration tableConfig = new EncryptTableRuleConfiguration(Collections.singletonMap("pwd", columnConfig));
+	   Properties properties = new Properties();
+       properties.setProperty("aes.key.value", "123456");
        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
-       encryptRuleConfig.getEncryptors().put("aes", encryptorConfig);
-       encryptRuleConfig.getTables().put("t_encrypt", tableConfig);
-       
+       EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_encrypt.pwd", properties);
+       encryptRuleConfig.getEncryptorRuleConfigs().put("aes", aesEncryptorRuleConfiguration);
+
        // Get data source
        DataSource dataSource = EncryptDataSourceFactory.createDataSource(dataSource, encryptRuleConfig, new Properties());
 ```
@@ -54,17 +51,12 @@ dataSource:  !!org.apache.commons.dbcp2.BasicDataSource
   password:
 
 encryptRule:
-  tables:
-    t_order:
-      columns:
-        user_id:
-          cipherColumn: user_cipher
-          encryptor: order_encryptor
   encryptors:
     order_encryptor:
       type: aes
+	  qualifiedColumns: t_encrypt.pwd
       props:
-        aes.key.value: 123456 
+        aes.key.value: 123456
 ```
 
 ```java
@@ -105,10 +97,7 @@ spring.shardingsphere.datasource.ds.max-total=100
 
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.type=aes
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.props.aes.key.value=123456
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.plainColumn=user_decrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.cipherColumn=user_encrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.assistedQueryColumn=user_assisted
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.encryptor=encryptor_aes
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.qualifiedColumns=t_encrypt.pwd
 
 spring.shardingsphere.props.sql.show=true
 spring.shardingsphere.props.query.with.cipher.comlum=true
@@ -125,10 +114,7 @@ spring.shardingsphere.datasource.ds.jndi-name=java:comp/env/jdbc/ds
 
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.type=aes
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.props.aes.key.value=123456
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.plainColumn=user_decrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.cipherColumn=user_encrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.assistedQueryColumn=user_assisted
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.encryptor=encryptor_aes
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.qualifiedColumns=t_encrypt.pwd
 
 spring.shardingsphere.props.sql.show=true
 spring.shardingsphere.props.query.with.cipher.comlum=true
@@ -162,18 +148,10 @@ spring.shardingsphere.props.query.with.cipher.comlum=true
     </bean:properties>
     
     <encrypt:data-source id="encryptDataSource" data-source-name="db" >
-        <encrypt:encrypt-rule>
-            <encrypt:tables>
-                <encrypt:table name="t_order">
-                    <encrypt:column logic-column="user_id" plain-column="user_decrypt" cipher-column="user_encrypt" assisted-query-column="user_assisted" encryptor-ref="encryptor_aes" />
-                    <encrypt:column logic-column="order_id" plain-column="order_decrypt" cipher-column="order_encrypt" assisted-query-column="order_assisted" encryptor-ref="encryptor_md5"/>
-                </encrypt:table>
-            </encrypt:tables>
-            <encrypt:encryptors>
-                <encrypt:encryptor id="encryptor_aes" type="AES" props-ref="props"/>
-                <encrypt:encryptor id="encryptor_md5" type="MD5" />
-            </encrypt:encryptors>
-        </encrypt:encrypt-rule>
+        <sharding:encrypt-rules>
+        	<encrypt:encryptor-rule id="encryptor_aes" type="AES" qualified-columns="t_encrypt.pwd" props-ref="props"/>
+            <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.user_id"/>
+        </sharding:encrypt-rules> 
         <encrypt:props>
             <prop key="sql.show">${sql_show}</prop>
             <prop key="query.with.cipher.column">true</prop>

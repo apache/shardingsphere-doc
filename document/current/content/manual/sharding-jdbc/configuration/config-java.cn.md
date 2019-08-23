@@ -48,10 +48,7 @@ weight = 1
 
 ```java
      DataSource getMasterSlaveDataSource() throws SQLException {
-         MasterSlaveRuleConfiguration masterSlaveRuleConfig = new MasterSlaveRuleConfiguration();
-         masterSlaveRuleConfig.setName("ds_master_slave");
-         masterSlaveRuleConfig.setMasterDataSourceName("ds_master");
-         masterSlaveRuleConfig.setSlaveDataSourceNames(Arrays.asList("ds_slave0", "ds_slave1"));
+         MasterSlaveRuleConfiguration masterSlaveRuleConfig = new MasterSlaveRuleConfiguration("ds_master_slave", "ds_master", Arrays.asList("ds_slave0", "ds_slave1"));
          return MasterSlaveDataSourceFactory.createDataSource(createDataSourceMap(), masterSlaveRuleConfig, new LinkedHashMap<String, Object>(), new Properties());
      }
      
@@ -80,6 +77,7 @@ weight = 1
         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
         encryptRuleConfig.getEncryptors().put("aes", encryptorConfig);
         encryptRuleConfig.getTables().put("t_encrypt", tableConfig);
+		return encryptRuleConfig;
     }
 ```
 
@@ -139,7 +137,6 @@ weight = 1
         ShardingRuleConfiguration shardingRuleConfig = new ShardingRuleConfiguration();
         shardingRuleConfig.getTableRuleConfigs().add(getOrderTableRuleConfiguration());
         shardingRuleConfig.getTableRuleConfigs().add(getOrderItemTableRuleConfiguration());
-        shardingRuleConfig.getTableRuleConfigs().add(getOrderEncryptTableRuleConfiguration());
         shardingRuleConfig.getBindingTableGroups().add("t_order, t_order_item");
         shardingRuleConfig.setDefaultDatabaseShardingStrategyConfig(new InlineShardingStrategyConfiguration("user_id", "demo_ds_${user_id % 2}"));
         shardingRuleConfig.setDefaultTableShardingStrategyConfig(new StandardShardingStrategyConfiguration("order_id", new PreciseModuloShardingTableAlgorithm()));
@@ -153,21 +150,20 @@ weight = 1
         return result;
     }
     
-    private static TableRuleConfiguration getOrderItemTableRuleConfiguration() {
+        private static TableRuleConfiguration getOrderItemTableRuleConfiguration() {
         TableRuleConfiguration result = new TableRuleConfiguration("t_order_item", "demo_ds_${0..1}.t_order_item_${[0, 1]}");
-        result.setEncryptorConfig(new EncryptorConfiguration("MD5", "status", new Properties()));
         return result;
     }
-    
+
     private static EncryptRuleConfiguration getEncryptRuleConfiguration() {
-        Properties props = new Properties();
-        props.setProperty("aes.key.value", "123456");
-        EncryptorRuleConfiguration encryptorConfig = new EncryptorRuleConfiguration("AES", props);
-        EncryptColumnRuleConfiguration columnConfig = new EncryptColumnRuleConfiguration("plain_order", "cipher_order", "", "aes");
-        EncryptTableRuleConfiguration tableConfig = new EncryptTableRuleConfiguration(Collections.singletonMap("order_id", columnConfig));
+        Properties properties = new Properties();
+        properties.setProperty("aes.key.value", "123456");
         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration();
-        encryptRuleConfig.getEncryptors().put("aes", encryptorConfig);
-        encryptRuleConfig.getTables().put("t_order", tableConfig);
+        EncryptorRuleConfiguration aesEncryptorRuleConfiguration = new EncryptorRuleConfiguration("AES", "t_order_item.plain_order", "cipher_order",  properties);
+        EncryptorRuleConfiguration md5EncryptorRuleConfiguration = new EncryptorRuleConfiguration("MD5", "t_order_item.status", new Properties());
+        encryptRuleConfig.getEncryptorRuleConfigs().put("aes_encryptor", aesEncryptorRuleConfiguration);
+        encryptRuleConfig.getEncryptorRuleConfigs().put("md5_encryptor", md5EncryptorRuleConfiguration);
+        return encryptRuleConfig;
     }
     
     private static Map<String, DataSource> createDataSourceMap() {

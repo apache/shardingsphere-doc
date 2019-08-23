@@ -88,10 +88,7 @@ spring.shardingsphere.datasource.ds.max-total=100
 
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.type=aes
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.props.aes.key.value=123456
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.plainColumn=user_decrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.cipherColumn=user_encrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.assistedQueryColumn=user_assisted
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.encryptor=encryptor_aes
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.qualifiedColumns=t_encrypt.pwd
 
 spring.shardingsphere.props.sql.show=true
 spring.shardingsphere.props.query.with.cipher.comlum=true
@@ -190,10 +187,7 @@ spring.shardingsphere.sharding.tables.t_order_item.key-generator.column=order_it
 spring.shardingsphere.sharding.tables.t_order_item.key-generator.type=SNOWFLAKE
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.type=aes
 spring.shardingsphere.encrypt.encryptors.encryptor_aes.props.aes.key.value=123456
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.plainColumn=user_decrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.cipherColumn=user_encrypt
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.assistedQueryColumn=user_assisted
-spring.shardingsphere.encrypt.tables.t_order.columns.user_id.encryptor=encryptor_aes
+spring.shardingsphere.encrypt.encryptors.encryptor_aes.qualifiedColumns=t_encrypt.pwd
 ```
 
 ### Orchestration

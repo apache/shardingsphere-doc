@@ -197,7 +197,7 @@ shardingRule:
     column: order_id
   
   masterSlaveRules:
-      ms_ds0:
+    - ms_ds0:
         masterDataSourceName: ds0
         slaveDataSourceNames:
           - ds0_slave0

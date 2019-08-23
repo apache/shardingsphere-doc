@@ -189,18 +189,10 @@ weight = 4
     </bean:properties>
     
     <encrypt:data-source id="encryptDataSource" data-source-name="db" >
-        <encrypt:encrypt-rule>
-            <encrypt:tables>
-                <encrypt:table name="t_order">
-                    <encrypt:column logic-column="user_id" plain-column="user_decrypt" cipher-column="user_encrypt" assisted-query-column="user_assisted" encryptor-ref="encryptor_aes" />
-                    <encrypt:column logic-column="order_id" plain-column="order_decrypt" cipher-column="order_encrypt" assisted-query-column="order_assisted" encryptor-ref="encryptor_md5"/>
-                </encrypt:table>
-            </encrypt:tables>
-            <encrypt:encryptors>
-                <encrypt:encryptor id="encryptor_aes" type="AES" props-ref="props"/>
-                <encrypt:encryptor id="encryptor_md5" type="MD5" />
-            </encrypt:encryptors>
-        </encrypt:encrypt-rule>
+		<sharding:encrypt-rules>
+			<encrypt:encryptor-rule id="encryptor_aes" type="AES" qualified-columns="t_encrypt.pwd" props-ref="props"/>
+		    <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.user_id"/>
+		</sharding:encrypt-rules>  
         <encrypt:props>
             <prop key="sql.show">${sql_show}</prop>
             <prop key="query.with.cipher.column">true</prop>
@@ -399,18 +391,11 @@ weight = 4
                 <sharding:table-rule logic-table="t_order" actual-data-nodes="demo_ds_${0..1}.t_order_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderTableStrategy" key-generator-ref="orderKeyGenerator" />
                 <sharding:table-rule logic-table="t_order_item" actual-data-nodes="demo_ds_${0..1}.t_order_item_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderItemTableStrategy" key-generator-ref="itemKeyGenerator" />
             </sharding:table-rules>
-            <sharding:encrypt-rule>
-                <encrypt:tables>
-                    <encrypt:table name="t_order">
-                        <encrypt:column logic-column="user_id" plain-column="user_decrypt" cipher-column="user_encrypt" assisted-query-column="user_assisted" encryptor-ref="encryptor_aes" />
-                        <encrypt:column logic-column="order_id" plain-column="order_decrypt" cipher-column="order_encrypt" assisted-query-column="order_assisted" encryptor-ref="encryptor_md5"/>
-                    </encrypt:table>
-                </encrypt:tables>
-                <encrypt:encryptors>
-                    <encrypt:encryptor id="encryptor_aes" type="AES" props-ref="props"/>
-                    <encrypt:encryptor id="encryptor_md5" type="MD5" />
-                </encrypt:encryptors>
-            </sharding:encrypt-rule>           
+
+			<sharding:encrypt-rules>
+				<encrypt:encryptor-rule id="encryptor_aes" type="AES" qualified-columns="t_encrypt.pwd" props-ref="props"/>
+                <encrypt:encryptor-rule id="encryptor_md5" type="MD5" qualified-columns="t_encrypt.user_id"/>
+			</sharding:encrypt-rules>           
         </sharding:sharding-rule>
         <sharding:props>
             <prop key="sql.show">true</prop>
@@ -621,6 +606,8 @@ weight = 4
 | ------------------------ | ----- | ------------------------------------------------------------------ |
 | id                       | 属性  | 加密器的名称                                                         |
 | type                     | 属性  | 加解密器类型，可自定义或选择内置类型：MD5/AES                            |
+| qualified-columns       | 属性 | 加解密字段，格式为：表名.列名，例如：tb.col1。多个列，请用逗号分隔                                                             |
+| assisted-query-columns  | 属性  | 辅助查询字段，针对ShardingQueryAssistedEncryptor类型的加解密器进行辅助查询|
 | props-ref                | 属性  | 属性配置, 注意：使用AES加密器，需要配置AES加密器的KEY属性：aes.key.value   |
 
 #### \<encrypt:tables />

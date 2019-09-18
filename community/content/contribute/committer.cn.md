@@ -3,14 +3,6 @@ title = "提交者指南"
 weight = 3
 chapter = true
 +++
-
-## 成为一个提交者
-
- - 过去的6个月持续的做出贡献
- - 深入理解ShardingSphere核心技术
- - 遵守开发规范
- - 高质量提交
- - 开启Google 2FA([2FA](/cn/contribute/2fa/))
  
 ## 维护者责任
 

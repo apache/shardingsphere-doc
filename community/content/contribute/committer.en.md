@@ -3,15 +3,7 @@ title = "Committer Guide"
 weight = 3
 chapter = true
 +++
-
-## Becoming a Committer
-
- - Make contributions consistently during the past 6 months
- - Understand the core technology of ShardingSphere deeply
- - Obey the Code of Conduct
- - Submit high-quality content
- - Enable Google Two-factor authentication([2FA](/en/contribute/2fa/))
- 
+  
 ## Maintainers’ Responsibilities
 
 Maintainers are committers who spent a significant amount of time and energy to maintain the project components, which means a maintainer should:

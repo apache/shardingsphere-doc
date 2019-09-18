@@ -54,7 +54,7 @@ chapter = true
  - 请您在开发过程中遵循ShardingSphere的[开发规范](/cn/contribute/code-conduct/)。并在准备提交pull request之前完成相应的检查。
  - 将修改的代码push到fork库的分支上。
     - git add 修改代码
-    - git commit -m 'comment'
+    - git commit -m 'commit log'
     - git push origin dev-issueNo
  
  ### 提交PR

@@ -43,7 +43,7 @@ You can report a bug, submit a new function enhancement recommendation, or submi
 
 ### Create Branch 
 
- - Switch to forked dev branch, pull code from upstream, then create a new branch.
+ - Switch to forked dev branch, pull codes from upstream, then create a new branch.
    - git checkout dev
    - git pull upstream dev
    - git checkout -b dev-issueNo

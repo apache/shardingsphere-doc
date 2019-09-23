@@ -16,19 +16,19 @@ Members include Project Management Committee members and committers. The List in
 
 | Name           | GithubUsername          |
 | :------------- | :---------------------- |
-| QingYang Chen  | beckhampu               |
-| Jun Zhao       | cherrylzhao             |
+| Hao Cao        | haocao                  |
 | Hongjun Du     | codefairy08             |
 | Hongtao Gao    | hanahmily               |
-| Hao Cao        | haocao                  |
-| Yang Yi        | KomachiSion             |
-| Xiaoguang Ma   | maxiaoguang64           |
-| Yongsheng Peng | peng-yongsheng          |
-| Liang Zhang    | terrymanu               |
 | Juan Pan       | tristaZero              |
-| Yonglun Zhang  | tuohai666, zhangyonglun |
-| Sheng Wu       | wu-sheng                |
+| Jun Zhao       | cherrylzhao             |
+| Liang Zhang    | terrymanu               |
 | Ling Yue       | yue530tom               |
+| QingYang Chen  | beckhampu               |
+| Sheng Wu       | wu-sheng                |
+| Xiaoguang Ma   | maxiaoguang64           |
+| Yang Yi        | KomachiSion             |
+| Yonglun Zhang  | tuohai666, zhangyonglun |
+| Yongsheng Peng | peng-yongsheng          |
 
 ### Committer
 

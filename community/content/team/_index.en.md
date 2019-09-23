@@ -10,7 +10,7 @@ The ShardingSphere team is comprised of Members and Contributors. Members have d
 
 ## Members
 
-Members include Project Management Committee members and committers. The List in alphabeta order.
+Members include Project Management Committee members and committers. The List in alphabet order.
 
 ### Project Management Committee
 
@@ -32,11 +32,11 @@ Members include Project Management Committee members and committers. The List in
 
 ### Committer
 
-| Name           | GithubUsername          |
-| :------------- | :---------------------- |
-| zhaoyanan      | nancyzrh                |
-| Guangyuan Wang | wgy8283335              |
-| Haisheng Sun   | sunbufu                 |
+| Name            | GithubUsername          |
+| :-------------  | :---------------------- |
+| Yanan Zhao      | nancyzrh                |
+| Guangyuan Wang  | wgy8283335              |
+| Haisheng Sun    | sunbufu                 |
 
 ## Contributors
 

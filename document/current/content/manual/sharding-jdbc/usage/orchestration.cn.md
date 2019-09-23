@@ -21,6 +21,7 @@ weight = 4
 <dependency>
     <groupId>org.apache.shardingsphere</groupId>
     <artifactId>sharding-orchestration-reg-zookeeper-curator</artifactId>
+    <version>${sharding-sphere.version}</version>
 </dependency>
 ```
 

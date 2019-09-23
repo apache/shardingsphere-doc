@@ -20,6 +20,7 @@ Using orchestration requires designating a registry center, in which all the con
 <dependency>
     <groupId>org.apache.shardingsphere</groupId>
     <artifactId>sharding-orchestration-reg-zookeeper-curator</artifactId>
+    <version>${sharding-sphere.version}</version>
 </dependency>
 ```
 

@@ -14,7 +14,7 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 
 ### 项目管理委员会
 
-| 名字           | GithubUsername          |
+| 名字           | GitHub ID          |
 | :------------- | :---------------------- |
 | Hao Cao        | haocao                  |
 | Hongjun Du     | codefairy08             |

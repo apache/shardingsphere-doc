@@ -14,7 +14,7 @@ Members include Project Management Committee members and committers. The List in
 
 ### Project Management Committee
 
-| Name           | GithubUsername          |
+| Name           | GitHub ID          |
 | :------------- | :---------------------- |
 | Hao Cao        | haocao                  |
 | Hongjun Du     | codefairy08             |

@@ -56,7 +56,7 @@ BASE目前没有打包到Sharding-Proxy中，使用时需要将实现了`Shardin
 SCTL为Sharding-Proxy特有的控制语句，可以在运行时修改和查询Sharding-Proxy的状态，目前支持的语法为：
 
 | 语句                         | 说明                                                                           |
-|:-------------------------------------------|:----------------------------------------------------------------|
+|:--------------------------------------------------------------------|:---------------------------------------|
 |sctl:set transaction_type=XX  | 修改当前TCP连接的事务类型, 支持LOCAL，XA，BASE。例：sctl:set transaction_type=XA |
 |sctl:show transaction_type    | 查询当前TCP连接的事务类型                                                       |
 |sctl:show cached_connections  | 查询当前TCP连接中缓存的物理数据库连接个数                                        |

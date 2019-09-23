@@ -53,7 +53,7 @@ SCTL supports modify and query the state of Sharing-Proxy at runtime. The curren
 |sctl:show transaction_type               | Query the transaction type of the current TCP connection                                         | sctl:show transaction_type                     |
 |sctl:show cached_connections             | Query the number of cached physical database connections in the current TCP connection           | sctl:show cached_connections                   |
 |sctl:explain SQL                         | View the execution plan for logical SQL.                                                         | sctl:explain select * from t_order             |
-|sctl:hint set MASTER_ONLY=true           | For current TCP connection,set database operation force route to master database only or not     | sctl:hint set MASTER_ONLY=true                 |
+|sctl:hint set MASTER_ONLY=true           | For current TCP connection, set database operation force route to master database only or not     | sctl:hint set MASTER_ONLY=true                 |
 |sctl:hint set DatabaseShardingValue=yy   | For current TCP connection, set sharding value for database sharding only, yy: sharding value    | sctl:hint set DatabaseShardingValue=100        |
 |sctl:hint addDatabaseShardingValue xx=yy | For current TCP connection, add sharding value for database, xx: logic table, yy: sharding value | sctl:hint addDatabaseShardingValue t_order=100 |
 |sctl:hint addTableShardingValue xx=yy    | For current TCP connection, add sharding value for table, xx: logic table, yy: sharding value    | sctl:hint addTableShardingValue t_order=100    |

@@ -178,7 +178,7 @@ spring.shardingsphere.props.query.with.cipher.comlum=true
             </encrypt:encryptors>
         </encrypt:encrypt-rule>
         <encrypt:props>
-            <prop key="sql.show">${sql_show}</prop>
+            <prop key="sql.show">true</prop>
             <prop key="query.with.cipher.column">true</prop>
         </encrypt:props>
     </encrypt:data-source>

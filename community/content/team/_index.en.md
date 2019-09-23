@@ -37,6 +37,7 @@ Members include Project Management Committee members and committers. The List in
 | zhaoyanan      | nancyzrh                |
 | Guangyuan Wang | wgy8283335              |
 | Haisheng Sun   | sunbufu                 |
+| Qi Wang        | wqzwh                   |
 
 ## Contributors
 

@@ -37,6 +37,7 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 | zhaoyanan       | nancyzrh                |
 | Guangyuan Wang  | wgy8283335              |
 | Haisheng Sun    | sunbufu                 |
+| Qi Wang         | wqzwh                   |
 
 ## 贡献者
 

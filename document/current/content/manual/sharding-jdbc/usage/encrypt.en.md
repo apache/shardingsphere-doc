@@ -49,7 +49,7 @@ create ShardingDataSource, On another hand, when user only adopt the feather of 
 ```yaml
 dataSource:  !!org.apache.commons.dbcp2.BasicDataSource
   driverClassName: com.mysql.jdbc.Driver
-  jdbcUrl: jdbc:mysql://127.0.0.1:3306/encrypt?serverTimezone=UTC&useSSL=false
+  url: jdbc:mysql://127.0.0.1:3306/encrypt?serverTimezone=UTC&useSSL=false
   username: root
   password:
 

@@ -59,7 +59,7 @@ SCTL supports modify and query the state of Sharing-Proxy at runtime. The curren
 |sctl:hint addTableShardingValue xx=yy    | For current TCP connection, add sharding value for table, xx: logic table, yy: sharding value    | sctl:hint addTableShardingValue t_order=100    |
 |sctl:hint clear                          | For current TCP connection, clear all hint settings                                              | sctl:hint clear                                |
 
-Sharding-Proxy does not support hint by default. To support it, set the `props` property `proxy.hint.enabled` to true in conf/server.yaml.
+Sharding-Proxy does not support hint by default. To support it, set the `props` property `proxy.hint.enabled` to true in conf/server.yaml.In Sharding-Proxy, In Sharding-Proxy, the sharding value of hint can only be set to String type. 
 
 ## Notices
 

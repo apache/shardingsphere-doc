@@ -67,7 +67,7 @@ SCTL为Sharding-Proxy特有的控制语句，可以在运行时修改和查询Sh
 |sctl:hint addTableShardingValue xx=yy|针对当前TCP连接，为表xx添加分片值yy，xx：逻辑表名称，yy：表分片值|
 |sctl:hint clear|针对当前TCP连接，清除hint所有设置|
 
-Sharding-Proxy 默认不支持hint，如需支持hint，请在conf/server.yaml中，将'props'的属性'proxy.hint.enabled'设置为true
+Sharding-Proxy 默认不支持hint，如需支持hint，请在conf/server.yaml中，将`props`的属性`proxy.hint.enabled`设置为true
 
 
 

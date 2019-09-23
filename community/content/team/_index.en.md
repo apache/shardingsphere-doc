@@ -32,7 +32,7 @@ Members include Project Management Committee members and committers. The List in
 
 ### Committer
 
-| Name            | GithubUsername          |
+| Name            | GitHub ID          |
 | :-------------  | :---------------------- |
 | Yanan Zhao      | nancyzrh                |
 | Guangyuan Wang  | wgy8283335              |

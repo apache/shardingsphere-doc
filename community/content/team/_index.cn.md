@@ -32,7 +32,7 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 
 ### 提交者
 
-| 名字             | GithubUsername          |
+| 名字             | GitHub ID          |
 | :--------------  | :---------------------- |
 | Yanan Zhao       | nancyzrh                |
 | Guangyuan Wang   | wgy8283335              |

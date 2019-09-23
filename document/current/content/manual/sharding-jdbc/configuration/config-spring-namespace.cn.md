@@ -154,7 +154,7 @@ weight = 4
     
     <master-slave:data-source id="masterSlaveDataSource" master-data-source-name="ds_master" slave-data-source-names="ds_slave0, ds_slave1" strategy-ref="randomStrategy">
             <master-slave:props>
-                <prop key="sql.show">${sql_show}</prop>
+                <prop key="sql.show">true</prop>
                 <prop key="executor.size">10</prop>
                 <prop key="foo">bar</prop>
             </master-slave:props>
@@ -202,7 +202,7 @@ weight = 4
             </encrypt:encryptors>
         </encrypt:encrypt-rule>
         <encrypt:props>
-            <prop key="sql.show">${sql_show}</prop>
+            <prop key="sql.show">true</prop>
             <prop key="query.with.cipher.column">true</prop>
         </encrypt:props>
     </encrypt:data-source>

@@ -146,10 +146,10 @@ example: [shardingsphere-example](https://github.com/apache/incubator-shardingsp
         <property name="password" value="" />
     </bean>
 
-    <!-- 4.0.0-RC1 版本 负载均衡策略配置方式 -->
+    <!-- 4.0.0-RC1 version load balance algorithm configuration -->
     <!-- <bean id="randomStrategy" class="org.apache.shardingsphere.example.spring.namespace.algorithm.masterslave.RandomMasterSlaveLoadBalanceAlgorithm" /> -->
 
-    <!-- 4.0.0-RC2 之后版本 负载均衡策略配置方式 -->
+    <!-- 4.0.0-RC2 and later version load balance algorithm configuration -->
     <master-slave:load-balance-algorithm id="randomStrategy" type="RANDOM" />
 
     <master-slave:data-source id="masterSlaveDataSource" master-data-source-name="ds_master" slave-data-source-names="ds_slave0, ds_slave1" strategy-ref="randomStrategy">
@@ -292,10 +292,10 @@ example: [shardingsphere-example](https://github.com/apache/incubator-shardingsp
         <property name="password" value="" />
     </bean>
 
-    <!-- 4.0.0-RC1 版本 负载均衡策略配置方式 -->
+    <!-- 4.0.0-RC1 version load balance algorithm configuration -->
     <!-- <bean id="randomStrategy" class="org.apache.shardingsphere.example.spring.namespace.algorithm.masterslave.RandomMasterSlaveLoadBalanceAlgorithm" /> -->
 
-    <!-- 4.0.0-RC2 之后版本 负载均衡策略配置方式 -->
+    <!-- 4.0.0-RC2 and later version load balance algorithm configuration -->
     <master-slave:load-balance-algorithm id="randomStrategy" type="RANDOM" />
 
     <sharding:inline-strategy id="databaseStrategy" sharding-column="user_id" algorithm-expression="ds_ms$->{user_id % 2}" />
@@ -407,7 +407,7 @@ example: [shardingsphere-example](https://github.com/apache/incubator-shardingsp
             <sharding:encrypt-rule>
                 <encrypt:tables>
                     <encrypt:table name="t_order">
-                        <encrypt:column logic-column="user_id" plain-column="user_id" cipher-column="cipher_pwd" assisted-query-column="" encryptor-ref="encryptor_aes" />
+                        <encrypt:column logic-column="user_id" plain-column="user_decrypt" cipher-column="user_encrypt" assisted-query-column="user_assisted" encryptor-ref="encryptor_aes" />
                         <encrypt:column logic-column="order_id" plain-column="order_decrypt" cipher-column="order_encrypt" assisted-query-column="order_assisted" encryptor-ref="encryptor_md5"/>
                     </encrypt:table>
                 </encrypt:tables>

@@ -407,7 +407,7 @@ weight = 4
             <sharding:encrypt-rule>
                 <encrypt:tables>
                     <encrypt:table name="t_order">
-                        <encrypt:column logic-column="user_id" plain-column="user_id" cipher-column="cipher_pwd" assisted-query-column="" encryptor-ref="encryptor_aes" />
+                        <encrypt:column logic-column="user_id" plain-column="user_decrypt" cipher-column="user_encrypt" assisted-query-column="user_assisted" encryptor-ref="encryptor_aes" />
                         <encrypt:column logic-column="order_id" plain-column="order_decrypt" cipher-column="order_encrypt" assisted-query-column="order_assisted" encryptor-ref="encryptor_md5"/>
                     </encrypt:table>
                 </encrypt:tables>

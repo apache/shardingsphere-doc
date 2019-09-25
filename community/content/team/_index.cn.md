@@ -25,9 +25,9 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 | 名字           | GitHub ID          |
 | :------------- | :---------------------- |
 | 曹昊           | haocao                  |
-| 陈清扬         | beckhampu               |
+| 陈清阳         | beckhampu               |
 | 杜洪军         | codefairy08             |
-| 高红涛         | hanahmily               |
+| 高洪涛         | hanahmily               |
 | 马晓光         | maxiaoguang64           |
 | 潘娟           | tristaZero              |
 | 彭勇升         | peng-yongsheng          |

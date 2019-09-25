@@ -45,7 +45,7 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 | 赵亚楠           | nancyzrh                |
 | 王光远           | wgy8283335              |
 | 王奇             | wqzwh                   |
-| 孙海胜           | sunbufu                 |
+| 孙海生           | sunbufu                 |
 
 ## 贡献者
 

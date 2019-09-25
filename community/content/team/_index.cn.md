@@ -14,7 +14,7 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 | Benjamin Hindman        |                         |
 | Craig L Russell         | craiglrussell, clr      |
 | 冯嘉                    | vongosling               |
-| Willem Ning Jiang       | WillemJiang              |
+| 姜宁                    | WillemJiang              |
 
 ## 成员
 
@@ -24,16 +24,16 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 
 | 名字           | GitHub ID          |
 | :------------- | :---------------------- |
-| 曹浩           | haocao                  |
+| 曹昊           | haocao                  |
 | 陈清扬         | beckhampu               |
 | 杜洪军         | codefairy08             |
 | 高红涛         | hanahmily               |
 | 马晓光         | maxiaoguang64           |
 | 潘娟           | tristaZero              |
-| 彭永胜         | peng-yongsheng          |
+| 彭勇升         | peng-yongsheng          |
 | 吴晟           | wu-sheng                |
-| 易扬           | KomachiSion             |
-| 岳玲           | yue530tom               |
+| 杨翊           | KomachiSion             |
+| 岳令           | yue530tom               |
 | 张亮           | terrymanu               |
 | 张永伦         | tuohai666, zhangyonglun |
 | 赵俊           | cherrylzhao             |

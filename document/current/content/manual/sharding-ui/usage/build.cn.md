@@ -16,7 +16,7 @@ weight = 1
 ### 前后分离
 
 #### 后端
-1. 后端程序执行入口为`org.apache.shardingsphere.ui.Bootstrap`
+1. 后端程序执行入口为`org.apache.shardingsphere.ui.Bootstrap`。
 
 #### 前端
 1. 进入`sharding-ui-frontend/`目录。

@@ -39,4 +39,16 @@ user.admin.password=admin
 ```
 
 ## 注意事项
-1. 若使用maven构建后，再进行本地运行前端项目时，可能因为node版本不一致导致运行失败，可以清空`node_modules/`目录后重新运行。
+1. 若使用maven构建后，再进行本地运行前端项目时，可能因为node版本不一致导致运行失败，可以清空`node_modules/`目录后重新运行。错误日志如下：
+```
+ERROR  Failed to compile with 17 errors
+error  in ./src/views/orchestration/module/instance.vue?vue&type=style&index=0&id=9e59b740&lang=scss&scoped=true&
+Module build failed (from ./node_modules/sass-loader/dist/cjs.js):
+Error: Missing binding /sharding-sphere/sharding-ui/sharding-ui-frontend/node_modules/node-sass/vendor/darwin-x64-57/binding.node
+Node Sass could not find a binding for your current environment: OS X 64-bit with Node.js 8.x
+Found bindings for the following environments:
+  - OS X 64-bit with Node.js 6.x
+This usually happens because your environment has changed since running `npm install`.
+Run `npm rebuild node-sass` to download the binding for your current environment.
+```
+

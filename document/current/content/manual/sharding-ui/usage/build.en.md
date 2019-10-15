@@ -42,4 +42,15 @@ user.admin.password=admin
 
 ## Notices
 
-1. If you run the frontend project locally after a build with maven, you may fail to run it due to inconsistent version of node. You can clean up `node_modules/` directory and run it again.
+1. If you run the frontend project locally after a build with maven, you may fail to run it due to inconsistent version of node. You can clean up `node_modules/` directory and run it again. The error log is：
+```
+ERROR  Failed to compile with 17 errors
+error  in ./src/views/orchestration/module/instance.vue?vue&type=style&index=0&id=9e59b740&lang=scss&scoped=true&
+Module build failed (from ./node_modules/sass-loader/dist/cjs.js):
+Error: Missing binding /sharding-sphere/sharding-ui/sharding-ui-frontend/node_modules/node-sass/vendor/darwin-x64-57/binding.node
+Node Sass could not find a binding for your current environment: OS X 64-bit with Node.js 8.x
+Found bindings for the following environments:
+  - OS X 64-bit with Node.js 6.x
+This usually happens because your environment has changed since running `npm install`.
+Run `npm rebuild node-sass` to download the binding for your current environment.
+```

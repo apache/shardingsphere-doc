@@ -4,6 +4,7 @@ cd `dirname $0`
 rm -rf target
 mkdir target
 
+cp -rf benchmark target
 cp -rf homepage/. target
 
 mkdir -p target/document/legacy/1.x

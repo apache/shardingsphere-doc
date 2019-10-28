@@ -16,61 +16,60 @@ Therefore, one SQL can drive 5 kinds of database parsing * 2 kinds of parameter 
 
 ## Configuration
 
-为了能让测试变得更容易上手，integration-test 引擎无需修改任何 Java 代码，只需要配置好以下几种配置文件，就可以运行所有的断言了：
-  - 环境类文件
+in order to make test easier to start, integration-test designed for just modify the following configuration files to execute all asserts without any java code modification
+  - environment type
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/schema.xml
-  - 测试用例类文件
+  - test case type
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/dataset/SHARDING-TYPE/*.xml
-  - sql-case 文件
+  - sql-case 
   	- /incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml
 
-### 环境配置 
+### Environment Configuration
 
-整合测试需要真实的数据库环境，需要根据要测试的数据库创建相关环境并修改相应的配置文件：  
+Integration test depends on existed database environment, we need to modify the config file for corresponding database to test
 
-首先修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` 文件，例如 ： 
+first, modify config file `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` ，for example ： 
 
 ```.env
-# 测试主键，并发，column index 等的开关
+# the switch for PK, concurrent, column index testing and so on
 run.additional.cases=false
 
-# 分片策略，可以指定多种策略
+# sharding rule, could define multiple rules
 sharding.rule.type=db,tbl,dbtbl_with_masterslave,masterslave
 
-# 要测试的数据库，可以指定多种数据库(H2,MySQL,Oracle,SQLServer,PostgreSQL)
+# databse type, could define multiple databses(H2,MySQL,Oracle,SQLServer,PostgreSQL)
 databases=MySQL,PostgreSQL
 
-# mysql 的配置
+# mysql config
 mysql.host=127.0.0.1
 mysql.port=13306
 mysql.username=root
 mysql.password=root
 
-## postgresql 的配置
+## postgresql config
 postgresql.host=db.psql
 postgresql.port=5432
 postgresql.username=postgres
 postgresql.password=
 
-## sqlserver 的配置
+## sqlserver config
 sqlserver.host=db.mssql
 sqlserver.port=1433
 sqlserver.username=sa
 sqlserver.password=Jdbc1234
 
-## oracle 的配置
+## oracle config
 oracle.host=db.oracle
 oracle.port=1521
 oracle.username=jdbc
 oracle.password=jdbc
 ```
 
-其次我们要修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml` 文件。
-在 dataset.xml 文件中，定义好 metadata（sharding 规则）以及 row（测试数据）就可以完成数据的初始化工作。例如如下配置，定义了 table sharding 规则以及每个表的测试数据：
-
+after that we need to modify config file `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml` 。
+in dataset.xml, set up metadata(sharding rule) and row(test data) to start the data initialization. for example, define table sharding rule and test data as following:
 ```xml
 <dataset>
     <metadata data-nodes="tbl.t_order_${0..9}">
@@ -91,7 +90,7 @@ oracle.password=jdbc
 </dataset>
 ```
 
-当然了，如果目前的库表结构满足不了你的需求，我们还可以在 schema.xml 中添加修改建表建库语句。
+and you could add more create table / create schema clause if you want some other test data
 
 ### SQL 配置
 

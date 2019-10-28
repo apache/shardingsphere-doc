@@ -109,7 +109,7 @@ oracle.password=jdbc
 
 通过前面的配置，我们确定了什么 SQL 在什么环境执行的问题，这里我们定义下需要断言的数据。
 断言的配置，需要两种文件，第一类文件位于 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml`
-这个文件类似于一个一个索引，定义了要执行的 SQL，参数以及期待的数据的位置。这里的 SQL，引用的就是 sql-test 中 SQL 对应的 sql-case-id，例子如下：
+这个文件类似于一个索引，定义了要执行的 SQL，参数以及期待的数据的位置。这里的 SQL，引用的就是 sql-test 中 SQL 对应的 sql-case-id，例子如下：
 
 ```xml
 <integrate-test-cases>
@@ -135,7 +135,7 @@ oracle.password=jdbc
     <row data-node="db_0.t_order" values="2001, 20, init" />
 </dataset>
 ```
-至此，所有需要配置的数据，都已经配置完毕，接了来我们启动相应的集成测试类即可，全程不需要修改任何 Java 代码，只需要在 xml 中做数据初始化以及断言，大大的降低了ShardingSphere 数据测试的门槛以及复杂度。
+至此，所有需要配置的数据，都已经配置完毕，接了来我们启动相应的集成测试类即可，全程不需要修改任何 Java 代码，只需要在 xml 中做数据初始化以及断言，极大的降低了ShardingSphere 数据测试的门槛以及复杂度。
 
 ## 注意事项
 

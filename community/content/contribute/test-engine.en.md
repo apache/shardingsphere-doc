@@ -92,10 +92,10 @@ in dataset.xml, set up metadata(sharding rule) and row(test data) to start the d
 
 and you could add more create table / create schema clause if you want some other test data
 
-### SQL 配置
+### SQL Configuration
 
-前面我们已经设置好了集成测试的相关环境以及初始化的数据，接下来我们要定义一下要测试的 SQL，换句话说，基于上面的环境，我们要断言什么 SQL。
-要断言的 SQL 存放在 `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`，就像如下配置：
+so far we already set up the environment config and the initialization data, we need to set up the SQL we want to test, in another word, we set up the SQL for assert base on that environment
+the sql for assert in define in `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`，like following configuration :
 
 ```xml
 <sql-cases>
@@ -104,9 +104,9 @@ and you could add more create table / create schema clause if you want some othe
   </sql-cases>
 ```
 
-通过这个配置，我们指定了要断言的 SQL 以及数据库类型。这个 SQL 可以在不同模块下的测试用例中共享，这也是为什么我们把 sharding-sql-test 提取为单独的模块
+base on that config, we set up the sql for assert and database type. and these sqls could share in different module, that's why we extract the sharding-sql-test as a stand alone module
 
-### 断言配置
+### Assert Configuration
 
 通过前面的配置，我们确定了什么 SQL 在什么环境执行的问题，这里我们定义下需要断言的数据。
 断言的配置，需要两种文件，第一类文件位于 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml`

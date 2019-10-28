@@ -25,7 +25,9 @@ SQL解析单元测试全面覆盖SQL占位符和字面量维度。整合测试�
   - sql-case 文件
   	- /incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml
 
-**环境配置** - 整合测试需要真实的数据库环境，需要根据要测试的数据库创建相关环境并修改相应的配置文件：  
+### 环境配置 
+
+整合测试需要真实的数据库环境，需要根据要测试的数据库创建相关环境并修改相应的配置文件：  
 
 修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` 文件，例如 ： 
 

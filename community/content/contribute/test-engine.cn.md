@@ -29,7 +29,7 @@ SQL解析单元测试全面覆盖SQL占位符和字面量维度。整合测试�
 
 整合测试需要真实的数据库环境，需要根据要测试的数据库创建相关环境并修改相应的配置文件：  
 
-修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` 文件，例如 ： 
+首先修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` 文件，例如 ： 
 
 ```.env
 # 测试主键，并发，column index 等的开关
@@ -65,6 +65,31 @@ oracle.port=1521
 oracle.username=jdbc
 oracle.password=jdbc
 ```
+
+其次我们要修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml` 文件。
+在dataset.xml 文件中，定义好 metadata（sharding 规则）以及 row（测试数据）就可以完成数据的初始化工作。例如如下配置，定义了 table sharding 规则以及每个表的测试数据：
+
+```xml
+<dataset>
+    <metadata data-nodes="tbl.t_order_${0..9}">
+        <column name="order_id" type="numeric" />
+        <column name="user_id" type="numeric" />
+        <column name="status" type="varchar" />
+    </metadata>
+    <row data-node="tbl.t_order_0" values="1000, 10, init" />
+    <row data-node="tbl.t_order_1" values="1001, 10, init" />
+    <row data-node="tbl.t_order_2" values="1002, 10, init" />
+    <row data-node="tbl.t_order_3" values="1003, 10, init" />
+    <row data-node="tbl.t_order_4" values="1004, 10, init" />
+    <row data-node="tbl.t_order_5" values="1005, 10, init" />
+    <row data-node="tbl.t_order_6" values="1006, 10, init" />
+    <row data-node="tbl.t_order_7" values="1007, 10, init" />
+    <row data-node="tbl.t_order_8" values="1008, 10, init" />
+    <row data-node="tbl.t_order_9" values="1009, 10, init" />
+</dataset>
+```
+
+当然了，如果目前的库表结构满足不了你的需求，我们还可以在 schema.xml 中添加修改建表建库语句。
 
 ## 注意事项
 

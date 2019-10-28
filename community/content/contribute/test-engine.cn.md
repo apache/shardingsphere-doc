@@ -91,7 +91,7 @@ oracle.password=jdbc
 
 当然了，如果目前的库表结构满足不了你的需求，我们还可以在 schema.xml 中添加修改建表建库语句。
 
-### 断言 SQL 配置
+### SQL 配置
 
 前面我们已经设置好了集成测试的相关环境以及初始化的数据，接下来我们要定义一下要测试的 SQL，换句话说，基于上面的环境，我们要断言什么 SQL。
 要断言的 SQL 存放在 `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`，就像如下配置：

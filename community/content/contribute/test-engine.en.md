@@ -4,8 +4,8 @@ title = "Test Engine"
 weight = 9
 +++
 
-ShardingSphere provided a full functionality test engine. it defines SQL by XML format, and every single SQL is drove by SQL parse unit test engine and integration test engine,
-and each engine is suit for H2、MySQL、PostgreSQL、SQLServer and Oracle
+ShardingSphere provided a full functionality test engine. it defines SQLs in xml files, every single SQL is drove by SQL parse unit test engine and integration test engine,
+each engine is suit for H2、MySQL、PostgreSQL、SQLServer and Oracle
 
 The SQL parsing unit test covers both SQL placeholder and literal dimension. 
 Integration test can be further divided into two dimensions of strategy and JDBC; the former one includes strategies as Sharding, table Sharding, database Sharding, and read-write split while the latter one includes `Statement` and `PreparedStatement`.
@@ -16,7 +16,7 @@ Therefore, one SQL can drive 5 kinds of database parsing * 2 kinds of parameter 
 
 ## Configuration
 
-in order to make test easier to start, integration-test designed for just modify the following configuration files to execute all asserts without any java code modification
+in order to make test easier to start, integration-test is designed to modify the following configuration files to execute all asserts without any Java code modification
   - environment type
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml
@@ -90,11 +90,11 @@ in dataset.xml, set up metadata(sharding rule) and row(test data) to start the d
 </dataset>
 ```
 
-and you could add more create table / create schema clause if you want some other test data
+you could add more "create table" / "create schema" clause if you want some other test data
 
 ### SQL Configuration
 
-so far we already set up the environment config and the initialization data, we need to set up the SQL we want to test, in another word, we set up the SQL for assert base on that environment
+so far we already set up the environment config and the initialization data, we need to add the SQL we want to test, in another word, we set up the SQL for assert base on that environment
 the sql for assert in define in `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`，like following configuration :
 
 ```xml
@@ -110,7 +110,7 @@ base on that config, we set up the sql for assert and database type. and these s
 
 we have confirmed what kind of sql execute in which environment in upon config, hereby let's define the data for assert
 there are two kinds of config for assert, one is at `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml`
-this file just like a index, defined the sql, parameters and expected index position for execution . the sql is the value for sql-case-id, example as following : 
+this file just like an index, defined the sql, parameters and expected index position for execution . the sql is the value for sql-case-id, example as following : 
 
 ```xml
 <integrate-test-cases>
@@ -136,7 +136,7 @@ this file is very like the dataset.xml we mentioned before, and the difference i
     <row data-node="db_0.t_order" values="2001, 20, init" />
 </dataset>
 ```
-so far, all config files are ready, we just need to launch the corresponding test case. we don't need to modify any Java code, just need to fill some config files.
+so far, all config files are ready, we just need to launch the corresponding test case. we don't need to modify any Java code, just set up some config files.
 this will reduce the difficulty for ShardingSphere testing
 
 ## Notice
@@ -152,7 +152,7 @@ not like Integration test, SQL parse test doesn't need a specific database envir
 
 ### SQL Data
 
-we mentioned sql-case-id in Integration test，the value for test-case-id could be shared in different module to test, and the file is at `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml` 
+we mentioned sql-case-id in Integration test，test-case-id could be shared in different module to test, and the file is at `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml` 
 
 ### Parser Assert Data
 
@@ -189,4 +189,4 @@ in that xml file, we could assert against the table name, token or sql condition
     </parser-result>
 </parser-result-sets>
 ```
-when these kind of datas are ready, we could launch the test engine in sharding-core-parse-test to test SQL parse 
+when these configs are ready, we could launch the test engine in sharding-core-parse-test to test SQL parse 

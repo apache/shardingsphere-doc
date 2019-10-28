@@ -108,9 +108,9 @@ base on that config, we set up the sql for assert and database type. and these s
 
 ### Assert Configuration
 
-通过前面的配置，我们确定了什么 SQL 在什么环境执行的问题，这里我们定义下需要断言的数据。
-断言的配置，需要两种文件，第一类文件位于 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml`
-这个文件类似于一个索引，定义了要执行的 SQL，参数以及期待的数据的位置。这里的 SQL，引用的就是 sql-test 中 SQL 对应的 sql-case-id，例子如下：
+we have confirmed what kind of sql execute in which environment in upon config, hereby let's define the data for assert
+there are two kinds of config for assert, one is at `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml`
+this file just like a index, defined the sql, parameters and expected index position for execution . the sql is the value for sql-case-id, example as following : 
 
 ```xml
 <integrate-test-cases>
@@ -120,8 +120,8 @@ base on that config, we set up the sql for assert and database type. and these s
     </dml-test-case>
 </integrate-test-cases>
 ```
-还有一类文件，就是具体的断言数据，也就是上面配置中的 expected-data-file 对应的文件，文件在 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/dataset/SHARDING-TYPE/*.xml`
-这个文件内容根前面提及的 dataset.xml 的内容特别相似，只不过 expected-data-file 文件中不仅定义了断言的数据，还有相应 SQL 执行后的返回值等，例子如下：
+another kind of config for assert is the data, as known as the corresponding expected-data-file in SQL-TYPE-integrate-test-cases.xml, which is at `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/dataset/SHARDING-TYPE/*.xml`  
+this file is very like the dataset.xml we mentioned before, and the difference is that expected-data-file contains some other assert data, such as the return value after a sql execution, the examples as following : 
 
 ```xml
 <dataset update-count="1">
@@ -136,15 +136,15 @@ base on that config, we set up the sql for assert and database type. and these s
     <row data-node="db_0.t_order" values="2001, 20, init" />
 </dataset>
 ```
-至此，所有需要配置的数据，都已经配置完毕，接了来我们启动相应的集成测试类即可，全程不需要修改任何 Java 代码，只需要在 xml 中做数据初始化以及断言，极大的降低了ShardingSphere 数据测试的门槛以及复杂度。
+so far, all config files are ready, we just need to launch the corresponding test case. we don't need to modify any Java code, just need to fill some config files.
+this will reduce the difficulty for ShardingSphere testing
 
-## 注意事项
+## Notice
 
-1. 如需测试Oracle，请在pom.xml中增加Oracle驱动依赖。
+1. If Oracle needs to be tested, please add Oracle driver dependencies to the pom.xml.
+1. 10 splitting-databases and 10 splitting-tables are used in the integrated test to ensure the test data is full, so it will take a relatively long time to run the test cases.
 
-1. 为了保证测试数据的完整性，整合测试中的分库分表采用了10库10表的方式，因此运行测试用例的时间会比较长。
-
-# SQL解析引擎测试
+# SQL Parsing Engine Test
 
 ## 数据准备
 

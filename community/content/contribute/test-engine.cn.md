@@ -12,15 +12,57 @@ SQL解析单元测试全面覆盖SQL占位符和字面量维度。整合测试�
 
 # 整合测试
 
-## 测试环境
+## 配置
 
-整合测试由于涉及到真实数据库环境，需要先完成以下准备工作并测试：
+为了能让测试变得更容易上手，integration-test 引擎无需修改任何 Java 代码，只需要配置好以下几种配置文件，就可以运行所有的断言了：
+  - 环境类文件
+    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties
+    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml
+    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/schema.xml
+  - 测试用例类文件
+    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/sql-type-integrate-test-cases.xml
+    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/dataset/*.xml
+  - sql-case 文件
+  	- /incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml
 
-1. 在准备测试的数据库上运行`resources/integrate/schema/manual_schema_create.sql`创建数据库(MySQL、PostgreSQL、SQLServer)及Schema（仅Oracle）。
+**环境配置** - 整合测试需要真实的数据库环境，需要根据要测试的数据库创建相关环境并修改相应的配置文件：  
 
-1. 修改`sharding-jdbc/src/test/resources/integrate/env.properties中的databases`，指定需要测试的数据库。
+修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` 文件，例如 ： 
 
-1. 运行`AllIntegrateTests`，检查测试结果。
+```.env
+# 测试主键，并发，column index 等的开关
+run.additional.cases=false
+
+# 分片策略，可以指定多种策略
+sharding.rule.type=db,tbl,dbtbl_with_masterslave,masterslave
+
+# 指定要测试的数据库，可以指定多种数据库(H2,MySQL,Oracle,SQLServer,PostgreSQL)
+databases=MySQL,PostgreSQL
+
+# mysql 的配置
+mysql.host=127.0.0.1
+mysql.port=13306
+mysql.username=root
+mysql.password=root
+
+## postgresql 的配置
+postgresql.host=db.psql
+postgresql.port=5432
+postgresql.username=postgres
+postgresql.password=
+
+## sqlserver 的配置
+sqlserver.host=db.mssql
+sqlserver.port=1433
+sqlserver.username=sa
+sqlserver.password=Jdbc1234
+
+## oracle 的配置
+oracle.host=db.oracle
+oracle.port=1521
+oracle.username=jdbc
+oracle.password=jdbc
+```
 
 ## 注意事项
 
@@ -33,3 +75,4 @@ SQL解析单元测试全面覆盖SQL占位符和字面量维度。整合测试�
 ## 测试环境
 
 SQL解析引擎测试是基于SQL本身的解析，因此无需连接数据库，直接运行`AllParsingTests`即可。
+

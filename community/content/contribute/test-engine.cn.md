@@ -20,8 +20,8 @@ SQL解析单元测试全面覆盖SQL占位符和字面量维度。整合测试�
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/schema.xml
   - 测试用例类文件
-    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/sql-type-integrate-test-cases.xml
-    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/dataset/*.xml
+    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml
+    - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/dataset/SHARDING-TYPE/*.xml
   - sql-case 文件
   	- /incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml
 
@@ -67,7 +67,7 @@ oracle.password=jdbc
 ```
 
 其次我们要修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/SQL-TYPE/dataset.xml` 文件。
-在dataset.xml 文件中，定义好 metadata（sharding 规则）以及 row（测试数据）就可以完成数据的初始化工作。例如如下配置，定义了 table sharding 规则以及每个表的测试数据：
+在 dataset.xml 文件中，定义好 metadata（sharding 规则）以及 row（测试数据）就可以完成数据的初始化工作。例如如下配置，定义了 table sharding 规则以及每个表的测试数据：
 
 ```xml
 <dataset>
@@ -105,6 +105,37 @@ oracle.password=jdbc
 
 通过这个配置，我们指定了要断言的 SQL 以及数据库类型。这个 SQL 可以在不同模块下的测试用例中共享，这也是为什么我们把 sharding-sql-test 提取为单独的模块
 
+### 断言配置
+
+通过前面的配置，我们确定了什么 SQL 在什么环境执行的问题，这里我们定义下需要断言的数据。
+断言的配置，需要两种文件，第一类文件位于 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/SQL-TYPE-integrate-test-cases.xml`
+这个文件类似于一个一个索引，定义了要执行的 SQL，参数以及期待的数据的位置。这里的 SQL，引用的就是 sql-test 中 SQL 对应的 sql-case-id，例子如下：
+
+```xml
+<integrate-test-cases>
+    <dml-test-case sql-case-id="insert_with_all_placeholders">
+       <assertion parameters="1:int, 1:int, insert:String" expected-data-file="insert_for_order_1.xml" />
+       <assertion parameters="2:int, 2:int, insert:String" expected-data-file="insert_for_order_2.xml" />
+    </dml-test-case>
+</integrate-test-cases>
+```
+还有一类文件，就是具体的断言数据，也就是上面配置中的 expected-data-file 对应的文件，文件在 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/cases/SQL-TYPE/dataset/SHARDING-TYPE/*.xml`
+这个文件内容根前面提及的 dataset.xml 的内容特别相似，只不过 expected-data-file 文件中不仅定义了断言的数据，还有相应 SQL 执行后的返回值等，例子如下：
+
+```xml
+<dataset update-count="1">
+    <metadata data-nodes="db_${0..9}.t_order">
+        <column name="order_id" type="numeric" />
+        <column name="user_id" type="numeric" />
+        <column name="status" type="varchar" />
+    </metadata>
+    <row data-node="db_0.t_order" values="1000, 10, update" />
+    <row data-node="db_0.t_order" values="1001, 10, init" />
+    <row data-node="db_0.t_order" values="2000, 20, init" />
+    <row data-node="db_0.t_order" values="2001, 20, init" />
+</dataset>
+```
+至此，所有需要配置的数据，都已经配置完毕，接了来我们启动相应的集成测试类即可，全程不需要修改任何 Java 代码，只需要在 xml 中做数据初始化以及断言，大大的降低了ShardingSphere 数据测试的门槛以及复杂度。
 
 ## 注意事项
 

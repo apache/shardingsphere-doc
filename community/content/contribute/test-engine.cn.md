@@ -10,7 +10,7 @@ SQL解析单元测试全面覆盖SQL占位符和字面量维度。整合测试�
 
 因此，1条SQL会驱动5种数据库的解析 * 2种参数传递类型 + 5种数据库 * 5种分片策略 * 2种JDBC运行方式 = 60个测试用例，以达到ShardingSphere对于高质量的追求。
 
-SQL-TYPE : 因为 SQL 语句可以分为 DAL, DCL, DDL, DML, DQL, TCL 等几类，测试中有些路径名可能为这几类 SQL 的集合，这里就统一用 SQL-TYPE 代替
+SQL-TYPE : 因为 SQL 语句可以分为 DAL, DCL, DDL, DML, DQL, TCL 等几类，测试中有些路径名可能为这几类 SQL 的集合，这里就统一用关键字 `SQL-TYPE` 代替
 
 ## 整合测试
 

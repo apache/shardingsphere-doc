@@ -46,7 +46,7 @@ ShardingSphere团队由项目成员和提交者组成。成员可以直接访问
 | 王光远           | wgy8283335              |
 | 王奇             | wqzwh                   |
 | 孙海生           | sunbufu                 |
-
+| 李亚             | betterjava              |
 ## 贡献者
 
 自从ShardingSphere使用Github之后，拥有了许多的贡献者，你可以在我们的存储库贡献列表中找到它们。

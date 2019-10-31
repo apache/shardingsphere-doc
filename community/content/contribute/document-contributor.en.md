@@ -2,13 +2,22 @@
 title = "Documents Contributor Guide"
 weight = 5
 chapter = true
+
 +++
 
-In the contributor guide, we have mentioned how to submit issue and pr. here we will introduce how to submit pr to document and update `asf-site` branch, i.e. website
+If you want to help contribute shardingsphere documents or websites, we are happy to help you! Anyone can contribute, whether you're new to a project or have been using shardingsphere for a long time, whether you're a self identified developer, end-user, or someone who can't stand typos,can contribute to documents or websites.
+In the contributor guide, we have mentioned how to submit Issues and PR. here we will introduce how to submit PR to document.
 
-## Before you start, use the `master` branch
+## Precondition
 
-If you are a novice, you can be prepared to rely on as follows
+- Familiar with [document](https://shardingsphere.apache.org)
+- Familiar with [Collaborating with issues and pull requests](https://help.github.com/categories/collaborating-with-issues-and-pull-requests/)
+- Familiar with markdown
+- Familiar with [Hugo](https://gohugo.io/)
+
+## Use the `master` branch
+
+If you are a novice, you can be prepared to rely on as follows:
 
 1. download [shardingsphere-doc](https://github.com/apache/incubator-shardingsphere-doc.git):
 
@@ -83,33 +92,43 @@ incubator-shardingsphere-doc
     └─schema
 ```
 
-#### Operation steps
+## Document Basics
 
-1. First, you need to locate the files you want to operate in the master branch directory structure. If you want to make changes, and you use the idea tool, you can use the shortcut key `Ctrl + Shift + F` to search quickly depending on the content before and after.
-2. After the file operation, submit the pr to the master branch.
-3. After updating the master branch, you need to modify the corresponding asf-site branch, that is website. You need to execute the `build.sh` script, which will  generate the target folder automatically, which is the required file for the website. `build.sh` is the created script, which can be executed directly.
-4. Before switching branches, you need to copy all the files in the target directory and delete the target directory under the master branch.
-5. You need to switch branches with command `git checkout asf-site`, replacing all the files in the asf-site branch with the files copied in **step 4** (the files in the target directory).
-6. Finally, you can submit PR for the asf-site branch.
+The ShardingSphere document is written in markdown, processed in Hugo, generated HTML, deployed in [asf-site](https://github.com/apache/incubator-shardingsphere-doc/tree/asf-site)   branch, and the source code is located in [Github](https://github.com/apache/incubator-shardingsphere-doc/tree/master).
 
-#### Need attention
+- [Official homepage](https://shardingsphere.apache.org) document source is stored in`/homepage/`
+- [Official documents](https://shardingsphere.apache.org/document/current/en/overview/) source is stored in `/document/`，The [latest version](https://shardingsphere.apache.org/document/current/en/overview/) of the official tutorial document source is stored in `/ document / current /`, and the historical version document source is stored in `/document/legacy/`
+- [Community introduction and contribution ](https://shardingsphere.apache.org/community/en/contribute/)related document sources are stored in `/community/content/`
 
-1. For compatibility, use **Hugo version 0.37.1**.
+You can submit questions, edit content, and view other people's changes from [Github](https://github.com/apache/incubator-shardingsphere-doc/issues).
 
-2. Do not submit extra directories. You can replace and submit folders and files under the root directory of asf-site branch as follows.
+## Page template
 
-   ```
-   │  check.html
-   │  index.html
-   │  index_m.html
-   │  index_m_zh.html
-   │  index_zh.html
-   │
-   ├─community
-   ├─css
-   ├─document
-   ├─images
-   └─schema
-   ```
+The page template is located in the `layouts/partials/` directory in themes
 
-   
+## Ask specific and searchable questions
+
+Anyone with a GitHub account can ask questions (error reports) about shardingsphere documents. If you find an error, ask questions even if you don't know how to fix it.
+
+### How to ask questions
+
+1. Attach the problem document link.
+2. Describe the problem in detail.
+3. Describe the problems caused to users.
+4. Propose the repair method.
+5. In [Issues](https://github.com/apache/incubator-shardingsphere-doc/issues),`New issue ` asks your question.
+
+## Submission changes
+
+### Operation steps
+
+1. Locate the file you want to operate in the master branch directory structure.
+2. After the file operation is completed, PR is raised to the master branch.
+
+## Appointment
+
+- Unless otherwise specified, please use **Hugo 0.37.1** version.
+- asf-site branches are updated by the official on a regular basis, you do not need to submit PR to asf-site.
+
+
+

@@ -149,9 +149,8 @@ Create `${RELEASE.VERSION}-release` branch, where all the following operations a
 ```shell
 cd ~/incubator-shardingsphere/
 git pull
-git branch ${RELEASE.VERSION}-release
+git checkout -b ${RELEASE.VERSION}-release
 git push origin ${RELEASE.VERSION}-release
-git checkout ${RELEASE.VERSION}-release
 ```
 
 ### Pre-Release Check
@@ -562,7 +561,14 @@ git push
 git push --delete origin ${RELEASE.VERSION}-release
 ```
 
-4. Send e-mail to `general@incubator.apache.org` and `dev@shardingsphere.apache.org` to announce the release is finished.
+4. Update the download page
+
+```
+https://shardingsphere.apache.org/document/current/en/downloads/
+https://shardingsphere.apache.org/document/current/cn/downloads/
+```
+
+5. Send e-mail to `general@incubator.apache.org` and `dev@shardingsphere.apache.org` to announce the release is finished.
 
 Announcement e-mail template:
 

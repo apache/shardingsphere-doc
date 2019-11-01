@@ -21,9 +21,9 @@ weight = 2
 
 ### 环境配置 
 
-集成测试需要真实的数据库环境，需要根据相应的配置文件创建测试环境环境：
+集成测试需要真实的数据库环境，根据相应的配置文件创建测试环境：
 
-首先，修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` 文件，例如：
+首先，修改配置文件 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` ，例子如下：
 
 ```properties
 # 测试主键，并发，column index等的开关

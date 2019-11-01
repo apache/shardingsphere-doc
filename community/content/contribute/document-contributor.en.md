@@ -2,7 +2,6 @@
 title = "Documents Contributor Guide"
 weight = 5
 chapter = true
-
 +++
 
 If you want to help contribute shardingsphere documents or websites, we are happy to help you! Anyone can contribute, whether you're new to a project or have been using shardingsphere for a long time, whether you're a self identified developer, end-user, or someone who can't stand typos,can contribute to documents or websites.

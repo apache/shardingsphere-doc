@@ -87,9 +87,9 @@ incubator-shardingsphere-doc
 
 ShardingSphere文档使用Markdown编写，并使用Hugo进行处理生成html，部署于[asf-site](https://github.com/apache/incubator-shardingsphere-doc/tree/asf-site)分支，源代码位于[Github](https://github.com/apache/incubator-shardingsphere-doc/tree/master) 。
 
-1. [官方主页](https://shardingsphere.apache.org/index_zh.html)文档源存储在`/homepage/`
-2. [官方文档](https://shardingsphere.apache.org/document/current/cn/overview/)源存储在`/document/`，其中官方教程的[最新版本](https://shardingsphere.apache.org/document/current/cn/overview/)文档源存储在`/document/current/`，历史版本文档源存储在`/document/legacy/`
-3. [社区介绍及贡献](https://shardingsphere.apache.org/community/cn/contribute/) 相关文档源都储存在`/community/content/`
+- [官方主页](https://shardingsphere.apache.org/index_zh.html)文档源存储在`/homepage/`
+- [官方文档](https://shardingsphere.apache.org/document/current/cn/overview/)源存储在`/document/`，其中官方教程的[最新版本](https://shardingsphere.apache.org/document/current/cn/overview/)文档源存储在`/document/current/`，历史版本文档源存储在`/document/legacy/`
+- [社区介绍及贡献](https://shardingsphere.apache.org/community/cn/contribute/)相关文档源都储存在`/community/content/`
 
 您可以从[Github](https://github.com/apache/incubator-shardingsphere-doc/issues)网站上提交问题，编辑内容和查看其他人的更改
 
@@ -105,20 +105,20 @@ ShardingSphere文档使用Markdown编写，并使用Hugo进行处理生成html�
 
 1. 附加出现问题的文档链接
 
-2. 详细描述问题
+1. 详细描述问题
 
-3. 描述问题对用户造成的困扰
+1. 描述问题对用户造成的困扰
 
-4. 提出建议修复的方式
+1. 提出建议修复的方式
 
-5. 在[Issues](https://github.com/apache/incubator-shardingsphere-doc/issues)中`New issue` 提出您的问题
+1. 在[Issues](https://github.com/apache/incubator-shardingsphere-doc/issues)中`New issue` 提出您的问题
 
 ## 提交更改
 
 ### 操作步骤
 
 1. 首先，你需要在master分支目录结构中定位出你要操作的文件
-2. 文件操作完成后，提pull request到master分支
+1. 文件操作完成后，提pull request到master分支
 
 ## 约定
 

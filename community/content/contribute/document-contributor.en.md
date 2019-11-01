@@ -86,9 +86,9 @@ incubator-shardingsphere-doc
 
 The ShardingSphere document is written in markdown, processed in Hugo, generated HTML, deployed in [asf-site](https://github.com/apache/incubator-shardingsphere-doc/tree/asf-site)   branch, and the source code is located in [Github](https://github.com/apache/incubator-shardingsphere-doc/tree/master).
 
-1. [Official homepage](https://shardingsphere.apache.org) document source is stored in`/homepage/`
-2. [Official documents](https://shardingsphere.apache.org/document/current/en/overview/) source is stored in `/document/`，The [latest version](https://shardingsphere.apache.org/document/current/en/overview/) of the official tutorial document source is stored in `/ document / current /`, and the historical version document source is stored in `/document/legacy/`
-3. [Community introduction and contribution](https://shardingsphere.apache.org/community/en/contribute/) related document sources are stored in `/community/content/`
+- [Official homepage](https://shardingsphere.apache.org) document source is stored in`/homepage/`
+- [Official documents](https://shardingsphere.apache.org/document/current/en/overview/) source is stored in `/document/`，The [latest version](https://shardingsphere.apache.org/document/current/en/overview/) of the official tutorial document source is stored in `/ document / current /`, and the historical version document source is stored in `/document/legacy/`
+- [Community introduction and contribution](https://shardingsphere.apache.org/community/en/contribute/) related document sources are stored in `/community/content/`
 
 You can submit questions, edit content, and view other people's changes from [Github](https://github.com/apache/incubator-shardingsphere-doc/issues).
 
@@ -103,17 +103,17 @@ Anyone with a GitHub account can ask questions (error reports) about shardingsph
 ### How to ask questions
 
 1. Attach the problem document link.
-2. Describe the problem in detail.
-3. Describe the problems caused to users.
-4. Propose the repair method.
-5. In [Issues](https://github.com/apache/incubator-shardingsphere-doc/issues),`New issue ` asks your question.
+1. Describe the problem in detail.
+1. Describe the problems caused to users.
+1. Propose the repair method.
+1. In [Issues](https://github.com/apache/incubator-shardingsphere-doc/issues),`New issue ` asks your question.
 
 ## Submission changes
 
 ### Operation steps
 
 1. Locate the file you want to operate in the master branch directory structure.
-2. After the file operation is completed, pull request is raised to the master branch.
+1. After the file operation is completed, pull request is raised to the master branch.
 
 ## Appointment
 

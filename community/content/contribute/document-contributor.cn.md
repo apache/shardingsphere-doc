@@ -20,6 +20,7 @@ chapter = true
 - 熟练掌握markdown
 - 熟悉[Hugo](https://gohugo.io/)
 
+## Fork文档项目
 Fork [官方文档](https://github.com/apache/incubator-shardingsphere-doc)的master分支。
 
 ## 目录结构说明

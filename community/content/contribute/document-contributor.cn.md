@@ -88,7 +88,7 @@ incubator-shardingsphere-doc
 ShardingSphere文档使用Markdown编写，并使用Hugo进行处理生成html，部署于[asf-site](https://github.com/apache/incubator-shardingsphere-doc/tree/asf-site)分支，源代码位于[Github](https://github.com/apache/incubator-shardingsphere-doc/tree/master) 。
 
 - [官方主页](https://shardingsphere.apache.org/index_zh.html)文档源存储在`/homepage/`
-- [官方文档](https://shardingsphere.apache.org/document/current/cn/overview/)源存储在`/document/`，其中官方教程的[最新版本](https://shardingsphere.apache.org/document/current/cn/overview/)文档源存储在`/document/current/`，历史版本文档源存储在`/document/legacy/`
+- [官方教程](https://shardingsphere.apache.org/document/current/cn/overview/)源存储在`/document/`，其中官方教程的[最新版本](https://shardingsphere.apache.org/document/current/cn/overview/)文档源存储在`/document/current/`，历史版本文档源存储在`/document/legacy/`
 - [社区介绍及贡献](https://shardingsphere.apache.org/community/cn/contribute/)相关文档源都储存在`/community/content/`
 
 您可以从[Github](https://github.com/apache/incubator-shardingsphere-doc/issues)网站上提交问题，编辑内容和查看其他人的更改

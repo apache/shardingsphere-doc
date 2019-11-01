@@ -87,7 +87,7 @@ incubator-shardingsphere-doc
 The ShardingSphere document is written in markdown, processed in Hugo, generated HTML, deployed in [asf-site](https://github.com/apache/incubator-shardingsphere-doc/tree/asf-site)   branch, and the source code is located in [Github](https://github.com/apache/incubator-shardingsphere-doc/tree/master).
 
 - [Official homepage](https://shardingsphere.apache.org) document source is stored in`/homepage/`
-- [Official documents](https://shardingsphere.apache.org/document/current/en/overview/) source is stored in `/document/`，The [latest version](https://shardingsphere.apache.org/document/current/en/overview/) of the official tutorial document source is stored in `/ document / current /`, and the historical version document source is stored in `/document/legacy/`
+- [Official course](https://shardingsphere.apache.org/document/current/en/overview/) source is stored in `/document/`，The [latest version](https://shardingsphere.apache.org/document/current/en/overview/) of the official tutorial document source is stored in `/ document / current /`, and the historical version document source is stored in `/document/legacy/`
 - [Community introduction and contribution](https://shardingsphere.apache.org/community/en/contribute/) related document sources are stored in `/community/content/`
 
 You can submit questions, edit content, and view other people's changes from [Github](https://github.com/apache/incubator-shardingsphere-doc/issues).

@@ -1,5 +1,5 @@
 +++
-title = "官档贡献指南"
+title = "官方文档贡献指南"
 weight = 5
 chapter = true
 
@@ -10,33 +10,32 @@ chapter = true
 在贡献者指南里，已经提到如何提交Issues与PR,  这里我们将要介绍如何给官档提交PR。
 
 ## 前置条件
+如果您想帮助贡献ShardingSphere文档或网站，我们很乐意为您提供帮助！任何人都可以贡献，无论您是刚接触项目还是已经使用ShardingSphere很长时间，无论是自我认同的开发人员、最终用户，还是那些无法忍受错别字的人，都可以对文档或者网站进行贡献。
+
+在贡献者指南里，已经提到如何提交Issues与pull request,这里我们将要介绍如何给官方文档提交pull request。
+
+## 前置条件
 
 - 熟悉[官档](https://shardingsphere.apache.org)
 - 熟悉[GitHub 协同开发流程](https://help.github.com/categories/collaborating-with-issues-and-pull-requests/)
 - 熟练掌握markdown
 - 熟悉[Hugo](https://gohugo.io/)
 
-## 使用`master`分支
+- 熟悉[官档](https://shardingsphere.apache.org)
+- 熟悉[GitHub 协同开发流程](https://help.github.com/categories/collaborating-with-issues-and-pull-requests/)
+- 熟练掌握markdown
+- 熟悉[Hugo](https://gohugo.io/)
 
-如果您是一个新手，您能像下面这样准备依赖：
+Fork [官方文档](https://github.com/apache/incubator-shardingsphere-doc)的master分支。
 
-1. 下载 [shardingsphere-doc](https://github.com/apache/incubator-shardingsphere-doc.git):
-
-```
-## download the code of shardingsphere-doc
-git clone https://github.com/apache/incubator-shardingsphere-doc.git
-```
-
-## incubator-shardingsphere-doc 模块设计
-
-#### 项目构造
+## 目录结构说明
 
 ```
 incubator-shardingsphere-doc
 ├─community
 │  ├─archetypes
 │  ├─content
-│  │  ├─company
+│  │  ├─poweredby
 │  │  ├─contribute
 │  │  ├─team
 │  │  └─security
@@ -128,13 +127,13 @@ ShardingSphere文档使用Markdown编写，并使用Hugo进行处理生成html�
 ### 操作步骤
 
 1. 在master分支目录结构中定位出您要操作的文件
-2. 文件操作完成后，提PR到master分支
+2. 文件操作完成后，提pull request到master分支
 
 ## 约定
 
-- 非特别说明，请使用 **Hugo 0.37.1**版本
+- 非特别说明，请使用Hugo的`0.37.1`版本
 
-- asf-site分支由官方定期更新，您无需向asf-site提交PR
+- asf-site分支由官方定期更新，您无需向asf-site提交pull request
 
 
 

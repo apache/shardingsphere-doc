@@ -16,7 +16,7 @@ SQL解析不需要真实的测试环境，开发者只需定义好待测试的SQ
 ### 断言解析数据
 
 断言的解析数据保存在 `/sharding-core/sharding-core-parse/sharding-core-parse-test/src/test/resources/sharding/SQL-TYPE/*.xml`
-在`xml`文件中，可以针对表名，token，SQL条件等去进行断言，例如如下的配置：
+在`xml`文件中，可以针对表名，token，SQL条件等进行断言，例如如下的配置：
 
 ```xml
 <parser-result-sets>

@@ -9,9 +9,9 @@ In the contributor guide, we have mentioned how to submit Issues and pull reques
 
 ## Precondition
 
-- Familiar with [document](https://shardingsphere.apache.org)
+- Familiar with [Official website](https://shardingsphere.apache.org)
 - Familiar with [Collaborating with issues and pull requests](https://help.github.com/categories/collaborating-with-issues-and-pull-requests/)
-- Familiar with markdown
+- Familiar with [Markdown](https://www.markdownguide.org/getting-started)
 - Familiar with [Hugo](https://gohugo.io/)
 
 ## Fock document
@@ -86,9 +86,9 @@ incubator-shardingsphere-doc
 
 The ShardingSphere document is written in markdown, processed in Hugo, generated HTML, deployed in [asf-site](https://github.com/apache/incubator-shardingsphere-doc/tree/asf-site)   branch, and the source code is located in [Github](https://github.com/apache/incubator-shardingsphere-doc/tree/master).
 
-- [Official homepage](https://shardingsphere.apache.org) document source is stored in`/homepage/`
-- [Official documents](https://shardingsphere.apache.org/document/current/en/overview/) source is stored in `/document/`，The [latest version](https://shardingsphere.apache.org/document/current/en/overview/) of the official tutorial document source is stored in `/ document / current /`, and the historical version document source is stored in `/document/legacy/`
-- [Community introduction and contribution ](https://shardingsphere.apache.org/community/en/contribute/)related document sources are stored in `/community/content/`
+1. [Official homepage](https://shardingsphere.apache.org) document source is stored in`/homepage/`
+2. [Official documents](https://shardingsphere.apache.org/document/current/en/overview/) source is stored in `/document/`，The [latest version](https://shardingsphere.apache.org/document/current/en/overview/) of the official tutorial document source is stored in `/ document / current /`, and the historical version document source is stored in `/document/legacy/`
+3. [Community introduction and contribution](https://shardingsphere.apache.org/community/en/contribute/) related document sources are stored in `/community/content/`
 
 You can submit questions, edit content, and view other people's changes from [Github](https://github.com/apache/incubator-shardingsphere-doc/issues).
 
@@ -119,6 +119,3 @@ Anyone with a GitHub account can ask questions (error reports) about shardingsph
 
 - Unless otherwise specified, please use Hugo `0.37.1` version.
 - asf-site branches are updated by the official on a regular basis, you do not need to submit pull request to asf-site.
-
-
-

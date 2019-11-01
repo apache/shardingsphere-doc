@@ -11,11 +11,11 @@ Not like Integration test, SQL parse test doesn't need a specific database envir
 
 ### SQL Data
 
-As mentioned `sql-case-id` in Integration test，test-case-id could be shared in different module to test, and the file is at `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml` 
+As mentioned `sql-case-id` in Integration test，test-case-id could be shared in different module to test, and the file is at `/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml` 
 
 ### Parser Assert Data
 
-The assert data is at `/incubator-shardingsphere/sharding-core/sharding-core-parse/sharding-core-parse-test/src/test/resources/sharding/SQL-TYPE/*.xml`
+The assert data is at `/sharding-core/sharding-core-parse/sharding-core-parse-test/src/test/resources/sharding/SQL-TYPE/*.xml`
 in that xml file, it could assert against the table name, token or sql condition and so on. For example:
 
 ```xml

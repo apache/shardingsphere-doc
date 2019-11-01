@@ -8,7 +8,7 @@ weight = 1
 ## Configuration
 
 After setup environment and initial data, developer need to define SQL test cases.
-the SQL to be asserted in file `/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`. For example: 
+the SQL to be asserted in file `/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`. For example: 
 
 ```xml
 <sql-cases>

@@ -11,11 +11,11 @@ SQL解析不需要真实的测试环境，开发者只需定义好待测试的SQ
 
 ### SQL数据
 
-在集成测试的部分提到过`sql-case-id`，其对应的SQL，可以在不同模块共享。开发者只需要在`/incubator-shardingsphere/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml` 添加待测试的SQL即可。
+在集成测试的部分提到过`sql-case-id`，其对应的SQL，可以在不同模块共享。开发者只需要在`/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml` 添加待测试的SQL即可。
 
 ### 断言解析数据
 
-断言的解析数据保存在 `/incubator-shardingsphere/sharding-core/sharding-core-parse/sharding-core-parse-test/src/test/resources/sharding/SQL-TYPE/*.xml`
+断言的解析数据保存在 `/sharding-core/sharding-core-parse/sharding-core-parse-test/src/test/resources/sharding/SQL-TYPE/*.xml`
 在`xml`文件中，可以针对表名，token，SQL条件等去进行断言，例如如下的配置：
 
 ```xml

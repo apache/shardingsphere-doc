@@ -7,7 +7,7 @@ weight = 2
 
 ## 配置
 
-为了使测试更容易上手，集成测试引擎无需修改任何`Java`代码，只需要配置以下几种类型的文件即可运行断言：
+为了使测试更容易上手，集成测试引擎无需修改任何`Java`代码，只需要配置以下几类文件即可运行断言：
 
   - 环境类文件
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties

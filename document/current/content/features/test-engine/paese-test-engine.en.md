@@ -7,7 +7,7 @@ weight = 3
 
 ## Prepare Data
 
-Not like Integration test, SQL parse test doesn't need a specific database environment, we just need to define the sql we want to parse, and the assert data:
+Not like Integration test, SQL parse test doesn't need a specific database environment, just define the sql  to parse, and the assert data:
 
 ### SQL Data
 

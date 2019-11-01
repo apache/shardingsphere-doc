@@ -14,13 +14,13 @@ chapter = true
 - 熟悉[GitHub 协同开发流程](https://help.github.com/categories/collaborating-with-issues-and-pull-requests/)
 - 熟练掌握markdown
 - 熟悉[Hugo](https://gohugo.io/)
-
 - 熟悉[官档](https://shardingsphere.apache.org)
 - 熟悉[GitHub 协同开发流程](https://help.github.com/categories/collaborating-with-issues-and-pull-requests/)
 - 熟练掌握markdown
 - 熟悉[Hugo](https://gohugo.io/)
 
 ## Fork文档项目
+
 Fork [官方文档](https://github.com/apache/incubator-shardingsphere-doc)的master分支。
 
 ## 目录结构说明

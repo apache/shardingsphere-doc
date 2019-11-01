@@ -2,11 +2,10 @@
 title = "Documents Contributor Guide"
 weight = 5
 chapter = true
-
 +++
 
 If you want to help contribute shardingsphere documents or websites, we are happy to help you! Anyone can contribute, whether you're new to a project or have been using shardingsphere for a long time, whether you're a self identified developer, end-user, or someone who can't stand typos,can contribute to documents or websites.
-In the contributor guide, we have mentioned how to submit Issues and PR. here we will introduce how to submit PR to document.
+In the contributor guide, we have mentioned how to submit Issues and pull request. here we will introduce how to submit pull request to document.
 
 ## Precondition
 
@@ -15,27 +14,18 @@ In the contributor guide, we have mentioned how to submit Issues and PR. here we
 - Familiar with markdown
 - Familiar with [Hugo](https://gohugo.io/)
 
-## Use the `master` branch
+## Fock document
+Fock the master branch of [official documents](https://github.com/apache/incubator-shardingsphere-doc).
 
-If you are a novice, you can be prepared to rely on as follows:
 
-1. download [shardingsphere-doc](https://github.com/apache/incubator-shardingsphere-doc.git):
-
-```
-## download the code of shardingsphere-doc
-git clone https://github.com/apache/incubator-shardingsphere-doc.git
-```
-
-## incubator-shardingsphere-doc module design
-
-#### Project structure
+## Directory structure description
 
 ```
 incubator-shardingsphere-doc
 ├─community
 │  ├─archetypes
 │  ├─content
-│  │  ├─company
+│  │  ├─poweredby
 │  │  ├─contribute
 │  │  ├─team
 │  │  └─security
@@ -123,12 +113,12 @@ Anyone with a GitHub account can ask questions (error reports) about shardingsph
 ### Operation steps
 
 1. Locate the file you want to operate in the master branch directory structure.
-2. After the file operation is completed, PR is raised to the master branch.
+2. After the file operation is completed, pull request is raised to the master branch.
 
 ## Appointment
 
-- Unless otherwise specified, please use **Hugo 0.37.1** version.
-- asf-site branches are updated by the official on a regular basis, you do not need to submit PR to asf-site.
+- Unless otherwise specified, please use Hugo `0.37.1` version.
+- asf-site branches are updated by the official on a regular basis, you do not need to submit pull request to asf-site.
 
 
 

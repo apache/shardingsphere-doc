@@ -14,5 +14,7 @@ Integration test can be further divided into two dimensions of strategy and JDBC
 Therefore, one SQL can drive 5 kinds of database parsing * 2 kinds of parameter transmission modes + 5 kinds of databases * 5 kinds of Sharding strategies * 2 kinds of JDBC operation modes = 60 test cases, to enable ShardingSphere to achieve the pursuit of high quality.
 
 > whenever describe the sub-path under a specific path, there may be more than one, here represent SQL-TYPE and SHARDING-TYPE as following :
+>
 >SQL-TYPE : is one of or collection of dal,dcl，ddl，dml，dql，tcl
->>SHARDING-TYPE : is one of or collection of db，dbtbl_with_masterslave，masterslave，tbl
+>
+>SHARDING-TYPE : is one of or collection of db，dbtbl_with_masterslave，masterslave，tbl

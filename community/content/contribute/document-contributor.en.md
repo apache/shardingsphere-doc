@@ -15,7 +15,7 @@ In the contributor guide, we have mentioned how to submit Issues and pull reques
 - Familiar with [Hugo](https://gohugo.io/)
 
 ## Fock document
-fock the master branch of [official documents](https://github.com/apache/incubator-shardingsphere-doc).
+Fock the master branch of [official documents](https://github.com/apache/incubator-shardingsphere-doc).
 
 
 ## Directory structure description

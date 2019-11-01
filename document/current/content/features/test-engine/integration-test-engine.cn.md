@@ -7,7 +7,7 @@ weight = 2
 
 ## 配置
 
-为了让测试更加容易上手，整合测试引擎无需修改任何`Java`代码，通过配置以下几种类型的配置文件即可运行断言：
+为了使测试更容易上手，集成测试引擎无需修改任何`Java`代码，只需要配置以下几种类型的文件即可运行断言：
 
   - 环境类文件
     - /incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties
@@ -21,7 +21,7 @@ weight = 2
 
 ### 环境配置 
 
-整合测试需要真实的数据库环境，需要根据要测试的数据库创建相关环境并修改相应的配置文件：
+集成测试需要真实的数据库环境，需要根据相应的配置文件创建测试环境环境：
 
 首先，修改 `/incubator-shardingsphere/sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties` 文件，例如：
 
@@ -83,7 +83,7 @@ oracle.password=jdbc
 </dataset>
 ```
 
-开发者可以在`schema.xml`中定制化建库与建表语句。 
+开发者可以在`schema.xml`中自定义建库与建表语句。 
 
 ### 断言配置
 

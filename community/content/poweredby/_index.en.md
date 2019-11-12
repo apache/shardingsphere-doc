@@ -7,7 +7,7 @@ chapter = true
 
 Welcome companies who have used ShardingSphere to register here, your support is our biggest encouragement.
 
-Please register [here](https://github.com/sharding-sphere/sharding-sphere/issues/234) with `company` + `homepage` + `company type`.
+Please register [here](https://github.com/sharding-sphere/sharding-sphere/issues/234) with `company` + `homepage` + `company type` + `usefulness`.
 
 The list here will be shown in the alphabetical order.
 
@@ -122,7 +122,3 @@ The list here will be shown in the alphabetical order.
 1. Zhuanzhuan http://www.zhuanzhuan.com/
 1. zmn http://www.zmn.cn/
 1. ZTO Express http://www.zto.com/
-
-# Use Cases
-
-You can edit the Markdown file for this page. Users are encouraged to add themselves to there.

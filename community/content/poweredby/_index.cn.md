@@ -7,7 +7,7 @@ chapter = true
 
 欢迎采用了ShardingSphere的公司在此登记，您的支持是我们最大的动力。
 
-请按`公司名` + `首页` + `公司类型`的格式在[此处](https://github.com/sharding-sphere/sharding-sphere/issues/234)登记。
+请按`公司名` + `首页` + `公司类型` + `用处` 的格式在[此处](https://github.com/sharding-sphere/sharding-sphere/issues/234)登记。
 
 采用公司列表按字母排序展示。
 
@@ -121,7 +121,3 @@ chapter = true
 1. 啄木鸟网络科技 http://www.zmn.cn/ 
 1. 转转 http://www.zhuanzhuan.com/ 
 1. 足记 http://www.fotoplace.cc/ 
-
-# 用例
-
-您可以编辑此页面的Markdown文件，鼓励用户将自己添加到其中。

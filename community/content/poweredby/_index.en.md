@@ -12,7 +12,6 @@ Please register [here](https://github.com/sharding-sphere/sharding-sphere/issues
 The list here will be shown in the alphabetical order.
 
 1. 19pay http://www.19pay.com.cn/
-1. 41soo http://www.41soo.com
 1. 41soo http://www.41soo.com/
 1. 4pyun https://4pyun.com/
 1. 500px https://500px.me/

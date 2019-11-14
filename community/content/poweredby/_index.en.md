@@ -5,13 +5,13 @@ weight = 2
 chapter = true
 +++
 
- ## Register
+## Register
 
 Welcome companies who have used ShardingSphere to register here, your support is our biggest encouragement.
 
 Please register [here](https://github.com/sharding-sphere/sharding-sphere/issues/234) with `company` + `homepage` + `company type` + `usefulness`.
 
- ## Who uses ShardingSphere?
+## Who uses ShardingSphere?
  
  ![user-wall](https://shardingsphere.apache.org/community/static/image/poweredby/user-wall.png)
 

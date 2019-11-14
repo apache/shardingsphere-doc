@@ -13,7 +13,7 @@ Please register [here](https://github.com/sharding-sphere/sharding-sphere/issues
 
 ## Who uses ShardingSphere?
  
- ![user-wall](https://shardingsphere.apache.org/community/static/image/poweredby/user-wall.png)
+ ![user-wall](https://shardingsphere.apache.org/community/image/poweredby/user-wall.png)
 
 The list here will be shown in the alphabetical order.
 

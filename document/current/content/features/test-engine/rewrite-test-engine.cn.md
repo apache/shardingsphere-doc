@@ -52,18 +52,14 @@ shardingRule:
     - t_account, t_account_detail
 ```
 
-验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中，文件中保存了要读取的配置文件位置，要测试的 SQL，参数，以及期待的结果，例如：
+验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中，文件中保存了要读取的配置文件位置，要测试的 SQL，参数，以及期待的结果，其中 `yaml-rule` 指定了环境以及 rule 的配置文件，input 指定了待测试的 SQL 以及参数，output 指定了期待的 SQL 以及参数。例如：
 
 ```xml
 <rewrite-assertions yaml-rule="yaml/sharding/sharding-rule.yaml">
-    <rewrite-assertion id="insert_values_with_columns_with_id_for_parameters">
-        <input sql="INSERT INTO t_account (account_id, amount, status) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE amount = VALUES(amount)" parameters="100, 1000, OK" />
-        <output sql="INSERT INTO t_account_0 (account_id, amount, status) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE amount = VALUES(amount)" parameters="100, 1000, OK" />
-    </rewrite-assertion>
-    
-    <rewrite-assertion id="insert_values_with_columns_with_id_for_literals" db-type="MySQL">
-        <input sql="INSERT INTO t_account (account_id, amount, status) VALUES (100, 1000, 'OK') ON DUPLICATE KEY UPDATE amount = VALUES(amount)" />
-        <output sql="INSERT INTO t_account_0 (account_id, amount, status) VALUES (100, 1000, 'OK') ON DUPLICATE KEY UPDATE amount = VALUES(amount)" />
+    <rewrite-assertion id="select_without_sharding_value_for_parameters">
+        <input sql="SELECT * FROM sharding_db.t_account WHERE amount = ?" parameters="1000" />
+        <output sql="SELECT * FROM t_account_0 WHERE amount = ?" parameters="1000" />
+        <output sql="SELECT * FROM t_account_1 WHERE amount = ?" parameters="1000" />
     </rewrite-assertion>
 </rewrite-assertions>
 ```

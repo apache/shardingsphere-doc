@@ -5,7 +5,7 @@ title = "SQL改写测试引擎"
 weight = 4
 +++
 
-### 对象
+### 目标
 
 面向逻辑库与逻辑表书写的SQL，并不能够直接在真实的数据库中执行，SQL改写用于将逻辑SQL改写为在真实数据库中可以正确执行的SQL。 它包括正确性改写和优化改写两部分，所以 rewrite 的测试都是基于这些改写方向进行校验的。
 
@@ -52,7 +52,7 @@ shardingRule:
     - t_account, t_account_detail
 ```
 
-验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中，文件中保存了要读取的配置文件位置，要测试的 SQL，参数，以及期待的结果，其中 `yaml-rule` 指定了环境以及 rule 的配置文件，input 指定了待测试的 SQL 以及参数，output 指定了期待的 SQL 以及参数。例如：
+验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中。验证数据中， `yaml-rule` 指定了环境以及 rule 的配置文件，input 指定了待测试的 SQL 以及参数，output 指定了期待的 SQL 以及参数。例如：
 
 ```xml
 <rewrite-assertions yaml-rule="yaml/sharding/sharding-rule.yaml">

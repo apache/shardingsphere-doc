@@ -50,7 +50,6 @@ shardingRule:
           algorithmExpression: t_account_detail_${account_id % 2}
   bindingTables:
     - t_account, t_account_detail
-
 ```
 
 验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中，文件中保存了要读取的配置文件位置，要测试的 SQL，参数，以及期待的结果，例如：
@@ -68,4 +67,4 @@ shardingRule:
     </rewrite-assertion>
 </rewrite-assertions>
 ```
-我们只需要在 xml 文件中编写测试数据，配置好配置文件，就可以在不更改任何 Java 代码的情况下校验对应的 SQL 了。
+只需在 xml 文件中编写测试数据，配置好相应的 yaml 配置文件，就可以在不更改任何 Java 代码的情况下校验对应的 SQL 了。

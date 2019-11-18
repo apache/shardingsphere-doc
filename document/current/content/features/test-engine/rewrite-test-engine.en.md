@@ -11,7 +11,7 @@ Facing logic databases and tables cannot be executed directly in actual database
 
 ### Test
 
-The rewrite tests are in the test part under `sharding-core/sharding-core-rewrite` . Followings are the main part for rewrite tests:
+The rewrite tests are in the test folder under `sharding-core/sharding-core-rewrite` . Followings are the main part for rewrite tests:
 
   - test engine
   - environment configuration

@@ -11,7 +11,7 @@ weight = 4
 
 ### 测试
 
-rewrite 的测试用例位于 `sharding-core/sharding-core-rewrite` 下的 test 中。rewrite 的测试主要依赖如下几个部分配置：
+rewrite 的测试用例位于 `sharding-core/sharding-core-rewrite` 下的 test 中。rewrite 的测试主要依赖如下几个部分：
 
   - 测试引擎
   - 环境配置
@@ -52,7 +52,7 @@ shardingRule:
     - t_account, t_account_detail
 ```
 
-验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中。验证数据中， `yaml-rule` 指定了环境以及 rule 的配置文件，input 指定了待测试的 SQL 以及参数，output 指定了期待的 SQL 以及参数。例如：
+验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中。验证数据中， `yaml-rule` 指定了环境以及 rule 的配置文件，`input` 指定了待测试的 SQL 以及参数，`output` 指定了期待的 SQL 以及参数。例如：
 
 ```xml
 <rewrite-assertions yaml-rule="yaml/sharding/sharding-rule.yaml">

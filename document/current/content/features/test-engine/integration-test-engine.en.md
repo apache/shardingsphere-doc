@@ -5,7 +5,7 @@ title = "Integration Test Engine"
 weight = 2
 +++
 
-## Configuration
+### Configuration
 
 In order to make test engine easier to setup, integration-test is designed to modify the following configuration files to execute all assertions without any **Java** code modification:
 

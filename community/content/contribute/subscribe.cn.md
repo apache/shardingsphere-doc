@@ -15,6 +15,4 @@ chapter = true
 1. 接收欢迎邮件。
 完成以上步骤后，您会收到一封主题为`WELCOME to dev@shardingsphere.apache.org`的欢迎邮件，至此您已成功订阅Apache ShardingSphere（Incubating）的邮件列表。
 
-1. 查看归档邮件。
-您可以点击下面的链接来了解有关邮件的详细信息：[https://lists.apache.org/list.html?dev@shardingsphere.apache.org](https://lists.apache.org/list.html?dev@shardingsphere.apache.org)，至此您可以通过注册邮箱接受或回复邮件或通过查看归档邮件来跟踪邮件对话。
-
+1. 至此，您可以通过订阅的邮箱接收及回复邮件，或通过查看[归档邮件](https://lists.apache.org/list.html?dev@shardingsphere.apache.org)来跟踪邮件对话。

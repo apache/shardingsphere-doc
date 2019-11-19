@@ -19,7 +19,7 @@ The rewrite tests are in the test folder under `sharding-core/sharding-core-rewr
 
 Test engine is the entrance of rewrite tests, just like other test engines, through Junit [Parameterized](https://github.com/junit-team/junit4/wiki/Parameterized-tests), read every and each data in the xml file under the target test type in `test\resources`, and then assert by the engine one by one
 
-Environment configuration is the yaml file under test type under `test\resources\yaml`. The configuration file contains dataSources，shardingRule，encryptRule and other info. The default database is H2, for example:
+Environment configuration is the yaml file under test type under `test\resources\yaml`. The configuration file contains dataSources，shardingRule，encryptRule and other info. The default database is H2(modify `driverClassName` in following and `db-type` in assert data to change the Database type), for example:
 
 ```yaml
 dataSources:
@@ -56,10 +56,11 @@ Assert data are in the xml under test type in `test\resources`. In the xml file,
 
 ```xml
 <rewrite-assertions yaml-rule="yaml/sharding/sharding-rule.yaml">
-    <rewrite-assertion id="select_without_sharding_value_for_parameters">
-        <input sql="SELECT * FROM sharding_db.t_account WHERE amount = ?" parameters="1000" />
-        <output sql="SELECT * FROM t_account_0 WHERE amount = ?" parameters="1000" />
-        <output sql="SELECT * FROM t_account_1 WHERE amount = ?" parameters="1000" />
+    <!-- to change Database type, change db-type as well --> 
+    <rewrite-assertion id="create_index_for_mysql" db-type="MySQL">
+        <input sql="CREATE INDEX index_name ON t_account ('status')" />
+        <output sql="CREATE INDEX index_name ON t_account_0 ('status')" />
+        <output sql="CREATE INDEX index_name ON t_account_1 ('status')" />
     </rewrite-assertion>
 </rewrite-assertions>
 ```

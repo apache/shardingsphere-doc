@@ -5,7 +5,7 @@ title = "SQL Case"
 weight = 1
 +++
 
-### Configuration
+## Configuration
 
 After setup environment and initial data, developer need to define SQL test cases.
 the SQL to be asserted in file `/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`. For example: 

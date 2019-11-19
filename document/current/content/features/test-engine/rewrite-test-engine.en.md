@@ -5,7 +5,7 @@ title = "SQL Rewrite Test Engine"
 weight = 4
 +++
 
-### Target
+## Target
 
 Facing logic databases and tables cannot be executed directly in actual databases. SQL rewrite is used to rewrite logic SQL into rightly executable ones in actual databases, including two parts, correctness rewrite and optimization rewrite. rewrite tests are for these targets.
 

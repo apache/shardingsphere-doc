@@ -5,7 +5,7 @@ title = "SQL测试用例"
 weight = 1
 +++
 
-### 配置
+## 配置
 
 设置好集成测试的相关环境以及初始化的数据之后，接下来开发者需要定义待测试的 SQL。
 待测试的 SQL 存放在 `/sharding-sql-test/src/main/resources/sql/sharding/SQL-TYPE/*.xml`文件中。例如：

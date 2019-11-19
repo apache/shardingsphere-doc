@@ -65,5 +65,3 @@ Assert data are in the xml under test type in `test\resources`. In the xml file,
 ```
 
 After set up the assert data and environment configuration, rewrite test engine will assert the corresponding SQL without any Java code modification.
-
-

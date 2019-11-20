@@ -19,12 +19,11 @@ SQL 改写测试用例位于 `sharding-core/sharding-core-rewrite` 下的 test �
 
 测试引擎是 SQL 改写测试的入口，跟其他引擎一样，通过 Junit 的 [Parameterized](https://github.com/junit-team/junit4/wiki/Parameterized-tests) 逐条读取 `test\resources` 目录中测试类型下对应的 xml 文件，然后按读取顺序一一进行验证。
 
-环境配置存放在 `test\resources\yaml` 路径中测试类型下对应的 yaml 中。配置了dataSources，shardingRule，encryptRule 等信息，默认使用的是 H2 内存数据库（可以通过更改 `driverClassName` 以及校验数据中的 `db-type` 切换其他数据库），例子如下：
+环境配置存放在 `test\resources\yaml` 路径中测试类型下对应的 yaml 中。配置了dataSources，shardingRule，encryptRule 等信息，例子如下：
 
 ```yaml
 dataSources:
   db: !!com.zaxxer.hikari.HikariDataSource
-    ## 默认使用了 H2 内存数据库，可以通过修改 driver 更换为其他数据库
     driverClassName: org.h2.Driver
     jdbcUrl: jdbc:h2:mem:db;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MYSQL
     username: sa
@@ -52,7 +51,8 @@ shardingRule:
     - t_account, t_account_detail
 ```
 
-验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中。验证数据中， `yaml-rule` 指定了环境以及 rule 的配置文件，`input` 指定了待测试的 SQL 以及参数，`output` 指定了期待的 SQL 以及参数。例如：
+验证数据存放在 `test\resources` 路径中测试类型下对应的 xml 文件中。验证数据中， `yaml-rule` 指定了环境以及 rule 的配置文件，`input` 指定了待测试的 SQL 以及参数，`output` 指定了期待的 SQL 以及参数。
+其中 `db-type` 决定了 SQL 解析的类型，默认为 `SQL92`, 例如：
 
 ```xml
 <rewrite-assertions yaml-rule="yaml/sharding/sharding-rule.yaml">

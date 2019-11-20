@@ -19,12 +19,11 @@ The rewrite tests are in the test folder under `sharding-core/sharding-core-rewr
 
 Test engine is the entrance of rewrite tests, just like other test engines, through Junit [Parameterized](https://github.com/junit-team/junit4/wiki/Parameterized-tests), read every and each data in the xml file under the target test type in `test\resources`, and then assert by the engine one by one
 
-Environment configuration is the yaml file under test type under `test\resources\yaml`. The configuration file contains dataSources，shardingRule，encryptRule and other info. The default database is H2(modify `driverClassName` in following and `db-type` in assert data to change the Database type), for example:
+Environment configuration is the yaml file under test type under `test\resources\yaml`. The configuration file contains dataSources，shardingRule，encryptRule and other info. for example:
 
 ```yaml
 dataSources:
   db: !!com.zaxxer.hikari.HikariDataSource
-    ## The default database is H2, it's available to switch to other database by changing the Driver and config
     driverClassName: org.h2.Driver
     jdbcUrl: jdbc:h2:mem:db;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MYSQL
     username: sa
@@ -52,11 +51,12 @@ shardingRule:
     - t_account, t_account_detail
 ```
 
-Assert data are in the xml under test type in `test\resources`. In the xml file, `yaml-rule` means the environment configuration file path, `input` contains the target SQL and parameters, `output` contains the expected SQL and parameters. For example: 
+Assert data are in the xml under test type in `test\resources`. In the xml file, `yaml-rule` means the environment configuration file path, `input` contains the target SQL and parameters, `output` contains the expected SQL and parameters.
+The `db-type` described the type for SQL parse, default is `SQL92`. For example: 
 
 ```xml
 <rewrite-assertions yaml-rule="yaml/sharding/sharding-rule.yaml">
-    <!-- to change Database type, change db-type as well --> 
+    <!-- to change SQL parse type, change db-type --> 
     <rewrite-assertion id="create_index_for_mysql" db-type="MySQL">
         <input sql="CREATE INDEX index_name ON t_account ('status')" />
         <output sql="CREATE INDEX index_name ON t_account_0 ('status')" />

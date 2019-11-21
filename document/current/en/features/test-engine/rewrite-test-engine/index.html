@@ -12,19 +12,19 @@
     <title>SQL Rewrite Test Engine :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1574170106" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1574170106" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1574170106" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1574170106" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1574170106" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1574170106" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1574170106" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1574170106" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1574308862" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1574308862" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1574308862" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1574308862" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1574308862" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1574308862" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1574308862" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1574308862" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1574170106" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1574308862" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1574170106"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1574308862"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -2077,7 +2077,17 @@
                 
                     <div class="progress">
     <div class="wrapper">
-
+<nav id="TableOfContents">
+<ul>
+<li>
+<ul>
+<li><a href="#target">Target</a>
+<ul>
+<li><a href="#test">Test</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
     </div>
 </div>
 
@@ -2095,7 +2105,69 @@
         
 
 
-<p>TODO</p>
+
+
+<h2 id="target">Target</h2>
+
+<p>Facing logic databases and tables cannot be executed directly in actual databases. SQL rewrite is used to rewrite logic SQL into rightly executable ones in actual databases, including two parts, correctness rewrite and optimization rewrite. rewrite tests are for these targets.</p>
+
+<h3 id="test">Test</h3>
+
+<p>The rewrite tests are in the test folder under <code>sharding-core/sharding-core-rewrite</code> . Followings are the main part for rewrite tests:</p>
+
+<ul>
+<li>test engine</li>
+<li>environment configuration</li>
+<li>assert data</li>
+</ul>
+
+<p>Test engine is the entrance of rewrite tests, just like other test engines, through Junit <a href="https://github.com/junit-team/junit4/wiki/Parameterized-tests">Parameterized</a>, read every and each data in the xml file under the target test type in <code>test\resources</code>, and then assert by the engine one by one</p>
+
+<p>Environment configuration is the yaml file under test type under <code>test\resources\yaml</code>. The configuration file contains dataSources，shardingRule，encryptRule and other info. for example:</p>
+
+<pre><code class="language-yaml">dataSources:
+  db: !!com.zaxxer.hikari.HikariDataSource
+    driverClassName: org.h2.Driver
+    jdbcUrl: jdbc:h2:mem:db;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MYSQL
+    username: sa
+    password:
+
+## sharding Rules
+shardingRule:
+  tables:
+    t_account:
+      actualDataNodes: db.t_account_${0..1}
+      tableStrategy: 
+        inline:
+          shardingColumn: account_id
+          algorithmExpression: t_account_${account_id % 2}
+      keyGenerator:
+        type: TEST
+        column: account_id
+    t_account_detail:
+      actualDataNodes: db.t_account_detail_${0..1}
+      tableStrategy: 
+        inline:
+          shardingColumn: order_id
+          algorithmExpression: t_account_detail_${account_id % 2}
+  bindingTables:
+    - t_account, t_account_detail
+</code></pre>
+
+<p>Assert data are in the xml under test type in <code>test\resources</code>. In the xml file, <code>yaml-rule</code> means the environment configuration file path, <code>input</code> contains the target SQL and parameters, <code>output</code> contains the expected SQL and parameters.
+The <code>db-type</code> described the type for SQL parse, default is <code>SQL92</code>. For example:</p>
+
+<pre><code class="language-xml">&lt;rewrite-assertions yaml-rule=&quot;yaml/sharding/sharding-rule.yaml&quot;&gt;
+    &lt;!-- to change SQL parse type, change db-type --&gt; 
+    &lt;rewrite-assertion id=&quot;create_index_for_mysql&quot; db-type=&quot;MySQL&quot;&gt;
+        &lt;input sql=&quot;CREATE INDEX index_name ON t_account ('status')&quot; /&gt;
+        &lt;output sql=&quot;CREATE INDEX index_name ON t_account_0 ('status')&quot; /&gt;
+        &lt;output sql=&quot;CREATE INDEX index_name ON t_account_1 ('status')&quot; /&gt;
+    &lt;/rewrite-assertion&gt;
+&lt;/rewrite-assertions&gt;
+</code></pre>
+
+<p>After set up the assert data and environment configuration, rewrite test engine will assert the corresponding SQL without any Java code modification.</p>
 
 
 <footer class=" footline" >
@@ -3471,20 +3543,20 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1574170106"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1574308862"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1574170106"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1574170106"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1574308862"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1574308862"></script>
 
-    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1574170106" type="text/css" rel="stylesheet" />
-    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1574170106"></script>
+    <link href="https://shardingsphere.apache.org/document/current/mermaid/mermaid.css?1574308862" type="text/css" rel="stylesheet" />
+    <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1574308862"></script>
     <script>
         mermaid.initialize({ startOnLoad: true });
     </script>

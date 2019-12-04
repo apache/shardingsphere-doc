@@ -556,7 +556,46 @@ weight = 4
 | ----------------- | ---------------------------- | ------------------------------------------------------------------------------- |
 | column            | 属性                          | 自增列名称                                                                       |
 | type              | 属性                          | 自增列值生成器类型，可自定义或选择内置类型：SNOWFLAKE/UUID/LEAF_SEGMENT                            |
-| props-ref         | 属性                          |属性配置, 注意：<br>使用SNOWFLAKE算法，需要配置worker.id与max.tolerate.time.difference.milliseconds属性<br>使用LEAF_SEGMENT算法，需要配置：必填项serverList，leafKey和选填项initialValue，step，digest，registryCenterType<br>使用LEAF_SNOWFLAKE算法，需要配置：必填项serverList，serviceId和选填项maxTimeDifference，digest，registryCenterType| 
+| props-ref         | 属性                          | SNOWFLAKE/LEAF_SEGMENT/LEAF_SNOWFLAKE自增列值生成器的属性配置引用 | 
+
+属性配置项，可以为以下自增列值生成器的属性
+
+##### SNOWFLAKE
+  
+  | *名称*         | *数据类型* |    *配置级别*     | *说明* |
+  | ------------------- | -------- | ---------------- | ------------------ |
+  | worker.id(?)           | long |    选填 | 工作机器唯一id ，缺省默认为0 |
+  | max.tolerate.time.difference.milliseconds(?)        | long |  选填 | 最大容忍时钟回退时间，单位：毫秒。缺省默认为10 |
+  | max.vibration.offset(?)      | int |  选填  | 最大抖动上限值 ，范围 0 <= max.vibration.offset < 4096 ，缺省默认为1。注：若使用此算法生成值作分片值，建议配置此属性 |
+  
+##### LEAF_SEGMENT
+  
+  | *名称*         | *数据类型* |    *配置级别*     | *说明* |
+  | ------------------- | -------------- | ---------------- | ------------------ |
+  | server.list(?)           | String |    必填 | 连接注册中心服务器的列表，包括IP地址和端口号，多个地址用逗号分隔 如: host1:2181,host2:2181 |
+  | leaf.key(?)  | String |  必填 |  对应leaf-segment依赖的数据库中的号段表名 |
+  | leaf.segment.id.initial.value(?)      | long |  选填  | 号段id初始值，缺省默认为1 |
+  | leaf.segment.step(?) | long | 选填 | 每次分配的号段的步长 , 缺省默认10000 |
+  | registry.center.digest(?) | String | 选填 | 连接注册中心的权限令牌，缺省为不需要权限验证 |
+  | registry.center.type(?) | String | 选填 | 注册中心类型，缺省默认为"zookeeper" |
+  
+##### LEAF_SNOWFLAKE
+  
+  | *名称*         | *数据类型* |    *配置级别*     | *说明* |
+  | ------------------- | ------- | ---------------- | ------------------ |
+  | server.list(?)           | String |    必填 | 连接注册中心服务器的列表，包括IP地址和端口号，多个地址用逗号分隔 如: host1:2181,host2:2181 |
+  | service.id(?)  | String |  必填 | 注册中心上的服务id |
+  | max.tolerate.time.difference.milliseconds(?)      | long |  选填  | 最大允许的本机与注册中心的时间误差毫秒数。如果时间误差超过配置时间则作业启动时将抛异常。|
+  | registry.center.digest(?) | String | 选填 | 连接注册中心的权限令牌，缺省为不需要权限验证 |
+  | registry.center.type(?) | String | 选填 | 注册中心类型，缺省默认为"zookeeper" |
+  | max.vibration.offset(?) | int | 选填 | 最大抖动上限 ，范围 0 <= maxVibrationOffset < 4096 ，缺省默认为1。注：若使用此算法生成值作分片值，建议配置此属性 |
+
+
+| *生成器类型*         | *属性配置说明* |
+| ------------------- | ------------------ |
+| SNOWFLAKE           | 需要配置：选填项worker.id, max.tolerate.time.difference.milliseconds和max.vibration.offset属性。*注意*：若将其值作为分片值，建议配置max.vibration.offset属性(0 <= max.vibration.offset < 4096) |
+| LEAF_SEGMENT        | 需要配置：必填项serverList，leafKey和选填项initialValue，step，digest，registryCenterType |
+| LEAF_SNOWFLAKE      | 需要配置：必填项serverList，serviceId和选填项maxTimeDifference，digest，registryCenterType，maxVibrationOffset。*注意*：若将其值作为分片值，建议配置maxVibrationOffset属性(0 <= maxVibrationOffset < 4096) |
 
 #### \<sharding:encrypt-rule />
 | *名称*                     | *类型*                 | *说明*                                  |

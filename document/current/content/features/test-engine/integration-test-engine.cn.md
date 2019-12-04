@@ -5,7 +5,12 @@ title = "整合测试引擎"
 weight = 2
 +++
 
-## 配置
+## 流程
+
+Junit 中的 `Parameterized` 会聚合起所有的测试数据，并将测试数据一一传递给测试方法进行断言。数据处理就像是沙漏中的流沙：  
+![](https://raw.githubusercontent.com/taojintianxia/incubator-shardingsphere-doc/master/community/static/image/integration-test.jpg)  
+
+### 配置
 
 为了使测试更容易上手，集成测试引擎无需修改任何 **Java** 代码，只需要配置以下几类文件即可运行断言：
 

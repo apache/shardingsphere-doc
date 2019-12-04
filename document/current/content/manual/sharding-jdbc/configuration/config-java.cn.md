@@ -297,40 +297,40 @@ ShardingStrategyConfiguration的实现类，用于配置不分片的策略。
 
 ##### SNOWFLAKE
   
-  | *名称*         | *数据类型* |    *配置级别*     | *说明* |
-  | ------------------- | -------- | ---------------- | ------------------ |
-  | worker.id(?)           | long |    选填 | 工作机器唯一id ，缺省默认为0 |
-  | max.tolerate.time.difference.milliseconds(?)        | long |  选填 | 最大容忍时钟回退时间，单位：毫秒。缺省默认为10 |
-  | max.vibration.offset(?)      | int |  选填  | 最大抖动上限值 ，范围 0 <= max.vibration.offset < 4096 ，缺省默认为1。注：若使用此算法生成值作分片值，建议配置此属性 |
+  | *名称*                                              | *数据类型* |    *配置级别*     | *说明*                                                                                                      |
+  | --------------------------------------------------- | ----------| ---------------- | ---------------------------------------------------------------------------------------------------------- |
+  | worker.id(?)                                        | long      |    选填          | 工作机器唯一id ，缺省默认为0                                                                                  |
+  | max.tolerate.time.difference.milliseconds(?)        | long      |    选填          | 最大容忍时钟回退时间，单位：毫秒。缺省默认为10                                                                   |
+  | max.vibration.offset(?)                             | int       |    选填          | 最大抖动上限值 ，范围 0 <= max.vibration.offset < 4096 ，缺省默认为1。注：若使用此算法生成值作分片值，建议配置此属性 |
   
 ##### LEAF_SEGMENT
   
-  | *名称*         | *数据类型* |    *配置级别*     | *说明* |
-  | ------------------- | -------------- | ---------------- | ------------------ |
-  | server.list(?)           | String |    必填 | 连接注册中心服务器的列表，包括IP地址和端口号，多个地址用逗号分隔 如: host1:2181,host2:2181 |
-  | leaf.key(?)  | String |  必填 |  对应leaf-segment依赖的数据库中的号段表名 |
-  | leaf.segment.id.initial.value(?)      | long |  选填  | 号段id初始值，缺省默认为1 |
-  | leaf.segment.step(?) | long | 选填 | 每次分配的号段的步长 , 缺省默认10000 |
-  | registry.center.digest(?) | String | 选填 | 连接注册中心的权限令牌，缺省为不需要权限验证 |
-  | registry.center.type(?) | String | 选填 | 注册中心类型，缺省默认为"zookeeper" |
+  | *名称*                                | *数据类型*      |    *配置级别*     | *说明*                                                                               |
+  | ------------------------------------ | -------------- | ----------------- | ------------------------------------------------------------------------------------ |
+  | server.list(?)                       | String          |    必填           | 连接注册中心服务器的列表，包括IP地址和端口号，多个地址用逗号分隔 如: host1:2181,host2:2181 |
+  | leaf.key(?)                          | String          |    必填           | 对应leaf-segment依赖的数据库中的号段表名                                              |
+  | leaf.segment.id.initial.value(?)     | long            |    选填           | 号段id初始值，缺省默认为1                                                              |
+  | leaf.segment.step(?)                 | long            |    选填           | 每次分配的号段的步长 , 缺省默认10000                                                   |
+  | registry.center.digest(?)            | String          |    选填           | 连接注册中心的权限令牌，缺省为不需要权限验证                                             |
+  | registry.center.type(?)              | String          |    选填           | 注册中心类型，缺省默认为"zookeeper"                                                    |
   
 ##### LEAF_SNOWFLAKE
   
-  | *名称*         | *数据类型* |    *配置级别*     | *说明* |
-  | ------------------- | ------- | ---------------- | ------------------ |
-  | server.list(?)           | String |    必填 | 连接注册中心服务器的列表，包括IP地址和端口号，多个地址用逗号分隔 如: host1:2181,host2:2181 |
-  | service.id(?)  | String |  必填 | 注册中心上的服务id |
-  | max.tolerate.time.difference.milliseconds(?)      | long |  选填  | 最大允许的本机与注册中心的时间误差毫秒数。如果时间误差超过配置时间则作业启动时将抛异常。|
-  | registry.center.digest(?) | String | 选填 | 连接注册中心的权限令牌，缺省为不需要权限验证 |
-  | registry.center.type(?) | String | 选填 | 注册中心类型，缺省默认为"zookeeper" |
-  | max.vibration.offset(?) | int | 选填 | 最大抖动上限 ，范围 0 <= maxVibrationOffset < 4096 ，缺省默认为1。注：若使用此算法生成值作分片值，建议配置此属性 |
+  | *名称*                                             | *数据类型*     |    *配置级别*     | *说明*                                                                                                  |
+  | ------------------------------------------------- | ------------- | ---------------- | ------------------------------------------------------------------------------------------------------- |
+  | server.list(?)                                    | String        |    必填           | 连接注册中心服务器的列表，包括IP地址和端口号，多个地址用逗号分隔 如: host1:2181,host2:2181                     |
+  | service.id(?)                                     | String        |    必填           | 注册中心上的服务id                                                                                       |
+  | max.tolerate.time.difference.milliseconds(?)      | long          |    选填           | 最大允许的本机与注册中心的时间误差毫秒数。如果时间误差超过配置时间则作业启动时将抛异常。                          |
+  | registry.center.digest(?)                         | String        |    选填           | 连接注册中心的权限令牌，缺省为不需要权限验证                                                                 |
+  | registry.center.type(?)                           | String        |    选填           | 注册中心类型，缺省默认为"zookeeper"                                                                        |
+  | max.vibration.offset(?)                           | int           |    选填           | 最大抖动上限 ，范围 0 <= maxVibrationOffset < 4096 ，缺省默认为1。注：若使用此算法生成值作分片值，建议配置此属性 |
 
 #### EncryptRuleConfiguration
 
 | *名称*               |*数据类型*                                    | *说明*                                                                          |
 | ------------------- | ------------------------------------------- | ------------------------------------------------------------------------------ |
 | encryptors          | Map<String, EncryptorRuleConfiguration>     | 加解密器配置列表，可自定义或选择内置类型：MD5/AES                                    |
-| tables              | Map<String, EncryptTableRuleConfiguration>  | 加密表配置列表                      |
+| tables              | Map<String, EncryptTableRuleConfiguration>  | 加密表配置列表                                                                   |
 
 #### EncryptorRuleConfiguration
 

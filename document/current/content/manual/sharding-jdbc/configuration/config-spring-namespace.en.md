@@ -562,43 +562,43 @@ Namespace: http://shardingsphere.apache.org/schema/shardingsphere/sharding/shard
 
 #### \<sharding:key-generator />
 
-| *Name*    | *Type*    | *Explanation*                                                |
-| --------- | --------- | ------------------------------------------------------------ |
-| column    | Attribute | Auto-increment column name                                   |
+| *Name*    | *Type*    | *Explanation*                                                                                                                   |
+| --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| column    | Attribute | Auto-increment column name                                                                                                      |
 | type      | Attribute | Auto-increment key generator `Type`; self-defined generator or internal Type generator (SNOWFLAKE or UUID) can both be selected |
-| props-ref | Attribute | The Property configuration reference of  `SNOWFLAKE、LEAF_SEGMENT、LEAF_SNOWFLAKE` key generators |
+| props-ref | Attribute | The Property configuration reference of  `SNOWFLAKE、LEAF_SEGMENT、LEAF_SNOWFLAKE` key generators                                |
 
 Property configuration that can include these properties of the key generators
 
 ###### SNOWFLAKE
   
-  | *Name*         | *DataType* |    *ConfigurationLevel*     | *Explanation* |
-  | ------------------- | -------- | ---------------- | ------------------ |
-  | worker.id(?)           | long |    optional | The unique id for working machine , the default is `0` if you do not configure it. |
-  | max.tolerate.time.difference.milliseconds(?)        | long |  optional | The max tolerate time for clock rollback, its time unit is milliseconds, the default is `10` if you do not configure it. |
-  | max.vibration.offset(?)      | int |  optional  | The max upper limit value of vibrate number, range `0 <= max.vibration.offset < 4096`, the default is `1` if you do not configure it. Notice: If you need to use its generate value as sharding value, it is recommended to configure this property. |
+  | *Name*                                              | *DataType* |    *ConfigurationLevel*     | *Explanation*                                                                                                                                                                                                                   |
+  | --------------------------------------------------- | ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | worker.id(?)                                        |   long     |    optional                 | The unique id for working machine , the default value is `0`.                                                                                                                                                                   |
+  | max.tolerate.time.difference.milliseconds(?)        |   long     |    optional                 | The max tolerate time for different server's time difference in milliseconds, the default value is `10`.                                                                                                                        |
+  | max.vibration.offset(?)                             |    int     |    optional                 | The max upper limit value of vibrate number, range `0 <= max.vibration.offset < 4096`, the default value is `1`. Notice: If you need to use its generate value as sharding value, it is recommended to configure this property. |
   
 ###### LEAF_SEGMENT
   
-  | *Name*         | *DataType* |    *ConfigurationLevel*     | *Explanation* |
-  | ------------------- | -------------- | ---------------- | ------------------ |
-  | server.list(?)           | String |    required | The server list to connect to registry Center which includes the ip address and port number. If there are multiple addresses, please split them with the comma. e.g: `host1:2181,host2:2181` |
-  | leaf.key(?)  | String |  required |  The key which can be used to get the segment table that is created in a database on which leaf-segment depends. |
-  | leaf.segment.id.initial.value(?)      | long |  optional  | The initial value of segment id, the default is `1` if you do not configure it. |
-  | leaf.segment.step(?) | long | optional | The step size of the segment assigned every time, the default is `10000` if you do not configure it. |
-  | registry.center.digest(?) | String | optional | The permission token to connect to the registry center. If you do not configure it, that means there is not permission validation. |
-  | registry.center.type(?) | String | optional | The type of registry center , if you do not configure it, the default is `zookeeper` |
+  | *Name*                                | *DataType* |    *ConfigurationLevel*     | *Explanation*                                                                                                                                                                                |
+  | ------------------------------------- | ---------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | server.list(?)                        | String     |    required                 | The server list to connect to registry Center which includes the ip address and port number. If there are multiple addresses, please split them with the comma. e.g: `host1:2181,host2:2181` |
+  | leaf.key(?)                           | String     |    required                 | The key which can be used to get the segment table that is created in a database on which leaf-segment depends.                                                                              |
+  | leaf.segment.id.initial.value(?)      | long       |    optional                 | The initial value of segment id, the default value is `1`.                                                                                                                                   |
+  | leaf.segment.step(?)                  | long       |    optional                 | The step size of the segment assigned every time, the default value is `10000`.                                                                                                              |
+  | registry.center.digest(?)             | String     |    optional                 | The permission token to connect to the registry center , the default means there is not permission validation.                                                                               |
+  | registry.center.type(?)               | String     |    optional                 | The type of registry center , the default value is `zookeeper`                                                                                                                               |
   
 ###### LEAF_SNOWFLAKE
   
-  | *Name*         | *DataType* |    *ConfigurationLevel*     | *Explanation* |
-  | ------------------- | ------- | ---------------- | ------------------ |
-  | server.list(?)           | String |    required | The server list to connect to registry Center which includes the ip address and port number. If there are multiple addresses, please split them with the comma. e.g: `host1:2181,host2:2181`. |
-  | service.id(?)  | String |  required | The service id in registry center. |
-  | max.tolerate.time.difference.milliseconds(?)      | long |  optional  | The max allowable time error between native and registry center in milliseconds. If the time error exceeds the configuration time, an exception is thrown when the job starts. |
-  | registry.center.digest(?) | String | optional | The permission token to connect to the registry center. If you do not configure it, that means there is not permission validation. |
-  | registry.center.type(?) | String | optional | The type of registry center , if you do not configure it, the default is `zookeeper`. |
-  | max.vibration.offset(?) | int | optional | The max upper limit value of vibrate number, range `0 <= max.vibration.offset < 4096` ,default is `1`. Notice: If you need to use its generate value as sharding value, it is recommended to configure this property. |
+  | *Name*                                            | *DataType* |    *ConfigurationLevel*     | *Explanation* |
+  | ------------------------------------------------- | ---------- | --------------------------- | ------------------ |
+  | server.list(?)                                    | String     |    required                 | The server list to connect to registry Center which includes the ip address and port number. If there are multiple addresses, please split them with the comma. e.g: `host1:2181,host2:2181`.                                   |
+  | service.id(?)                                     | String     |    required                 | The service id in registry center.                                                                                                                                                                                              |
+  | max.tolerate.time.difference.milliseconds(?)      | long       |    optional                 | The max time difference between native and registry center in milliseconds. If it exceeds the configuration time, an exception is thrown when the job starts.                                                                   |
+  | registry.center.digest(?)                         | String     |    optional                 | The permission token to connect to the registry center , the default means there is not permission validation.                                                                                                                  |
+  | registry.center.type(?)                           | String     |    optional                 | The type of registry center , the default value is `zookeeper`.                                                                                                                                                                 |
+  | max.vibration.offset(?)                           | int        |    optional                 | The max upper limit value of vibrate number, range `0 <= max.vibration.offset < 4096` ,the default value is `1`. Notice: If you need to use its generate value as sharding value, it is recommended to configure this property. |
 
 #### \<sharding:encrypt-rules />
 

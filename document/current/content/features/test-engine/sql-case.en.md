@@ -21,6 +21,6 @@ Developer setup the SQL for assertion and database type during on the configurat
 
 ### Process
 
-Following is the data handling process in sql case :
+Following is the data handling process in SQL case :
 
-![](https://raw.githubusercontent.com/taojintianxia/incubator-shardingsphere-doc/master/community/static/image/sql-case.jpg)
+![](https://shardingsphere.apache.org/document/current/img/test-engine/sql-case.jpg)

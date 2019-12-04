@@ -8,7 +8,7 @@ weight = 2
 ## 流程
 
 Junit 中的 `Parameterized` 会聚合起所有的测试数据，并将测试数据一一传递给测试方法进行断言。数据处理就像是沙漏中的流沙：  
-![](https://raw.githubusercontent.com/taojintianxia/incubator-shardingsphere-doc/master/community/static/image/integration-test.jpg)  
+![](https://shardingsphere.apache.org/document/current/img/test-engine/integration-test.jpg)
 
 ### 配置
 

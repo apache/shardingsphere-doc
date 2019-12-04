@@ -23,4 +23,4 @@ weight = 1
 
 如下图为 SQL 测试用例的数据流程：
 
-![](https://raw.githubusercontent.com/taojintianxia/incubator-shardingsphere-doc/master/community/static/image/sql-case.jpg)
+![](https://shardingsphere.apache.org/document/current/img/test-engine/sql-case.jpg)

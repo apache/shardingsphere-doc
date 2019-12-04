@@ -6,7 +6,8 @@ weight = 2
 +++
 
 ## Process
-The `Parameterized` in JUnit will collect all test data, and pass to test method to assert one by one. The process of handling test data is just like a leaking hourglass: 
+The `Parameterized` in JUnit will collect all test data, and pass to test method to assert one by one. The process of handling test data is just like a leaking hourglass:
+
 ![](https://shardingsphere.apache.org/document/current/img/test-engine/integration-test.jpg)
 
 ### Configuration

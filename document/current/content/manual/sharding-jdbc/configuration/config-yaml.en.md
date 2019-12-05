@@ -326,7 +326,7 @@ shardingRule:
       keyGenerator:   
         column: #Column name of key generator
         type: #Type of key generator, use default key generator if absent, and there are three types to choose, that is, SNOWFLAKE/UUID/LEAF_SEGMENT
-        props: #Properties, Notice: when use SNOWFLAKE, `worker.id` and `max.tolerate.time.difference.milliseconds` for `SNOWFLAKE` need to be set.If you need to use its generate value as sharding value, it is recommended to configure `max.vibration.offset`         
+        props: #Properties, Notice: when use SNOWFLAKE, `worker.id` and `max.tolerate.time.difference.milliseconds` for `SNOWFLAKE` need to be set. To use the generated value of this algorithm as sharding value, it is recommended to configure `max.vibration.offset`         
 
   bindingTables: #Binding table rule configurations
   - <logic_table_name1, logic_table_name2, ...> 

@@ -566,7 +566,7 @@ Namespace: http://shardingsphere.apache.org/schema/shardingsphere/sharding/shard
 | --------- | --------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | column    | Attribute | Auto-increment column name                                                                                                      |
 | type      | Attribute | Auto-increment key generator `Type`; self-defined generator or internal Type generator (SNOWFLAKE or UUID) can both be selected |
-| props-ref | Attribute | The Property configuration reference of  `SNOWFLAKE、LEAF_SEGMENT、LEAF_SNOWFLAKE` key generators                                |
+| props-ref | Attribute | The Property configuration reference of key generators                                |
 
 Property configuration that can include these properties of these key generators
 

@@ -293,7 +293,7 @@ ShardingStrategyConfiguration的实现类，用于配置不分片的策略。
 
 #### PropertiesConstant
 
-属性配置项，可以为以下自增列值生成器的属性
+属性配置项，可以为以下自增列值生成器的属性。
 
 ##### SNOWFLAKE
   

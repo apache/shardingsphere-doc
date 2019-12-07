@@ -568,7 +568,7 @@ Namespace: http://shardingsphere.apache.org/schema/shardingsphere/sharding/shard
 | type      | Attribute | Auto-increment key generator `Type`; self-defined generator or internal Type generator (SNOWFLAKE/UUID/LEAF_SEGMENT/LEAF_SNOWFLAKE) can both be selected |
 | props-ref | Attribute | The Property configuration reference of key generators                                |
 
-Property configuration that can include these properties of these key generators
+Property configuration that can include these properties of these key generators.
 
 ###### SNOWFLAKE
   

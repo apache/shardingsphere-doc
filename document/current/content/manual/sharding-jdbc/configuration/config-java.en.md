@@ -285,7 +285,7 @@ The implementation class of `ShardingStrategyConfiguration`, used to configure n
 | type              | String                       | Type of key generator, use user-defined ones or built-in ones, e.g. SNOWFLAKE, UUID, LEAF_SEGMENT, LEAF_SNOWFLAKE |
 | props             | Properties                   | The Property configuration of key generators                                                 |
 
-Property configuration that can include these properties of these key generators
+Property configuration that can include these properties of these key generators.
 
 ###### SNOWFLAKE
   

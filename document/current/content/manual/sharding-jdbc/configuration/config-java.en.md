@@ -289,7 +289,7 @@ The implementation class of `ShardingStrategyConfiguration`, used to configure n
 
 Property configuration that can include these properties of these key generators.
 
-#### SNOWFLAKE
+##### SNOWFLAKE
   
 | *Name*                                              | *DataType* | *Explanation*                                                                                                                                                                                                                   |
 | --------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -297,7 +297,7 @@ Property configuration that can include these properties of these key generators
 | max.tolerate.time.difference.milliseconds (?)        |   long     | The max tolerate time for different server's time difference in milliseconds, the default value is `10`                                                                                                                         |
 | max.vibration.offset (?)                             |    int     | The max upper limit value of vibrate number, range `[0, 4096)`, the default value is `1`. Notice: To use the generated value of this algorithm as sharding value, it is recommended to configure this property. The algorithm generates key mod `2^n` (`2^n` is usually the sharding amount of tables or databases) in different milliseconds and the result is always `0` or `1`. To prevent the above sharding problem, it is recommended to configure this property, its value is `(2^n)-1` |
   
-#### LEAF_SEGMENT
+##### LEAF_SEGMENT
   
 | *Name*                                | *DataType* | *Explanation*                                                                                                                                                                                |
 | ------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -308,7 +308,7 @@ Property configuration that can include these properties of these key generators
 | registry.center.digest (?)             | String     | Connect to authority tokens in registry center; default indicates no need for authority                                                                                         |
 | registry.center.type (?)               | String     | The type of registry center, the default value is `zookeeper`                                                                                                                               |
   
-#### LEAF_SNOWFLAKE
+##### LEAF_SNOWFLAKE
   
 | *Name*                                            | *DataType* | *Explanation*                                                                                                                                                                                                                   |
 | ------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

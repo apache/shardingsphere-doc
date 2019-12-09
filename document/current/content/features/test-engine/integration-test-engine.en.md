@@ -12,7 +12,7 @@ The `Parameterized` in JUnit will collect all test data, and pass to test method
 
 ### Configuration
 
-In order to make test engine easier to setup, integration-test is designed to modify the following configuration files to execute all assertions without any **Java** code modification:
+In order to make test engine easier to setup, all test engines in shardingsphere are designed to modify the following configuration files to execute all assertions without any **Java** code modification:
 
   - environment type
     - /sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties

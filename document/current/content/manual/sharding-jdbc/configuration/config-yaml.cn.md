@@ -58,8 +58,8 @@ shardingRule:
     type: SNOWFLAKE
     column: order_id
   
-props:
-  sql.show: true
+  props:
+    sql.show: true
 ```
 
 ### 读写分离

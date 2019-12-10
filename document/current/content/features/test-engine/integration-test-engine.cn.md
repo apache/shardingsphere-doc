@@ -13,8 +13,6 @@ Junit 中的 `Parameterized` 会聚合起所有的测试数据，并将测试数
 
 ### 配置
 
-为了使测试更容易上手，shardingsphere 中的测试引擎不必修改任何 **Java** 代码，只需要配置以下几类文件即可运行断言：
-
   - 环境类文件
     - /sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties
     - /sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/`SQL-TYPE`/dataset.xml

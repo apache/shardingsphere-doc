@@ -31,7 +31,10 @@ The list here will be shown in the alphabetical order.
 1. BaiXing https://www.baixing.com/
 1. BBGame https://www.bbgameonline.com/
 1. Bilibili https://www.bilibili.com/
+1. CAAS http://caas.com.cn/
+1. Century Lead http://www.iotlead.com/
 1. CertusNet http://www.certusnet.com.cn/
+1. CHINA MINSHENG BANK http://www.cmbc.com.cn/
 1. China Telecom Best Pay(Orange Finance) https://www.bestpay.com.cn/
 1. ChaoJiLanLing https://www.chaojilanling.cn/
 1. ChinaRoad https://660pp.com/
@@ -77,9 +80,11 @@ The list here will be shown in the alphabetical order.
 1. KaiKeLa https://www.kaike.la/
 1. KeRuYun https://www.keruyun.com/
 1. KingCome http://www.kingcome.cn/
+1. KJT pay https://www.kjtpay.com/
 1. Lily&Beauty https://www.lrlz.com/
 1. MaFengWo https://www.mafengwo.cn/
 1. MagicEares https://magicears.com.cn/
+1. MaMaGao http://www.mamagao.cn/
 1. MiaoMaiFang https://www.miaomaifang.com/
 1. MissFresh https://www.missfresh.cn/
 1. MLJR https://www.mljr.com/
@@ -95,6 +100,7 @@ The list here will be shown in the alphabetical order.
 1. Rabbitpre https://www.rabbitpre.com/
 1. RayCloud https://www.raycloud.com/
 1. Ruff https://ruff.io/
+1. SheBaoTong https://www.shebaotong.com/
 1. ShouQi https://www.01zhuanche.com/
 1. SoHu https://ss.sohu.com/
 1. SouChe https://www.souche.com/
@@ -107,6 +113,7 @@ The list here will be shown in the alphabetical order.
 1. TonySourcing  https://TonySourcing.com/
 1. Trawe https://www.trawe.cn/
 1. TuanDai https://www.tuandai.com/
+1. TuJia https://www.tujia.com/
 1. VipShop https://www.vip.com/
 1. VIVO https://www.vivo.com/
 1. XiaChuFang https://www.xiachufang.com/

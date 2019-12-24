@@ -34,7 +34,10 @@ The List in alphabet order.
 | Guangyuan Wang  | wgy8283335              |
 | Haisheng Sun    | sunbufu                 |
 | Qi Wang         | wqzwh                   |
+| Ya Li           | betterjava              |
 | Yanan Zhao      | nancyzrh                |
+| Zhiyi Yan       | yanyzy                  |
+| YangWen Ou      | avalon566               |
 
 ## Mentors
 

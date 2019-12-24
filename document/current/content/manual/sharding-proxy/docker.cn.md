@@ -14,9 +14,9 @@ docker pull apache/sharding-proxy
 ## 手动构建Docker镜像（可选）
 
 ``` 
-git clone https://github.com/sharding-sphere/sharding-sphere
+git clone https://github.com/apache/incubator-shardingsphere
 mvn clean install
-cd sharding-sphere/sharding-proxy
+cd sharding-sphere/sharding-distribution/sharding-proxy-distribution
 mvn clean package docker:build
 ```
 

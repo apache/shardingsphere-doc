@@ -35,6 +35,8 @@ gpg --gen-key
 
 根据提示完成key：
 
+**注意：请使用Apache mail生成GPG的Key。**
+
 ```shell
 gpg (GnuPG) 2.0.12; Copyright (C) 2009 Free Software Foundation, Inc.
 This is free software: you are free to change and redistribute it.
@@ -283,6 +285,19 @@ curl https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/KEYS >> KEY
 gpg --import KEYS
 gpg --edit-key "${发布人的gpg用户名}"
   > trust
+
+Please decide how far you trust this user to correctly verify other users' keys
+(by looking at passports, checking fingerprints from different sources, etc.)
+
+  1 = I don't know or won't say
+  2 = I do NOT trust
+  3 = I trust marginally
+  4 = I trust fully
+  5 = I trust ultimately
+  m = back to the main menu
+
+Your decision? 5
+
   > save
 ```
 
@@ -301,6 +316,7 @@ gpg --verify apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin
 
 解压缩`apache-shardingsphere-incubating-${RELEASE.VERSION}-src.zip`，进行如下检查:
 
+- 检查源码包是否包含由于包含不必要文件，致使tarball过于庞大
 - 文件夹包含单词`incubating`
 - 存在`DISCLAIMER`文件
 - 存在`LICENSE`和`NOTICE`文件
@@ -312,7 +328,8 @@ gpg --verify apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin
 
 #### 检查二进制包的文件内容
 
-解压缩`apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-jdbc-bin.tar.gz`，`apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-proxy-bin.tar.gz`，`apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin.tar.gz`
+解压缩`apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-jdbc-bin.tar.gz`，`apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-proxy-bin.tar.gz`
+和 `apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin.tar.gz`
 进行如下检查:
 
 - 文件夹包含单词`incubating`
@@ -325,7 +342,18 @@ gpg --verify apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin
   - 依赖许可证的完整版全部在`license`目录
   - 如果依赖的是Apache许可证并且存在`NOTICE`文件，那么这些`NOTICE`文件也需要加入到版本的`NOTICE`文件中
 
-全部的检查列表参见[这里](https://wiki.apache.org/incubator/IncubatorReleaseChecklist)。
+全部的检查列表参见[这里](https://cwiki.apache.org/confluence/display/INCUBATOR/Incubator+Release+Checklist)。
+
+### 检查依赖影响
+
+#### SkyWalking
+
+如果此版本存在以下接口的变更，则需要到SkyWalking项目提交最新版本的插件：
+
+- org.apache.shardingsphere.core.execute.sql.execute.SQLExecuteCallback.execute0
+- org.apache.shardingsphere.shardingjdbc.executor.AbstractStatementExecutor.executeCallback
+- org.apache.shardingsphere.core.route.router.sharding.ParsingSQLRouter.parse
+- org.apache.shardingsphere.shardingproxy.frontend.command.CommandExecutorTask.run
 
 ## 发起投票
 
@@ -524,9 +552,9 @@ Checklist for reference:
 
 4. 宣布投票结果模板：
 
-正文：
-
 **注意：计算投票结果时，社区投票的vote结果也需要包含在内。**
+
+正文：
 
 ```
 We’ve received 3 +1 binding votes and one +1 non-binding vote:
@@ -546,7 +574,7 @@ I will process to publish the release and send ANNOUNCE.
 1. 将源码和二进制包从svn的dev目录移动到release目录
 
 ```shell
-svn mv https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/${RELEASE.VERSION}/ https://dist.apache.org/repos/dist/release/incubator/shardingsphere/
+svn mv https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/${RELEASE.VERSION} https://dist.apache.org/repos/dist/release/incubator/shardingsphere/
 ```
 
 2. 在Apache Staging仓库找到ShardingSphere并点击`Release`
@@ -567,7 +595,44 @@ https://shardingsphere.apache.org/document/current/en/downloads/
 https://shardingsphere.apache.org/document/current/cn/downloads/
 ```
 
-5. 发送邮件到`general@incubator.apache.org`和`dev@shardingsphere.apache.org`通知完成版本发布。
+5. 修改READEME文件
+
+将README.md和README_ZH.md里的${PREVIOUS.RELEASE.VERSION}修改为${LATEST.RELEASE.VERSION}
+
+6. 发布Docker
+
+```
+0 准备工作
+0.1 本地安装Docker，并将Docker service启动起来
+0.2 进入到 ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/src/main/docker/
+vim Dockerfile，将`ENV CURRENT_VERSION `${LEGACY.RELEASE.VERSION}` 改为 `${LATEST.RELEASE.VERSION}`
+```
+
+```
+1 编译Docker Image
+1.1 进入到 ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/
+1.2 执行 `mvn clean package docker:build`
+```
+
+```
+2 给本地Docker Image打上Tag
+2.1 通过`docker images`查看到IMAGE ID，例如为：e9ea51023687
+2.2 执行`docker tag e9ea51023687 apache/sharding-proxy:latest`
+2.3 执行`docker tag e9ea51023687 apache/sharding-proxy:${LATEST.RELEASE.VERSION}`
+```
+
+```
+3 发布Docker Image
+3.1 执行`docker push apache/sharding-proxy:latest`
+3.2 执行`docker push apache/sharding-proxy:${RELEASE_VERSION}`
+```
+
+```
+4 确认发布成功
+4.1 登录[Docker Hub](https://hub.docker.com/r/apache/sharding-proxy/)查看是否有发布的Images
+```
+
+7. 发送邮件到`general@incubator.apache.org`和`dev@shardingsphere.apache.org`通知完成版本发布。
 
 通知邮件模板：
 

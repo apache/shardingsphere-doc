@@ -35,6 +35,8 @@ gpg --gen-key
 
 Finish the key creation according to instructions:
 
+**Notice: Please use Apache mail for key creation.**
+
 ```shell
 gpg (GnuPG) 2.0.12; Copyright (C) 2009 Free Software Foundation, Inc.
 This is free software: you are free to change and redistribute it.
@@ -287,6 +289,19 @@ curl https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/KEYS >> KEY
 gpg --import KEYS
 gpg --edit-key "${GPG username of releaser}"
   > trust
+
+Please decide how far you trust this user to correctly verify other users' keys
+(by looking at passports, checking fingerprints from different sources, etc.)
+
+  1 = I don't know or won't say
+  2 = I do NOT trust
+  3 = I trust marginally
+  4 = I trust fully
+  5 = I trust ultimately
+  m = back to the main menu
+
+Your decision? 5
+
   > save
 ```
 
@@ -305,6 +320,7 @@ gpg --verify apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin
 
 Decompress `apache-shardingsphere-incubating-${RELEASE.VERSION}-src.zip` and check the following items:
 
+*   Check whether source tarball is oversized for including nonessential files
 *   The release files have the word `incubating` in their name
 *   `DISCLAIMER` file exists
 *   `LICENSE` and `NOTICE` files exist
@@ -316,7 +332,8 @@ Decompress `apache-shardingsphere-incubating-${RELEASE.VERSION}-src.zip` and che
 
 #### Check binary packages
 
-Decompress `apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-jdbc-bin.tar.gz`, `apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-proxy-bin.tar.gz` and `apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin.tar.gz`
+Decompress `apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-jdbc-bin.tar.gz`, `apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-proxy-bin.tar.gz` 
+and `apache-shardingsphere-incubating-${RELEASE.VERSION}-sharding-ui-bin.tar.gz`
 to check the following items:
 
 *   The release files have the word `incubating` in their name
@@ -329,7 +346,18 @@ to check the following items:
     *   All the third party dependency licenses are under `licenses` folder
     *   If it depends on Apache license and has a `NOTICE` file, that `NOTICE` file need to be added to `NOTICE` file of the release
 
-For the whole check list, please see [here](https://wiki.apache.org/incubator/IncubatorReleaseChecklist).
+For the whole check list, please see [here](https://cwiki.apache.org/confluence/display/INCUBATOR/Incubator+Release+Checklist).
+
+### Check dependency impact
+
+#### SkyWalking
+
+If there are changes to the following interfaces in this version, you need to submit the latest version of the plugin to the SkyWalking project:
+
+- org.apache.shardingsphere.core.execute.sql.execute.SQLExecuteCallback.execute0
+- org.apache.shardingsphere.shardingjdbc.executor.AbstractStatementExecutor.executeCallback
+- org.apache.shardingsphere.core.route.router.sharding.ParsingSQLRouter.parse
+- org.apache.shardingsphere.shardingproxy.frontend.command.CommandExecutorTask.run
 
 ## Call for a Vote
 
@@ -532,9 +560,9 @@ Checklist for reference:
 
 4. Announce the vote result:
 
-Body:
-
 **Notice: Please include the votes from ShardingSphere community above.**
+
+Body:
 
 ```
 We’ve received 3 +1 binding votes and one +1 non-binding vote:
@@ -555,7 +583,7 @@ I will process to publish the release and send ANNOUNCE.
 1. Move source packages and binary packages from the `dev` directory to `release` directory
 
 ```shell
-svn mv https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/${RELEASE.VERSION}/ https://dist.apache.org/repos/dist/release/incubator/shardingsphere/
+svn mv https://dist.apache.org/repos/dist/dev/incubator/shardingsphere/${RELEASE.VERSION} https://dist.apache.org/repos/dist/release/incubator/shardingsphere/
 ```
 
 2. Find ShardingSphere in staging repository and click `Release`
@@ -576,7 +604,44 @@ https://shardingsphere.apache.org/document/current/en/downloads/
 https://shardingsphere.apache.org/document/current/cn/downloads/
 ```
 
-5. Send e-mail to `general@incubator.apache.org` and `dev@shardingsphere.apache.org` to announce the release is finished.
+5. Update READEME files
+
+Update ${PREVIOUS.RELEASE.VERSION} to ${LATEST.RELEASE.VERSION} in README.md and README_ZH.md
+
+6. Docker Release
+
+```
+0 Preparation
+0.1 Install docker locally and start the docker service
+0.2 Enter ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/src/main/docker/
+vim Dockerfile,change `ENV CURRENT_VERSION `${LEGACY.RELEASE.VERSION}` to `${LATEST.RELEASE.VERSION}`
+```
+
+```
+1 Compile Docker Image
+1.1 Enter ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/
+1.2 Execute `mvn clean package docker:build`
+```
+
+```
+2 Tag the local Docker Image
+2.1 Check the image ID through `docker images`, for example: e9ea51023687
+2.2 Execute `docker tag e9ea51023687 apache/sharding-proxy:latest`
+2.3 Execute `docker tag e9ea51023687 apache/sharding-proxy:${LATEST.RELEASE.VERSION}`
+```
+
+```
+3 Publish Docker Image
+3.1 Execute `docker push apache/sharding-proxy:latest`
+3.2 Execute `docker push apache/sharding-proxy:${RELEASE_VERSION}`
+```
+
+```
+4 Confirm the successful release
+4.1 Login [Docker Hub](https://hub.docker.com/r/apache/sharding-proxy/) to check whether there are published images
+```
+
+7. Send e-mail to `general@incubator.apache.org` and `dev@shardingsphere.apache.org` to announce the release is finished.
 
 Announcement e-mail template:
 

@@ -14,9 +14,9 @@ docker pull apache/sharding-proxy
 ## Build Docker Clone Manually (Optional)
 
 ```
-git clone https://github.com/sharding-sphere/sharding-sphere
+git clone https://github.com/apache/incubator-shardingsphere
 mvn clean install
-cd sharding-sphere/sharding-proxy
+cd sharding-distribution/sharding-proxy-distribution
 mvn clean package docker:build
 ```
 

@@ -4,6 +4,8 @@ weight = 4
 chapter = true
 +++
 
+以下行为准则以完全遵循[Apache软件基金会行为准则](https://www.apache.org/foundation/policies/conduct.html)为前提。
+
 ## 开发理念
 
  - **用心** 保持责任心和敬畏心，以工匠精神持续雕琢。
@@ -58,7 +60,7 @@ chapter = true
  - 单元测试需遵循BCDE（Border, Correct, Design, Error）设计原则。
    - 边界值测试（Border）：通过循环边界、特殊数值、数据顺序等边界的输入，得到预期结果。
    - 正确性测试（Correct）：通过正确的输入，得到预期结果。
-   - 合理性设计（Design）：也生产代码设计相结合，设计高质量的单元测试。
+   - 合理性设计（Design）：与生产代码设计相结合，设计高质量的单元测试。
    - 容错性测试（Error）：通过非法数据、异常流程等错误的输入，得到预期结果。
  - 如无特殊理由，测试需全覆盖。
  - 每个测试用例需精确断言。
@@ -70,7 +72,7 @@ chapter = true
  - 测试用例的真实值应名为为actualXXX，期望值应命名为expectedXXX。
  - 测试类和`@Test`标注的方法无需javadoc。
 
-## G4规范
+## G4编码规范
  - 公共规范
    - 每行长度不超过`200`个字符，保证每一行语义完整以便于理解。
  - 词法解析规范

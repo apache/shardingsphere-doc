@@ -534,6 +534,8 @@ Checklist for reference:
 
 Body:
 
+**Notice: Please include the votes from ShardingSphere community above.**
+
 ```
 We’ve received 3 +1 binding votes and one +1 non-binding vote:
 

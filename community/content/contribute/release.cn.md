@@ -526,6 +526,8 @@ Checklist for reference:
 
 正文：
 
+**注意：计算投票结果时，社区投票的vote结果也需要包含在内。**
+
 ```
 We’ve received 3 +1 binding votes and one +1 non-binding vote:
 

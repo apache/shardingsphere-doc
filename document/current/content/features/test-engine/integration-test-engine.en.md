@@ -11,7 +11,7 @@ The `Parameterized` in JUnit will collect all test data, and pass to test method
 ![](https://shardingsphere.apache.org/document/current/img/test-engine/integration-test.jpg)
 
 ### Configuration
-
+ 
   - environment type
     - /sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env.properties
     - /sharding-integration-test/sharding-jdbc-test/src/test/resources/integrate/env/`SQL-TYPE`/dataset.xml

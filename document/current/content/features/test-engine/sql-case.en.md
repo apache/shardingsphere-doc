@@ -9,8 +9,8 @@ weight = 1
 
 The code for SQL case is in module `sharding-sql-test`.There are two targets for this module:
   
-  1. Test the wildcard replacement by unit test
-  2. Share the SQL resource in `resources` folder
+  1. Test the wildcard replacement by unit test.
+  2. Share the SQL resource in `resources` folder.
 
 ```xml
 <sql-cases>

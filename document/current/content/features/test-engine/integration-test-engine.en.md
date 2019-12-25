@@ -119,8 +119,8 @@ This file is very like the dataset.xml mentioned before, and the difference is t
     <row data-node="db_0.t_order" values="2001, 20, init" />
 </dataset>
 ```
-Util now, all config files are ready, just need to launch the corresponding test case. With no need for modify any Java code, just set up some config files.
-this will reduce the difficulty for ShardingSphere testing
+Util now, all config files are ready, just launch the corresponding test case is fine.With no need to modify any Java code, only set up some config files.
+This will reduce the difficulty for ShardingSphere testing.
 
 ## Notice
 

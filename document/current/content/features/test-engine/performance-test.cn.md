@@ -7,7 +7,7 @@ weight = 5
 
 ## 目标
 
-根据验证目标将性能测试分为损耗测试和提升测试，从业务角度考虑，在基本应用场景（单路由，主从+脱敏+分库分表，全路由）下，insert+update+delete通常用作一个完整的关联操作，用作损耗/提升测试评估，而select关注分片优化可用作性能评估的另一个操作；而主从模式下，将insert+select+delete作为一组评估性能的关联操作。为了更好的观察性能效果，设计在已知数据量的基础上，20并发线程持续压测半小时，进行增删改查性能测试。
+根据验证目标将性能测试分为损耗测试和提升测试，从业务角度考虑，在基本应用场景（单路由，主从+脱敏+分库分表，全路由）下，insert+update+delete通常用作一个完整的关联操作，用作损耗/提升测试评估，而select关注分片优化可用作性能评估的另一个操作；而主从模式下，将insert+select+delete作为一组评估性能的关联操作。为了更好的观察效果，设计在已知数据量的基础上，20并发线程持续压测半小时，进行增删改查性能测试。
 
 ## 测试场景
 
@@ -330,10 +330,10 @@ update tbl set c='####-####-####', pad='####-####' where id=?;
 delete from tbl where id=?
 
 全路由查询语句：
-select max(id) from test where id%4=1
+select max(id) from tbl where id%4=1
 
 单路由查询语句：
-select id, k from test ignore index(`PRIMARY`) where id=1 and k=1
+select id, k from tbl ignore index(`PRIMARY`) where id=1 and k=1
 
 Insert+Select+Delete语句：
 insert into tbl1(k, c, pad) values(1, '###-###-###', '###-###');

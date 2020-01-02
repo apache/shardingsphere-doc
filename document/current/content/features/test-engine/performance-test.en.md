@@ -35,6 +35,8 @@ Full route select sql statement is chosen here.
 
 #### Table Structure of Database
 
+The structure of table here refer to `sbtest` in `sysbench`
+
 ```shell
 CREATE TABLE `ds` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,

@@ -38,7 +38,7 @@ Full route select sql statement is chosen here.
 The structure of table here refer to `sbtest` in `sysbench`
 
 ```shell
-CREATE TABLE `ds` (
+CREATE TABLE `tbl` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `k` int(11) NOT NULL DEFAULT 0,
   `c` char(120) NOT NULL DEFAULT '',

@@ -32,7 +32,7 @@ weight = 5
 #### 数据库表结构
 
 ```shell
-CREATE TABLE `press_test` (
+CREATE TABLE `ds` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `k` int(11) NOT NULL DEFAULT 0,
   `c` char(120) NOT NULL DEFAULT '',

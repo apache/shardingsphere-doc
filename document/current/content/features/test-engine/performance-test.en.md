@@ -15,7 +15,7 @@ To achieve the result better, these tests are performed based on a certain amoun
 
 #### Single Route
 
-On the basis of one thousand data volume, four databases that each contains 1024 tables with id used for database sharding and k used for table sharding are designed for this scenario.          
+On the basis of one thousand data volume, four databases that each contains 1024 tables with 'id' used for database sharding and 'k' used for table sharding are designed for this scenario.          
 Single route select sql statement is chosen here.
 
 #### Master Slave
@@ -24,7 +24,7 @@ One master database and one slave database is designed for this scenario based o
 
 #### Master Slave & Encrypt & Sharding
 
-On the basis of one thousand data volume, four databases that each contains 1024 tables with id used for database sharding, k used for table sharding, c encrypted with aes and  pad encrypted with md5 are designed for this scenario.
+On the basis of one thousand data volume, four databases that each contains 1024 tables with 'id' used for database sharding, 'k' used for table sharding, 'c' encrypted with aes and  'pad' encrypted with md5 are designed for this scenario.
 Single route select sql statement is chosen here.
 
 #### Full Route
@@ -37,7 +37,7 @@ Full route select sql statement is chosen here.
 #### Table Structure of Database
 
 ```shell
-CREATE TABLE `press_test` (
+CREATE TABLE `ds` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `k` int(11) NOT NULL DEFAULT 0,
   `c` char(120) NOT NULL DEFAULT '',
@@ -48,7 +48,7 @@ CREATE TABLE `press_test` (
 
 #### Test Scenarios Configuration
 
-The same configurations are used for Sharding-JDBC and Sharding-Proxy, while MySQL with one database connected is designed for comparision loss/promotion test.
+The same configurations are used for Sharding-JDBC and Sharding-Proxy, while MySQL with one database connected is designed for comparision.
 The details for these scenarios are shown as follows.
 
 ##### Single Route Configuration

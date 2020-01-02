@@ -8,7 +8,7 @@ weight = 5
 ## Target
 
 Performance test is classified as loss test and promotion test according to its verification target. Insert & update & delete which regarded as a set of associated operation and select which focus on sharding optimization are used to evaluate performance for the basic scenarios (single route, master slave & encrypt & sharding, full route).
-While Insert & select & delete which regarded as a set of associated operation is used to evaluate performance for master slave scene.
+While another set of associated operation, Insert & select & delete, is used to evaluate performance for master slave.
 To achieve the result better, these tests are performed based on a certain amount of data with 20 concurrent threads for 30 minutes.
 
 ## Test Scenarios
@@ -20,16 +20,16 @@ Single route select sql statement is chosen here.
 
 #### Master Slave
 
-One master database and one slave database is designed for this scene based on ten thousand data volume. 
+One master database and one slave database is designed for this scenario based on ten thousand data volume. 
 
 #### Master Slave & Encrypt & Sharding
 
-On the basis of one thousand data volume, four databases that each contains 1024 tables with id used for database sharding, k used for table sharding, c encrypted with aes and  pad encrypted with md5 are designed for this scene.
+On the basis of one thousand data volume, four databases that each contains 1024 tables with id used for database sharding, k used for table sharding, c encrypted with aes and  pad encrypted with md5 are designed for this scenario.
 Single route select sql statement is chosen here.
 
 #### Full Route
 
-On the basis of one thousand data volume, four databases that each contains one table are designed for this scene, field 'id' is used for database sharding and 'k' is used for table sharding.
+On the basis of one thousand data volume, four databases that each contains one table are designed for this scenario, field 'id' is used for database sharding and 'k' is used for table sharding.
 Full route select sql statement is chosen here.
 
 ## Testing Environment

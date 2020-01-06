@@ -7,7 +7,8 @@ weight = 5
 
 ## 目标
 
-根据验证目标将性能测试分为损耗测试和提升测试，从业务角度考虑，在基本应用场景（单路由，主从+脱敏+分库分表，全路由）下，insert+update+delete通常用作一个完整的关联操作，用作损耗/提升测试评估，而select关注分片优化可用作性能评估的另一个操作；而主从模式下，将insert+select+delete作为一组评估性能的关联操作。为了更好的观察效果，设计在一定数据量的基础上，20并发线程持续压测半小时，进行增删改查性能测试。
+对Sharding-JDBC，Sharding-Proxy及MySQL进行性能对比分析。从业务角度考虑，在基本应用场景（单路由，主从+脱敏+分库分表，全路由）下，insert+update+delete通常用作一个完整的关联操作，用于性能评估，而select关注分片优化可用作性能评估的另一个操作；而主从模式下，可将insert+select+delete作为一组评估性能的关联操作。
+为了更好的观察效果，设计在一定数据量的基础上，20并发线程持续压测半小时，进行增删改查性能测试。
 
 ## 测试场景
 
@@ -327,21 +328,21 @@ shardingRule:
 
 ```shell
 Insert+Update+Delete语句：
-insert into tbl(k, c, pad) values(1, '###-###-###', '###-###');
-update tbl set c='####-####-####', pad='####-####' where id=?;
-delete from tbl where id=?
+INSERT INTO tbl(k, c, pad) VALUES(1, '###-###-###', '###-###');
+UPDATE tbl SET c='####-####-####', pad='####-####' WHERE id=?;
+DELETE FROM tbl WHERE id=?
 
 全路由查询语句：
-select max(id) from tbl where id%4=1
+SELECT max(id) FROM tbl WHERE id%4=1
 
 单路由查询语句：
-select id, k from tbl ignore index(`PRIMARY`) where id=1 and k=1
+SELECT id, k FROM tbl ignore index(`PRIMARY`) WHERE id=1 AND k=1
 
 Insert+Select+Delete语句：
-insert into tbl1(k, c, pad) values(1, '###-###-###', '###-###');
-select count(id) from tbl1;
-select max(id) from tbl1 ignore index(`PRIMARY`);
-delete from tbl1 where id=?
+INSERT INTO tbl1(k, c, pad) VALUES(1, '###-###-###', '###-###');
+SELECT count(id) FROM tbl1;
+SELECT max(id) FROM tbl1 ignore index(`PRIMARY`);
+DELETE FROM tbl1 WHERE id=?
 ```
 
 #### 压测类

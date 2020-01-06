@@ -45,7 +45,7 @@ CREATE TABLE `tbl` (
 
 #### 测试场景配置
 
-Sharding-JDBC使用与Sharding-Proxy一致的配置，MySQL直连一个库用做性能对比，下面为四个场景的具体配置：
+Sharding-JDBC使用与Sharding-Proxy一致的配置，MySQL直连一个库用作性能对比，下面为四个场景的具体配置：
 
 ##### 单路由配置
 

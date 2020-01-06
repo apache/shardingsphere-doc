@@ -7,7 +7,7 @@ weight = 5
 
 ## Target
 
-The performance of Sharding-JDBC，Sharding-Proxy and MySQL would be compared here. Insert & update & delete which regarded as a set of associated operation and select which focus on sharding optimization are used to evaluate performance for the basic scenarios (single route, master slave & encrypt & sharding, full route). While another set of associated operation, Insert & select & delete, is used to evaluate performance for master slave.
+The performance of Sharding-JDBC，Sharding-Proxy and MySQL would be compared here. INSERT & UPDATE & DELETE which regarded as a set of associated operation and select which focus on sharding optimization are used to evaluate performance for the basic scenarios (single route, master slave & encrypt & sharding, full route). While another set of associated operation, INSERT & SELECT & DELETE, is used to evaluate performance for master slave.
 To achieve the result better, these tests are performed based on a certain amount of data with 20 concurrent threads for 30 minutes.
 
 ## Test Scenarios
@@ -331,18 +331,18 @@ shardingRule:
 #### SQL Statement
  
 ```shell
-Insert+Update+Delete sql statements:
+INSERT+UPDATE+DELETE sql statements:
 INSERT INTO tbl(k, c, pad) VALUES(1, '###-###-###', '###-###');
 UPDATE tbl SET c='####-####-####', pad='####-####' WHERE id=?;
 DELETE FROM tbl WHERE id=?
 
-Select sql statement for full route:
+SELECT sql statement for full route:
 SELECT max(id) FROM tbl WHERE id%4=1
 
-Select sql statement for single route:
+SELECT sql statement for single route:
 SELECT id, k FROM tbl ignore index(`PRIMARY`) WHERE id=1 AND k=1
 
-Insert+Select+Delete sql statements：
+INSERT+SELECT+DELETE sql statements：
 INSERT INTO tbl1(k, c, pad) VALUES(1, '###-###-###', '###-###');
 SELECT count(id) FROM tbl1;
 SELECT max(id) FROM tbl1 ignore index(`PRIMARY`);

@@ -7,7 +7,7 @@ weight = 5
 
 ## 目标
 
-对Sharding-JDBC，Sharding-Proxy及MySQL进行性能对比。从业务角度考虑，在基本应用场景（单路由，主从+脱敏+分库分表，全路由）下，insert+update+delete通常用作一个完整的关联操作，用于性能评估，而select关注分片优化可用作性能评估的另一个操作；而主从模式下，可将insert+select+delete作为一组评估性能的关联操作。为了更好的观察效果，设计在一定数据量的基础上，20并发线程持续压测半小时，进行增删改查性能测试。
+对Sharding-JDBC，Sharding-Proxy及MySQL进行性能对比。从业务角度考虑，在基本应用场景（单路由，主从+脱敏+分库分表，全路由）下，INSERT+UPDATE+DELETE通常用作一个完整的关联操作，用于性能评估，而SELECT关注分片优化可用作性能评估的另一个操作；而主从模式下，可将INSERT+SELECT+DELETE作为一组评估性能的关联操作。为了更好的观察效果，设计在一定数据量的基础上，20并发线程持续压测半小时，进行增删改查性能测试。
 
 ## 测试场景
 
@@ -326,7 +326,7 @@ shardingRule:
 #### 压测语句
 
 ```shell
-Insert+Update+Delete语句：
+INSERT+UPDATE+DELETE语句：
 INSERT INTO tbl(k, c, pad) VALUES(1, '###-###-###', '###-###');
 UPDATE tbl SET c='####-####-####', pad='####-####' WHERE id=?;
 DELETE FROM tbl WHERE id=?
@@ -337,7 +337,7 @@ SELECT max(id) FROM tbl WHERE id%4=1
 单路由查询语句：
 SELECT id, k FROM tbl ignore index(`PRIMARY`) WHERE id=1 AND k=1
 
-Insert+Select+Delete语句：
+INSERT+SELECT+DELETE语句：
 INSERT INTO tbl1(k, c, pad) VALUES(1, '###-###-###', '###-###');
 SELECT count(id) FROM tbl1;
 SELECT max(id) FROM tbl1 ignore index(`PRIMARY`);

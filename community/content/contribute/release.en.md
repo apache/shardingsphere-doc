@@ -598,7 +598,7 @@ Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` in README.md and README
 
 Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` for `CURRENT_VERSION` in `Dockerfile`
 
-Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` for `imageName` in `Docker` plugin
+Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` for `imageName` in Maven `Docker` plugin
 
 Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` for `SERVER_VERSION` in `MySQLServerInfo.java`
 

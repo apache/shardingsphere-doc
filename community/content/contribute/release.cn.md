@@ -589,7 +589,7 @@ git push --delete origin ${RELEASE.VERSION}-release
 
 将`Dockerfile`文件中的`CURRENT_VERSION`从`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
 
-将`Docker`插件的`imageName`从`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
+将Maven的`Docker`插件的`imageName`从`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
 
 将`MySQLServerInfo.java`中的`SERVER_VERSION`从`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
 
@@ -603,16 +603,16 @@ https://shardingsphere.apache.org/document/current/cn/downloads/
 
 #### 准备工作
 
-本地安装Docker，并将Docker service启动起来
+本地安装Docker，并将Docker服务启动起来
 
-#### 编译Docker Image
+#### 编译Docker镜像
 
 ```shell
 cd ~/shardingsphere/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/
 mvn clean package docker:build
 ```
 
-#### 给本地Docker Image打上Tag
+#### 给本地Docker镜像打标记
 
 通过`docker images`查看到IMAGE ID，例如为：e9ea51023687
 
@@ -621,7 +621,7 @@ docker tag e9ea51023687 apache/sharding-proxy:latest
 docker tag e9ea51023687 apache/sharding-proxy:${RELEASE.VERSION}
 ```
 
-#### 发布Docker Image
+#### 发布Docker镜像
 
 ```shell
 docker push apache/sharding-proxy:latest
@@ -630,7 +630,7 @@ docker push apache/sharding-proxy:${RELEASE_VERSION}
 
 #### 确认发布成功
 
-登录[Docker Hub](https://hub.docker.com/r/apache/sharding-proxy/)查看是否有发布的Images
+登录[Docker Hub](https://hub.docker.com/r/apache/sharding-proxy/)查看是否有发布的镜像
 
 ### GitHub版本发布
 
@@ -638,7 +638,7 @@ docker push apache/sharding-proxy:${RELEASE_VERSION}
 
 编辑版本号及版本说明，并点击`Publish release`
 
-### 为ShardingSphere的Example项目打Tag
+### 为ShardingSphere的Example项目打标记
 
 [GitHub仓库地址](https://github.com/apache/incubator-shardingsphere-example)
 

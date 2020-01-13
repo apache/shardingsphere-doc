@@ -592,15 +592,21 @@ git push
 git push --delete origin ${RELEASE.VERSION}-release
 ```
 
+### Update READEME files
+
+Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` in README.md and README_ZH.md
+
+Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` for `CURRENT_VERSION` in `Dockerfile`
+
+Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` for `imageName` in `Docker` plugin
+
+Update `${RELEASE.VERSION}` to `${NEXT.RELEASE.VERSION}` for `SERVER_VERSION` in `MySQLServerInfo.java`
+
 ### Update the download page
 
 https://shardingsphere.apache.org/document/current/en/downloads/
 
 https://shardingsphere.apache.org/document/current/cn/downloads/
-
-### Update READEME files
-
-Update ${PREVIOUS.RELEASE.VERSION} to ${LATEST.RELEASE.VERSION} in README.md and README_ZH.md
 
 ### Docker Release
 
@@ -608,15 +614,10 @@ Update ${PREVIOUS.RELEASE.VERSION} to ${LATEST.RELEASE.VERSION} in README.md and
 
 Install docker locally and start the docker service
 
-```shell
-cd ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/src/main/docker/
-vim Dockerfile  # change `ENV CURRENT_VERSION `${LEGACY.RELEASE.VERSION}` to `${LATEST.RELEASE.VERSION}`
-```
-
 #### Compile Docker Image
 
 ```shell
-cd ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/
+cd ~/shardingsphere/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/
 mvn clean package docker:build
 ```
 
@@ -626,7 +627,7 @@ Check the image ID through `docker images`, for example: e9ea51023687
 
 ```shell
 docker tag e9ea51023687 apache/sharding-proxy:latest
-docker tag e9ea51023687 apache/sharding-proxy:${LATEST.RELEASE.VERSION}
+docker tag e9ea51023687 apache/sharding-proxy:${RELEASE.VERSION}
 ```
 
 #### Publish Docker Image

@@ -583,15 +583,21 @@ git push
 git push --delete origin ${RELEASE.VERSION}-release
 ```
 
+### 修改READEME文件
+
+将`README.md`和`README_ZH.md`里的`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
+
+将`Dockerfile`文件中的`CURRENT_VERSION`从`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
+
+将`Docker`插件的`imageName`从`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
+
+将`MySQLServerInfo.java`中的`SERVER_VERSION`从`${RELEASE.VERSION}`修改为`${NEXT.RELEASE.VERSION}`
+
 ### 更新下载页面
 
 https://shardingsphere.apache.org/document/current/en/downloads/
 
 https://shardingsphere.apache.org/document/current/cn/downloads/
-
-### 修改READEME文件
-
-将README.md和README_ZH.md里的${PREVIOUS.RELEASE.VERSION}修改为${LATEST.RELEASE.VERSION}
 
 ### 发布Docker
 
@@ -599,15 +605,10 @@ https://shardingsphere.apache.org/document/current/cn/downloads/
 
 本地安装Docker，并将Docker service启动起来
 
-```shell
-cd ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/src/main/docker/
-vim Dockerfile  # 将`ENV CURRENT_VERSION `${LEGACY.RELEASE.VERSION}` 改为 `${LATEST.RELEASE.VERSION}`
-```
-
 #### 编译Docker Image
 
 ```shell
-cd ~/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/
+cd ~/shardingsphere/incubator-shardingsphere/sharding-distribution/sharding-proxy-distribution/
 mvn clean package docker:build
 ```
 
@@ -617,7 +618,7 @@ mvn clean package docker:build
 
 ```shell
 docker tag e9ea51023687 apache/sharding-proxy:latest
-docker tag e9ea51023687 apache/sharding-proxy:${LATEST.RELEASE.VERSION}
+docker tag e9ea51023687 apache/sharding-proxy:${RELEASE.VERSION}
 ```
 
 #### 发布Docker Image

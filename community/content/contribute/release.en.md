@@ -640,6 +640,16 @@ docker push apache/sharding-proxy:${RELEASE_VERSION}
 
 Login [Docker Hub](https://hub.docker.com/r/apache/sharding-proxy/) to check whether there are published images
 
+### Publish release in GitHub
+
+Click `Edit` in [GitHub Releases](https://github.com/apache/incubator-shardingsphere/releases)'s `${RELEASE_VERSION}` version
+
+Edit version number and release notes, click `Publish release`
+
+### Tag ShardingSphere's Example Project
+
+[GitHub repository](https://github.com/apache/incubator-shardingsphere-example)
+
 ### Send e-mail to `general@incubator.apache.org` and `dev@shardingsphere.apache.org` to announce the release is finished
 
 Announcement e-mail template:
@@ -689,7 +699,3 @@ While incubation status is not necessarily a reflection of the completeness or s
 it does indicate that the project has yet to be fully endorsed by the ASF.
 
 ```
-
-### Tag ShardingSphere's Example Project
-
-https://github.com/apache/incubator-shardingsphere-example

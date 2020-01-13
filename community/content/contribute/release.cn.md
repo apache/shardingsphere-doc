@@ -631,6 +631,16 @@ docker push apache/sharding-proxy:${RELEASE_VERSION}
 
 登录[Docker Hub](https://hub.docker.com/r/apache/sharding-proxy/)查看是否有发布的Images
 
+### GitHub版本发布
+
+在[GitHub Releases](https://github.com/apache/incubator-shardingsphere/releases)页面的`${RELEASE_VERSION}`版本上点击`Edit`
+
+编辑版本号及版本说明，并点击`Publish release`
+
+### 为ShardingSphere的Example项目打Tag
+
+[GitHub仓库地址](https://github.com/apache/incubator-shardingsphere-example)
+
 ### 发送邮件到`general@incubator.apache.org`和`dev@shardingsphere.apache.org`通知完成版本发布
 
 通知邮件模板：
@@ -680,7 +690,3 @@ While incubation status is not necessarily a reflection of the completeness or s
 it does indicate that the project has yet to be fully endorsed by the ASF.
 
 ```
-
-### 为ShardingSphere的Example项目打Tag
-
-https://github.com/apache/incubator-shardingsphere-example

@@ -12,19 +12,19 @@
     <title>Distributed Transaction :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1586345061" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1586345061" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1586345061" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1586345061" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1586345061" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1586345061" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1586345061" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1586345061" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1586348675" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1586348675" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1586348675" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1586348675" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1586348675" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1586348675" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1586348675" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1586348675" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1586345061" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1586348675" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1586345061"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1586348675"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -2639,16 +2639,30 @@
 <ul>
 <li>
 <ul>
-<li><a href="#xa">XA</a>
+<li><a href="#not-use-spring">Not Use Spring</a>
 <ul>
 <li><a href="#introduce-maven-dependency">Introduce Maven Dependency</a></li>
-<li><a href="#switch-transaction-type-based-on-java">Switch Transaction Type Based on Java</a></li>
-<li><a href="#atomikos-configuration-optional">Atomikos Configuration (Optional)</a></li>
+<li><a href="#raw-jdbc-for-sharding-transaction">Raw JDBC for sharding transaction</a></li>
 </ul></li>
-<li><a href="#base-transaction">BASE Transaction</a>
+<li><a href="#use-spring-namespace">Use Spring-namespace</a>
 <ul>
 <li><a href="#introduce-maven-dependency-1">Introduce Maven Dependency</a></li>
-<li><a href="#switch-transaction-type-based-on-java-1">Switch Transaction Type Based on Java</a>
+<li><a href="#config-spring-namespace-transaction-manager">Config Spring-namespace transaction manager</a></li>
+<li><a href="#use-sharding-transaction-in-business-code">Use sharding transaction in business code</a></li>
+</ul></li>
+<li><a href="#使用spring-boot">使用Spring-boot</a>
+<ul>
+<li><a href="#引入maven依赖">引入Maven依赖</a></li>
+<li><a href="#config-spring-boot-transaction-manager">Config spring-boot transaction manager</a></li>
+<li><a href="#use-sharding-transaction-in-business-code-1">Use sharding transaction in business code</a></li>
+</ul></li>
+<li><a href="#other-configuration-for-sharding-transaction-manager">Other configuration for Sharding Transaction Manager</a>
+<ul>
+<li><a href="#xa-transaction-optional">XA Transaction (Optional)</a></li>
+</ul></li>
+<li><a href="#base-transaction-seata-at">BASE Transaction (SEATA-AT)</a>
+<ul>
+<li>
 <ul>
 <li><a href="#seata-configuration">Seata Configuration</a></li>
 </ul></li>
@@ -2678,36 +2692,24 @@
 
 <p>Distributed transaction have been integrated into <code>ShardingDataSource</code>, you can use <code>TransactionTypeHolder</code> to modify transaction type before creating <code>ShardingConnection</code>.</p>
 
-<h2 id="xa">XA</h2>
+<h2 id="not-use-spring">Not Use Spring</h2>
 
 <h3 id="introduce-maven-dependency">Introduce Maven Dependency</h3>
 
 <pre><code class="language-xml">&lt;dependency&gt;
     &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;sharding-jdbc-core&lt;/artifactId&gt;
+    &lt;version&gt;${sharding-sphere.version}&lt;/version&gt;
+&lt;/dependency&gt;
+
+&lt;!-- introduce this module if you want to use XA transaction --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
     &lt;artifactId&gt;sharding-transaction-xa-core&lt;/artifactId&gt;
     &lt;version&gt;${shardingsphere.version}&lt;/version&gt;
 &lt;/dependency&gt;
-</code></pre>
 
-<h3 id="switch-transaction-type-based-on-java">Switch Transaction Type Based on Java</h3>
-
-<pre><code class="language-java"> TransactionTypeHolder.set(TransactionType.XA);
-</code></pre>
-
-<h3 id="atomikos-configuration-optional">Atomikos Configuration (Optional)</h3>
-
-<p>Default ShardingSphere XA transaction manager is Atomikos. <code>xa_tx.log</code> generated in the project log is necessary for the recovery when XA crashes. Please do not delete it.</p>
-
-<p>Or you can add <code>jta.properties</code> in <code>classpath</code> of the program to customize Atomikos configurations.
-For detailed configuration rules, please refer to the <a href="https://www.atomikos.com/Documentation/JtaProperties">official documentation</a> of Atomikos.</p>
-
-<h2 id="base-transaction">BASE Transaction</h2>
-
-<p>Currently, we have integrated Seata-AT into shardingsphere.</p>
-
-<h3 id="introduce-maven-dependency-1">Introduce Maven Dependency</h3>
-
-<pre><code class="language-xml">&lt;!-- seata at transaction --&gt;
+&lt;!-- introduce this module if you want to use BASE transaction --&gt;
 &lt;dependency&gt;
     &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
     &lt;artifactId&gt;sharding-transaction-base-seata-at&lt;/artifactId&gt;
@@ -2715,10 +2717,141 @@ For detailed configuration rules, please refer to the <a href="https://www.atomi
 &lt;/dependency&gt;
 </code></pre>
 
-<h3 id="switch-transaction-type-based-on-java-1">Switch Transaction Type Based on Java</h3>
+<h3 id="raw-jdbc-for-sharding-transaction">Raw JDBC for sharding transaction</h3>
 
-<pre><code class="language-java"> TransactionTypeHolder.set(TransactionType.BASE);
+<pre><code class="language-java">TransactionTypeHolder.set(TransactionType.XA); // Support TransactionType.LOCAL, TransactionType.XA, TransactionType.BASE
+try (Connection connection = dataSource.getConnection()) { // dataSource type is ShardingDataSource
+    connection.setAutoCommit(false);
+    PreparedStatement preparedStatement = connection.prepareStatement(&quot;INSERT INTO t_order (user_id, status) VALUES (?, ?)&quot;);
+    preparedStatement.setObject(1, i);
+    preparedStatement.setObject(2, &quot;init&quot;);
+    preparedStatement.executeUpdate();
+    connection.commit();
+}
 </code></pre>
+
+<h2 id="use-spring-namespace">Use Spring-namespace</h2>
+
+<h3 id="introduce-maven-dependency-1">Introduce Maven Dependency</h3>
+
+<pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;sharding-jdbc-spring-namespace&lt;/artifactId&gt;
+    &lt;version&gt;${shardingsphere.version}&lt;/version&gt;
+&lt;/dependency&gt;
+
+&lt;!-- introduce this module if you want to use XA transaction --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;sharding-transaction-xa-core&lt;/artifactId&gt;
+    &lt;version&gt;${shardingsphere.version}&lt;/version&gt;
+&lt;/dependency&gt;
+
+&lt;!-- introduce this module if you want to use BASE transaction --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;sharding-transaction-base-seata-at&lt;/artifactId&gt;
+    &lt;version&gt;${sharding-sphere.version}&lt;/version&gt;
+&lt;/dependency&gt;
+</code></pre>
+
+<h3 id="config-spring-namespace-transaction-manager">Config Spring-namespace transaction manager</h3>
+
+<pre><code class="language-xml">&lt;!-- ShardingDataSource configuration --&gt;
+...
+
+&lt;!-- Enable auto scan @ShardingTransactionType annotation to inject the transaction type before connection created --&gt;
+&lt;sharding:tx-type-annotation-driven /&gt;
+
+&lt;bean id=&quot;transactionManager&quot; class=&quot;org.springframework.jdbc.datasource.DataSourceTransactionManager&quot;&gt;
+    &lt;property name=&quot;dataSource&quot; ref=&quot;shardingDataSource&quot; /&gt;
+&lt;/bean&gt;
+&lt;bean id=&quot;jdbcTemplate&quot; class=&quot;org.springframework.jdbc.core.JdbcTemplate&quot;&gt;
+    &lt;property name=&quot;dataSource&quot; ref=&quot;shardingDataSource&quot; /&gt;
+&lt;/bean&gt;
+&lt;tx:annotation-driven /&gt;
+
+</code></pre>
+
+<h3 id="use-sharding-transaction-in-business-code">Use sharding transaction in business code</h3>
+
+<pre><code class="language-java">@Transactional
+@ShardingTransactionType(TransactionType.XA)  // Support TransactionType.LOCAL, TransactionType.XA, TransactionType.BASE
+public void insert() {
+    jdbcTemplate.execute(&quot;INSERT INTO t_order (user_id, status) VALUES (?, ?)&quot;, (PreparedStatementCallback&lt;Object&gt;) preparedStatement -&gt; {
+        preparedStatement.setObject(1, i);
+        preparedStatement.setObject(2, &quot;init&quot;);
+        preparedStatement.executeUpdate();
+    });
+}
+</code></pre>
+
+<h2 id="使用spring-boot">使用Spring-boot</h2>
+
+<h3 id="引入maven依赖">引入Maven依赖</h3>
+
+<pre><code class="language-xml">&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;sharding-jdbc-spring-boot-starter&lt;/artifactId&gt;
+    &lt;version&gt;${shardingsphere.version}&lt;/version&gt;
+&lt;/dependency&gt;
+
+&lt;!-- introduce this module if you want to use XA transaction --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;sharding-transaction-xa-core&lt;/artifactId&gt;
+    &lt;version&gt;${shardingsphere.version}&lt;/version&gt;
+&lt;/dependency&gt;
+
+&lt;!-- introduce this module if you want to use BASE transaction --&gt;
+&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;sharding-transaction-base-seata-at&lt;/artifactId&gt;
+    &lt;version&gt;${sharding-sphere.version}&lt;/version&gt;
+&lt;/dependency&gt;
+</code></pre>
+
+<h3 id="config-spring-boot-transaction-manager">Config spring-boot transaction manager</h3>
+
+<pre><code class="language-java">@Configuration
+@EnableTransactionManagement
+public class TransactionConfiguration {
+    
+    @Bean
+    public PlatformTransactionManager txManager(final DataSource dataSource) {
+        return new DataSourceTransactionManager(dataSource);
+    }
+    
+    @Bean
+    public JdbcTemplate jdbcTemplate(final DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
+    }
+}
+</code></pre>
+
+<h3 id="use-sharding-transaction-in-business-code-1">Use sharding transaction in business code</h3>
+
+<pre><code class="language-java">@Transactional
+@ShardingTransactionType(TransactionType.XA)  // Support TransactionType.LOCAL, TransactionType.XA, TransactionType.BASE
+public void insert() {
+    jdbcTemplate.execute(&quot;INSERT INTO t_order (user_id, status) VALUES (?, ?)&quot;, (PreparedStatementCallback&lt;Object&gt;) preparedStatement -&gt; {
+        preparedStatement.setObject(1, i);
+        preparedStatement.setObject(2, &quot;init&quot;);
+        preparedStatement.executeUpdate();
+    });
+}
+</code></pre>
+
+<h2 id="other-configuration-for-sharding-transaction-manager">Other configuration for Sharding Transaction Manager</h2>
+
+<h3 id="xa-transaction-optional">XA Transaction (Optional)</h3>
+
+<p>Default ShardingSphere XA transaction manager is Atomikos. <code>xa_tx.log</code> generated in the project log is necessary for the recovery when XA crashes. Please do not delete it.</p>
+
+<p>Or you can add <code>jta.properties</code> in <code>classpath</code> of the program to customize Atomikos configurations.
+For detailed configuration rules, please refer to the <a href="https://www.atomikos.com/Documentation/JtaProperties">official documentation</a> of Atomikos.</p>
+
+<h2 id="base-transaction-seata-at">BASE Transaction (SEATA-AT)</h2>
 
 <h4 id="seata-configuration">Seata Configuration</h4>
 
@@ -2726,34 +2859,38 @@ For detailed configuration rules, please refer to the <a href="https://www.atomi
 
 <p>2.Create <code>undo_log</code> table in each physical database.(only mysql supported before seata version 0.8.X)</p>
 
-<pre><code class="language-sql">CREATE TABLE IF NOT EXISTS `undo_log` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `branch_id` bigint(20) NOT NULL,
-  `xid` varchar(100) NOT NULL,
-  `rollback_info` longblob NOT NULL,
-  `log_status` int(11) NOT NULL,
-  `log_created` datetime NOT NULL,
-  `log_modified` datetime NOT NULL,
-  `ext` varchar(100) DEFAULT NULL,
+<pre><code class="language-conf">CREATE TABLE IF NOT EXISTS `undo_log`
+(
+  `id`            BIGINT(20)   NOT NULL AUTO_INCREMENT COMMENT 'increment id',
+  `branch_id`     BIGINT(20)   NOT NULL COMMENT 'branch transaction id',
+  `xid`           VARCHAR(100) NOT NULL COMMENT 'global transaction id',
+  `context`       VARCHAR(128) NOT NULL COMMENT 'undo_log context,such as serialization',
+  `rollback_info` LONGBLOB     NOT NULL COMMENT 'rollback info',
+  `log_status`    INT(11)      NOT NULL COMMENT '0:normal status,1:defense status',
+  `log_created`   DATETIME     NOT NULL COMMENT 'create datetime',
+  `log_modified`  DATETIME     NOT NULL COMMENT 'modify datetime',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `ux_undo_log` (`xid`,`branch_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
+  UNIQUE KEY `ux_undo_log` (`xid`, `branch_id`)
+) ENGINE = InnoDB
+  AUTO_INCREMENT = 1
+  DEFAULT CHARSET = utf8 COMMENT ='AT transaction mode undo table';
 </code></pre>
 
 <p>3.Config <code>seata.conf</code> file in classpath.</p>
 
 <pre><code class="language-conf">client {
-    application.id = raw-jdbc   ## application unique id.
-    transaction.service.group = raw-jdbc-group   ## transaction group
+    application.id = example   ## application unique id.
+    transaction.service.group = my_test_tx_group   ## transaction group
 }
+
 </code></pre>
+
+<p>4.Modify file.conf and registry.conf if you need.</p>
 
 <h2 id="distributed-transaction-example">Distributed Transaction Example</h2>
 
 <ul>
-<li><p><a href="https://github.com/apache/incubator-shardingsphere-example/tree/dev/sharding-jdbc-example/transaction-example">official example</a></p></li>
-
-<li><p><a href="https://github.com/OpenSharding/shardingsphere-spi-impl-example/tree/master/transaction-example">third party example（include spring）</a></p></li>
+<li><a href="https://github.com/apache/incubator-shardingsphere/tree/master/examples/sharding-jdbc-example/sharding-example">official example</a></li>
 </ul>
 
 
@@ -4224,17 +4361,17 @@ For detailed configuration rules, please refer to the <a href="https://www.atomi
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1586345061"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1586348675"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1586345061"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1586345061"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1586348675"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1586348675"></script>
 
     
 

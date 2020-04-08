@@ -481,27 +481,26 @@ SQL数据 在集成测试的部分提到过sql-case-id，其对应的SQL，可�
     </item>
     
     <item>
-      <title>Saga柔性事务</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-saga/</link>
+      <title>Seata柔性事务</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-seata/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-saga/</guid>
-      <description>Saga事务 Saga这个概念来源于三十多年前的一篇数据库论文Sagas ，一个Saga事务是一个有多个短时事务组成的长时的事务。 在分布式事务场景下，我们把一个Saga分布式事务看做是一个由多个本地事务组成的事务，每个本地事务都有一个与之对应的补偿事务。在Saga事务的执行过程中，如果某一步执行出现异常，Saga事务会被终止，同时会调用对应的补偿事务完成相关的恢复操作，这样保证Saga相关的本地事务要么都是执行成功，要么通过补偿恢复成为事务执行之前的状态。
-自动反向补偿 Saga定义了一个事务中的每个子事务都有一个与之对应的反向补偿操作。由Saga事务管理器根据程序执行结果生成一张有向无环图，并在需要执行回滚操作时，根据该图依次按照相反的顺序调用反向补偿操作。Saga事务管理器只用于控制何时重试，何时补偿，并不负责补偿的内容，补偿的具体操作需要由开发者自行提供。
-ShardingSphere采用反向SQL技术，将对数据库进行更新操作的SQL自动生成反向SQL，并交由saga-actuator执行，使用方则无需再关注如何实现补偿方法，将柔性事务管理器的应用范畴成功的定位回了事务的本源——数据库层面。</description>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-seata/</guid>
+      <description>Seata柔性事务 Seata是阿里集团和蚂蚁金服联合打造的分布式事务框架，截止到0.5.x版本包含了AT事务和TCC事务。其中AT事务的目标是在微服务架构下，提供增量的事务ACID语意，让用户像使用本地事务一样，使用分布式事务，核心理念同ShardingSphere一脉相承。
+Seata AT事务模型 Seata AT事务模型包含TM(事务管理器)，RM(资源管理器)，TC(事务协调器)。其中TC是一个独立的服务需要单独部署，TM和RM以jar包的方式同业务应用部署在一起，它们同TC建立长连接，在整个事务生命周期内，保持RPC通信。 其中全局事务的发起方作为TM，全局事务的参与者作为RM ; TM负责全局事务的begin和commit/rollback，RM负责分支事务的执行结果上报，并且通过TC的协调进行commit/rollback。</description>
     </item>
     
     <item>
-      <title>Saga柔性事务</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-saga/</link>
+      <title>Seata柔性事务</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-seata/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-saga/</guid>
-      <description>实现原理 Saga柔性事务的实现类为SagaShardingTransactionMananger, ShardingSphere通过Hook的方式拦截逻辑SQL的解析和路由结果，这样，在分片物理SQL执行前，可以生成逆向SQL，在事务提交阶段再把SQL调用链交给Saga引擎处理。
-1.Init（Saga引擎初始化） 包含Saga柔性事务的应用启动时，saga-actuator引擎会根据saga.properties的配置进行初始化的流程。
-2.Begin（开启Saga全局事务） 每次开启Saga全局事务时，将会生成本次全局事务的上下文（SagaTransactionContext），事务上下文记录了所有子事务的正向SQL和逆向SQL，作为生成事务调用链的元数据使用。
-3.执行物理SQL 在物理SQL执行前，ShardingSphere根据SQL的类型生成逆向SQL，这里是通过Hook的方式拦截Parser的解析结果进行实现。
-4.Commit/rollback（提交Saga事务） 提交阶段会生成Saga执行引擎所需的调用链路图，commit操作产生ForwardRecovery（正向SQL补偿）任务，rollback操作产生BackwardRecovery任务（逆向SQL补偿）。</description>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-seata/</guid>
+      <description>实现原理 整合Seata AT事务时，需要把TM，RM，TC的模型融入到ShardingSphere 分布式事务的SPI的生态中。在数据库资源上，Seata通过对接DataSource接口，让JDBC操作可以同TC进行RPC通信。同样，ShardingSphere也是面向DataSource接口对用户配置的物理DataSource进行了聚合，因此把物理DataSource二次包装为Seata 的DataSource后，就可以把Seata AT事务融入到ShardingSphere的分片中。
+1.Init（Seata引擎初始化） 包含Seata柔性事务的应用启动时，用户配置的数据源会按seata.conf的配置，适配为Seata事务所需的DataSourceProxy，并且注册到RM中。
+2.Begin（开启Seata全局事务） TM控制全局事务的边界，TM通过向TC发送Begin指令，获取全局事务ID，所有分支事务通过此全局事务ID，参与到全局事务中；全局事务ID的上下文存放在当前线程变量中。
+3.执行分片物理SQL 处于Seata全局事务中的分片SQL通过RM生成undo快照，并且发送participate指令到TC，加入到全局事务中。ShardingSphere的分片物理SQL是按多线程方式执行，因此整合Seata AT事务时，需要在主线程和子线程间进行全局事务ID的上下文传递，这同服务间的上下文传递思路完全相同。
+4.Commit/rollback（提交Seata事务） 提交Seata事务时，TM会向TC发送全局事务的commit和rollback指令，TC根据全局事务ID协调所有分支事务进行commit和rollback。</description>
     </item>
     
     <item>
@@ -619,13 +618,12 @@ SELECT t_order.order_id FROM t_order WHERE t_order.order_id=1 AND remarks=&#39; 
     </item>
     
     <item>
-      <title>柔性事务-Saga</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-saga/</link>
+      <title>柔性事务-Seata</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-seata/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-saga/</guid>
-      <description> 功能  完全支持跨库事务 支持失败SQL重试及最大努力送达 支持反向SQL、自动生成更新快照以及自动补偿 默认使用关系型数据库进行快照及事务日志的持久化，支持使用SPI的方式加载其他类型的持久化  不支持项  暂不支持资源隔离 暂不支持服务宕机后，自动恢复提交中的commit和rollback  支持情况 ShardingSphere的柔性事务已通过第三方SPI实现Saga事务，Saga引擎使用Servicecomb-Saga。
-注意  反向SQL需要主键，请确保在表结构中定义主键。 对于INSERT语句， 需要在SQL中显示插入主键值，如INSERT INTO ${table_name} (id, value, ...) VALUES (11111, &#39;&#39;, ....) (其中id为表主键)。 若需要自动生成主键，可使用ShardingSphere的分布式主键。  </description>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-seata/</guid>
+      <description> 功能  完全支持跨库分布式事务 支持RC隔离级别 通过undo快照进行事务回滚 支持服务宕机后的，自动恢复提交中的事务  依赖  需要额外部署Seata-server服务进行分支事务的协调  待优化项  ShardingSphere和Seata会对SQL进行重复解析  </description>
     </item>
     
     <item>
@@ -688,29 +686,6 @@ db0.t_order0, db0.t_order1, db1.t_order2, db1.t_order3, db1.t_order4  分片策�
  测试引擎 环境配置 验证数据  测试引擎是 SQL 改写测试的入口，跟其他引擎一样，通过 Junit 的 Parameterized 逐条读取 test\resources 目录中测试类型下对应的 xml 文件，然后按读取顺序一一进行验证。
 环境配置存放在 test\resources\yaml 路径中测试类型下对应的 yaml 中。配置了dataSources，shardingRule，encryptRule 等信息，例子如下：
 dataSources: db: !!com.zaxxer.hikari.HikariDataSource driverClassName: org.h2.Driver jdbcUrl: jdbc:h2:mem:db;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MYSQL username: sa password: ## sharding 规则 shardingRule: tables: t_account: actualDataNodes: db.t_account_${0..1} tableStrategy: inline: shardingColumn: account_id algorithmExpression: t_account_${account_id % 2} keyGenerator: type: TEST column: account_id t_account_detail: actualDataNodes: db.t_account_detail_${0..1} tableStrategy: inline: shardingColumn: order_id algorithmExpression: t_account_detail_${account_id % 2} bindingTables: - t_account, t_account_detail  验证数据存放在 test\resources 路径中测试类型下对应的 xml 文件中。验证数据中， yaml-rule 指定了环境以及 rule 的配置文件，input 指定了待测试的 SQL 以及参数，output 指定了期待的 SQL 以及参数。 其中 db-type 决定了 SQL 解析的类型，默认为 SQL92, 例如：</description>
-    </item>
-    
-    <item>
-      <title>Seata柔性事务</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-seata/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-seata/</guid>
-      <description>Seata柔性事务 Seata是阿里集团和蚂蚁金服联合打造的分布式事务框架，截止到0.5.x版本包含了AT事务和TCC事务。其中AT事务的目标是在微服务架构下，提供增量的事务ACID语意，让用户像使用本地事务一样，使用分布式事务，核心理念同ShardingSphere一脉相承。
-Seata AT事务模型 Seata AT事务模型包含TM(事务管理器)，RM(资源管理器)，TC(事务协调器)。其中TC是一个独立的服务需要单独部署，TM和RM以jar包的方式同业务应用部署在一起，它们同TC建立长连接，在整个事务生命周期内，保持RPC通信。 其中全局事务的发起方作为TM，全局事务的参与者作为RM ; TM负责全局事务的begin和commit/rollback，RM负责分支事务的执行结果上报，并且通过TC的协调进行commit/rollback。</description>
-    </item>
-    
-    <item>
-      <title>Seata柔性事务</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-seata/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-seata/</guid>
-      <description>实现原理 整合Seata AT事务时，需要把TM，RM，TC的模型融入到ShardingSphere 分布式事务的SPI的生态中。在数据库资源上，Seata通过对接DataSource接口，让JDBC操作可以同TC进行RPC通信。同样，ShardingSphere也是面向DataSource接口对用户配置的物理DataSource进行了聚合，因此把物理DataSource二次包装为Seata 的DataSource后，就可以把Seata AT事务融入到ShardingSphere的分片中。
-1.Init（Seata引擎初始化） 包含Seata柔性事务的应用启动时，用户配置的数据源会按seata.conf的配置，适配为Seata事务所需的DataSourceProxy，并且注册到RM中。
-2.Begin（开启Seata全局事务） TM控制全局事务的边界，TM通过向TC发送Begin指令，获取全局事务ID，所有分支事务通过此全局事务ID，参与到全局事务中；全局事务ID的上下文存放在当前线程变量中。
-3.执行分片物理SQL 处于Seata全局事务中的分片SQL通过RM生成undo快照，并且发送participate指令到TC，加入到全局事务中。ShardingSphere的分片物理SQL是按多线程方式执行，因此整合Seata AT事务时，需要在主线程和子线程间进行全局事务ID的上下文传递，这同服务间的上下文传递思路完全相同。
-4.Commit/rollback（提交Seata事务） 提交Seata事务时，TM会向TC发送全局事务的commit和rollback指令，TC根据全局事务ID协调所有分支事务进行commit和rollback。</description>
     </item>
     
     <item>
@@ -784,15 +759,6 @@ ShardingSphere为了避免死锁的出现，在获取数据库连接时进行了
     </item>
     
     <item>
-      <title>柔性事务-Seata</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-seata/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-seata/</guid>
-      <description> 功能  完全支持跨库分布式事务 支持RC隔离级别 通过undo快照进行事务回滚 支持服务宕机后的，自动恢复提交中的事务  依赖  需要额外部署Seata-server服务进行分支事务的协调  待优化项  ShardingSphere和Seata会对SQL进行重复解析  </description>
-    </item>
-    
-    <item>
       <title>编排治理</title>
       <link>https://shardingsphere.apache.org/document/current/cn/manual/sharding-jdbc/usage/orchestration/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -812,11 +778,10 @@ orchestration: name: orchestration-sharding-data-source overwrite: false registr
       <description>ShardingDataSource已经整合了分布式事务的功能，因此不需要用户进行额外的配置，每次获取ShardingConnection前，通过修改TransactionTypeHolder，可以对事务类型进行切换。
 XA事务 引入Maven依赖 &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-transaction-xa-core&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${shardingsphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt;  JAVA编码方式设置事务类型 TransactionTypeHolder.set(TransactionType.XA);  XA事务管理器参数配置（可选） ShardingSphere默认的XA事务管理器为Atomikos，在项目的logs目录中会生成xa_tx.log, 这是XA崩溃恢复时所需的日志，请勿删除。
 也可以通过在项目的classpath中添加jta.properties来定制化Atomikos配置项。具体的配置规则请参考Atomikos的官方文档。
-BASE（柔性）事务 ShardingSphere中已经整合了Saga和Seata两种BASE类型的事务
-引入Maven依赖 &amp;lt;!-- saga柔性事务 --&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;io.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-transaction-base-saga&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${shardingsphere-spi-impl.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt;  ${shardingsphere-spi-impl.version} 的jar暂未发布到maven中央仓，因此需要您根据源码自行部署。项目地址: shardingsphere-spi-impl
-&amp;lt;!-- seata柔性事务 --&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-transaction-base-seata-at&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt;  JAVA编码方式设置事务类型 TransactionTypeHolder.set(TransactionType.BASE);  Saga配置 可以通过在项目的classpath中添加saga.properties来定制化Saga事务的配置项。当saga.persistence.enabled=true时，事务日志默认按JDBC的方式持久化到数据库中，也可以通过实现io.shardingsphere.transaction.saga.persistence.SagaPersistence SPI，支持定制化存储，具体可参考项目sharding-transaction-base-saga-persistence-jpa。
-配置项的属性及说明如下：
-   属性名称 默认值 说明     saga.actuator.executor.size 5 使用的线程池大小   saga.actuator.transaction.max.retries 5 失败SQL的最大重试次数   saga.actuator.compensation.max.retries 5 失败SQL的最大尝试补偿次数   saga.</description>
+BASE（柔性）事务 ShardingSphere中已经整合了Seata-AT柔性事务
+引入Maven依赖 &amp;lt;!-- seata柔性事务 --&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-transaction-base-seata-at&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt;  JAVA编码方式设置事务类型 TransactionTypeHolder.set(TransactionType.BASE);  Seata配置 1.按照seata-work-shop中的步骤，下载并启动seata server，参考 Step6 和 Step7即可。
+2.在每一个分片数据库实例中执创建undo_log表（目前只支持Mysql）
+CREATE TABLE IF NOT EXISTS `undo_log` ( `id` bigint(20) NOT NULL AUTO_INCREMENT, `branch_id` bigint(20) NOT NULL, `xid` varchar(100) NOT NULL, `rollback_info` longblob NOT NULL, `log_status` int(11) NOT NULL, `log_created` datetime NOT NULL, `log_modified` datetime NOT NULL, `ext` varchar(100) DEFAULT NULL, PRIMARY KEY (`id`), UNIQUE KEY `ux_undo_log` (`xid`,`branch_id`) ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;  3.</description>
     </item>
     
     <item>

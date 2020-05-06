@@ -479,6 +479,30 @@ SQL数据 在集成测试的部分提到过sql-case-id，其对应的SQL，可�
     </item>
     
     <item>
+      <title>Saga柔性事务</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-saga/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-saga/</guid>
+      <description>Saga事务 Saga这个概念来源于三十多年前的一篇数据库论文Sagas ，一个Saga事务是一个有多个短时事务组成的长时的事务。 在分布式事务场景下，我们把一个Saga分布式事务看做是一个由多个本地事务组成的事务，每个本地事务都有一个与之对应的补偿事务。在Saga事务的执行过程中，如果某一步执行出现异常，Saga事务会被终止，同时会调用对应的补偿事务完成相关的恢复操作，这样保证Saga相关的本地事务要么都是执行成功，要么通过补偿恢复成为事务执行之前的状态。
+自动反向补偿 Saga定义了一个事务中的每个子事务都有一个与之对应的反向补偿操作。由Saga事务管理器根据程序执行结果生成一张有向无环图，并在需要执行回滚操作时，根据该图依次按照相反的顺序调用反向补偿操作。Saga事务管理器只用于控制何时重试，何时补偿，并不负责补偿的内容，补偿的具体操作需要由开发者自行提供。
+ShardingSphere采用反向SQL技术，将对数据库进行更新操作的SQL自动生成反向SQL，并交由saga-actuator执行，使用方则无需再关注如何实现补偿方法，将柔性事务管理器的应用范畴成功的定位回了事务的本源——数据库层面。</description>
+    </item>
+    
+    <item>
+      <title>Saga柔性事务</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-saga/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/principle/base-transaction-saga/</guid>
+      <description>实现原理 Saga柔性事务的实现类为SagaShardingTransactionMananger, ShardingSphere通过Hook的方式拦截逻辑SQL的解析和路由结果，这样，在分片物理SQL执行前，可以生成逆向SQL，在事务提交阶段再把SQL调用链交给Saga引擎处理。
+1.Init（Saga引擎初始化） 包含Saga柔性事务的应用启动时，saga-actuator引擎会根据saga.properties的配置进行初始化的流程。
+2.Begin（开启Saga全局事务） 每次开启Saga全局事务时，将会生成本次全局事务的上下文（SagaTransactionContext），事务上下文记录了所有子事务的正向SQL和逆向SQL，作为生成事务调用链的元数据使用。
+3.执行物理SQL 在物理SQL执行前，ShardingSphere根据SQL的类型生成逆向SQL，这里是通过Hook的方式拦截Parser的解析结果进行实现。
+4.Commit/rollback（提交Saga事务） 提交阶段会生成Saga执行引擎所需的调用链路图，commit操作产生ForwardRecovery（正向SQL补偿）任务，rollback操作产生BackwardRecovery任务（逆向SQL补偿）。</description>
+    </item>
+    
+    <item>
       <title>Seata柔性事务</title>
       <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-seata/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -613,6 +637,16 @@ SELECT order_id FROM t_order_1 WHERE order_id=1 AND remarks=&#39; t_order xxx&#3
 SELECT order_id FROM t_order_1 WHERE order_id=1 AND remarks=&#39; t_order_1 xxx&#39;;  由于表名之外可能含有表名称的类似字符，因此不能通过简单的字符串替换的方式去改写SQL。
 下面再来看一个更加复杂的SQL改写场景：
 SELECT t_order.order_id FROM t_order WHERE t_order.order_id=1 AND remarks=&#39; t_order xxx&#39;;  上面的SQL将表名作为字段的标识符，因此在SQL改写时需要一并修改：</description>
+    </item>
+    
+    <item>
+      <title>柔性事务-Saga</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-saga/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/function/base-transaction-saga/</guid>
+      <description> 功能  完全支持跨库事务 支持失败SQL重试及最大努力送达 支持反向SQL、自动生成更新快照以及自动补偿 默认使用关系型数据库进行快照及事务日志的持久化，支持使用SPI的方式加载其他类型的持久化  不支持项  暂不支持资源隔离 暂不支持服务宕机后，自动恢复提交中的commit和rollback  支持情况 ShardingSphere的柔性事务已通过第三方SPI实现Saga事务，Saga引擎使用Servicecomb-Saga。
+注意  反向SQL需要主键，请确保在表结构中定义主键。 对于INSERT语句， 需要在SQL中显示插入主键值，如INSERT INTO ${table_name} (id, value, ...) VALUES (11111, &#39;&#39;, ....) (其中id为表主键)。 若需要自动生成主键，可使用ShardingSphere的分布式主键。  </description>
     </item>
     
     <item>

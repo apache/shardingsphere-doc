@@ -3,9 +3,9 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <meta name="generator" content="Hugo 0.37.1" />
+    <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2020-05-11 16:50:59">
+    <meta name="buildDate" content="2020-05-11 17:29:13">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>Rewrite Engine :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1589187059" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1589187059" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1589187059" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1589187059" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1589187059" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1589187059" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1589187059" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1589187059" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1589189353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1589189353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1589189353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1589189353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1589189353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1589189353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1589189353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1589189353" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1589187059" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1589189353" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1589187059"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1589189353"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -2650,227 +2650,113 @@
 
 
 <nav id="TableOfContents">
-<ul>
-<li>
-<ul>
-<li><a href="#correctness-rewrite">Correctness Rewrite</a></li>
-<li><a href="#identifier-rewrite">Identifier Rewrite</a></li>
-<li><a href="#column-derivation">Column Derivation</a></li>
-<li><a href="#pagination-revision">Pagination Revision</a></li>
-<li><a href="#batch-split">Batch Split</a></li>
-<li><a href="#optimization-rewrite">Optimization Rewrite</a>
-<ul>
-<li><a href="#single-node-optimization">Single Node Optimization</a></li>
-<li><a href="#stream-merger-optimization">Stream Merger Optimization</a></li>
-</ul></li>
-</ul></li>
-</ul>
+  <ul>
+    <li><a href="#correctness-rewrite">Correctness Rewrite</a></li>
+    <li><a href="#identifier-rewrite">Identifier Rewrite</a></li>
+    <li><a href="#column-derivation">Column Derivation</a></li>
+    <li><a href="#pagination-revision">Pagination Revision</a></li>
+    <li><a href="#batch-split">Batch Split</a></li>
+    <li><a href="#optimization-rewrite">Optimization Rewrite</a>
+      <ul>
+        <li><a href="#single-node-optimization">Single Node Optimization</a></li>
+        <li><a href="#stream-merger-optimization">Stream Merger Optimization</a></li>
+      </ul>
+    </li>
+  </ul>
 </nav>
 
-
-
 <p>The SQL written by engineers facing logic databases and tables cannot be executed directly in actual databases. SQL rewrite is used to rewrite logic SQL into rightly executable ones in actual databases, including two parts, correctness rewrite and optimization rewrite.</p>
-
 <h2 id="correctness-rewrite">Correctness Rewrite</h2>
-
 <p>In situation with sharding tables, it requires to rewrite logic table names in sharding settings into actual table names acquired after routing. Database sharding does not require to rewrite table names. In addition to that, there are also column derivation, pagination information revision and other content.</p>
-
 <h2 id="identifier-rewrite">Identifier Rewrite</h2>
-
 <p>Identifiers that need to be rewritten include table name, index name and schema name. Table name rewrite refers to the process to locate the position of logic tables in the original SQL and rewrite it as the physical table. Table name rewrite is one typical situation that requires to parse SQL. From a most plain case, if the logic SQL is as follow:</p>
-
-<pre><code class="language-sql">SELECT order_id FROM t_order WHERE order_id=1;
-</code></pre>
-
-<p>If the SQL is configured with sharding key order_id=1, it will be routed to Sharding Table 1. Then, the SQL after rewrite should be:</p>
-
-<pre><code class="language-sql">SELECT order_id FROM t_order_1 WHERE order_id=1;
-</code></pre>
-
-<p>In this most simple kind of SQL, whether parsing SQL to abstract syntax tree seems unimportant, SQL can be rewritten only by searching for and substituting characters. But in the following situation, it is unable to rewrite SQL rightly merely by searching for and substituting characters:</p>
-
-<pre><code class="language-sql">SELECT order_id FROM t_order WHERE order_id=1 AND remarks=' t_order xxx';
-</code></pre>
-
-<p>The SQL rightly rewritten is supposed to be:</p>
-
-<pre><code class="language-sql">SELECT order_id FROM t_order_1 WHERE order_id=1 AND remarks=' t_order xxx';
-</code></pre>
-
-<p>Rather than:</p>
-
-<pre><code class="language-sql">SELECT order_id FROM t_order_1 WHERE order_id=1 AND remarks=' t_order_1 xxx';
-</code></pre>
-
-<p>Because there may be similar characters besides the table name, the simple character substitute method cannot be used to rewrite SQL. Here is another more complex SQL rewrite situation:</p>
-
-<pre><code class="language-sql">SELECT t_order.order_id FROM t_order WHERE t_order.order_id=1 AND remarks=' t_order xxx';
-</code></pre>
-
-<p>The SQL above takes table name as the identifier of the field, so it should also be revised when SQL is rewritten:</p>
-
-<pre><code class="language-sql">SELECT t_order_1.order_id FROM t_order_1 WHERE t_order_1.order_id=1 AND remarks=' t_order xxx';
-</code></pre>
-
-<p>But if there is another table name defined in SQL, it is not necessary to revise that, even though that name is the same as the table name. For example:</p>
-
-<pre><code class="language-sql">SELECT t_order.order_id FROM t_order AS t_order WHERE t_order.order_id=1 AND remarks=' t_order xxx';
-</code></pre>
-
-<p>SQL rewrite only requires to revise its table name:</p>
-
-<pre><code class="language-sql">SELECT t_order.order_id FROM t_order_1 AS t_order WHERE t_order.order_id=1 AND remarks=' t_order xxx';
-</code></pre>
-
-<p>Index name is another identifier that can be rewritten. In some databases (such as MySQL/SQLServer), the index is created according to the table dimension, and its names in different tables can repeat. In some other databases (such as PostgreSQL/Oracle), however, the index is created according to the database dimension, index names in different tables are required to be one and the only.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">WHERE</span> order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>;
+</code></pre></div><p>If the SQL is configured with sharding key order_id=1, it will be routed to Sharding Table 1. Then, the SQL after rewrite should be:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id <span style="color:#66d9ef">FROM</span> t_order_1 <span style="color:#66d9ef">WHERE</span> order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>;
+</code></pre></div><p>In this most simple kind of SQL, whether parsing SQL to abstract syntax tree seems unimportant, SQL can be rewritten only by searching for and substituting characters. But in the following situation, it is unable to rewrite SQL rightly merely by searching for and substituting characters:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">WHERE</span> order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">AND</span> remarks<span style="color:#f92672">=</span><span style="color:#e6db74">&#39; t_order xxx&#39;</span>;
+</code></pre></div><p>The SQL rightly rewritten is supposed to be:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id <span style="color:#66d9ef">FROM</span> t_order_1 <span style="color:#66d9ef">WHERE</span> order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">AND</span> remarks<span style="color:#f92672">=</span><span style="color:#e6db74">&#39; t_order xxx&#39;</span>;
+</code></pre></div><p>Rather than:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id <span style="color:#66d9ef">FROM</span> t_order_1 <span style="color:#66d9ef">WHERE</span> order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">AND</span> remarks<span style="color:#f92672">=</span><span style="color:#e6db74">&#39; t_order_1 xxx&#39;</span>;
+</code></pre></div><p>Because there may be similar characters besides the table name, the simple character substitute method cannot be used to rewrite SQL. Here is another more complex SQL rewrite situation:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> t_order.order_id <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">WHERE</span> t_order.order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">AND</span> remarks<span style="color:#f92672">=</span><span style="color:#e6db74">&#39; t_order xxx&#39;</span>;
+</code></pre></div><p>The SQL above takes table name as the identifier of the field, so it should also be revised when SQL is rewritten:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> t_order_1.order_id <span style="color:#66d9ef">FROM</span> t_order_1 <span style="color:#66d9ef">WHERE</span> t_order_1.order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">AND</span> remarks<span style="color:#f92672">=</span><span style="color:#e6db74">&#39; t_order xxx&#39;</span>;
+</code></pre></div><p>But if there is another table name defined in SQL, it is not necessary to revise that, even though that name is the same as the table name. For example:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> t_order.order_id <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">AS</span> t_order <span style="color:#66d9ef">WHERE</span> t_order.order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">AND</span> remarks<span style="color:#f92672">=</span><span style="color:#e6db74">&#39; t_order xxx&#39;</span>;
+</code></pre></div><p>SQL rewrite only requires to revise its table name:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> t_order.order_id <span style="color:#66d9ef">FROM</span> t_order_1 <span style="color:#66d9ef">AS</span> t_order <span style="color:#66d9ef">WHERE</span> t_order.order_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">AND</span> remarks<span style="color:#f92672">=</span><span style="color:#e6db74">&#39; t_order xxx&#39;</span>;
+</code></pre></div><p>Index name is another identifier that can be rewritten. In some databases (such as MySQL/SQLServer), the index is created according to the table dimension, and its names in different tables can repeat. In some other databases (such as PostgreSQL/Oracle), however, the index is created according to the database dimension, index names in different tables are required to be one and the only.</p>
 <p>In ShardingSphere, schema management method is similar to that of the table. It uses logic schema to manage a set of data sources, so it requires to replace the logic schema written by users in SQL with physical database schema.</p>
-
 <p>ShardingSphere only supports to use schema in database management statements but not in DQL and DML statements, for example:</p>
-
-<pre><code class="language-sql">SHOW COLUMNS FROM t_order FROM order_ds;
-</code></pre>
-
-<p>Schema rewrite refers to rewriting logic schema as a right and real schema found arbitrarily with unicast route.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SHOW</span> COLUMNS <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">FROM</span> order_ds;
+</code></pre></div><p>Schema rewrite refers to rewriting logic schema as a right and real schema found arbitrarily with unicast route.</p>
 <h2 id="column-derivation">Column Derivation</h2>
-
 <p>Column derivation in query statements usually results from two situations. First, ShardingSphere needs to acquire the corresponding data when merging results, but it is not returned through the query SQL. This kind of situation aims mainly at GROUP BY and ORDER BY. Result merger requires sorting and ranking according to items of <code>GROUP BY</code> and <code>ORDER BY</code>field. But if sorting and ranking items are not included in the original SQL, it should be rewritten. Look at the situation where the original SQL has the information required by result merger:</p>
-
-<pre><code class="language-sql">SELECT order_id, user_id FROM t_order ORDER BY user_id;
-</code></pre>
-
-<p>Since user_id is used in ranking, the result merger needs the data able to acquire user_id. The SQL above is able to acquire user_id data, so there is no need to add columns.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id, user_id <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> user_id;
+</code></pre></div><p>Since user_id is used in ranking, the result merger needs the data able to acquire user_id. The SQL above is able to acquire user_id data, so there is no need to add columns.</p>
 <p>If the selected item does not contain the column required by result merger, it will need to add column, as the following SQL:</p>
-
-<pre><code class="language-sql">SELECT order_id FROM t_order ORDER BY user_id;
-</code></pre>
-
-<p>Since the original SQL does not contain user_id needed by result merger, the SQL needs to be rewritten by adding columns, and after that, it will be:</p>
-
-<pre><code class="language-sql">SELECT order_id, user_id AS ORDER_BY_DERIVED_0 FROM t_order ORDER BY user_id;
-</code></pre>
-
-<p>What’s to be mentioned, column derivation will only add the missing column rather than all of them; the SQL that includes <code>*</code> in SELECT will also selectively add columns according to the meta-data information of tables. Here is a relatively complex SQL column derivation case:</p>
-
-<pre><code class="language-sql">SELECT o.* FROM t_order o, t_order_item i WHERE o.order_id=i.order_id ORDER BY user_id, order_item_id;
-</code></pre>
-
-<p>Suppose only t_order_item table contains order_item_id column, according to the meta-data information of tables, the user_id in sorting item exists in table t_order as merging result, but order_item_id does not exist in t_order, so it needs to add columns. The SQL after that will be:</p>
-
-<pre><code class="language-sql">SELECT o.*, order_item_id AS ORDER_BY_DERIVED_0 FROM t_order o, t_order_item i WHERE o.order_id=i.order_id ORDER BY user_id, order_item_id;
-</code></pre>
-
-<p>Another situation of column derivation is using AVG aggregation function. In distributed situations, it is not right to calculate the average value with avg1 + avg2 + avg3 / 3, and it should be rewritten as (sum1 + sum2 + sum3) / (count1 + count2 + count3). This requires to rewrite the SQL that contains AVG as SUM and COUNT and recalculate the average value in result merger. Such as the following SQL:</p>
-
-<pre><code class="language-sql">SELECT AVG(price) FROM t_order WHERE user_id=1;
-</code></pre>
-
-<p>Should be rewritten as:</p>
-
-<pre><code class="language-sql">SELECT COUNT(price) AS AVG_DERIVED_COUNT_0, SUM(price) AS AVG_DERIVED_SUM_0 FROM t_order WHERE user_id=1;
-</code></pre>
-
-<p>Then it can calculate the right average value through result merger.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> user_id;
+</code></pre></div><p>Since the original SQL does not contain user_id needed by result merger, the SQL needs to be rewritten by adding columns, and after that, it will be:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> order_id, user_id <span style="color:#66d9ef">AS</span> ORDER_BY_DERIVED_0 <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> user_id;
+</code></pre></div><p>What’s to be mentioned, column derivation will only add the missing column rather than all of them; the SQL that includes <code>*</code> in SELECT will also selectively add columns according to the meta-data information of tables. Here is a relatively complex SQL column derivation case:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> o.<span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order o, t_order_item i <span style="color:#66d9ef">WHERE</span> o.order_id<span style="color:#f92672">=</span>i.order_id <span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> user_id, order_item_id;
+</code></pre></div><p>Suppose only t_order_item table contains order_item_id column, according to the meta-data information of tables, the user_id in sorting item exists in table t_order as merging result, but order_item_id does not exist in t_order, so it needs to add columns. The SQL after that will be:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> o.<span style="color:#f92672">*</span>, order_item_id <span style="color:#66d9ef">AS</span> ORDER_BY_DERIVED_0 <span style="color:#66d9ef">FROM</span> t_order o, t_order_item i <span style="color:#66d9ef">WHERE</span> o.order_id<span style="color:#f92672">=</span>i.order_id <span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> user_id, order_item_id;
+</code></pre></div><p>Another situation of column derivation is using AVG aggregation function. In distributed situations, it is not right to calculate the average value with avg1 + avg2 + avg3 / 3, and it should be rewritten as (sum1 + sum2 + sum3) / (count1 + count2 + count3). This requires to rewrite the SQL that contains AVG as SUM and COUNT and recalculate the average value in result merger. Such as the following SQL:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#66d9ef">AVG</span>(price) <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">WHERE</span> user_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>;
+</code></pre></div><p>Should be rewritten as:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#66d9ef">COUNT</span>(price) <span style="color:#66d9ef">AS</span> AVG_DERIVED_COUNT_0, <span style="color:#66d9ef">SUM</span>(price) <span style="color:#66d9ef">AS</span> AVG_DERIVED_SUM_0 <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">WHERE</span> user_id<span style="color:#f92672">=</span><span style="color:#ae81ff">1</span>;
+</code></pre></div><p>Then it can calculate the right average value through result merger.</p>
 <p>The last kind of column derivation is in SQL with INSERT. With database auto-increment key, there is no need to fill in primary key field. But database auto-increment key cannot satisfy the requirement of only one primary key being in the distributed situation. So ShardingSphere provides a distributed auto-increment key generation strategy, enabling users to replace the current auto-increment key invisibly with a distributed one without changing existing codes through column derivation. Distributed auto-increment key generation strategy will be expounded in the following part, here we only explain the content related to SQL rewrite. For example, if the primary key of t_order is order_id, and the original SQL is:</p>
-
-<pre><code class="language-sql">INSERT INTO t_order (`field1`, `field2`) VALUES (10, 1);
-</code></pre>
-
-<p>It can be seen that the SQL above does not include an auto-increment key, which will be filled by the database itself. After ShardingSphere set an auto-increment key, the SQL will be rewritten as:</p>
-
-<pre><code class="language-sql">INSERT INTO t_order (`field1`, `field2`, order_id) VALUES (10, 1, xxxxx);
-</code></pre>
-
-<p>Rewritten SQL will add auto-increment key name and its value generated automatically in the last part of INSERT FIELD and INSERT VALUE. <code>xxxxx</code> in the SQL above stands for the latter one.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order (<span style="color:#f92672">`</span>field1<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span>field2<span style="color:#f92672">`</span>) <span style="color:#66d9ef">VALUES</span> (<span style="color:#ae81ff">10</span>, <span style="color:#ae81ff">1</span>);
+</code></pre></div><p>It can be seen that the SQL above does not include an auto-increment key, which will be filled by the database itself. After ShardingSphere set an auto-increment key, the SQL will be rewritten as:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order (<span style="color:#f92672">`</span>field1<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span>field2<span style="color:#f92672">`</span>, order_id) <span style="color:#66d9ef">VALUES</span> (<span style="color:#ae81ff">10</span>, <span style="color:#ae81ff">1</span>, xxxxx);
+</code></pre></div><p>Rewritten SQL will add auto-increment key name and its value generated automatically in the last part of INSERT FIELD and INSERT VALUE. <code>xxxxx</code> in the SQL above stands for the latter one.</p>
 <p>If INSERT SQL does not contain the column name of the table, ShardingSphere can also automatically generate auto-increment key by comparing the number of parameter and column in the table meta-information. For example, the original SQL is:</p>
-
-<pre><code class="language-sql">INSERT INTO t_order VALUES (10, 1);
-</code></pre>
-
-<p>The rewritten SQL only needs to add an auto-increment key in the column where the primary key is:</p>
-
-<pre><code class="language-sql">INSERT INTO t_order VALUES (xxxxx, 10, 1);
-</code></pre>
-
-<p>When auto-increment key derives column, if the user writes SQL with placeholder, he only needs to rewrite parameter list but not SQL itself.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order <span style="color:#66d9ef">VALUES</span> (<span style="color:#ae81ff">10</span>, <span style="color:#ae81ff">1</span>);
+</code></pre></div><p>The rewritten SQL only needs to add an auto-increment key in the column where the primary key is:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order <span style="color:#66d9ef">VALUES</span> (xxxxx, <span style="color:#ae81ff">10</span>, <span style="color:#ae81ff">1</span>);
+</code></pre></div><p>When auto-increment key derives column, if the user writes SQL with placeholder, he only needs to rewrite parameter list but not SQL itself.</p>
 <h2 id="pagination-revision">Pagination Revision</h2>
-
 <p>The scenarios of acquiring pagination data from multiple databases is different from that of one single database. If every 10 pieces of data are taken as one page, the user wants to take the second page of data. It is not right to take, acquire LIMIT 10, 10 under sharding situations, and take out the first 10 pieces of data according to sorting conditions after merging. For example, if the SQL is:</p>
-
-<pre><code class="language-sql">SELECT score FROM t_score ORDER BY score DESC LIMIT 1, 2;
-</code></pre>
-
-<p>The following picture shows the pagination execution results without SQL rewrite.</p>
-
-<p><img src="https://shardingsphere.apache.org/document/current/img/sharding/pagination_without_rewrite.png" alt="Pagination without rewrite" /></p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> score <span style="color:#66d9ef">FROM</span> t_score <span style="color:#66d9ef">ORDER</span> <span style="color:#66d9ef">BY</span> score <span style="color:#66d9ef">DESC</span> <span style="color:#66d9ef">LIMIT</span> <span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>;
+</code></pre></div><p>The following picture shows the pagination execution results without SQL rewrite.</p>
+<p><img src="https://shardingsphere.apache.org/document/current/img/sharding/pagination_without_rewrite.png" alt="Pagination without rewrite"></p>
 <p>As shown in the picture, if you want to acquire the second and the third piece of data ordered by score common in both tables, and they are supposed to be <code>95</code> and <code>90</code>.
 Since the executed SQL can only acquire the second and the third piece of data from each table, i.e., <code>90</code> and <code>80</code> from t_score_0, <code>85</code> and <code>75</code> from t_score_1.
 When merging results, it can only merge from <code>90</code>, <code>80</code>, <code>85</code> and <code>75</code> already acquired, so the right result cannot be acquired anyway.</p>
-
 <p>The right way is to rewrite pagination conditions as <code>LIMIT 0, 3</code>, take out all the data from the first two pages and combine sorting conditions to calculate the right data.
 The following picture shows the execution of pagination results after SQL rewrite.</p>
-
-<p><img src="https://shardingsphere.apache.org/document/current/img/sharding/pagination_with_rewrite.png" alt="Pagination with rewrite" /></p>
-
+<p><img src="https://shardingsphere.apache.org/document/current/img/sharding/pagination_with_rewrite.png" alt="Pagination with rewrite"></p>
 <p>The latter the offset position is, the lower the efficiency of using LIMIT pagination will be.
 There are many ways to avoid using LIMIT as pagination method, such as constructing a secondary index to record line record number and line offset amount,
 or using the tail ID of last pagination data as the pagination method of conditions of the next query.</p>
-
 <p>When revising pagination information, if the user uses placeholder method to write SQL, he only needs to rewrite parameter list rather than SQL itself.</p>
-
 <h2 id="batch-split">Batch Split</h2>
-
 <p>When using batch inserted SQL, if the inserted data crosses sharding, the user needs to rewrite SQL to avoid writing excessive data into the database. The differences between insert operation and query operation are: though the query sentence has used sharding keys that do not exist in current sharding, they will not have any influence on data, but insert operation has to delete extra sharding keys. Take the following SQL for example:</p>
-
-<pre><code class="language-sql">INSERT INTO t_order (order_id, xxx) VALUES (1, 'xxx'), (2, 'xxx'), (3, 'xxx');
-</code></pre>
-
-<p>If the database is still divided into two parts according to odd and even number of order_id, this SQL will be executed after its table name is revised. Then, both shards will be written with the same record. Though only the data that satisfies sharding conditions can be taken out from query statement, it is not reasonable for the schema to have excessive data. So the SQL should be rewritten as:</p>
-
-<pre><code class="language-sql">INSERT INTO t_order_0 (order_id, xxx) VALUES (2, 'xxx');
-INSERT INTO t_order_1 (order_id, xxx) VALUES (1, 'xxx'), (3, 'xxx');
-</code></pre>
-
-<p>IN query is similar to batch insertion, but IN operation will not lead to wrong data query result. Through rewriting IN query, the query performance can be further improved. Like the following SQL:</p>
-
-<pre><code class="language-sql">SELECT * FROM t_order WHERE order_id IN (1, 2, 3);
-</code></pre>
-
-<p>Is rewritten as:</p>
-
-<pre><code class="language-sql">SELECT * FROM t_order_0 WHERE order_id IN (2);
-SELECT * FROM t_order_1 WHERE order_id IN (1, 3);
-</code></pre>
-
-<p>The query performance will be further improved. For now, ShardingSphere has not realized this rewrite strategy, so the current rewrite result is:</p>
-
-<pre><code class="language-sql">SELECT * FROM t_order_0 WHERE order_id IN (1, 2, 3);
-SELECT * FROM t_order_1 WHERE order_id IN (1, 2, 3);
-</code></pre>
-
-<p>Though the execution result of SQL is right, but it has not achieved the most optimized query efficiency.</p>
-
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order (order_id, xxx) <span style="color:#66d9ef">VALUES</span> (<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;xxx&#39;</span>), (<span style="color:#ae81ff">2</span>, <span style="color:#e6db74">&#39;xxx&#39;</span>), (<span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#39;xxx&#39;</span>);
+</code></pre></div><p>If the database is still divided into two parts according to odd and even number of order_id, this SQL will be executed after its table name is revised. Then, both shards will be written with the same record. Though only the data that satisfies sharding conditions can be taken out from query statement, it is not reasonable for the schema to have excessive data. So the SQL should be rewritten as:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order_0 (order_id, xxx) <span style="color:#66d9ef">VALUES</span> (<span style="color:#ae81ff">2</span>, <span style="color:#e6db74">&#39;xxx&#39;</span>);
+<span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order_1 (order_id, xxx) <span style="color:#66d9ef">VALUES</span> (<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;xxx&#39;</span>), (<span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#39;xxx&#39;</span>);
+</code></pre></div><p>IN query is similar to batch insertion, but IN operation will not lead to wrong data query result. Through rewriting IN query, the query performance can be further improved. Like the following SQL:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order <span style="color:#66d9ef">WHERE</span> order_id <span style="color:#66d9ef">IN</span> (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">3</span>);
+</code></pre></div><p>Is rewritten as:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order_0 <span style="color:#66d9ef">WHERE</span> order_id <span style="color:#66d9ef">IN</span> (<span style="color:#ae81ff">2</span>);
+<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order_1 <span style="color:#66d9ef">WHERE</span> order_id <span style="color:#66d9ef">IN</span> (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">3</span>);
+</code></pre></div><p>The query performance will be further improved. For now, ShardingSphere has not realized this rewrite strategy, so the current rewrite result is:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order_0 <span style="color:#66d9ef">WHERE</span> order_id <span style="color:#66d9ef">IN</span> (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">3</span>);
+<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order_1 <span style="color:#66d9ef">WHERE</span> order_id <span style="color:#66d9ef">IN</span> (<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">3</span>);
+</code></pre></div><p>Though the execution result of SQL is right, but it has not achieved the most optimized query efficiency.</p>
 <h2 id="optimization-rewrite">Optimization Rewrite</h2>
-
 <p>Its purpose is to effectively improve the performance without influencing the correctness of the query. It can be divided into single node optimization and stream merger optimization.</p>
-
 <h3 id="single-node-optimization">Single Node Optimization</h3>
-
 <p>It refers to the optimization that stops the SQL rewrite from the route to the single node. After acquiring one route result, if it is routed to a single data node, result merging is unnecessary to be involved, so there is no need for rewrites as derived column, pagination information and others. In particular, there is no need to read from the first piece of information, which reduces the pressure for the database to a large extent and saves meaningless consumption of the network bandwidth.</p>
-
 <h3 id="stream-merger-optimization">Stream Merger Optimization</h3>
-
 <p>It only adds sorting items and sorting orders identical with grouping items and <code>ORDER BY</code> to <code>GROUP BY</code> SQL, and they are used to transfer memory merger to stream merger. In the result merger part, stream merger and memory merger will be explained in detail.</p>
-
 <p>The overall structure of rewrite engine is shown in the following picture.</p>
-
-<p><img src="https://shardingsphere.apache.org/document/current/img/sharding/rewrite_architecture_en.png" alt="Rewrite Engine" /></p>
+<p><img src="https://shardingsphere.apache.org/document/current/img/sharding/rewrite_architecture_en.png" alt="Rewrite Engine"></p>
 
 
 <footer class=" footline" >
@@ -4343,17 +4229,17 @@ SELECT * FROM t_order_1 WHERE order_id IN (1, 2, 3);
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1589187059"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1589189353"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1589187059"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1589187059"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1589189353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1589189353"></script>
 
     
 

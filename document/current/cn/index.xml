@@ -223,7 +223,7 @@ SQL解析引擎 SQL解析作为分库分表类产品的核心，其性能和兼�
   配置中心数据结构 配置中心在定义的命名空间的config下，以YAML格式存储，包括数据源，数据分片，读写分离、Properties配置，可通过修改节点来实现对于配置的动态管理。
 config ├──authentication # Sharding-Proxy权限配置 ├──props # 属性配置 ├──schema # Schema配置 ├ ├──sharding_db # SchemaName配置 ├ ├ ├──datasource # 数据源配置 ├ ├ ├──rule # 数据分片规则配置 ├ ├──masterslave_db # SchemaName配置 ├ ├ ├──datasource # 数据源配置 ├ ├ ├──rule # 读写分离规则 config/authentication password: root username: root config/sharding/props 相对于sharding-sphere配置里面的Sharding Properties。
 executor.size: 20 sql.show: true config/schema/schemeName/datasource 多个数据库连接池的集合，不同数据库连接池属性自适配（例如：DBCP，C3P0，Druid, HikariCP）。
-ds_0: !!org.apache.shardingsphere.orchestration.yaml.YamlDataSourceConfiguration dataSourceClassName: com.zaxxer.hikari.HikariDataSource properties: url: jdbc:mysql://127.</description>
+ds_0: !!org.apache.shardingsphere.orchestration.core.configuration.YamlDataSourceConfiguration dataSourceClassName: com.zaxxer.hikari.HikariDataSource properties: url: jdbc:mysql://127.</description>
     </item>
     
     <item>
@@ -541,6 +541,20 @@ SQL数据 在集成测试的部分提到过sql-case-id，其对应的SQL，可�
     </item>
     
     <item>
+      <title>元数据中心</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/metadata-center/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/metadata-center/</guid>
+      <description>实现动机   元数据是Sharding-JDBC/Sharding-Proxy所使用的数据源的表、列和索引等核心数据，元数据保障ShardingSphere各个组件能够正确运行。
+  元数据中心对元数据进行统一组织和管理，实现元数据的统一加载、变更通知和数据同步。
+  元数据中心数据结构 元数据中心在定义的命名空间和治理节点的metadata节点下，以YAML格式存储，每个逻辑数据源独立存储。
+├─orchestration-namespace │ ├─orchestration-name │ │ ├──metadata │ │ │ ├──schema1 │ │ │ │ ├── [YAML text contents] │ │ │ ├──schema2 │ │ │ │ ├── [YAML text contents] │ │ │ ├──.... YAML Text Contents 在元数据中心中，元数据分为 configuredSchemaMetaData 和 unconfiguredSchemaMetaDataMap 两部分。
+元数据内容目前不支持动态修改。
+configuredSchemaMetaData: tables: # 表 t_order: # 表名 columns: # 列 id: # 列名 caseSensitive: false dataType: 0 generated: false name: id primaryKey: trues order_id: caseSensitive: false dataType: 0 generated: false name: order_id primaryKey: false indexs: # 索引 t_user_order_id_index: # 索引名 name: t_user_order_id_index t_order_item: columns: order_id: caseSensitive: false dataType: 0 generated: false name: order_id primaryKey: false unconfiguredSchemaMetaDataMap: ds_0: # 数据源 tables: # 表 t_user: # 表名 columns: # 列 user_id: # 列名 caseSensitive: false dataType: 0 generated: false name: user_id primaryKey: false id: caseSensitive: false dataType: 0 generated: false name: id primaryKey: true order_id: caseSensitive: false dataType: 0 generated: false name: order_id primaryKey: false indexes: # 索引 t_user_order_id_index: # 索引名 name: t_user_order_id_index t_user_user_id_index: name: t_user_user_id_index primary: name: PRIMARY configuredSchemaMetaData 存储所有配置了分片规则的数据源的元数据。</description>
+    </item>
+    
+    <item>
       <title>实现原理</title>
       <link>https://shardingsphere.apache.org/document/current/cn/features/sharding-scaling/principle/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -586,21 +600,6 @@ shardingRule: tables: t_order: actualDataNodes: demo_ds_${0..1}.t_order_${0..1} 
  清除分片键值 分片键值保存在ThreadLocal中，所以需要在操作结束时调用hintManager.close()来清除ThreadLocal中的内容。
 hintManager实现了AutoCloseable接口，可推荐使用try with resource自动关闭。
 完整代码示例 // Sharding database and table with using hintManager.  String sql = &amp;#34;SELECT * FROM t_order&amp;#34;; try (HintManager hintManager = HintManager.</description>
-    </item>
-    
-    <item>
-      <title>支持的配置中心/注册中心</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/supported-center-repo/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/supported-center-repo/</guid>
-      <description>SPI Service Provider Interface (SPI)是一种为了被第三方实现或扩展的API。它可以用于实现框架扩展或组件替换。
-ShardingSphere在数据库治理模块使用SPI方式载入数据到配置中心/注册中心，进行实例熔断和数据库禁用。 目前，ShardingSphere内部支持Zookeeper和etcd这种常用的配置中心/注册中心。 此外，您可以使用其他第三方配置中心/注册中心，并通过SPI的方式注入到ShardingSphere，从而使用该配置中心/注册中心，实现数据库治理功能。
-Zookeeper ShardingSphere官方使用Apache Curator作为Zookeeper的实现方案（支持配置中心和注册中心）。 请使用Zookeeper 3.4.6及其以上版本，详情请参见官方网站。
-Etcd ShardingSphere官方使用io.etcd/jetcd作为Etcd的实现方案（支持配置中心和注册中心）。 请使用Etcd v3以上版本，详情请参见官方网站。
-Apollo ShardingSphere官方使用Apollo Client作为Apollo的实现方案（支持配置中心）。 请使用Apollo Client 1.5.0及其以上版本，详情请参见官方网站。
-Nacos ShardingSphere官方使用Nacos Client作为Nacos的实现方案（支持配置中心）。 请使用Nacos Client 1.0.0及其以上版本，详情请参见官方网站。
-其他 使用SPI方式自行实现相关逻辑编码。</description>
     </item>
     
     <item>
@@ -706,31 +705,6 @@ dataSources: db: !!com.zaxxer.hikari.HikariDataSource driverClassName: org.h2.Dr
     </item>
     
     <item>
-      <title>应用性能监控集成</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/apm-integration/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/apm-integration/</guid>
-      <description>背景 APM是应用性能监控的缩写。目前APM的主要功能着眼于分布式系统的性能诊断，其主要功能包括调用链展示，应用拓扑分析等。
-ShardingSphere并不负责如何采集、存储以及展示应用性能监控的相关数据，而是将SQL解析与SQL执行这两块数据分片的最核心的相关信息发送至应用性能监控系统，并交由其处理。 换句话说，ShardingSphere仅负责产生具有价值的数据，并通过标准协议递交至相关系统。ShardingSphere可以通过两种方式对接应用性能监控系统。
-第一种方式是使用OpenTracing API发送性能追踪数据。面向OpenTracing协议的APM产品都可以和ShardingSphere自动对接，比如SkyWalking，Zipkin和Jaeger。使用这种方式只需要在启动时配置OpenTracing协议的实现者即可。 它的优点是可以兼容所有的与OpenTracing协议兼容的产品作为APM的展现系统，如果采用公司愿意实现自己的APM系统，也只需要实现OpenTracing协议，即可自动展示ShardingSphere的链路追踪信息。 缺点是OpenTracing协议发展并不稳定，较新的版本实现者较少，且协议本身过于中立，对于个性化的相关产品的实现不如原生支持强大。
-第二种方式是使用SkyWalking的自动探针。 ShardingSphere团队与SkyWalking团队共同合作，在SkyWalking中实现了ShardingSphere自动探针，可以将相关的应用性能数据自动发送到SkyWalking中。
-使用方法 使用OpenTracing协议  方法1：通过读取系统参数注入APM系统提供的Tracer实现类  启动时添加参数
- -Dorg.apache.shardingsphere.opentracing.tracer.class=org.apache.skywalking.apm.toolkit.opentracing.SkywalkingTracer 调用初始化方法
-ShardingTracer.init();  方法2：通过参数注入APM系统提供的Tracer实现类  ShardingTracer.init(new SkywalkingTracer()); 注意:使用SkyWalking的OpenTracing探针时，应将原ShardingSphere探针插件禁用，以防止两种插件互相冲突
-使用SkyWalking自动探针 请参考SkyWalking部署手册。
-效果展示 无论使用哪种方式，都可以方便的将APM信息展示在对接的系统中，以下以SkyWalking为例。
-应用架构 使用Sharding-Proxy访问两个数据库192.168.0.1:3306和192.168.0.2:3306，且每个数据库中有两个分表。
-拓扑图展示 从图中看，用户访问18次Sharding-Proxy应用，每次每个数据库访问了两次。这是由于每次访问涉及到每个库中的两个分表，所以每次访问了四张表。
-跟踪数据展示 从跟踪图中可以能够看到SQL解析和执行的情况。
-/Sharding-Sphere/parseSQL/ : 表示本次SQL的解析性能。
-/Sharding-Sphere/executeSQL/ : 表示具体执行的实际SQL的性能。
-异常情况展示 从跟踪图中可以能够看到发生异常的节点。
-/Sharding-Sphere/executeSQL/ : 表示执行SQL异常的结果。
-/Sharding-Sphere/executeSQL/ : 表示执行SQL异常的日志。</description>
-    </item>
-    
-    <item>
       <title>执行引擎</title>
       <link>https://shardingsphere.apache.org/document/current/cn/features/sharding/principle/execute/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -764,14 +738,29 @@ ShardingSphere为了避免死锁的出现，在获取数据库连接时进行了
     </item>
     
     <item>
+      <title>支持的配置/注册/元数据中心</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/supported-center-repo/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/supported-center-repo/</guid>
+      <description>SPI Service Provider Interface (SPI)是一种为了被第三方实现或扩展的API。它可以用于实现框架扩展或组件替换。
+ShardingSphere在数据库治理模块使用SPI方式载入数据到配置中心/注册/元数据中心，进行实例熔断和数据库禁用。 目前，ShardingSphere内部支持Zookeeper和etcd这种常用的配置中心/注册中心。 此外，您可以使用其他第三方配置中心/注册/元数据中心，并通过SPI的方式注入到ShardingSphere，从而使用该配置中心/注册/元数据中心，实现数据库治理功能。
+Zookeeper ShardingSphere官方使用Apache Curator作为Zookeeper的实现方案（支持配置中心、注册中心和元数据中心）。 请使用Zookeeper 3.4.6及其以上版本，详情请参见官方网站。
+Etcd ShardingSphere官方使用io.etcd/jetcd作为Etcd的实现方案（支持配置中心、注册中心和元数据中心）。 请使用Etcd v3以上版本，详情请参见官方网站。
+Apollo ShardingSphere官方使用Apollo Client作为Apollo的实现方案（支持配置中心）。 请使用Apollo Client 1.5.0及其以上版本，详情请参见官方网站。
+Nacos ShardingSphere官方使用Nacos Client作为Nacos的实现方案（支持配置中心）。 请使用Nacos Client 1.0.0及其以上版本，详情请参见官方网站。
+其他 使用SPI方式自行实现相关逻辑编码。</description>
+    </item>
+    
+    <item>
       <title>编排治理</title>
       <link>https://shardingsphere.apache.org/document/current/cn/manual/sharding-jdbc/usage/orchestration/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/document/current/cn/manual/sharding-jdbc/usage/orchestration/</guid>
-      <description>使用治理功能需要指定一个注册中心。配置将全部存入注册中心，可以在每次启动时使用本地配置覆盖注册中心配置，也可以只通过注册中心读取配置。
-不使用Spring 引入Maven依赖 &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-jdbc-orchestration&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; &amp;lt;!--若使用zookeeper, 请加入下面Maven坐标--&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-orchestration-reg-zookeeper-curator&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; 基于Java编码的规则配置 // 省略配置dataSourceMap以及shardingRuleConfig  // ...  // 配置注册中心  RegistryCenterConfiguration regConfig = new RegistryCenterConfiguration(&amp;#34;zookeeper&amp;#34;); regConfig.setServerLists(&amp;#34;localhost:2181&amp;#34;); regConfig.setNamespace(&amp;#34;sharding-sphere-orchestration&amp;#34;); // 配置治理  OrchestrationConfiguration orchConfig = new OrchestrationConfiguration(&amp;#34;orchestration-sharding-data-source&amp;#34;, regConfig, false); // 获取数据源对象  DataSource dataSource = OrchestrationShardingDataSourceFactory.createDataSource(dataSourceMap, shardingRuleConfig, new Properties(), orchConfig); 基于Yaml的规则配置 或通过Yaml方式配置，与以上配置等价：
-orchestration: name: orchestration-sharding-data-source overwrite: false registry: type: zookeeper serverLists: localhost:2181 namespace: sharding-sphere-orchestration DataSource dataSource = YamlOrchestrationShardingDataSourceFactory.</description>
+      <description>使用治理功能需要指定配置中心、注册中心和元数据中心。配置将全部存入配置中心，可以在每次启动时使用本地配置覆盖配置中心配置，也可以只通过配置中心读取配置。
+不使用Spring 引入Maven依赖 &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-jdbc-orchestration&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; &amp;lt;!--若使用zookeeper, 请加入下面Maven坐标--&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-orchestration-reg-zookeeper-curator&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; 基于Java编码的规则配置 // 省略配置dataSourceMap以及shardingRuleConfig  // ...  // 配置配置/注册/元数据中心  Properties properties = new Properties(); properties.setProperty(&amp;#34;overwrite&amp;#34;, overwrite); CenterConfiguration centerConfiguration = new CenterConfiguration(&amp;#34;zookeeper&amp;#34;, properties); centerConfiguration.setServerLists(&amp;#34;localhost:2181&amp;#34;); centerConfiguration.setNamespace(&amp;#34;sharding-sphere-orchestration&amp;#34;); centerConfiguration.setOrchestrationType(&amp;#34;registry_center,config_center,metadata_center&amp;#34;); // 配置治理  Map&amp;lt;String, CenterConfiguration&amp;gt; instanceConfigurationMap = new HashMap&amp;lt;String, CenterConfiguration&amp;gt;(); instanceConfigurationMap.put(&amp;#34;orchestration-sharding-data-source&amp;#34;, centerConfiguration); // 获取数据源对象  OrchestrationShardingDataSourceFactory.createDataSource( createDataSourceMap(), createShardingRuleConfig(), new HashMap&amp;lt;String, Object&amp;gt;(), new Properties(), new OrchestrationConfiguration(instanceConfigurationMap)); 基于Yaml的规则配置 或通过Yaml方式配置，与以上配置等价：
+orchestration: orchestration_ds: orchestrationType: registry_center,config_center,metadata_center instanceType: zookeeper serverLists: localhost:2181 namespace: orchestration props: overwrite: true DataSource dataSource = YamlOrchestrationShardingDataSourceFactory.</description>
     </item>
     
     <item>
@@ -781,6 +770,31 @@ orchestration: name: orchestration-sharding-data-source overwrite: false registr
       
       <guid>https://shardingsphere.apache.org/document/current/cn/manual/sharding-jdbc/usage/transaction/</guid>
       <description>不使用Spring 引入Maven依赖 &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-jdbc-core&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; &amp;lt;!-- 使用XA事务时，需要引入此模块 --&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-transaction-xa-core&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${shardingsphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; &amp;lt;!-- 使用BASE事务时，需要引入此模块 --&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-transaction-base-seata-at&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${sharding-sphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; 基于Java编码方式使用分布式事务 TransactionTypeHolder.set(TransactionType.XA); // 支持TransactionType.LOCAL, TransactionType.XA, TransactionType.BASE try (Connection connection = dataSource.getConnection()) { // dataSource的类型为ShardingDataSource  connection.setAutoCommit(false); PreparedStatement preparedStatement = connection.prepareStatement(&amp;#34;INSERT INTO t_order (user_id, status) VALUES (?, ?)&amp;#34;); preparedStatement.setObject(1, i); preparedStatement.setObject(2, &amp;#34;init&amp;#34;); preparedStatement.executeUpdate(); connection.commit(); } 使用Spring-namespace 引入Maven依赖 &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-jdbc-spring-namespace&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${shardingsphere.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; &amp;lt;!-- 使用XA事务时，需要引入此模块 --&amp;gt; &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;sharding-transaction-xa-core&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${shardingsphere.</description>
+    </item>
+    
+    <item>
+      <title>应用性能监控集成</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/apm-integration/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/apm-integration/</guid>
+      <description>背景 APM是应用性能监控的缩写。目前APM的主要功能着眼于分布式系统的性能诊断，其主要功能包括调用链展示，应用拓扑分析等。
+ShardingSphere并不负责如何采集、存储以及展示应用性能监控的相关数据，而是将SQL解析与SQL执行这两块数据分片的最核心的相关信息发送至应用性能监控系统，并交由其处理。 换句话说，ShardingSphere仅负责产生具有价值的数据，并通过标准协议递交至相关系统。ShardingSphere可以通过两种方式对接应用性能监控系统。
+第一种方式是使用OpenTracing API发送性能追踪数据。面向OpenTracing协议的APM产品都可以和ShardingSphere自动对接，比如SkyWalking，Zipkin和Jaeger。使用这种方式只需要在启动时配置OpenTracing协议的实现者即可。 它的优点是可以兼容所有的与OpenTracing协议兼容的产品作为APM的展现系统，如果采用公司愿意实现自己的APM系统，也只需要实现OpenTracing协议，即可自动展示ShardingSphere的链路追踪信息。 缺点是OpenTracing协议发展并不稳定，较新的版本实现者较少，且协议本身过于中立，对于个性化的相关产品的实现不如原生支持强大。
+第二种方式是使用SkyWalking的自动探针。 ShardingSphere团队与SkyWalking团队共同合作，在SkyWalking中实现了ShardingSphere自动探针，可以将相关的应用性能数据自动发送到SkyWalking中。
+使用方法 使用OpenTracing协议  方法1：通过读取系统参数注入APM系统提供的Tracer实现类  启动时添加参数
+ -Dorg.apache.shardingsphere.opentracing.tracer.class=org.apache.skywalking.apm.toolkit.opentracing.SkywalkingTracer 调用初始化方法
+ShardingTracer.init();  方法2：通过参数注入APM系统提供的Tracer实现类  ShardingTracer.init(new SkywalkingTracer()); 注意:使用SkyWalking的OpenTracing探针时，应将原ShardingSphere探针插件禁用，以防止两种插件互相冲突
+使用SkyWalking自动探针 请参考SkyWalking部署手册。
+效果展示 无论使用哪种方式，都可以方便的将APM信息展示在对接的系统中，以下以SkyWalking为例。
+应用架构 使用Sharding-Proxy访问两个数据库192.168.0.1:3306和192.168.0.2:3306，且每个数据库中有两个分表。
+拓扑图展示 从图中看，用户访问18次Sharding-Proxy应用，每次每个数据库访问了两次。这是由于每次访问涉及到每个库中的两个分表，所以每次访问了四张表。
+跟踪数据展示 从跟踪图中可以能够看到SQL解析和执行的情况。
+/Sharding-Sphere/parseSQL/ : 表示本次SQL的解析性能。
+/Sharding-Sphere/executeSQL/ : 表示具体执行的实际SQL的性能。
+异常情况展示 从跟踪图中可以能够看到发生异常的节点。
+/Sharding-Sphere/executeSQL/ : 表示执行SQL异常的结果。
+/Sharding-Sphere/executeSQL/ : 表示执行SQL异常的日志。</description>
     </item>
     
     <item>

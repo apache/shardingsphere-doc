@@ -120,6 +120,38 @@ SCTL (ShardingSphere-Proxy control language) SCTL为ShardingSphere-Proxy特有�
     
     <item>
       <title>核心概念</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/encrypt/concept/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/encrypt/concept/</guid>
+      <description>处理流程详解 整体架构 ShardingSphere提供的Encrypt-JDBC和业务代码部署在一起。业务方需面向Encrypt-JDBC进行JDBC编程。由于Encrypt-JDBC实现所有JDBC标准接口，业务代码无需做额外改造即可兼容使用。此时，业务代码所有与数据库的交互行为交由Encrypt-JDBC负责。业务只需提供脱敏规则即可。作为业务代码与底层数据库中间的桥梁，Encrypt-JDBC便可拦截用户行为，并在改造行为后与数据库交互。
+Encrypt-JDBC将用户发起的SQL进行拦截，并通过SQL语法解析器进行解析、理解SQL行为，再依据用户传入的脱敏规则，找出需要脱敏的字段和所使用的加解密器对目标字段进行加解密处理后，再与底层数据库进行交互。ShardingSphere会将用户请求的明文进行加密后存储到底层数据库；并在用户查询时，将密文从数据库中取出进行解密后返回给终端用户。ShardingSphere通过屏蔽对数据的脱敏处理，使用户无需感知解析SQL、数据加密、数据解密的处理过程，就像在使用普通数据一样使用脱敏数据。
+脱敏规则 在详解整套流程之前，我们需要先了解下脱敏规则与配置，这是认识整套流程的基础。脱敏配置主要分为四部分：数据源配置，加密器配置，脱敏表配置以及查询属性配置，其详情如下图所示：
+数据源配置：是指DataSource的配置。
+加密器配置：是指使用什么加密策略进行加解密。目前ShardingSphere内置了两种加解密策略：AES/MD5。用户还可以通过实现ShardingSphere提供的接口，自行实现一套加解密算法。
+脱敏表配置：用于告诉ShardingSphere数据表里哪个列用于存储密文数据（cipherColumn）、哪个列用于存储明文数据（plainColumn）以及用户想使用哪个列进行SQL编写（logicColumn）。
+ 如何理解用户想使用哪个列进行SQL编写（logicColumn）？
+我们可以从Encrypt-JDBC存在的意义来理解。Encrypt-JDBC最终目的是希望屏蔽底层对数据的脱敏处理，也就是说我们不希望用户知道数据是如何被加解密的、如何将明文数据存储到plainColumn，将密文数据存储到cipherColumn。换句话说，我们不希望用户知道plainColumn和cipherColumn的存在和使用。所以，我们需要给用户提供一个概念意义上的列，这个列可以脱离底层数据库的真实列，它可以是数据库表里的一个真实列，也可以不是，从而使得用户可以随意改变底层数据库的plainColumn和cipherColumn的列名。或者删除plainColumn，选择永远不再存储明文，只存储密文。只要用户的SQL面向这个逻辑列进行编写，并在脱敏规则里给出logicColumn和plainColumn、cipherColumn之间正确的映射关系即可。
+为什么要这么做呢？答案在文章后面，即为了让已上线的业务能无缝、透明、安全地进行数据脱敏迁移。
+ 查询属性的配置：当底层数据库表里同时存储了明文数据、密文数据后，该属性开关用于决定是直接查询数据库表里的明文数据进行返回，还是查询密文数据通过Encrypt-JDBC解密后返回。
+脱敏处理过程 举例说明，假如数据库里有一张表叫做t_user，这张表里实际有两个字段pwd_plain，用于存放明文数据、pwd_cipher，用于存放密文数据，同时定义logicColumn为pwd。那么，用户在编写SQL时应该面向logicColumn进行编写，即INSERT INTO t_user SET pwd = &amp;lsquo;123&amp;rsquo;。ShardingSphere接收到该SQL，通过用户提供的脱敏配置，发现pwd是logicColumn，于是便对逻辑列及其对应的明文数据进行脱敏处理。可以看出**ShardingSphere将面向用户的逻辑列与面向底层数据库的明文列和密文列进行了列名以及数据的脱敏映射转换。**如下图所示：
+**这也正是Encrypt-JDBC核心意义所在，即依据用户提供的脱敏规则，将用户SQL与底层数据表结构割裂开来，使得用户的SQL编写不再依赖于真实的数据库表结构。而用户与底层数据库之间的衔接、映射、转换交由ShardingSphere进行处理。**为什么我们要这么做？还是那句话：为了让已上线的业务能无缝、透明、安全地进行数据脱敏迁移。
+为了让读者更清晰了解到Encrypt-JDBC的核心处理流程，下方图片展示了使用Encrypt-JDBC进行增删改查时，其中的处理流程和转换逻辑，如下图所示。
+解决方案详解 在了解了ShardingSphere脱敏处理流程后，即可将脱敏配置、脱敏处理流程与实际场景进行结合。所有的设计开发都是为了解决业务场景遇到的痛点。那么面对之前提到的业务场景需求，又应该如何使用ShardingSphere这把利器来满足业务需求呢？
+新上线业务 业务场景分析：新上线业务由于一切从零开始，不存在历史数据清洗问题，所以相对简单。
+解决方案说明：选择合适的加密器，如AES后，只需配置逻辑列（面向用户编写SQL）和密文列（数据表存密文数据）即可，逻辑列和密文列可以相同也可以不同。建议配置如下（Yaml格式展示）：
+encryptRule: encryptors: aes_encryptor: type: aes props: aes.key.value: 123456abc tables: t_user: columns: pwd: cipherColumn: pwd encryptor: aes_encryptor 使用这套配置，Encrypt-JDBC只需将logicColumn和cipherColumn进行转换，底层数据表不存储明文，只存储了密文，这也是安全审计部分的要求所在。如果用户希望将明文、密文一同存储到数据库，只需添加plainColumn配置即可。整体处理流程如下图所示：
+已上线业务改造 业务场景分析：由于业务已经在线上运行，数据库里必然存有大量明文历史数据。现在的问题是如何让历史数据得以加密清洗、如何让增量数据得以加密处理、如何让业务在新旧两套数据系统之间进行无缝、透明化迁移。
+解决方案说明：在提供解决方案之前，我们先来头脑风暴一下：首先，既然是旧业务需要进行脱敏改造，那一定存储了非常重要且敏感的信息。这些信息含金量高且业务相对基础重要。如果搞错了，整个团队KPI就再见了。所以不可能一上来就停业务，禁止新数据写入，再找个加密器把历史数据全部加密清洗，再把之前重构的代码部署上线，使其能把存量和增量数据进行在线加密解密。如此简单粗暴的方式，按照历史经验来谈，一定凉凉。
+那么另一种相对安全的做法是：重新搭建一套和生产环境一模一样的预发环境，然后通过相关迁移洗数工具把生产环境的存量原文数据加密后存储到预发环境，而新增数据则通过例如MySQL主从复制及业务方自行开发的工具加密后存储到预发环境的数据库里，再把重构后可以进行加解密的代码部署到预发环境。这样生产环境是一套以明文为核心的查询修改的环境；预发环境是一套以密文为核心加解密查询修改的环境。在对比一段时间无误后，可以夜间操作将生产流量切到预发环境中。此方案相对安全可靠，只是时间、人力、资金、成本较高，主要包括：预发环境搭建、生产代码整改、相关辅助工具开发等。除非无路可走，否则业务开发人员一般是从入门到放弃。
+业务开发人员最希望的做法是：减少资金费用的承担、最好不要修改业务代码、能够安全平滑迁移系统。于是，ShardingSphere的脱敏功能模块便应用而生。可分为三步进行：
+  系统迁移前
+假设系统需要对t_user的pwd字段进行脱敏处理，业务方使用Encrypt-JDBC来代替标准化的JDBC接口，此举基本不需要额外改造（我们还提供了SpringBoot，SpringNameSpace，Yaml等接入方式，满足不同业务方需求）。另外，提供一套脱敏配置规则，如下所示：
+encryptRule: encryptors: aes_encryptor: type: aes props: aes.key.value: 123456abc tables: t_user: columns: pwd: plainColumn: pwd cipherColumn: pwd_cipher encryptor: aes_encryptor props: query.</description>
+    </item>
+    
+    <item>
+      <title>核心概念</title>
       <link>https://shardingsphere.apache.org/document/current/cn/features/read-write-split/concept/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
@@ -132,10 +164,10 @@ SCTL (ShardingSphere-Proxy control language) SCTL为ShardingSphere-Proxy特有�
     
     <item>
       <title>核心概念</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/shardingsphere-scaling/concept/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/scaling/concept/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/shardingsphere-scaling/concept/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/scaling/concept/</guid>
       <description>弹性伸缩作业 指一次将数据由旧分片规则伸缩至新分片规则的完整流程。
 数据节点 同数据分片中的数据节点
 存量数据 在弹性伸缩作业开始前，数据分片中已有的数据。
@@ -213,10 +245,10 @@ SQL解析引擎 SQL解析作为分库分表类产品的核心，其性能和兼�
     
     <item>
       <title>配置中心</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/config-center/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/governance/config-center/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/config-center/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/config-center/</guid>
       <description>实现动机   配置集中化：越来越多的运行时实例，使得散落的配置难于管理，配置不同步导致的问题十分严重。将配置集中于配置中心，可以更加有效进行管理。
   配置动态化：配置修改后的分发，是配置中心可以提供的另一个重要能力。它可支持数据源、表与分片及读写分离策略的动态切换。
   配置中心数据结构 配置中心在定义的命名空间的config下，以YAML格式存储，包括数据源，数据分片，读写分离、Properties配置，可通过修改节点来实现对于配置的动态管理。
@@ -375,19 +407,19 @@ SELECT * FROM t_order WHERE id &amp;gt; 100000 LIMIT 10 分页子查询 Oracle�
     
     <item>
       <title>核心功能</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/shardingsphere-scaling/core-features/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/scaling/core-features/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/shardingsphere-scaling/core-features/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/scaling/core-features/</guid>
       <description>首次使用ShardingSphere时，将已有数据迁移至ShardingSphere； 已使用ShardingSphere，进行数据节点的扩容或缩容； 已使用ShardingSphere，进行分片策略的修改；  注意： 目前仅支持扩/缩容带主键的表</description>
     </item>
     
     <item>
       <title>注册中心</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/registry-center/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/governance/registry-center/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/registry-center/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/registry-center/</guid>
       <description>实现动机   相对于配置中心管理配置数据，注册中心存放运行时的动态/临时状态数据，比如可用的proxy的实例，需要禁用或熔断的datasource实例。
   通过注册中心，可以提供熔断数据库访问程序对数据库的访问和禁用从库的访问的编排治理能力。治理仍然有大量未完成的功能（比如流控等）。
   注册中心数据结构 注册中心在定义的命名空间的state下，创建数据库访问对象运行节点，用于区分不同数据库访问实例。包括instances和datasources节点。
@@ -507,7 +539,7 @@ Seata管理的分布式事务的典型生命周期：
       <description>1. 规则配置 编辑%SHARDINGSPHERE_SCALING_HOME%\conf\server.yaml。详情请参见使用手册。
 2. 引入依赖 如果后端连接 PostgreSQL 数据库，不需要引入额外依赖。
 如果后端连接 MySQL 数据库，需要下载 MySQL Connector/J， 解压缩后，将 mysql-connector-java-5.1.47.jar 拷贝到 %SHARDINGSPHERE_SCALING_HOME%\lib 目录。
-3. 启动服务 sh %SHARDINGSPHERE_SCALING_HOME%\bin\start.sh 4. 创建迁移任务 通过相应的HTTP接口管理迁移任务。
+3. 启动服务 sh %SHARDINGSPHERE_SCALING_HOME%\bin\start.sh 4. 创建迁移任务 通过相应的 HTTP 接口管理迁移任务。
 创建迁移任务：
 curl -X POST \  http://localhost:8888/shardingscaling/job/start \  -H &amp;#39;content-type: application/json&amp;#39; \  -d &amp;#39;{ &amp;#34;ruleConfiguration&amp;#34;: { &amp;#34;sourceDatasource&amp;#34;: &amp;#34;ds_0: !!org.apache.shardingsphere.orchestration.core.configuration.YamlDataSourceConfiguration\n dataSourceClassName: com.zaxxer.hikari.HikariDataSource\n properties:\n jdbcUrl: jdbc:mysql://127.0.0.1:3306/test?serverTimezone=UTC&amp;amp;useSSL=false\n username: root\n password: &amp;#39;\&amp;#39;&amp;#39;123456&amp;#39;\&amp;#39;&amp;#39;\n connectionTimeout: 30000\n idleTimeout: 60000\n maxLifetime: 1800000\n maxPoolSize: 50\n minPoolSize: 1\n maintenanceIntervalMilliseconds: 30000\n readOnly: false\n&amp;#34;, &amp;#34;sourceRule&amp;#34;: &amp;#34;defaultDatabaseStrategy:\n inline:\n algorithmExpression: ds_${user_id % 2}\n shardingColumn: user_id\ntables:\n t1:\n actualDataNodes: ds_0.</description>
     </item>
@@ -545,10 +577,10 @@ SQL数据 在集成测试的部分提到过sql-case-id，其对应的SQL，可�
     
     <item>
       <title>元数据中心</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/metadata-center/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/governance/metadata-center/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/metadata-center/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/metadata-center/</guid>
       <description>实现动机   元数据是ShardingSphere-JDBC/ShardingSphere-Proxy所使用的数据源的表、列和索引等核心数据，元数据保障ShardingSphere各个组件能够正确运行。
   元数据中心对元数据进行统一组织和管理，实现元数据的统一加载、变更通知和数据同步。
   元数据中心数据结构 元数据中心在定义的命名空间和治理节点的metadata节点下，以YAML格式存储，每个逻辑数据源独立存储。
@@ -559,10 +591,10 @@ configuredSchemaMetaData: tables: # 表 t_order: # 表名 columns: # 列 id: # �
     
     <item>
       <title>实现原理</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/shardingsphere-scaling/principle/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/scaling/principle/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/shardingsphere-scaling/principle/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/scaling/principle/</guid>
       <description>实现原理 考虑到ShardingSphere的弹性伸缩模块的几个挑战，目前的弹性伸缩解决方案为：临时地使用两个数据库集群，伸缩完成后切换的方式实现。
 这种实现方式有以下优点：
  伸缩过程中，原始数据没有任何影响。 伸缩失败无风险。 不受分片策略限制。  同时也存在一定的缺点：
@@ -742,10 +774,10 @@ ShardingSphere为了避免死锁的出现，在获取数据库连接时进行了
     
     <item>
       <title>支持的配置/注册/元数据中心</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/supported-center-repo/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/governance/supported-center-repo/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/supported-center-repo/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/supported-center-repo/</guid>
       <description>SPI Service Provider Interface (SPI)是一种为了被第三方实现或扩展的API。它可以用于实现框架扩展或组件替换。
 ShardingSphere在数据库治理模块使用SPI方式载入数据到配置中心/注册/元数据中心，进行实例熔断和数据库禁用。 目前，ShardingSphere内部支持Zookeeper和etcd这种常用的配置中心/注册中心。 此外，您可以使用其他第三方配置中心/注册/元数据中心，并通过SPI的方式注入到ShardingSphere，从而使用该配置中心/注册/元数据中心，实现数据库治理功能。
 Zookeeper ShardingSphere官方使用Apache Curator作为Zookeeper的实现方案（支持配置中心、注册中心和元数据中心）。 请使用Zookeeper 3.4.6及其以上版本，详情请参见官方网站。
@@ -777,10 +809,10 @@ orchestration: orchestration_ds: orchestrationType: registry_center,config_cente
     
     <item>
       <title>应用性能监控集成</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/apm-integration/</link>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/governance/apm-integration/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/apm-integration/</guid>
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/apm-integration/</guid>
       <description>背景 APM是应用性能监控的缩写。目前APM的主要功能着眼于分布式系统的性能诊断，其主要功能包括调用链展示，应用拓扑分析等。
 ShardingSphere并不负责如何采集、存储以及展示应用性能监控的相关数据，而是将SQL解析与SQL执行这两块数据分片的最核心的相关信息发送至应用性能监控系统，并交由其处理。 换句话说，ShardingSphere仅负责产生具有价值的数据，并通过标准协议递交至相关系统。ShardingSphere可以通过两种方式对接应用性能监控系统。
 第一种方式是使用OpenTracing API发送性能追踪数据。面向OpenTracing协议的APM产品都可以和ShardingSphere自动对接，比如SkyWalking，Zipkin和Jaeger。使用这种方式只需要在启动时配置OpenTracing协议的实现者即可。 它的优点是可以兼容所有的与OpenTracing协议兼容的产品作为APM的展现系统，如果采用公司愿意实现自己的APM系统，也只需要实现OpenTracing协议，即可自动展示ShardingSphere的链路追踪信息。 缺点是OpenTracing协议发展并不稳定，较新的版本实现者较少，且协议本身过于中立，对于个性化的相关产品的实现不如原生支持强大。
@@ -844,41 +876,6 @@ SELECT name, SUM(score) FROM t_score GROUP BY name ORDER BY score DESC; 那么�
 测试环境搭建 数据库表结构 此处表结构参考sysbench的sbtest表
 CREATE TABLE `tbl` ( `id` bigint(20) NOT NULL AUTO_INCREMENT, `k` int(11) NOT NULL DEFAULT 0, `c` char(120) NOT NULL DEFAULT &amp;#39;&amp;#39;, `pad` char(60) NOT NULL DEFAULT &amp;#39;&amp;#39;, PRIMARY KEY (`id`) ); 测试场景配置 ShardingSphere-JDBC使用与ShardingSphere-Proxy一致的配置，MySQL直连一个库用作性能对比，下面为四个场景的具体配置：
 单路由配置 schemaName: sharding_db dataSources: ds_0: url: jdbc:mysql://***.***.***.***:****/ds?serverTimezone=UTC&amp;amp;useSSL=false username: test password: connectionTimeoutMilliseconds: 30000 idleTimeoutMilliseconds: 60000 maxLifetimeMilliseconds: 1800000 maxPoolSize: 200 ds_1: url: jdbc:mysql://***.</description>
-    </item>
-    
-    <item>
-      <title>数据脱敏</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/orchestration/encrypt/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/orchestration/encrypt/</guid>
-      <description>背景 安全控制一直是治理的重要环节，数据脱敏属于安全控制的范畴。对互联网公司、传统行业来说，数据安全一直是极为重视和敏感的话题。数据脱敏是指对某些敏感信息通过脱敏规则进行数据的变形，实现敏感隐私数据的可靠保护。涉及客户安全数据或者一些商业性敏感数据，如身份证号、手机号、卡号、客户号等个人信息按照相关部门规定，都需要进行数据脱敏。
-在真实业务场景中，相关业务开发团队则往往需要针对公司安全部门需求，自行实行并维护一套加解密系统，而当脱敏场景发生改变时，自行维护的脱敏系统往往又面临着重构或修改风险。此外，对于已经上线的业务，如何在不修改业务逻辑、业务SQL的情况下，透明化、安全低风险地实现无缝进行脱敏改造呢？
-Apache ShardingSphere根据业界对脱敏的需求及业务改造痛点，提供了一套完整、安全、透明化、低改造成本的数据脱敏整合解决方案。
-前序 数据脱敏模块属于ShardingSphere分布式治理这一核心功能下的子功能模块。它通过对用户输入的SQL进行解析，并依据用户提供的脱敏配置对SQL进行改写，从而实现对原文数据进行加密，并将原文数据(可选)及密文数据同时存储到底层数据库。在用户查询数据时，它又从数据库中取出密文数据，并对其解密，最终将解密后的原始数据返回给用户。Apache ShardingSphere分布式数据库中间件自动化&amp;amp;透明化了数据脱敏过程，让用户无需关注数据脱敏的实现细节，像使用普通数据那样使用脱敏数据。此外，无论是已在线业务进行脱敏改造，还是新上线业务使用脱敏功能，ShardingSphere都可以提供一套相对完善的解决方案。
-需求场景分析 对于数据脱敏的需求，在现实的业务场景中一般分为两种情况：
-  新业务上线，安全部门规定需将涉及用户敏感信息，例如银行、手机号码等进行加密后存储到数据库，在使用的时候再进行解密处理。因为是全新系统，因而没有存量数据清洗问题，所以实现相对简单。
-  已上线业务，之前一直将明文存储在数据库中。相关部门突然需要对已上线业务进行脱敏整改。这种场景一般需要处理三个问题：
-a) 历史数据需要如何进行脱敏处理，即洗数。
-b) 如何能在不改动业务SQL和逻辑情况下，将新增数据进行脱敏处理，并存储到数据库；在使用时，再进行解密取出。
-c) 如何较为安全、无缝、透明化地实现业务系统在明文与密文数据间的迁移。
-  处理流程详解 整体架构 ShardingSphere提供的Encrypt-JDBC和业务代码部署在一起。业务方需面向Encrypt-JDBC进行JDBC编程。由于Encrypt-JDBC实现所有JDBC标准接口，业务代码无需做额外改造即可兼容使用。此时，业务代码所有与数据库的交互行为交由Encrypt-JDBC负责。业务只需提供脱敏规则即可。作为业务代码与底层数据库中间的桥梁，Encrypt-JDBC便可拦截用户行为，并在改造行为后与数据库交互。
-Encrypt-JDBC将用户发起的SQL进行拦截，并通过SQL语法解析器进行解析、理解SQL行为，再依据用户传入的脱敏规则，找出需要脱敏的字段和所使用的加解密器对目标字段进行加解密处理后，再与底层数据库进行交互。ShardingSphere会将用户请求的明文进行加密后存储到底层数据库；并在用户查询时，将密文从数据库中取出进行解密后返回给终端用户。ShardingSphere通过屏蔽对数据的脱敏处理，使用户无需感知解析SQL、数据加密、数据解密的处理过程，就像在使用普通数据一样使用脱敏数据。
-脱敏规则 在详解整套流程之前，我们需要先了解下脱敏规则与配置，这是认识整套流程的基础。脱敏配置主要分为四部分：数据源配置，加密器配置，脱敏表配置以及查询属性配置，其详情如下图所示：
-数据源配置：是指DataSource的配置。
-加密器配置：是指使用什么加密策略进行加解密。目前ShardingSphere内置了两种加解密策略：AES/MD5。用户还可以通过实现ShardingSphere提供的接口，自行实现一套加解密算法。
-脱敏表配置：用于告诉ShardingSphere数据表里哪个列用于存储密文数据（cipherColumn）、哪个列用于存储明文数据（plainColumn）以及用户想使用哪个列进行SQL编写（logicColumn）。
- 如何理解用户想使用哪个列进行SQL编写（logicColumn）？
-我们可以从Encrypt-JDBC存在的意义来理解。Encrypt-JDBC最终目的是希望屏蔽底层对数据的脱敏处理，也就是说我们不希望用户知道数据是如何被加解密的、如何将明文数据存储到plainColumn，将密文数据存储到cipherColumn。换句话说，我们不希望用户知道plainColumn和cipherColumn的存在和使用。所以，我们需要给用户提供一个概念意义上的列，这个列可以脱离底层数据库的真实列，它可以是数据库表里的一个真实列，也可以不是，从而使得用户可以随意改变底层数据库的plainColumn和cipherColumn的列名。或者删除plainColumn，选择永远不再存储明文，只存储密文。只要用户的SQL面向这个逻辑列进行编写，并在脱敏规则里给出logicColumn和plainColumn、cipherColumn之间正确的映射关系即可。
-为什么要这么做呢？答案在文章后面，即为了让已上线的业务能无缝、透明、安全地进行数据脱敏迁移。
- 查询属性的配置：当底层数据库表里同时存储了明文数据、密文数据后，该属性开关用于决定是直接查询数据库表里的明文数据进行返回，还是查询密文数据通过Encrypt-JDBC解密后返回。
-脱敏处理过程 举例说明，假如数据库里有一张表叫做t_user，这张表里实际有两个字段pwd_plain，用于存放明文数据、pwd_cipher，用于存放密文数据，同时定义logicColumn为pwd。那么，用户在编写SQL时应该面向logicColumn进行编写，即INSERT INTO t_user SET pwd = &amp;lsquo;123&amp;rsquo;。ShardingSphere接收到该SQL，通过用户提供的脱敏配置，发现pwd是logicColumn，于是便对逻辑列及其对应的明文数据进行脱敏处理。可以看出**ShardingSphere将面向用户的逻辑列与面向底层数据库的明文列和密文列进行了列名以及数据的脱敏映射转换。**如下图所示：
-**这也正是Encrypt-JDBC核心意义所在，即依据用户提供的脱敏规则，将用户SQL与底层数据表结构割裂开来，使得用户的SQL编写不再依赖于真实的数据库表结构。而用户与底层数据库之间的衔接、映射、转换交由ShardingSphere进行处理。**为什么我们要这么做？还是那句话：为了让已上线的业务能无缝、透明、安全地进行数据脱敏迁移。
-为了让读者更清晰了解到Encrypt-JDBC的核心处理流程，下方图片展示了使用Encrypt-JDBC进行增删改查时，其中的处理流程和转换逻辑，如下图所示。
-解决方案详解 在了解了ShardingSphere脱敏处理流程后，即可将脱敏配置、脱敏处理流程与实际场景进行结合。所有的设计开发都是为了解决业务场景遇到的痛点。那么面对之前提到的业务场景需求，又应该如何使用ShardingSphere这把利器来满足业务需求呢？
-新上线业务 业务场景分析：新上线业务由于一切从零开始，不存在历史数据清洗问题，所以相对简单。
-解决方案说明：选择合适的加密器，如AES后，只需配置逻辑列（面向用户编写SQL）和密文列（数据表存密文数据）即可，逻辑列和密文列可以相同也可以不同。建议配置如下（Yaml格式展示）：
-encryptRule: encryptors: aes_encryptor: type: aes props: aes.key.value: 123456abc tables: t_user: columns: pwd: cipherColumn: pwd encryptor: aes_encryptor 使用这套配置，Encrypt-JDBC只需将logicColumn和cipherColumn进行转换，底层数据表不存储明文，只存储了密文，这也是安全审计部分的要求所在。如果用户希望将明文、密文一同存储到数据库，只需添加plainColumn配置即可。整体处理流程如下图所示：</description>
     </item>
     
     <item>

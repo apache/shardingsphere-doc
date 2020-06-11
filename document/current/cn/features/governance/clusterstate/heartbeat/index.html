@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2020-06-10 20:24:18">
+    <meta name="buildDate" content="2020-06-11 13:24:34">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>心跳检测 :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1591791858" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1591791858" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1591791858" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1591791858" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1591791858" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1591791858" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1591791858" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1591791858" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1591853074" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1591853074" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1591853074" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1591853074" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1591853074" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1591853074" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1591853074" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1591853074" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1591791858" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1591853074" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1591791858"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1591853074"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -3668,17 +3668,57 @@
 <nav id="TableOfContents">
   <ul>
     <li><a href="#背景">背景</a></li>
-    <li><a href="#挑战">挑战</a></li>
-    <li><a href="#目标">目标</a></li>
+    <li><a href="#方案">方案</a></li>
+    <li><a href="#数据结构">数据结构</a></li>
+    <li><a href="#使用">使用</a>
+      <ul>
+        <li><a href="#sharding-proxy">Sharding-Proxy</a></li>
+      </ul>
+    </li>
   </ul>
 </nav>
 
 <h2 id="背景">背景</h2>
-<p>TODO</p>
-<h2 id="挑战">挑战</h2>
-<p>TODO</p>
-<h2 id="目标">目标</h2>
-<p>TODO</p>
+<p>ShardingSphere治理模块旨在提供更高效，更自动化的集群管理功能，实现此功能依赖于集群中各个节点的状态信息，而各个节点之间的实时连接状态也是实现自动化集群管理必不可少的。</p>
+<p>心跳检测功能负责采集应用程序和数据库之间的实时连接状态，为后续自动化治理和调度提供支持。</p>
+<h2 id="方案">方案</h2>
+<p><img src="https://shardingsphere.apache.org/document/current/img/control-panel/cluster/heartbeat.png" alt="设计方案"></p>
+<ul>
+<li>应用程序启动时根据配置初始化心跳检测模块</li>
+<li>心跳检测模块启动心跳检测任务，定时获取与实例管理的数据库连接并执行心跳检测<code>SQL</code></li>
+<li>处理心跳检测结果并保存至注册中心</li>
+</ul>
+<h2 id="数据结构">数据结构</h2>
+<p>心跳检测结果保存在注册中心<code>instances</code>节点应用实例下:</p>
+<pre><code>state: ONLINE # 应用实例状态
+sharding_db.ds_0: # 逻辑数据库名称.数据源名称
+	state: ONLINE # 数据源状态
+	lastConnect: #最后连接时间戳
+sharding_db.ds_1:
+	state: DISABLED
+	lastConnect:	
+master_slave_db.master_ds:
+	state: ONLINE
+	lastConnect:	
+master_slave_db.slave_ds_0:
+	state: ONLINE
+	lastConnect:	
+master_slave_db.slave_ds_1:
+	state: ONLINE
+	lastConnect:	
+</code></pre><h2 id="使用">使用</h2>
+<h3 id="sharding-proxy">Sharding-Proxy</h3>
+<p>在ShardingSphere-Proxy 的server.yaml文件中新增以下配置：</p>
+<pre><code>cluster:
+  heartbeat:
+    sql: select 1  # 心跳检测SQL
+    threadCount: 1 # 心跳检测线程池大小
+    interval: 60   # 心跳检测任务间隔(s)
+    retryEnable: false # 是否开启重试，开启后如果检测失败则进行重试直到达到最大重试次数
+    retryMaximum: 3  # 最大重试次数，开启重试时生效
+    retryInterval: 3 # 重试间隔(s)，开启重试时生效
+proxy.cluster.enabled: false # 设置true开始心跳检测，false关闭心跳检测
+</code></pre><p>由于心跳检测结果需存储在注册中心，所以使用心跳检测功能需同时开启ShardingSphere<a href="https://shardingsphere.apache.org/document/current/cn/features/governance/management/">分布式治理</a>功能。</p>
 
 
 <footer class=" footline" >
@@ -5765,17 +5805,17 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1591791858"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1591853074"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1591791858"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1591791858"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1591853074"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1591853074"></script>
 
     
 

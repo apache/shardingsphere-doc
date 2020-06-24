@@ -174,16 +174,16 @@ ElasticJob自2014年底开源以来，经历了5年多的发展，以其功能�
 代码很容易理解，使用PreparedStatement执行两次查询操作，每次都把参数user_id设置为10。分析抓到的包，JDBC和MySQL之间的协议消息交互如下：
 JDBC向MySQL进行了两次查询（Query），MySQL返回给JDBC两次结果（Response），第一条消息不是我们期望的PreparedStatement，SELECT里面也没有问号，这就说明prepare没有生效，至少对MySQL服务来说没有生效。
 对于这个问题，我想大家心里都有数，是因为JDBC的url没有设置参数useServerPrepStmts=true，这个参数的作用是让MySQL服务进行prepare。没有这个参数就是让JDBC进行prepare，MySQL完全感知不到，是没有什么意义的。接下来我们在url中加上这个参数：
-jdbc:mysql://127.0.0.1:3306/demo_ds?useServerPrepStmts=true交互过程变成了这样：
+jdbc:mysql://127.0.0.1:3306/demo_ds?useServerPrepStmts=true 交互过程变成了这样：
 初看这是一个正确的流程，第1条消息是PreparedStatement，SELECT里也带问号了，通知MySQL对SQL进行预编译；第2条消息MySQL告诉JDBC准备成功；第3条消息JDBC把参数设置为10；第4条消息MySQL返回查询结果。然而到了第5条，JDBC怎么又发了一遍PreparedStatement？
 预期应该是以后的每条查询都只是通过ExecuteStatement传参数的值，这样才能达到一次预编译多次运行的效果。
 如果每次都“预编译”，那就相当于没有预编译，而且相对于普通查询，还多了两次消息传递的开销：Response（prepareok）和ExecuteStatement（parameter=10）。看来性能的问题就是出在这里了。
 像这样使用PreparedStatement还不如不用，一定是哪里搞错了，于是我开始阅读JDBC源代码，终于发现了另一个需要设置的参数——cachePrepStmts。我们加上这个参数看看会不会发生奇迹：
-jdbc:mysql://127.0.0.1:3306/demo_ds?useServerPrepStmts=true&amp;amp;cachePrepStmts=true果然得到了我们预期的消息流程，而且经过测试，速度也比普通查询快了：
+jdbc:mysql://127.0.0.1:3306/demo_ds? useServerPrepStmts=true&amp;amp;cachePrepStmts=true 果然得到了我们预期的消息流程，而且经过测试，速度也比普通查询快了：
 从第5条消息开始，每次查询只传参数值就可以了，终于达到了一次编译多次运行的效果，MySQL的效率得到了提高。而且由于ExecuteStatement只传了参数的值，消息长度上比完整的SQL短了很多，网络IO的效率也得到了提升。
 原来cachePrepStmts=true这个参数的意思是告诉JDBC缓存需要prepare的SQL，比如“SELECT*FROMt_orderWHEREuser_id=?”，运行过一次后，下次再运行就跳过PreparedStatement，直接用ExecuteStatement设置参数值。
 明白原理后，就知道该怎么优化Proxy了。Proxy采用的是Hikari数据库连接池，在初始化的时候为其设置上面的两个参数：
-config.addDataSourceProperty(&amp;quot;useServerPrepStmts&amp;quot;,&amp;quot;true&amp;quot;);config.addDataSourceProperty(&amp;quot;cachePrepStmts&amp;quot;,&amp;quot;true&amp;quot;);这样就保证了Proxy和MySQL服务之间的性能。那么Proxy和Client之间的性能如何保证呢？
+config.addDataSourceProperty(&amp;quot;useServerPrepStmts&amp;quot;,&amp;quot;true&amp;quot;); config.addDataSourceProperty(&amp;quot;cachePrepStmts&amp;quot;,&amp;quot;true&amp;quot;); 这样就保证了Proxy和MySQL服务之间的性能。那么Proxy和Client之间的性能如何保证呢？
 Proxy在收到Client的PreparedStatement的时候，并不会把这条消息转发给MySQL，因为SQL里的分片键是问号，Proxy不知道该路由到哪个真实数据库。Proxy收到这条消息后只是缓存了SQL，存储在一个StatementId到SQL的Map里面，等收到ExecuteStatement的时候才真正请求数据库。
 这个逻辑在优化前是没问题的，因为每一次查询都是一个新的PreparedStatement流程，ExecuteStatement会把参数类型和参数值告诉客户端。
 加上两个参数后，消息内容发生了变化，ExecuteStatement在发送第二次的时候，消息体里只有参数值而没有参数类型，Proxy不知道类型就不能正确的取出值。所以Proxy需要做的优化就是在PreparedStatement开始的时候缓存参数类型。

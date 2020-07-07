@@ -110,8 +110,8 @@
               </a>
             </li>
           
-            <li class="dd-item " data-nav-id="/00-overview/company/">
-              <a href="https://shardingsphere.apache.org/elasticjob/lite/00-overview/company/">
+            <li class="dd-item " data-nav-id="/00-overview/powered-by/">
+              <a href="https://shardingsphere.apache.org/elasticjob/lite/00-overview/powered-by/">
                 <span>采用公司     </i></span>
               </a>
             </li>
@@ -413,21 +413,24 @@
 
 <pre><code class="language-xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;
 &lt;beans xmlns=&quot;http://www.springframework.org/schema/beans&quot;
-    xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
-    xmlns:reg=&quot;http://www.dangdang.com/schema/ddframe/reg&quot;
-    xmlns:job=&quot;http://www.dangdang.com/schema/ddframe/job&quot;
-    xsi:schemaLocation=&quot;http://www.springframework.org/schema/beans 
-                        http://www.springframework.org/schema/beans/spring-beans.xsd 
-                        http://www.dangdang.com/schema/ddframe/reg 
-                        http://www.dangdang.com/schema/ddframe/reg/reg.xsd 
-                        http://www.dangdang.com/schema/ddframe/job 
-                        http://www.dangdang.com/schema/ddframe/job/job.xsd 
-                        &quot;&gt;
+       xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+       xmlns:elasticjob=&quot;http://elasticjob.shardingsphere.apache.org/schema/elasticjob&quot;
+       xsi:schemaLocation=&quot;http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://elasticjob.shardingsphere.apache.org/schema/elasticjob
+                           http://elasticjob.shardingsphere.apache.org/schema/elasticjob/elasticjob.xsd
+                         &quot;&gt;
     &lt;!--配置作业注册中心 --&gt;
-    &lt;reg:zookeeper id=&quot;regCenter&quot; server-lists=&quot;yourhost:2181&quot; namespace=&quot;dd-job&quot; base-sleep-time-milliseconds=&quot;1000&quot; max-sleep-time-milliseconds=&quot;3000&quot; max-retries=&quot;3&quot; /&gt;
+    &lt;elasticjob:zookeeper id=&quot;regCenter&quot; server-lists=&quot;yourhost:2181&quot; namespace=&quot;dd-job&quot; base-sleep-time-milliseconds=&quot;1000&quot; max-sleep-time-milliseconds=&quot;3000&quot; max-retries=&quot;3&quot; /&gt;
     
+    &lt;!--配置任务监控 --&gt;
+    &lt;elasticjob:monitor id=&quot;monitor1&quot; registry-center-ref=&quot;regCenter&quot; monitor-port=&quot;9999&quot;/&gt;    
+    
+    &lt;!--配置作业类 --&gt;
+    &lt;bean id=&quot;simpleJob&quot; class=&quot;xxx.MyElasticJob&quot; /&gt;    
+
     &lt;!-- 配置作业--&gt;
-    &lt;job:simple id=&quot;oneOffElasticJob&quot; monitor-port=&quot;9888&quot; class=&quot;xxx.MyElasticJob&quot; registry-center-ref=&quot;regCenter&quot; cron=&quot;0/10 * * * * ?&quot;   sharding-total-count=&quot;3&quot; sharding-item-parameters=&quot;0=A,1=B,2=C&quot; /&gt;
+    &lt;elasticjob:simple id=&quot;oneOffElasticJob&quot; job-ref=&quot;simpleJob&quot; registry-center-ref=&quot;regCenter&quot; cron=&quot;0/10 * * * * ?&quot;   sharding-total-count=&quot;3&quot; sharding-item-parameters=&quot;0=A,1=B,2=C&quot; /&gt;
 &lt;/beans&gt;
 </code></pre>
 
@@ -438,7 +441,8 @@
 <pre><code class="language-java">public class JobMain {
     public static void main(final String[] args) {
         // ...
-        jobConfig.setMonitorPort(9888);
+        MonitorService monitorService = new MonitorService(regCenter, 9888);
+        monitorService.listen();
         // ...
     }
 }
@@ -450,14 +454,14 @@
 
 <p>dump命令完全参照Zookeeper的四字命令理念</p>
 
-<pre><code class="language-bash">echo &quot;dump&quot; | nc &lt;任意一台作业服务器IP&gt; 9888
+<pre><code class="language-bash">echo &quot;dump@jobName&quot; | nc &lt;任意一台作业服务器IP&gt; 9888
 </code></pre>
 
 <p><img src="https://shardingsphere.apache.org/elasticjob/lite/img/dump/dump.jpg" alt="dump命令" /></p>
 
 <p>导出至文件</p>
 
-<pre><code class="language-bash">echo &quot;dump&quot; | nc &lt;任意一台作业服务器IP&gt; 9888 &gt; job_debug.txt
+<pre><code class="language-bash">echo &quot;dump@jobName&quot; | nc &lt;任意一台作业服务器IP&gt; 9888 &gt; job_debug.txt
 </code></pre>
 
 <h2 id="使用注意事项">使用注意事项</h2>

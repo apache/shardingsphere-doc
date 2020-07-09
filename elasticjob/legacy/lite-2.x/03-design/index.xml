@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>03-designs on </title>
+    <link>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/</link>
+    <description>Recent content in 03-designs on </description>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Mon, 12 Dec 2016 16:06:17 +0800</lastBuildDate>
+    
+	<atom:link href="https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>设计规划</title>
+      <link>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/</link>
+      <pubDate>Mon, 12 Dec 2016 16:06:17 +0800</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/</guid>
+      <description> 本章导航  想了解架构设计及项目模块设计的概念，请阅读实现原理及目录结构说明。 Elastic-Job未来规划有哪些呢？请阅读未来规划。  </description>
+    </item>
+    
+    <item>
+      <title>目录结构说明</title>
+      <link>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/module/</link>
+      <pubDate>Tue, 06 Dec 2016 22:38:50 +0800</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/module/</guid>
+      <description>elastic-job ├──elastic-job-lite lite父模块，不应直接使用 ├ ├──elastic-job-lite-core Java支持模块，可直接使用 ├ ├──elastic-job-lite-spring Spring命名空间支持模块，可直接使用 ├ ├──elastic-job-lite-lifecyle lite作业相关操作模块，不可直接使用 ├ ├──elastic-job-lite-console lite界面模块，可直接使用 ├──elastic-job-example 使用示例 ├ ├──elastic-job-example-embed-zk 供示例使用的内嵌ZK模块 ├ ├──elastic-job-example-jobs 作业示例 ├ ├──elastic-job-example-lite-java 基于Java的使用示例 ├ ├──elastic-job-example-lite-spring 基于Spring的使用示例 ├ ├──elastic-job-example-lite-springboot 基于SpringBoot的使用示例 ├──elastic-job-doc markdown生成文档的项目，使用方无需关注 ├ ├──elastic-job-lite-doc lite相关文档  </description>
+    </item>
+    
+    <item>
+      <title>实现原理</title>
+      <link>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/lite-design/</link>
+      <pubDate>Thu, 28 Jan 2016 16:14:21 +0800</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/lite-design/</guid>
+      <description>弹性分布式实现  第一台服务器上线触发主服务器选举。主服务器一旦下线，则重新触发选举，选举过程中阻塞，只有主服务器选举完成，才会执行其他任务。
+ 某作业服务器上线时会自动将服务器信息注册到注册中心，下线时会自动更新服务器状态。
+ 主节点选举，服务器上下线，分片总数变更均更新重新分片标记。
+ 定时任务触发时，如需重新分片，则通过主服务器分片，分片过程中阻塞，分片结束后才可执行任务。如分片过程中主服务器下线，则先选举主服务器，再分片。
+ 通过上一项说明可知，为了维持作业运行时的稳定性，运行过程中只会标记分片状态，不会重新分片。分片仅可能发生在下次任务触发前。
+ 每次分片都会按服务器IP排序，保证分片结果不会产生较大波动。
+ 实现失效转移功能，在某台服务器执行完毕后主动抓取未分配的分片，并且在某台服务器下线后主动寻找可用的服务器执行任务。
+  注册中心数据结构 注册中心在定义的命名空间下，创建作业名称节点，用于区分不同作业，所以作业一旦创建则不能修改作业名称，如果修改名称将视为新的作业。作业名称节点下又包含4个数据子节点，分别是config, instances, sharding, servers和leader。
+config节点 作业配置信息，以JSON格式存储
+instances节点 作业运行实例信息，子节点是当前作业运行实例的主键。作业运行实例主键由作业运行服务器的IP地址和PID构成。作业运行实例主键均为临时节点，当作业实例上线时注册，下线时自动清理。注册中心监控这些节点的变化来协调分布式作业的分片以及高可用。 可在作业运行实例节点写入TRIGGER表示该实例立即执行一次。
+sharding节点 作业分片信息，子节点是分片项序号，从零开始，至分片总数减一。分片项序号的子节点存储详细信息。每个分片项下的子节点用于控制和记录分片运行状态。节点详细信息说明：
+   子节点名 临时节点 描述     instance 否 执行该分片项的作业运行实例主键   running 是 分片项正在运行的状态
+仅配置monitorExecution时有效   failover 是 如果该分片项被失效转移分配给其他作业服务器，则此节点值记录执行此分片的作业服务器IP   misfire 否 是否开启错过任务重新执行   disabled 否 是否禁用此分片项    servers节点 作业服务器信息，子节点是作业服务器的IP地址。可在IP地址节点写入DISABLED表示该服务器禁用。 在新的cloud native架构下，servers节点大幅弱化，仅包含控制服务器是否可以禁用这一功能。为了更加纯粹的实现job核心，servers功能未来可能删除，控制服务器是否禁用的能力应该下放至自动化部署系统。</description>
+    </item>
+    
+    <item>
+      <title>未来线路规划</title>
+      <link>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/roadmap/</link>
+      <pubDate>Tue, 06 Dec 2016 22:38:50 +0800</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/legacy/lite-2.x/03-design/roadmap/</guid>
+      <description> Core Unified Job Config API Core Config Type Config Root Config  Job Types Simple Dataflow Script Http  Event Trace Event Publisher Database Event Listener Other Event Listener  Unified Schedule API Unified Resource API  Elastic-Job-Lite Distributed Features High Availability Elastic scale in/out Failover Misfire Idempotency Reconcile  Registry Center Zookeeper Other Registry Center Supported  Lifecycle Management Add/Remove Pause/Resume Disable/Enable Shutdown Restful API Web Console  Job Dependency Listener Workflow DAG  Spring Integrate Namespace Bean Injection   </description>
+    </item>
+    
+  </channel>
+</rss>

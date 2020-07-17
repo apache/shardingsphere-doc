@@ -64,7 +64,9 @@ ZookeeperConfiguration 属性详细说明    属性名 类型 构造器注入 �
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/lite-design/</guid>
-      <description>弹性分布式实现   第一台服务器上线触发主服务器选举。主服务器一旦下线，则重新触发选举，选举过程中阻塞，只有主服务器选举完成，才会执行其他任务。
+      <description>分布式调度 ElasticJob-Lite 并无作业调度中心节点，而是基于部署作业框架的程序在到达相应时间点时各自触发调度。
+注册中心仅用于作业注册和监控信息存储。而主作业节点仅用于处理分片和清理等功能。
+弹性分布式实现   第一台服务器上线触发主服务器选举。主服务器一旦下线，则重新触发选举，选举过程中阻塞，只有主服务器选举完成，才会执行其他任务。
   某作业服务器上线时会自动将服务器信息注册到注册中心，下线时会自动更新服务器状态。
   主节点选举，服务器上下线，分片总数变更均更新重新分片标记。
   定时任务触发时，如需重新分片，则通过主服务器分片，分片过程中阻塞，分片结束后才可执行任务。如分片过程中主服务器下线，则先选举主服务器，再分片。
@@ -95,20 +97,14 @@ public class MyElasticJob implements SimpleJob { @Override public void execute(S
     </item>
     
     <item>
-      <title>弹性调度</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/elastic/</link>
+      <title>调度模型</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/schedule-model/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/elastic/</guid>
-      <description>分片 任务的分布式执行，需要将一个任务拆分为多个独立的任务项，然后由分布式的服务器分别执行某一个或几个分片项。
-例如：有一个遍历数据库某张表的作业，现有 2 台服务器。为了快速的执行作业，那么每台服务器应执行作业的 50%。 为满足此需求，可将作业分成 2 片，每台服务器执行 1 片。作业遍历数据的逻辑应为：服务器 A 遍历 ID 以奇数结尾的数据；服务器 B 遍历 ID 以偶数结尾的数据。 如果分成 10 片，则作业遍历数据的逻辑应为：每片分到的分片项应为 ID % 10，而服务器A被分配到分片项 0,1,2,3,4；服务器B被分配到分片项 5,6,7,8,9，直接的结果就是服务器A遍历 ID 以 0-4 结尾的数据；服务器 B 遍历 ID 以 5-9 结尾的数据。
-分片项与业务处理解耦 ElasticJob 并不直接提供数据处理的功能，框架只会将分片项分配至各个运行中的作业服务器，开发者需要自行处理分片项与真实数据的对应关系。
-个性化参数 个性化参数即 shardingItemParameter，可以和分片项匹配对应关系，用于将分片项的数字转换为更加可读的业务代码。
-例如：按照地区水平拆分数据库，数据库A是北京的数据；数据库 B 是上海的数据；数据库 C 是广州的数据。 如果仅按照分片项配置，开发者需要了解 0 表示北京；1 表示上海；2 表示广州。 合理使用个性化参数可以让代码更可读，如果配置为 0=北京,1=上海,2=广州，那么代码中直接使用北京，上海，广州的枚举值即可完成分片项和业务逻辑的对应关系。
-分布式调度 ElasticJob-Lite 并无作业调度中心节点，而是基于部署作业框架的程序在到达相应时间点时各自触发调度。
-注册中心仅用于作业注册和监控信息存储。而主作业节点仅用于处理分片和清理等功能。
-高可用 ElasticJob-Lite 提供最安全的方式执行作业。将分片总数设置为 1，并使用多于 1 台的服务器执行作业，作业将会以 1 主 n 从的方式执行。
-一旦执行作业的服务器崩溃，等待执行的服务器将会在下次作业启动时替补执行。开启失效转移功能效果更好，可以保证在本次作业执行时崩溃，备机立即启动替补执行。</description>
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/schedule-model/</guid>
+      <description>与大部分的作业平台不同，ElasticJob 的调度模型划分为支持线程级别调度的进程内调度 ElasticJob Lite，和进程级别调度的 ElasticJob Cloud。
+进程内调度 ElasticJob Lite 是面向进程内的线程级调度框架。通过它，作业能够透明化的与业务应用系统相结合。 它能够方便的与 Spring 、Dubbo 等 Java 框架配合使用，在作业中可自由使用 Spring 注入的 Bean，如数据源连接池、Dubbo 远程服务等，更加方便的贴合业务开发。
+进程级调度 ElasticJob Cloud 拥有进程内调度和进程级别调度两种方式。 由于 ElasticJob Cloud 能够对作业服务器的资源进行控制，因此其作业类型可划分为常驻任务和瞬时任务。 常驻任务类似于 ElasticJob Lite，是进程内调度；瞬时任务则完全不同，它充分的利用了资源分配的削峰填谷能力，是进程级的调度，每次任务的会启动全新的进程处理。</description>
     </item>
     
     <item>
@@ -209,6 +205,26 @@ org.apache.shardingsphere.elasticjob.lite.handler.sharding.impl.RotateServerByNa
     </item>
     
     <item>
+      <title>弹性调度</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/elastic/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/elastic/</guid>
+      <description>弹性调度是 ElasticJob 最重要的功能，也是这款产品名称的由来。 它是一款能够让任务通过分片进行水平扩展的任务处理系统。
+分片 ElasticJob 中任务分片项的概念，使得任务可以在分布式的环境下运行，每台任务服务器只运行分配给该服务器的分片。 随着服务器的增加或宕机，ElasticJob 会近乎实时的感知服务器数量的变更，从而重新为分布式的任务服务器分配更加合理的任务分片项，使得任务可以随着资源的增加而提升效率。
+任务的分布式执行，需要将一个任务拆分为多个独立的任务项，然后由分布式的服务器分别执行某一个或几个分片项。
+举例说明，如果作业分为 4 片，用两台服务器执行，则每个服务器分到 2 片，分别负责作业的 50% 的负载，如下图所示。
+分片作业
+分片项 ElasticJob 并不直接提供数据处理的功能，而是将分片项分配至各个运行中的作业服务器，开发者需要自行处理分片项与业务的对应关系。 分片项为数字，始于 0 而终于分片总数减 1。
+个性化分片参数 个性化参数可以和分片项匹配对应关系，用于将分片项的数字转换为更加可读的业务代码。
+例如：按照地区水平拆分数据库，数据库 A 是北京的数据；数据库 B 是上海的数据；数据库 C 是广州的数据。 如果仅按照分片项配置，开发者需要了解 0 表示北京；1 表示上海；2 表示广州。 合理使用个性化参数可以让代码更可读，如果配置为 0=北京,1=上海,2=广州，那么代码中直接使用北京，上海，广州的枚举值即可完成分片项和业务逻辑的对应关系。
+资源最大限度利用 ElasticJob 提供最灵活的方式，最大限度的提高执行作业的吞吐量。 当新增加作业服务器时，ElasticJob 会通过注册中心的临时节点的变化感知到新服务器的存在，并在下次任务调度的时候重新分片，新的服务器会承载一部分作业分片，如下图所示。
+作业扩容
+将分片项设置为大于服务器的数量，最好是大于服务器倍数的数量，作业将会合理的利用分布式资源，动态的分配分片项。
+例如：3 台服务器，分成 10 片，则分片项分配结果为服务器 A = 0,1,2；服务器 B = 3,4,5；服务器 C = 6,7,8,9。 如果服务器 C 崩溃，则分片项分配结果为服务器 A = 0,1,2,3,4; 服务器 B = 5,6,7,8,9。 在不丢失分片项的情况下，最大限度的利用现有资源提高吞吐量。</description>
+    </item>
+    
+    <item>
       <title>本地运行模式</title>
       <link>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-cloud/usage/local-executor/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -219,22 +235,6 @@ org.apache.shardingsphere.elasticjob.lite.handler.sharding.impl.RotateServerByNa
 配置 使用io.elasticjob.cloud.executor.local.LocalCloudJobConfiguration配置本地作业。
 LocalCloudJobConfiguration config = new LocalCloudJobConfiguration( new SimpleJobConfiguration(JobCoreConfiguration.newBuilder(&amp;#34;FooJob&amp;#34;, &amp;#34;*/2 * * * * ?&amp;#34;, 3) //1  .shardingItemParameters(&amp;#34;0=Beijing,1=Shanghai,2=Guangzhou&amp;#34;) .jobParameter(&amp;#34;dbName=dangdang&amp;#34;).build(), &amp;#34;com.xxx.foo.FooJob&amp;#34;), 1, //2  &amp;#34;testSimpleJob&amp;#34; , &amp;#34;applicationContext.xml&amp;#34;); //3  配置作业类型和作业基本信息。 配置当前运行的作业是第几个分片。 配置Spring相关参数。  运行 使用io.elasticjob.cloud.executor.local.LocalTaskExecutor运行作业。
 new LocalTaskExecutor(localJobConfig).execute(); </description>
-    </item>
-    
-    <item>
-      <title>资源分配</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/resource/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/resource/</guid>
-      <description>资源分配功能为 ElasticJob-Cloud 所特有的功能。
-作业运行模式 ElasticJob-Cloud 分为瞬时作业和常驻作业 2 种运行模式。
-瞬时作业 在每一次作业执行完毕后立刻释放资源，保证利用现有资源错峰执行。 资源分配和容器启动均占用一定时长，且作业执行时资源不一定充足，因此作业执行会有延迟。 瞬时作业适用于间隔时间长，资源消耗多且对执行时间无严格要求的作业。
-常驻作业 无论在运行时还是等待运行时，均一直占用分配的资源，可节省过多容器启动和资源分配的开销，适用于间隔时间短，资源需求量稳定的作业。
-调度器 ElasticJob-Cloud 基于 Mesos 的 Framework 开发，用于资源调度和应用分发，需要独立启动并提供服务。
-作业应用 指作业打包部署后的应用，描述了作业启动需要用到的 CPU、内存、启动脚本及应用下载路径等基本信息。 每个作业应用可以包含一个或多个作业。
-作业 即实际运行的具体任务，和 ElasticJob-Lite 共用同样的作业生态。 在注册作业之前必须先注册作业应用。
-资源 指作业启动或运行需要用到的 CPU、内存。 配置在作业应用维度表示整个应用启动需要用的资源； 配置在作业维度表示每个作业运行需要的资源。 作业启动需要的资源为指定作业应用需要的资源与作业需要资源的总和。</description>
     </item>
     
     <item>
@@ -263,15 +263,6 @@ JOB_EXECUTION_LOG 字段含义
     </item>
     
     <item>
-      <title>失效转移</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/failover/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/failover/</guid>
-      <description>TODO</description>
-    </item>
-    
-    <item>
       <title>定制化处理</title>
       <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/customized-hook/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -292,6 +283,22 @@ JOB_EXECUTION_LOG 字段含义
 在 2.0.6 之前的版本中，网络不稳定的环境下 ElasticJob 有可能有的作业分片并未执行，重启一下就能修复。 在2.0.6，版本中 ElasticJob 在提供 reconcileIntervalMinutes 设置修复状态服务执行间隔分钟数，用于修复作业服务器不一致状态，默认每 10 分钟检测并修复一次。
 支持两种配置方式
  Spring 方式  &amp;lt;?xml version=&amp;#34;1.0&amp;#34; encoding=&amp;#34;UTF-8&amp;#34;?&amp;gt; &amp;lt;beans xmlns=&amp;#34;http://www.springframework.org/schema/beans&amp;#34; xmlns:xsi=&amp;#34;http://www.w3.org/2001/XMLSchema-instance&amp;#34; xmlns:elasticjob=&amp;#34;http://shardingsphere.apache.org/schema/elasticjob&amp;#34; xsi:schemaLocation=&amp;#34;http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://shardingsphere.apache.org/schema/elasticjob http://shardingsphere.apache.org/schema/elasticjob/elasticjob.xsd &amp;#34;&amp;gt; &amp;lt;!--配置作业注册中心 --&amp;gt; &amp;lt;elasticjob:zookeeper id=&amp;#34;regCenter&amp;#34; server-lists=&amp;#34;yourhost:2181&amp;#34; namespace=&amp;#34;elastic-job&amp;#34; base-sleep-time-milliseconds=&amp;#34;1000&amp;#34; max-sleep-time-milliseconds=&amp;#34;3000&amp;#34; max-retries=&amp;#34;3&amp;#34; /&amp;gt; &amp;lt;!--配置作业类 --&amp;gt; &amp;lt;bean id=&amp;#34;simpleJob&amp;#34; class=&amp;#34;xxx.MyElasticJob&amp;#34; /&amp;gt; &amp;lt;!--配置作业 --&amp;gt; &amp;lt;elasticjob:simple id=&amp;#34;oneOffElasticJob&amp;#34; job-ref=&amp;#34;simpleJob&amp;#34; registry-center-ref=&amp;#34;regCenter&amp;#34; reconcile-interval-minutes=&amp;#34;10&amp;#34; cron=&amp;#34;0/10 * * * * ?&amp;#34; sharding-total-count=&amp;#34;3&amp;#34; sharding-item-parameters=&amp;#34;0=A,1=B,2=C&amp;#34; /&amp;gt; &amp;lt;/beans&amp;gt;  Java 方式  public class JobMain { public static void main(final String[] args) { // .</description>
+    </item>
+    
+    <item>
+      <title>资源分配</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/resource/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/resource/</guid>
+      <description>资源分配功能为 ElasticJob-Cloud 所特有的功能。
+作业运行模式 ElasticJob-Cloud 分为瞬时作业和常驻作业 2 种运行模式。
+瞬时作业 在每一次作业执行完毕后立刻释放资源，保证利用现有资源错峰执行。 资源分配和容器启动均占用一定时长，且作业执行时资源不一定充足，因此作业执行会有延迟。 瞬时作业适用于间隔时间长，资源消耗多且对执行时间无严格要求的作业。
+常驻作业 无论在运行时还是等待运行时，均一直占用分配的资源，可节省过多容器启动和资源分配的开销，适用于间隔时间短，资源需求量稳定的作业。
+调度器 ElasticJob-Cloud 基于 Mesos 的 Framework 开发，用于资源调度和应用分发，需要独立启动并提供服务。
+作业应用 指作业打包部署后的应用，描述了作业启动需要用到的 CPU、内存、启动脚本及应用下载路径等基本信息。 每个作业应用可以包含一个或多个作业。
+作业 即实际运行的具体任务，和 ElasticJob-Lite 共用同样的作业生态。 在注册作业之前必须先注册作业应用。
+资源 指作业启动或运行需要用到的 CPU、内存。 配置在作业应用维度表示整个应用启动需要用的资源； 配置在作业维度表示每个作业运行需要的资源。 作业启动需要的资源为指定作业应用需要的资源与作业需要资源的总和。</description>
     </item>
     
     <item>
@@ -320,6 +327,15 @@ JOB_EXECUTION_LOG 字段含义
     </item>
     
     <item>
+      <title>失效转移</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/failover/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/failover/</guid>
+      <description>TODO</description>
+    </item>
+    
+    <item>
       <title>操作 API</title>
       <link>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/usage/operation-api/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -340,24 +356,6 @@ JOB_EXECUTION_LOG 字段含义
     </item>
     
     <item>
-      <title>错过任务重执行</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/misfired/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/misfired/</guid>
-      <description>TODO</description>
-    </item>
-    
-    <item>
-      <title>作业开放生态</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/jobt-ype/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/jobt-ype/</guid>
-      <description>TODO</description>
-    </item>
-    
-    <item>
       <title>运维平台</title>
       <link>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/operation/web-console/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -375,6 +373,24 @@ elasticjob-lite-console-${version}.tar.gz可通过mvn install编译获取。
   设计理念 运维平台和 ElasticJob-Lite 并无直接关系，是通过读取作业注册中心数据展现作业状态，或更新注册中心数据修改全局配置。
 控制台只能控制作业本身是否运行，但不能控制作业进程的启动，因为控制台和作业本身服务器是完全分离的，控制台并不能控制作业服务器。
 不支持项  添加作业  作业在首次运行时将自动添加。ElasticJob-Lite 以 jar 方式启动，并无作业分发功能。如需完全通过运维平台发布作业，请使用 ElasticJob-Cloud。</description>
+    </item>
+    
+    <item>
+      <title>错过任务重执行</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/misfired/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/misfired/</guid>
+      <description>TODO</description>
+    </item>
+    
+    <item>
+      <title>作业开放生态</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/features/jobt-ype/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/features/jobt-ype/</guid>
+      <description>TODO</description>
     </item>
     
   </channel>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2020-07-18 17:16:30">
+    <meta name="buildDate" content="2020-07-18 17:21:27">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/elasticjob/images/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>Listener Development :: ElasticJob</title>
     
     
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1595063790" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1595063790" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1595063790" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1595063790" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1595063790" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1595063790" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1595063790" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1595063790" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1595064087" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1595064087" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1595064087" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1595064087" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1595064087" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1595064087" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1595064087" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1595064087" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-black.css?1595063790" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-black.css?1595064087" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1595063790"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1595064087"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -1858,10 +1858,50 @@
         
 
 
-<nav id="TableOfContents"></nav>
+<nav id="TableOfContents">
+  <ul>
+    <li><a href="#common-listener">Common Listener</a></li>
+    <li><a href="#distributed-listener">Distributed Listener</a></li>
+  </ul>
+</nav>
 
-<p>TODO</p>
-
+<h2 id="common-listener">Common Listener</h2>
+<p>If the job processes the files of the job server and deletes the files after the processing is completed, consider using each node to perform the cleaning task.
+This type of task is simple to implement, and there is no need to consider whether the global distributed task is completed. You should try to use this type of listener.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">MyJobListener</span> <span style="color:#66d9ef">implements</span> ElasticJobListener <span style="color:#f92672">{</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">beforeJobExecuted</span><span style="color:#f92672">(</span>ShardingContexts shardingContexts<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#75715e">// do something ...
+</span><span style="color:#75715e"></span>    <span style="color:#f92672">}</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">afterJobExecuted</span><span style="color:#f92672">(</span>ShardingContexts shardingContexts<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#75715e">// do something ...
+</span><span style="color:#75715e"></span>    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><h2 id="distributed-listener">Distributed Listener</h2>
+<p>If the job processes database data, only one node needs to complete the data cleaning task after the processing is completed.
+This type of task is complicated to process and needs to synchronize the status of the job in a distributed environment. Timeout settings are provided to avoid deadlocks caused by job out of sync. It should be used with caution.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">MyDistributeOnceJobListener</span> <span style="color:#66d9ef">extends</span> AbstractDistributeOnceElasticJobListener <span style="color:#f92672">{</span>
+    
+    <span style="color:#66d9ef">public</span> <span style="color:#a6e22e">TestDistributeOnceElasticJobListener</span><span style="color:#f92672">(</span><span style="color:#66d9ef">long</span> startTimeoutMills<span style="color:#f92672">,</span> <span style="color:#66d9ef">long</span> completeTimeoutMills<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">super</span><span style="color:#f92672">(</span>startTimeoutMills<span style="color:#f92672">,</span> completeTimeoutMills<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">doBeforeJobExecutedAtLastStarted</span><span style="color:#f92672">(</span>ShardingContexts shardingContexts<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#75715e">// do something ...
+</span><span style="color:#75715e"></span>    <span style="color:#f92672">}</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">doAfterJobExecutedAtLastCompleted</span><span style="color:#f92672">(</span>ShardingContexts shardingContexts<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#75715e">// do something ...
+</span><span style="color:#75715e"></span>    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div>
 
 <footer class=" footline" >
 	
@@ -2865,17 +2905,17 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1595063790"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1595064087"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1595063790"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1595063790"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1595064087"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1595064087"></script>
 
     
 

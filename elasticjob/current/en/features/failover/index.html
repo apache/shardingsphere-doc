@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2020-07-18 11:31:26">
+    <meta name="buildDate" content="2020-07-18 13:36:38">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/elasticjob/images/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>Failover :: ElasticJob</title>
     
     
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1595043086" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1595043086" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1595043086" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1595043086" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1595043086" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1595043086" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1595043086" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1595043086" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1595050598" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1595050598" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1595050598" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1595050598" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1595050598" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1595050598" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1595050598" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1595050598" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-black.css?1595043086" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-black.css?1595050598" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1595043086"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1595050598"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -1720,9 +1720,46 @@
         
 
 
-<nav id="TableOfContents"></nav>
+<nav id="TableOfContents">
+  <ul>
+    <li><a href="#concept">Concept</a></li>
+    <li><a href="#execution-mechanism">Execution mechanism</a>
+      <ul>
+        <li><a href="#notification-execution">Notification execution</a></li>
+        <li><a href="#enquiry-execution">Enquiry execution</a></li>
+      </ul>
+    </li>
+    <li><a href="#scenarios">Scenarios:</a></li>
+  </ul>
+</nav>
 
-<p>TODO</p>
+<p>ElasticJob will not re-shard during this execution, but wait for the next scheduling before starting the re-sharding process.
+When the server is down during job execution, failover allows the unfinished task to be compensated and executed on another job node.</p>
+<h2 id="concept">Concept</h2>
+<p>Failover is a temporary compensation execution mechanism for the currently executed job. When the next job is run, the current job allocation will be adjusted through resharding.
+For example, if the job is executed at an hourly interval, each execution will take 30 minutes. As shown below.</p>
+<p><img src="https://shardingsphere.apache.org/elasticjob/current/img/failover/job.png" alt="Job"></p>
+<p>The figure shows that the jobs are executed at 12:00, 13:00 and 14:00 respectively. The current time point shown in the figure is the job execution at 13:00.</p>
+<p>If one of the shard servers of the job goes down at 13:10, the remaining 20 minutes of the business that should be processed are not executed, and the next job can only be executed at 14:00.
+In other words, if failover is not turned on, there is a 50-minute idle period in this shard. As shown below.</p>
+<p><img src="https://shardingsphere.apache.org/elasticjob/current/img/failover/job-crash.png" alt="Job Crash"></p>
+<p>After the failover is enabled, other ElasticJob servers can compensate for the execution of the sharding job after sensing the down job server. As shown below.</p>
+<p><img src="https://shardingsphere.apache.org/elasticjob/current/img/failover/job-failover.png" alt="Job Failover"></p>
+<p>With sufficient resources, the job can still be executed completely at 13:30.</p>
+<h2 id="execution-mechanism">Execution mechanism</h2>
+<p>When the job execution node goes down, the failover process will be triggered. ElasticJob determines the execution timing of the failover according to the different conditions of the distributed job execution when it is triggered。</p>
+<h3 id="notification-execution">Notification execution</h3>
+<p>When other servers perceive that a failover job needs to be processed, and the job server has completed this task, it will pull the items to be failed over in real time and start compensation execution.
+Also called real-time execution.</p>
+<h3 id="enquiry-execution">Enquiry execution</h3>
+<p>After the execution of this task, the job service will inquire about the failover items to be executed from the registry, and if there are any, the compensation execution will start.
+Also called asynchronous execution.</p>
+<h2 id="scenarios">Scenarios:</h2>
+<p>With the failover enabled, ElasticJob will monitor the execution status of each shard of the job and write it to the registry for other nodes to perceive.</p>
+<p>In a job scenario that takes a long time to run and has a long interval, failover is an effective means to improve the real-time operation of the job;
+For short-interval jobs, a large number of network communications with the registry will be generated, which will affect the performance of the cluster;
+Moreover, short-interval jobs do not necessarily pay attention to the real-time performance of a single job. You can use the re-shard of the next job execution to make all the items execute correctly. Therefore, it is not recommended to enable failover for short-interval jobs.</p>
+<p>Another thing to note is that the idempotence of the job itself is a prerequisite to ensure the correctness of failover.</p>
 
 
 <footer class=" footline" >
@@ -2628,17 +2665,17 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1595043086"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1595050598"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1595043086"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1595043086"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1595050598"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1595050598"></script>
 
     
 

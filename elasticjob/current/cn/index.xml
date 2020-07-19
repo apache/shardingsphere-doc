@@ -90,29 +90,6 @@ public class MyElasticJob implements SimpleJob { @Override public void execute(S
     </item>
     
     <item>
-      <title>实现原理</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/lite-design/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/lite-design/</guid>
-      <description>分布式调度 ElasticJob-Lite 并无作业调度中心节点，而是基于部署作业框架的程序在到达相应时间点时各自触发调度。
-注册中心仅用于作业注册和监控信息存储。而主作业节点仅用于处理分片和清理等功能。
-弹性分布式实现   第一台服务器上线触发主服务器选举。主服务器一旦下线，则重新触发选举，选举过程中阻塞，只有主服务器选举完成，才会执行其他任务。
-  某作业服务器上线时会自动将服务器信息注册到注册中心，下线时会自动更新服务器状态。
-  主节点选举，服务器上下线，分片总数变更均更新重新分片标记。
-  定时任务触发时，如需重新分片，则通过主服务器分片，分片过程中阻塞，分片结束后才可执行任务。如分片过程中主服务器下线，则先选举主服务器，再分片。
-  通过上一项说明可知，为了维持作业运行时的稳定性，运行过程中只会标记分片状态，不会重新分片。分片仅可能发生在下次任务触发前。
-  每次分片都会按服务器IP排序，保证分片结果不会产生较大波动。
-  实现失效转移功能，在某台服务器执行完毕后主动抓取未分配的分片，并且在某台服务器下线后主动寻找可用的服务器执行任务。
-  注册中心数据结构 注册中心在定义的命名空间下，创建作业名称节点，用于区分不同作业，所以作业一旦创建则不能修改作业名称，如果修改名称将视为新的作业。作业名称节点下又包含4个数据子节点，分别是config, instances, sharding, servers和leader。
-config节点 作业配置信息，以JSON格式存储
-instances节点 作业运行实例信息，子节点是当前作业运行实例的主键。作业运行实例主键由作业运行服务器的IP地址和PID构成。作业运行实例主键均为临时节点，当作业实例上线时注册，下线时自动清理。注册中心监控这些节点的变化来协调分布式作业的分片以及高可用。 可在作业运行实例节点写入TRIGGER表示该实例立即执行一次。
-sharding节点 作业分片信息，子节点是分片项序号，从零开始，至分片总数减一。分片项序号的子节点存储详细信息。每个分片项下的子节点用于控制和记录分片运行状态。节点详细信息说明：
-   子节点名 临时节点 描述     instance 否 执行该分片项的作业运行实例主键   running 是 分片项正在运行的状态
-仅配置monitorExecution时有效   failover 是 如果该分片项被失效转移分配给其他作业服务器，则此节点值记录执行此分片的作业服务器IP   misfire 否 是否开启错过任务重新执行   disabled 否 是否禁用此分片项    servers节点 作业服务器信息，子节点是作业服务器的IP地址。可在IP地址节点写入DISABLED表示该服务器禁用。 在新的cloud native架构下，servers节点大幅弱化，仅包含控制服务器是否可以禁用这一功能。为了更加纯粹的实现job核心，servers功能未来可能删除，控制服务器是否禁用的能力应该下放至自动化部署系统。</description>
-    </item>
-    
-    <item>
       <title>开发指南</title>
       <link>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-cloud/usage/dev-guide/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -201,15 +178,6 @@ public class MyDistributeOnceJobListener extends AbstractDistributeOnceElasticJo
     </item>
     
     <item>
-      <title>Spring Boot Starter</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/usage/event-trace/spring-boot-starter/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/usage/event-trace/spring-boot-starter/</guid>
-      <description>TODO</description>
-    </item>
-    
-    <item>
       <title>作业分片策略</title>
       <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/job-sharding-strategy/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
@@ -260,6 +228,18 @@ JobConfiguration jobConfig = JobConfiguration.newBuilder(&amp;#34;myJob&amp;#34;
       
       <guid>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/usage/job-listener/java-api/</guid>
       <description>常规监听器 public class JobMain { public static void main(String[] args) { new ScheduleJobBootstrap(createRegistryCenter(), createJobConfiguration(), new MyElasticJobListener()).schedule(); } private static CoordinatorRegistryCenter createRegistryCenter() { CoordinatorRegistryCenter regCenter = new ZookeeperRegistryCenter(new ZookeeperConfiguration(&amp;#34;zk_host:2181&amp;#34;, &amp;#34;elastic-job-demo&amp;#34;)); regCenter.init(); return regCenter; } private static JobConfiguration createJobConfiguration() { // 创建作业配置  ... } } 分布式监听器 public class JobMain { public static void main(String[] args) { long startTimeoutMills = 5000L; long completeTimeoutMills = 10000L; new ScheduleJobBootstrap(createRegistryCenter(), createJobConfiguration(), new MyDistributeOnceElasticJobListener(startTimeoutMills, completeTimeoutMills)).schedule(); } private static CoordinatorRegistryCenter createRegistryCenter() { CoordinatorRegistryCenter regCenter = new ZookeeperRegistryCenter(new ZookeeperConfiguration(&amp;#34;zk_host:2181&amp;#34;, &amp;#34;elastic-job-demo&amp;#34;)); regCenter.</description>
+    </item>
+    
+    <item>
+      <title>使用 Spring Boot Starter</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/usage/event-trace/spring-boot-starter/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/usage/event-trace/spring-boot-starter/</guid>
+      <description>ElasticJob-Lite 提供了自动配置 TracingConfiguration 的 Tracing Spring Boot Starter， 开发者只需注册一个 DataSource 到 Spring 容器中， Starter 就会自动创建一个 TracingConfiguration 并注册到 Spring 容器中。
+引入 elasticjob-tracing-spring-boot-starter &amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.apache.shardingsphere.elasticjob&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;elasticjob-tracing-spring-boot-starter&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${elasticjob.latest.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; 借助 spring-boot-starter-jdbc 注册 DataSource 引入依赖：
+&amp;lt;dependency&amp;gt; &amp;lt;groupId&amp;gt;org.springframework.boot&amp;lt;/groupId&amp;gt; &amp;lt;artifactId&amp;gt;spring-boot-starter-jdbc&amp;lt;/artifactId&amp;gt; &amp;lt;version&amp;gt;${springboot.version}&amp;lt;/version&amp;gt; &amp;lt;/dependency&amp;gt; 配置 DataSource：
+spring: datasource: url: jdbc:h2:mem:job_event_storage driver-class-name: org.h2.Driver username: sa password: 使用 TracingConfiguration 会自动注册到容器中，如果与 elasticjob-lite-spring-boot-starter 配合使用， 开发者无需进行其他额外的操作，作业启动器会自动使用创建的 TracingConfiguration。</description>
     </item>
     
     <item>
@@ -495,18 +475,11 @@ JOB_EXECUTION_LOG 字段含义    字段名称 字段类型 是否必填 描述 
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/elasticjob/current/cn/user-manual/elasticjob-lite/operation/web-console/</guid>
-      <description>解压缩elasticjob-lite-console-${version}.tar.gz并执行bin\start.sh。打开浏览器访问http://localhost:8899/即可访问控制台。8899为默认端口号，可通过启动脚本输入-p自定义端口号。
-elasticjob-lite-console-${version}.tar.gz可通过mvn install编译获取。
-登录 提供两种账户，管理员及访客，管理员拥有全部操作权限，访客仅拥有察看权限。默认管理员用户名和密码是root/root，访客用户名和密码是guest/guest，可通过conf\auth.properties修改管理员及访客用户名及密码。
-功能列表   登录安全控制
-  注册中心、事件追踪数据源管理
-  快捷修改作业设置
-  作业和服务器维度状态查看
-  操作作业禁用\启用、停止和删除等生命周期
-  事件追踪查询
-  设计理念 运维平台和 ElasticJob-Lite 并无直接关系，是通过读取作业注册中心数据展现作业状态，或更新注册中心数据修改全局配置。
+      <description>解压缩 elasticjob-lite-console-${version}.tar.gz 并执行 bin\start.sh。 打开浏览器访问 http://localhost:8899/ 即可访问控制台。 8899 为默认端口号，可通过启动脚本输入 -p 自定义端口号。
+登录 控制台提供两种账户：管理员及访客。 管理员拥有全部操作权限，访客仅拥有察看权限。 默认管理员用户名和密码是 root/root，访客用户名和密码是 guest/guest，可通过 conf\auth.properties 修改管理员及访客用户名及密码。
+功能列表  登录安全控制 注册中心、事件追踪数据源管理 快捷修改作业设置 作业和服务器维度状态查看 操作作业禁用\启用、停止和删除等生命周期 事件追踪查询  设计理念 运维平台和 ElasticJob-Lite 并无直接关系，是通过读取作业注册中心数据展现作业状态，或更新注册中心数据修改全局配置。
 控制台只能控制作业本身是否运行，但不能控制作业进程的启动，因为控制台和作业本身服务器是完全分离的，控制台并不能控制作业服务器。
-不支持项  添加作业  作业在首次运行时将自动添加。ElasticJob-Lite 以 jar 方式启动，并无作业分发功能。如需完全通过运维平台发布作业，请使用 ElasticJob-Cloud。</description>
+不支持项  添加作业  作业在首次运行时将自动添加。 ElasticJob-Lite 以 jar 方式启动，并无作业分发功能。 如需完全通过运维平台发布作业，请使用 ElasticJob-Cloud。</description>
     </item>
     
     <item>

@@ -11,70 +11,43 @@
     
     
     <item>
-      <title>实现原理</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/lite-design/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/lite-design/</guid>
-      <description>分布式调度 ElasticJob-Lite 并无作业调度中心节点，而是基于部署作业框架的程序在到达相应时间点时各自触发调度。
-注册中心仅用于作业注册和监控信息存储。而主作业节点仅用于处理分片和清理等功能。
-弹性分布式实现   第一台服务器上线触发主服务器选举。主服务器一旦下线，则重新触发选举，选举过程中阻塞，只有主服务器选举完成，才会执行其他任务。
-  某作业服务器上线时会自动将服务器信息注册到注册中心，下线时会自动更新服务器状态。
-  主节点选举，服务器上下线，分片总数变更均更新重新分片标记。
-  定时任务触发时，如需重新分片，则通过主服务器分片，分片过程中阻塞，分片结束后才可执行任务。如分片过程中主服务器下线，则先选举主服务器，再分片。
-  通过上一项说明可知，为了维持作业运行时的稳定性，运行过程中只会标记分片状态，不会重新分片。分片仅可能发生在下次任务触发前。
-  每次分片都会按服务器IP排序，保证分片结果不会产生较大波动。
-  实现失效转移功能，在某台服务器执行完毕后主动抓取未分配的分片，并且在某台服务器下线后主动寻找可用的服务器执行任务。
-  注册中心数据结构 注册中心在定义的命名空间下，创建作业名称节点，用于区分不同作业，所以作业一旦创建则不能修改作业名称，如果修改名称将视为新的作业。作业名称节点下又包含4个数据子节点，分别是config, instances, sharding, servers和leader。
-config节点 作业配置信息，以JSON格式存储
-instances节点 作业运行实例信息，子节点是当前作业运行实例的主键。作业运行实例主键由作业运行服务器的IP地址和PID构成。作业运行实例主键均为临时节点，当作业实例上线时注册，下线时自动清理。注册中心监控这些节点的变化来协调分布式作业的分片以及高可用。 可在作业运行实例节点写入TRIGGER表示该实例立即执行一次。
-sharding节点 作业分片信息，子节点是分片项序号，从零开始，至分片总数减一。分片项序号的子节点存储详细信息。每个分片项下的子节点用于控制和记录分片运行状态。节点详细信息说明：
-   子节点名 临时节点 描述     instance 否 执行该分片项的作业运行实例主键   running 是 分片项正在运行的状态
-仅配置monitorExecution时有效   failover 是 如果该分片项被失效转移分配给其他作业服务器，则此节点值记录执行此分片的作业服务器IP   misfire 否 是否开启错过任务重新执行   disabled 否 是否禁用此分片项    servers节点 作业服务器信息，子节点是作业服务器的IP地址。可在IP地址节点写入DISABLED表示该服务器禁用。 在新的cloud native架构下，servers节点大幅弱化，仅包含控制服务器是否可以禁用这一功能。为了更加纯粹的实现job核心，servers功能未来可能删除，控制服务器是否禁用的能力应该下放至自动化部署系统。</description>
-    </item>
-    
-    <item>
       <title>作业分片策略</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/job-sharding-strategy/</link>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/sharding/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/job-sharding-strategy/</guid>
-      <description>框架提供的分片策略 AverageAllocationJobShardingStrategy 全路径：
-AverageAllocationJobShardingStrategy
-策略说明：
-基于平均分配算法的分片策略，也是默认的分片策略。
-如果分片不能整除，则不能整除的多余分片将依次追加到序号小的服务器。如：
-如果有3台服务器，分成9片，则每台服务器分到的分片是：1=[0,1,2], 2=[3,4,5], 3=[6,7,8]
-如果有3台服务器，分成8片，则每台服务器分到的分片是：1=[0,1,6], 2=[2,3,7], 3=[4,5]
-如果有3台服务器，分成10片，则每台服务器分到的分片是：1=[0,1,2,9], 2=[3,4,5], 3=[6,7,8]
-OdevitySortByNameJobShardingStrategy 全路径：
-OdevitySortByNameJobShardingStrategy
-策略说明：
-根据作业名的哈希值奇偶数决定IP升降序算法的分片策略。
-作业名的哈希值为奇数则IP升序。
-作业名的哈希值为偶数则IP降序。
-用于不同的作业平均分配负载至不同的服务器。
-AverageAllocationJobShardingStrategy的缺点是，一旦分片数小于作业服务器数，作业将永远分配至IP地址靠前的服务器，导致IP地址靠后的服务器空闲。而OdevitySortByNameJobShardingStrategy则可以根据作业名称重新分配服务器负载。如：
-如果有3台服务器，分成2片，作业名称的哈希值为奇数，则每台服务器分到的分片是：1=[0], 2=[1], 3=[]
-如果有3台服务器，分成2片，作业名称的哈希值为偶数，则每台服务器分到的分片是：3=[0], 2=[1], 1=[]
-RotateServerByNameJobShardingStrategy 全路径：
-org.apache.shardingsphere.elasticjob.lite.handler.sharding.impl.RotateServerByNameJobShardingStrategy
-策略说明：
-根据作业名的哈希值对服务器列表进行轮转的分片策略。
-自定义分片策略 实现JobShardingStrategy接口并实现sharding方法，接口方法参数为作业服务器IP列表和分片策略选项，分片策略选项包括作业名称，分片总数以及分片序列号和个性化参数对照表，可以根据需求定制化自己的分片策略。
-欢迎将分片策略以插件的形式贡献至org.apache.shardingsphere.elasticjob.lite.handler.sharding包。
-配置分片策略 与配置通常的作业属性相同，在spring命名空间或者JobConfiguration中配置jobShardingStrategyType属性，属性值是作业分片策略类的全路径。</description>
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/sharding/</guid>
+      <description>作业分片策略，用于将作业在分布式环境下分解成为任务使用。
+   SPI 名称 详细说明     JobShardingStrategy 作业分片策略       已知实现类 详细说明     AverageAllocationJobShardingStrategy 根据分片项平均分片   OdevitySortByNameJobShardingStrategy 根据作业名称哈希值的奇偶数决定按照作业服务器 IP 升序或是降序的方式分片   RotateServerByNameJobShardingStrategy 根据作业名称轮询分片    </description>
     </item>
     
     <item>
-      <title>定制化处理</title>
-      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/customized-hook/</link>
+      <title>线程池策略</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/thread-pool/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
-      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/customized-hook/</guid>
-      <description>ElasticJob 在配置中提供了 JobHandler，用于定制化处理，目前支持自定义异常处理及作业处理线程池。
-异常处理 可扩展 JobErrorHandler 接口，默认实现是记录日志但不抛出异常。
-作业处理线程池 可扩展 JobExecutorServiceHandler 接口，定制线程池。</description>
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/thread-pool/</guid>
+      <description>线程池策略，用于执行作业的线程池创建。
+   SPI 名称 详细说明     JobExecutorServiceHandler 作业执行线程池策略       已知实现类 详细说明     CPUUsageJobExecutorServiceHandler 根据 CPU 核数 * 2 创建作业处理线程池   SingleThreadJobExecutorServiceHandler 使用单线程处理作业    </description>
+    </item>
+    
+    <item>
+      <title>错误处理策略</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/error-handler/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/error-handler/</guid>
+      <description>错误处理策略，用于作业失败时的处理策略。
+   SPI 名称 详细说明     JobErrorHandler 作业执行线程池策略       已知实现类 详细说明     LogJobErrorHandler 记录作业异常日志，但不中断作业执行   ThrowJobErrorHandler 抛出系统异常并中断作业执行   IgnoreJobErrorHandler 忽略系统异常且不中断作业执行    </description>
+    </item>
+    
+    <item>
+      <title>作业类名称提供策略</title>
+      <link>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/job-class-provider/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/job-class-provider/</guid>
+      <description>作业类名称提供策略，用于在不同的容器环境下提供准确的作业类名称。
+   SPI 名称 详细说明     JobClassNameProvider 作业类名称提供策略       已知实现类 详细说明     SimpleJobClassNameProvider 标准环境下的作业类名称提供策略   SpringProxyJobClassNameProvider Spring 容器环境下的作业类名称提供策略    </description>
     </item>
     
     <item>
@@ -83,7 +56,7 @@ org.apache.shardingsphere.elasticjob.lite.handler.sharding.impl.RotateServerByNa
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/elasticjob/current/cn/dev-manual/roadmap/</guid>
-      <description>Core  Unified Job Config API  Core Config Type Config Root Config   Job Types  Simple Dataflow Script Http   Event Trace  Event Publisher Database Event Listener Other Event Listener   Unified Schedule API Unified Resource API  ElasticJob-Lite  Distributed Features  High Availability Elastic scale in/out Failover Misfire Idempotency Reconcile   Registry Center  Zookeeper Other Registry Center Supported   Lifecycle Management  Add/Remove Pause/Resume Disable/Enable Shutdown Restful API Web Console   Job Dependency  Listener DAG   Spring Integrate  Namespace Bean Injection Spring Boot Starter    ElasticJob-Cloud  Transient Job  High Availability Elastic scale in/out Failover Misfire Idempotency   Daemon Job  High Availability Elastic scale in/out Failover Misfire Idempotency   Mesos Scheduler  High Availability Reconcile Redis Based Queue Improvement Http Driver   Mesos Executor  Executor Reuse Pool Progress Reporting Health Detection Log Redirect   Lifecycle Management  Job Add/Remove Job Pause/Resume Job Disable/Enable Job Shutdown App Add/Remove App Disable/Enable Restful API Web Console   Job Dependency  Listener Workflow DAG   Job Distribution  Mesos Based Distribution Docker Based Distribution   Resources Management  Resources Allocate Cross Data Center A/B Test   Spring Integrate  Bean Injection    </description>
+      <description>Kernel  Unified Job Config API  Core Config Type Config Root Config   Job Types  Simple Dataflow Script Http   Event Trace  Event Publisher Database Event Listener Other Event Listener   Unified Schedule API Unified Resource API  ElasticJob-Lite  Distributed Features  High Availability Elastic scale in/out Failover Misfire Idempotency Reconcile   Registry Center  ZooKeeper Other Registry Center Supported   Lifecycle Management  Add/Remove Pause/Resume Disable/Enable Shutdown Restful API Web Console   Job Dependency  Listener DAG   Spring Integrate  Namespace Bean Injection Spring Boot Starter    ElasticJob-Cloud  Transient Job  High Availability Elastic scale in/out Failover Misfire Idempotency   Daemon Job  High Availability Elastic scale in/out Failover Misfire Idempotency   Mesos Scheduler  High Availability Reconcile Redis Based Queue Improvement Http Driver   Mesos Executor  Executor Reuse Pool Progress Reporting Health Detection Log Redirect   Lifecycle Management  Job Add/Remove Job Pause/Resume Job Disable/Enable Job Shutdown App Add/Remove App Disable/Enable Restful API Web Console   Job Dependency  Listener Workflow DAG   Job Distribution  Mesos Based Distribution Docker Based Distribution   Resources Management  Resources Allocate Cross Data Center A/B Test   Spring Integrate  Bean Injection    </description>
     </item>
     
   </channel>

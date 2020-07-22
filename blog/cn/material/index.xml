@@ -181,16 +181,13 @@ jdbc:mysql://127.0.0.1:3306/demo_ds?useServerPrepStmts=true 交互过程变成�
 像这样使用PreparedStatement还不如不用，一定是哪里搞错了，于是我开始阅读JDBC源代码，终于发现了另一个需要设置的参数——cachePrepStmts。我们加上这个参数看看会不会发生奇迹：
 jdbc:mysql://127.0.0.1:3306/demo_ds? useServerPrepStmts=true&amp;amp;cachePrepStmts=true 果然得到了我们预期的消息流程，而且经过测试，速度也比普通查询快了：
 从第5条消息开始，每次查询只传参数值就可以了，终于达到了一次编译多次运行的效果，MySQL的效率得到了提高。而且由于ExecuteStatement只传了参数的值，消息长度上比完整的SQL短了很多，网络IO的效率也得到了提升。
-原来cachePrepStmts=true这个参数的意思是告诉JDBC缓存需要prepare的SQL，比如“SELECT*FROMt_orderWHEREuser_id=?”，运行过一次后，下次再运行就跳过PreparedStatement，直接用ExecuteStatement设置参数值。
+原来cachePrepStmts=true这个参数的意思是告诉JDBC缓存需要prepare的SQL，比如“SELECT * FROM t_order WHERE user_id=?”，运行过一次后，下次再运行就跳过PreparedStatement，直接用ExecuteStatement设置参数值。
 明白原理后，就知道该怎么优化Proxy了。Proxy采用的是Hikari数据库连接池，在初始化的时候为其设置上面的两个参数：
 config.addDataSourceProperty(&amp;quot;useServerPrepStmts&amp;quot;,&amp;quot;true&amp;quot;); config.addDataSourceProperty(&amp;quot;cachePrepStmts&amp;quot;,&amp;quot;true&amp;quot;); 这样就保证了Proxy和MySQL服务之间的性能。那么Proxy和Client之间的性能如何保证呢？
 Proxy在收到Client的PreparedStatement的时候，并不会把这条消息转发给MySQL，因为SQL里的分片键是问号，Proxy不知道该路由到哪个真实数据库。Proxy收到这条消息后只是缓存了SQL，存储在一个StatementId到SQL的Map里面，等收到ExecuteStatement的时候才真正请求数据库。
 这个逻辑在优化前是没问题的，因为每一次查询都是一个新的PreparedStatement流程，ExecuteStatement会把参数类型和参数值告诉客户端。
 加上两个参数后，消息内容发生了变化，ExecuteStatement在发送第二次的时候，消息体里只有参数值而没有参数类型，Proxy不知道类型就不能正确的取出值。所以Proxy需要做的优化就是在PreparedStatement开始的时候缓存参数类型。
-完成以上优化后，Client-Proxy和Proxy-MySQL两侧的消息交互都变成了最后这张图的流程，从第9步开始高效查询。
-2. Hikari连接池配置优化 Proxy在初始化的时候，会为每一个真实数据库配置一个Hikari连接池。根据分片规则，SQL被路由到某些真实库，通过Hikari连接得到执行结果，最后Proxy对结果进行归并返回给客户端。那么，数据库连接池到底该设置多大？对于这个众说纷纭的话题，今天该有一个定论了。
-你会惊喜的发现，这个问题不是设置“多大”，反而是应该设置“多小”！如果我说执行一个任务，串行比并行更快，是不是有点反直觉？
-即使是单核CPU的计算机也能“同时”支持数百个线程。但我们都应该知道这只不过是操作系统用“时间片”玩的一个小花招。事实上，一个CPU核心同一时刻只能执行一个线程，然后操作系统切换上下文，CPU执行另一个线程，如此往复。</description>
+完成以上优化后，Client-Proxy和Proxy-MySQL两侧的消息交互都变成了最后这张图的流程，从第9步开始高效查询。</description>
     </item>
     
     <item>
@@ -204,7 +201,7 @@ Proxy在收到Client的PreparedStatement的时候，并不会把这条消息转�
 目前主要精力投入在将ShardingSphere打造为业界一流的金融级数据解决方案之上。ShardingSphere已经进入Apache孵化器，是京东集团首个进入Apache基金会的开源项目，也是Apache基金会首个分布式数据库中间件。
  姜宁，华为开源能力中心技术专家，Apache ServiceComb项目负责人。前红帽软件首席软件工程师，在企业级开源中间件开发方面有十余年经验，有丰富的Java开发和使用经验，函数式编程爱好者。从2006年开始一直从事Apache开源中间件项目的开发工作，先后参与Apache CXF，Apache Camel，以及Apache ServiceMix的开发。对微服务架构，WebServices，Enterprise Integration Pattern，SOA， OSGi 均有比较深入的研究。
 博客地址：https://willemjiang.github.io/
- 冯征，红帽软件工程师。2009年加入红帽软件公司，主要从事事务管理器方面的工作，做为核心开发人员参与了Narayan和Blacktie项目，在与多个应用服务器（Wildfly, Karaf, Tomcat）和框架（Common DBCP, Spring Boot）的事务处理集成方面有过贡献。从2017年开始参与了Apache ServiceComb项目，目前是PMC成员之一。对于分布式事务处理以及微服务环境中的事务处理，有过深入的研究。
+ 冯征，红帽软件工程师。2009年加入红帽软件公司，主要从事事务管理器方面的工作，做为核心开发人员参与了 Narayana 和 BlackTie 项目，在与多个应用服务器（Wildfly, Karaf, Tomcat）和框架（Common DBCP, Spring Boot）的事务处理集成方面有过贡献。从2017年开始参与了Apache ServiceComb项目，目前是PMC成员之一。对于分布式事务处理以及微服务环境中的事务处理，有过深入的研究。
 导读 相比于数据分片方案的逐渐成熟，集性能、透明化、自动化、强一致、并能适用于各种应用场景于一体的分布式事务解决方案则显得凤毛麟角。基于两（三）阶段提交的分布式事务的性能瓶颈以及柔性事务的业务改造问题，使得分布式事务至今依然是令架构师们头疼的问题。
 Apache ShardingSphere（Incubating）不失时机的在2019年初，提供了一个刚柔并济的一体化分布式事务解决方案。如果您的应用系统正在受到这方面的困扰，不妨倒上一杯咖啡，花十分钟阅读此文，说不定会有些收获呢？
 背景 数据库事务需要满足ACID（原子性、一致性、隔离性、持久性）4个特性。
@@ -217,8 +214,7 @@ Apache ShardingSphere（Incubating）不失时机的在2019年初，提供了一
 本地事务 在不开启任何分布式事务管理器的前提下，让每个数据节点各自管理自己的事务。 它们之间没有协调以及通信的能力，也并不互相知晓其他数据节点事务的成功与否。 本地事务在性能方面无任何损耗，但在强一致性以及最终一致性方面则力不从心。
 两阶段提交 XA协议最早的分布式事务模型是由X/Open国际联盟提出的X/Open Distributed Transaction Processing（DTP）模型，简称XA协议。
 基于XA协议实现的分布式事务对业务侵入很小。 它最大的优势就是对使用方透明，用户可以像使用本地事务一样使用基于XA协议的分布式事务。 XA协议能够严格保障事务ACID特性。
-严格保障事务ACID特性是一把双刃剑。 事务执行在过程中需要将所需资源全部锁定，它更加适用于执行时间确定的短事务。 对于长事务来说，整个事务进行期间对数据的独占，将导致对热点数据依赖的业务系统并发性能衰退明显。 因此，在高并发的性能至上场景中，基于XA协议两阶段提交类型的分布式事务并不是最佳选择。
-柔性事务 如果将实现了ACID的事务要素的事务称为刚性事务的话，那么基于BASE事务要素的事务则称为柔性事务。 BASE是基本可用、柔性状态和最终一致性这3个要素的缩写。</description>
+严格保障事务ACID特性是一把双刃剑。 事务执行在过程中需要将所需资源全部锁定，它更加适用于执行时间确定的短事务。 对于长事务来说，整个事务进行期间对数据的独占，将导致对热点数据依赖的业务系统并发性能衰退明显。 因此，在高并发的性能至上场景中，基于XA协议两阶段提交类型的分布式事务并不是最佳选择。</description>
     </item>
     
     <item>

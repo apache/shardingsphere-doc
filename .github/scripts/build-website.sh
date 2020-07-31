@@ -2,6 +2,8 @@ echo config user kimmking
 git config --global user.email "kimmking@163.com"
 git config --global user.name "kimmking"
 
+count=0
+
 #######################################
 ##        SHARDINGSPHERE/DOCS        ##
 #######################################
@@ -21,6 +23,7 @@ if  [ ! -s result_version ]  ; then
     echo "shardingsphere docs sources didn't change and nothing to do!"
     #exit 0
 else
+    let count++
     echo "check shardingsphere something new, launch a build..."
     cd ..
     rm -rf old_version_ss
@@ -87,6 +90,7 @@ if  [ ! -s result_version ]  ; then
     echo "elasticjob docs sources didn't change and nothing to do!"
     #exit 0
 else
+    let count++
     echo "check elasticjob something new, launch a build..."
     cd ..
     rm -rf old_version_ej
@@ -116,7 +120,12 @@ else
     rm -rf ejtarget
 fi
 
-echo git push new files
-git add .
-git commit -m  "update shardingsphere documents at `date`"
-git push
+if [ $count -eq 0 ];then
+    echo "Both ShardingSphere&ElasticJob docs are not Changed, Skip&Return now."
+else
+    echo git push new files
+    git add .
+    dateStr=`date "+%Y-%m-%d %H:%M:%S"`
+    git commit -m  "Update shardingsphere documents at $dateStr."
+    git push
+fi

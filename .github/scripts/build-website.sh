@@ -121,13 +121,12 @@ else
     cp -fr ejtarget/* elasticjob/current
     
     rm -rf ejtarget
-    ls -al
+    #ls -al
 fi
 
 if [ $count -eq 0 ];then
     echo "Both ShardingSphere&ElasticJob docs are not Changed, Skip&Return now."
 else
-    exit 0
     echo git push new files
     git add .
     export TZ="Asia/Shanghai"

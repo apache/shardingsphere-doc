@@ -22,7 +22,8 @@ git log -1 -p docs > new_version_ss
 diff ../old_version_ss new_version_ss > result_version
 if  [ ! -s result_version ]  ; then
     echo "shardingsphere docs sources didn't change and nothing to do!"
-    #exit 0
+    cd ..
+    rm -rf _shardingsphere
 else
     count=1
     echo "check shardingsphere something new, launch a build..."
@@ -89,7 +90,8 @@ git log -1 -p docs > new_version_ej
 diff ../old_version_ej new_version_ej > result_version
 if  [ ! -s result_version ]  ; then
     echo "elasticjob docs sources didn't change and nothing to do!"
-    #exit 0
+    cd ..
+    rm -rf _elasticjob
 else
     count=2
     echo "check elasticjob something new, launch a build..."
@@ -125,6 +127,7 @@ fi
 if [ $count -eq 0 ];then
     echo "Both ShardingSphere&ElasticJob docs are not Changed, Skip&Return now."
 else
+    exit 0
     echo git push new files
     git add .
     export TZ="Asia/Shanghai"

@@ -23,7 +23,7 @@ if  [ ! -s result_version ]  ; then
     echo "shardingsphere docs sources didn't change and nothing to do!"
     #exit 0
 else
-    let count++
+    count=1
     echo "check shardingsphere something new, launch a build..."
     cd ..
     rm -rf old_version_ss
@@ -90,7 +90,7 @@ if  [ ! -s result_version ]  ; then
     echo "elasticjob docs sources didn't change and nothing to do!"
     #exit 0
 else
-    let count++
+    count=2
     echo "check elasticjob something new, launch a build..."
     cd ..
     rm -rf old_version_ej

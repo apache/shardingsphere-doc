@@ -3,6 +3,7 @@ git config --global user.email "kimmking@163.com"
 git config --global user.name "kimmking"
 
 count=0
+export TZ="Asia/Shanghai"
 
 #######################################
 ##        SHARDINGSPHERE/DOCS        ##
@@ -118,6 +119,7 @@ else
     cp -fr ejtarget/* elasticjob/current
     
     rm -rf ejtarget
+    ls -al
 fi
 
 if [ $count -eq 0 ];then

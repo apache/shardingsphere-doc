@@ -125,7 +125,8 @@ if [ $count -eq 0 ];then
 else
     echo git push new files
     git add .
-    dateStr=`date "+%Y-%m-%d %H:%M:%S"`
+    export TZ="Asia/Shanghai"
+    dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
     git commit -m  "Update shardingsphere documents at $dateStr."
     git push
 fi

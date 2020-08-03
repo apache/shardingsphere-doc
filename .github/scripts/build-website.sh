@@ -20,6 +20,7 @@ git config --global user.email "kimmking@163.com"
 git config --global user.name "kimmking"
 
 count=0
+export TZ="Asia/Shanghai"
 
 #######################################
 ##        SHARDINGSPHERE/DOCS        ##
@@ -38,7 +39,8 @@ git log -1 -p docs > new_version_ss
 diff ../old_version_ss new_version_ss > result_version
 if  [ ! -s result_version ]  ; then
     echo "shardingsphere docs sources didn't change and nothing to do!"
-    #exit 0
+    cd ..
+    rm -rf _shardingsphere
 else
     count=1
     echo "check shardingsphere something new, launch a build..."
@@ -105,7 +107,8 @@ git log -1 -p docs > new_version_ej
 diff ../old_version_ej new_version_ej > result_version
 if  [ ! -s result_version ]  ; then
     echo "elasticjob docs sources didn't change and nothing to do!"
-    #exit 0
+    cd ..
+    rm -rf _elasticjob
 else
     count=2
     echo "check elasticjob something new, launch a build..."
@@ -135,6 +138,7 @@ else
     cp -fr ejtarget/* elasticjob/current
     
     rm -rf ejtarget
+    #ls -al
 fi
 
 if [ $count -eq 0 ];then

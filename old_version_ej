@@ -1,141 +1,62 @@
-commit 42dea9ee8c7663241b2151045cf6783ff0e5690c
-Author: 吴伟杰 <root496879118@me.com>
-Date:   Tue Aug 4 12:46:39 2020 +0800
+commit c6b2a5dc15c492f996b88ef66d934ad63646524e
+Author: Liang Zhang <terrymanu@163.com>
+Date:   Thu Aug 6 11:33:57 2020 +0800
 
-    Improve Spring Boot OneOffJobBootstrap injection (#1331)
-    
-    * Improve Spring Boot OneOffJobBootstrap injection
-    - Add property `jobBootstrapBeanName`.
-    - Add testcase for property `jobBootstrapBeanName`.
-    - Update example for Spring Boot Starter.
-    - Update documents of Spring Boot Starter.
-    
-    * Update Spring Boot configuration documents.
+    Update doc for the relationship of failover and execution monitor (#1336)
 
-diff --git a/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.cn.md b/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.cn.md
-index fb8721711..419b4d072 100644
---- a/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.cn.md
-+++ b/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.cn.md
-@@ -47,6 +47,7 @@ elasticjob.reg-center.server-lists=localhost:6181
- | --------------------------------- |:-------- |
- | elasticJobClass / elasticJobType  | 是       |
- | cron                              | 否       |
-+| jobBootstrapBeanName              | 否       |
- | sharding-total-count              | 是       |
- | sharding-item-parameters          | 否       |
- | job-parameter                     | 否       |
-@@ -63,7 +64,11 @@ elasticjob.reg-center.server-lists=localhost:6181
- | disabled                          | 否       |
- | overwrite                         | 否       |
+diff --git a/docs/content/features/failover.cn.md b/docs/content/features/failover.cn.md
+index dbacb09ae..12b7d7749 100644
+--- a/docs/content/features/failover.cn.md
++++ b/docs/content/features/failover.cn.md
+@@ -8,6 +8,8 @@ chapter = true
+ ElasticJob 不会在本次执行过程中进行重新分片，而是等待下次调度之前才开启重新分片流程。
+ 当作业执行过程中服务器宕机，失效转移允许将该次未完成的任务在另一作业节点上补偿执行。
  
--**[elasticJobClass]与[elasticJobType]互斥，每项作业只能有一种类型**
-+**elasticJobClass 与 elasticJobType 互斥，每项作业只能有一种类型**
++失效转移需要与监听作业运行时状态同时开启才可生效。
 +
-+如果配置了 cron 属性则为定时调度作业，Starter 会在应用启动时自动启动；
-+否则为一次性调度作业，需要通过 jobBootstrapBeanName 指定 OneOffJobBootstrap Bean 的名称，
-+在触发点注入 OneOffJobBootstrap 的实例并手动调用 execute() 方法。
+ ## 概念
  
- 配置格式参考：
+ 失效转移是当前执行作业的临时补偿执行机制，再下次作业运行时，会通过重分片对当前作业分配进行调整。
+diff --git a/docs/content/features/failover.en.md b/docs/content/features/failover.en.md
+index c6fc5bf8c..dc55d5377 100644
+--- a/docs/content/features/failover.en.md
++++ b/docs/content/features/failover.en.md
+@@ -8,6 +8,8 @@ chapter = true
+ ElasticJob will not re-shard during this execution, but wait for the next scheduling before starting the re-sharding process.
+ When the server is down during job execution, failover allows the unfinished task to be compensated and executed on another job node.
  
-@@ -82,6 +87,12 @@ elasticjob:
-       shardingTotalCount: 3
-       props:
-         script.command.line: "echo SCRIPT Job: "
-+    manualScriptJob:
-+      elasticJobType: SCRIPT
-+      jobBootstrapBeanName: manualScriptJobBean
-+      shardingTotalCount: 9
-+      props:
-+        script.command.line: "echo Manual SCRIPT Job: "
- ```
- 
- **Properties**
-@@ -94,6 +105,10 @@ elasticjob.jobs.scriptJob.elastic-job-type=SCRIPT
- elasticjob.jobs.scriptJob.cron=0/5 * * * * ?
- elasticjob.jobs.scriptJob.sharding-total-count=3
- elasticjob.jobs.scriptJob.props.script.command.line=echo SCRIPT Job:
-+elasticjob.jobs.manualScriptJob.elastic-job-type=SCRIPT
-+elasticjob.jobs.manualScriptJob.job-bootstrap-bean-name=manualScriptJobBean
-+elasticjob.jobs.manualScriptJob.sharding-total-count=3
-+elasticjob.jobs.manualScriptJob.props.script.command.line=echo Manual SCRIPT Job:
- ```
- 
- ## 事件追踪配置
-diff --git a/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.en.md b/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.en.md
-index b092d2aac..80def1bd8 100644
---- a/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.en.md
-+++ b/docs/content/user-manual/elasticjob-lite/configuration/spring-boot-starter.en.md
-@@ -47,6 +47,7 @@ Configuration:
- | --------------------------------- |:-------- |
- | elasticJobClass / elasticJobType  | Yes      |
- | cron                              | No       |
-+| jobBootstrapBeanName              | No       |
- | sharding-total-count              | Yes      |
- | sharding-item-parameters          | No       |
- | job-parameter                     | No       |
-@@ -63,7 +64,12 @@ Configuration:
- | disabled                          | No       |
- | overwrite                         | No       |
- 
--**[elasticJobClass] are [elasticJobType] mutually exclusive.**
-+**"elasticJobClass" and "elasticJobType" are mutually exclusive.**
++Enable failover and monitorExecution together to take effect.
 +
-+If cron was configured, the job will be created as a ScheduleJobBootstrap.
-+The Starter will start scheduling when application is ready.
-+Otherwise, the job will be created as a OneOffJobBootstrap with a name specified by "jobBootstrapBeanName".
-+It requires manual injection and execution.
+ ## Concept
  
- Reference: 
+ Failover is a temporary compensation execution mechanism for the currently executed job. When the next job is run, the current job allocation will be adjusted through resharding.
+diff --git a/docs/content/user-manual/elasticjob-lite/configuration/_index.cn.md b/docs/content/user-manual/elasticjob-lite/configuration/_index.cn.md
+index 364a78325..5df622361 100644
+--- a/docs/content/user-manual/elasticjob-lite/configuration/_index.cn.md
++++ b/docs/content/user-manual/elasticjob-lite/configuration/_index.cn.md
+@@ -76,6 +76,10 @@ ElasticJob-Lite 提供了 3 种配置方式，用于不同的使用场景。
+ 因为是瞬时状态，所以无必要监控。请用户自行增加数据堆积监控。并且不能保证数据重复选取，应在作业中实现幂等性。
+ 每次作业执行时间和间隔时间均较长的情况，建议监控作业运行时状态，可保证数据不会重复选取。
  
-@@ -82,6 +88,12 @@ elasticjob:
-       shardingTotalCount: 3
-       props:
-         script.command.line: "echo SCRIPT Job: "
-+    manualScriptJob:
-+      elasticJobType: SCRIPT
-+      jobBootstrapBeanName: manualScriptJobBean
-+      shardingTotalCount: 9
-+      props:
-+        script.command.line: "echo Manual SCRIPT Job: "
- ```
- 
- **Properties**
-@@ -94,6 +106,10 @@ elasticjob.jobs.scriptJob.elastic-job-type=SCRIPT
- elasticjob.jobs.scriptJob.cron=0/5 * * * * ?
- elasticjob.jobs.scriptJob.sharding-total-count=3
- elasticjob.jobs.scriptJob.props.script.command.line=echo SCRIPT Job:
-+elasticjob.jobs.manualScriptJob.elastic-job-type=SCRIPT
-+elasticjob.jobs.manualScriptJob.job-bootstrap-bean-name=manualScriptJobBean
-+elasticjob.jobs.manualScriptJob.sharding-total-count=3
-+elasticjob.jobs.manualScriptJob.props.script.command.line=echo Manual SCRIPT Job:
- ```
- 
- ## Event Trace Configuration
-diff --git a/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.cn.md b/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.cn.md
-index 014db19c7..e87e02f4f 100644
---- a/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.cn.md
-+++ b/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.cn.md
-@@ -80,6 +80,9 @@ JobBootstrap 由 Starter 动态创建，如果依赖方的实例化时间早于
- 
- 也可以通过 ApplicationContext 获取 JobBootstrap 的 Bean。
- 
-+`OneOffJobBootstrap` bean 的名称通过属性 jobBootstrapBeanName 配置，注入时需要指定依赖的 bean 名称。
-+具体配置请参考[配置文档](/cn/user-manual/elasticjob-lite/configuration/spring-boot-starter)。
++**failover:**
 +
- ```java
- @RestController
- @DependsOn("ElasticJobLiteAutoConfiguration")
-diff --git a/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.en.md b/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.en.md
-index 1dd4abf9f..da60a9d33 100644
---- a/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.en.md
-+++ b/docs/content/user-manual/elasticjob-lite/usage/job-api/spring-boot-starter.en.md
-@@ -82,6 +82,9 @@ JobBootstraps are created by the Starter dynamically. It's unable to inject the
- 
- Developers can also retrieve `JobBootstrap` beans by ApplicationContext.
- 
-+The bean name of `OneOffJobBootstrap` is specified by property "jobBootstrapBeanName",
-+Please refer to [Spring Boot Starter Configuration](/en/user-manual/elasticjob-lite/configuration/spring-boot-starter).
++需要与 monitorExecution 同时开启才可生效。
 +
- ```java
- @RestController
- @DependsOn("ElasticJobLiteAutoConfiguration")
+ **maxTimeDiffSeconds:**
+ 
+ 如果时间误差超过配置秒数则作业启动时将抛异常。
+diff --git a/docs/content/user-manual/elasticjob-lite/configuration/_index.en.md b/docs/content/user-manual/elasticjob-lite/configuration/_index.en.md
+index ae5ba399c..0e91d8cec 100644
+--- a/docs/content/user-manual/elasticjob-lite/configuration/_index.en.md
++++ b/docs/content/user-manual/elasticjob-lite/configuration/_index.en.md
+@@ -75,6 +75,10 @@ When the execution time and interval of each job are very short, it is recommend
+ There is no need to monitor because it is a transient state. User can add data accumulation monitoring by self. And there is no guarantee that the data will be selected repeatedly, idempotency should be achieved in the job.
+ If the job execution time and interval time are longer, it is recommended to monitor the job status, and it can guarantee that the data will not be selected repeatedly.
+ 
++**failover:**
++
++Enable failover and monitorExecution together to take effect.
++
+ **maxTimeDiffSeconds:**
+ 
+ If the time error exceeds the configured seconds, an exception will be thrown when the job starts.

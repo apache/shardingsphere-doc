@@ -104,8 +104,8 @@ else
         cd ..
         make latexpdf
         mkdir -p pdf
-        cp _build/latex/*.pdf pdf/shadingsphere_docs_${lang}.pdf
-        echo "shadingsphere_docs_${lang}.pdf"
+        cp _build/latex/*.pdf pdf/shardingsphere_docs_${lang}.pdf
+        echo "shardingsphere_docs_${lang}.pdf"
         make clean
         rm -rf {_build,source}
     done

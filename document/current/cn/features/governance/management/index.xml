@@ -18,10 +18,9 @@
       <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/management/config-center/</guid>
       <description>实现动机   配置集中化：越来越多的运行时实例，使得散落的配置难于管理，配置不同步导致的问题十分严重。将配置集中于配置中心，可以更加有效进行管理。
   配置动态化：配置修改后的分发，是配置中心可以提供的另一个重要能力。它可支持数据源和规则的动态切换。
-  配置中心数据结构 配置中心在定义的命名空间的 config 节点下，以 YAML 格式存储，包括数据源信息，规则信息、权限配置和属性配置，可通过修改节点来实现对于配置的动态管理。
-config ├──authentication # 权限配置 ├──props # 属性配置 ├──schema # Schema 配置 ├ ├──schema_1 # Schema 名称1 ├ ├ ├──datasource # 数据源配置 ├ ├ ├──rule # 规则配置 ├ ├──schema_2 # Schema 名称2 ├ ├ ├──datasource # 数据源配置 ├ ├ ├──rule # 规则配置 config/authentication 权限配置，可配置访问 ShardingSphere-Proxy 的用户名和密码。
-username: root password: root config/props 属性配置，详情请参见配置手册。
-executor.size: 20 sql.show: true config/schema/schemeName/datasource 多个数据库连接池的集合，不同数据库连接池属性自适配（例如：DBCP，C3P0，Druid, HikariCP）。</description>
+  配置中心数据结构 配置中心在定义的命名空间下，以 YAML 格式存储，包括数据源信息，规则信息、权限配置和属性配置，可通过修改节点来实现对于配置的动态管理。
+namespace ├──authentication # 权限配置 ├──props # 属性配置 ├──schemas # Schema 配置 ├ ├──${schema_1} # Schema 名称1 ├ ├ ├──datasource # 数据源配置 ├ ├ ├──rule # 规则配置 ├ ├ ├──table # 表结构配置 ├ ├──${schema_2} # Schema 名称2 ├ ├ ├──datasource # 数据源配置 ├ ├ ├──rule # 规则配置 ├ ├ ├──table # 表结构配置 /authentication 权限配置，可配置访问 ShardingSphere-Proxy 的用户名和密码。
+username: root password: root /props 属性配置，详情请参见配置手册。</description>
     </item>
     
     <item>
@@ -32,28 +31,13 @@ executor.size: 20 sql.show: true config/schema/schemeName/datasource 多个数�
       <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/management/registry-center/</guid>
       <description>实现动机   相对于配置中心管理配置数据，注册中心存放运行时的动态/临时状态数据，比如可用的 ShardingSphere 的实例，需要禁用或熔断的数据源等。
   通过注册中心，可以提供熔断数据库访问程序对数据库的访问和禁用从库的访问的编排治理能力。治理模块仍然有大量未完成的功能（比如流控等）。
-  注册中心数据结构 注册中心在定义的命名空间的 registry 节点下，创建数据库访问对象运行节点，用于区分不同数据库访问实例。包括 instances 和 datasources 节点。
-instances ├──your_instance_ip_a@-@your_instance_pid_x ├──your_instance_ip_b@-@your_instance_pid_y ├──.... datasources ├──schema_1 ├ ├──ds_0 ├ ├──ds_1 ├──schema_2 ├ ├──ds_0 ├ ├──ds_1 ├──.... registry/instances 数据库访问对象运行实例信息，子节点是当前运行实例的标识。 运行实例标识由运行服务器的 IP 地址和 PID 构成。运行实例标识均为临时节点，当实例上线时注册，下线时自动清理。 注册中心监控这些节点的变化来治理运行中实例对数据库的访问等。
-registry/datasources 可以治理读写分离从库，可动态添加删除以及禁用。
-操作指南 熔断实例 可在 IP地址@-@PID 节点写入 DISABLED（忽略大小写）表示禁用该实例，删除 DISABLED 表示启用。
+  注册中心数据结构 注册中心在定义的命名空间的 states 节点下，创建数据库访问对象运行节点，用于区分不同数据库访问实例。包括 proxynodes 和 datanodes 节点。
+namespace ├──states ├──proxynodes ├──${your_instance_ip_a}@${your_instance_pid_x}@${UUID} ├──${your_instance_ip_b}@${your_instance_pid_y}@${UUID} ├──.... ├──datanodes ├──${schema_1} ├ ├──${ds_0} ├ ├──${ds_1} ├──${schema_2} ├ ├──${ds_0} ├ ├──${ds_1} ├──.... /proxynodes 数据库访问对象运行实例信息，子节点是当前运行实例的标识。 运行实例标识由运行服务器的 IP 地址和 PID 构成。运行实例标识均为临时节点，当实例上线时注册，下线时自动清理。 注册中心监控这些节点的变化来治理运行中实例对数据库的访问等。
+/datanodes 可以治理读写分离从库，可动态添加删除以及禁用。
+操作指南 熔断实例 可在 IP地址@PID@UUID 节点写入 DISABLED（忽略大小写）表示禁用该实例，删除 DISABLED 表示启用。
 Zookeeper 命令如下：
-[zk: localhost:2181(CONNECTED) 0] set /your_zk_namespace/registry/instances/your_instance_ip_a@-@your_instance_pid_x DISABLED 禁用从库 在读写分离场景下，可在数据源名称子节点中写入 DISABLED（忽略大小写）表示禁用从库数据源，删除 DISABLED 或节点表示启用。
-Zookeeper 命令如下：
-[zk: localhost:2181(CONNECTED) 0] set /your_zk_namespace/registry/datasources/your_schema_name/your_slave_datasource_name DISABLED </description>
-    </item>
-    
-    <item>
-      <title>元数据中心</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/governance/management/metadata-center/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/management/metadata-center/</guid>
-      <description>实现动机   元数据是 ShardingSphere 所使用的数据源的表、列和索引等核心数据，元数据保障 ShardingSphere 各个组件能够正确运行。
-  元数据中心对元数据进行统一组织和管理，实现元数据的统一加载、变更通知和数据同步。
-  元数据中心数据结构 元数据中心在定义的命名空间和治理节点的 metadata 节点下，以 YAML 格式存储，每个逻辑数据源独立存储。
-├─governance-name │ ├──metadata │ │ ├──schema_1 │ │ │ ├── [YAML text contents] │ │ ├──schema_2 │ │ │ ├── [YAML text contents] │ │ ├──.... YAML Text Contents 在元数据中心中，元数据分为 configuredSchemaMetaData 和 unconfiguredSchemaMetaDataMap 两部分。
-元数据内容目前不支持动态修改。
-configuredSchemaMetaData: tables: # 表 t_order: # 表名 columns: # 列 id: # 列名 caseSensitive: false dataType: 0 generated: false name: id primaryKey: trues order_id: caseSensitive: false dataType: 0 generated: false name: order_id primaryKey: false indexs: # 索引 t_user_order_id_index: # 索引名 name: t_user_order_id_index t_order_item: columns: order_id: caseSensitive: false dataType: 0 generated: false name: order_id primaryKey: false unconfiguredSchemaMetaDataMap: ds_0: # 数据源 tables: # 表 t_user: # 表名 columns: # 列 user_id: # 列名 caseSensitive: false dataType: 0 generated: false name: user_id primaryKey: false id: caseSensitive: false dataType: 0 generated: false name: id primaryKey: true order_id: caseSensitive: false dataType: 0 generated: false name: order_id primaryKey: false indexes: # 索引 t_user_order_id_index: # 索引名 name: t_user_order_id_index t_user_user_id_index: name: t_user_user_id_index primary: name: PRIMARY configuredSchemaMetaData 存储所有配置了分片规则的数据源的元数据。</description>
+[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/states/proxynodes/${your_instance_ip_a}@${your_instance_pid_x}@${UUID} DISABLED 禁用从库 在读写分离场景下，可在数据源名称子节点中写入 DISABLED（忽略大小写）表示禁用从库数据源，删除 DISABLED 或节点表示启用。
+Zookeeper 命令如下：</description>
     </item>
     
     <item>
@@ -62,8 +46,8 @@ configuredSchemaMetaData: tables: # 表 t_order: # 表名 columns: # 列 id: # �
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/document/current/cn/features/governance/management/dependency/</guid>
-      <description>Apache ShardingSphere 在数据库治理模块使用 SPI 方式载入数据到配置中心/注册/元数据中心，进行实例熔断和数据库禁用。 目前，Apache ShardingSphere 内部支持 ZooKeeper，Etcd，Apollo 和 Nacos 等常用的配置中心/注册中心。 此外，开发者可以使用其他第三方组件，并通过 SPI 的方式注入到 Apache ShardingSphere，从而使用该配置中心/注册/元数据中心，实现数据库治理功能。
-    实现驱动 版本 配置中心 注册中心 元数据中心     Zookeeper Apache Curator 3.6.x 支持 支持 支持   Etcd jetcd v3 支持 支持 支持   Apollo Apollo Client 1.5.0 支持 不支持 不支持   Nacos Nacos Client 1.0.0 支持 不支持 不支持    </description>
+      <description>Apache ShardingSphere 在数据库治理模块使用 SPI 方式载入数据到配置中心和注册中心，进行实例熔断和数据库禁用。 目前，Apache ShardingSphere 内部支持 ZooKeeper，Etcd，Apollo 和 Nacos 等常用的配置中心/注册中心。 此外，开发者可以使用其他第三方组件，并通过 SPI 的方式注入到 Apache ShardingSphere，从而使用该配置中心和注册中心，实现数据库治理功能。
+    实现驱动 版本 配置中心 注册中心     Zookeeper Apache Curator 3.6.x 支持 支持   Etcd jetcd v3 支持 支持   Apollo Apollo Client 1.5.0 支持 不支持   Nacos Nacos Client 1.0.0 支持 不支持    </description>
     </item>
     
   </channel>

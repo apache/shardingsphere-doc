@@ -1,26 +1,282 @@
-commit 5419c255e40d6f88920dcf47a5f5a41a04076f69
-Author: Haoran Meng <menghaoranss@gmail.com>
-Date:   Fri Sep 11 14:33:09 2020 +0800
+commit 57cc663db17aa49d69e423308fcddac943cde404
+Author: kimmking <kimmking@apache.org>
+Date:   Fri Sep 11 19:25:58 2020 +0800
 
-    Remove metadata center (#7405)
+    refactor for #7229
 
-diff --git a/docs/document/content/features/governance/management/dependency.en.md b/docs/document/content/features/governance/management/dependency.en.md
-index aa940a5567..abe7c756d0 100644
---- a/docs/document/content/features/governance/management/dependency.en.md
-+++ b/docs/document/content/features/governance/management/dependency.en.md
-@@ -7,9 +7,9 @@ Apache ShardingSphere uses SPI to load data to the config center and registry ce
- Currently, Apache ShardingSphere supports frequently used registry centers, Zookeeper, Etcd, Apollo and Nacos. 
- In addition, by injecting them to ShardingSphere with SPI, users can use other third-party config and registry centers to enable databases governance.
+diff --git a/docs/document/content/features/encrypt/principle.cn.md b/docs/document/content/features/encrypt/principle.cn.md
+index 0c0d1f81f1..3ddcd9686d 100644
+--- a/docs/document/content/features/encrypt/principle.cn.md
++++ b/docs/document/content/features/encrypt/principle.cn.md
+@@ -126,13 +126,13 @@ Apache ShardingSphere 接收到该 SQL，通过用户提供的加密配置，发
+           cipherColumn: pwd_cipher
+           encryptorName: aes_encryptor
+ props:
+-  query.with.cipher.column: false
++  query-with-cipher-column: false
+ ```
  
--|                                               | *Driver*                                             | *Version* | *Config Center* | *Registry Center* | *Metadata Center* |
--| --------------------------------------------- | ---------------------------------------------------- | --------- | --------------- | ----------------- | ----------------- |
--| [Zookeeper](https://zookeeper.apache.org/)    | [Apache Curator](http://curator.apache.org/)         | 3.6.x     | Support         | Support           | Support           |
--| [Etcd](https://etcd.io/)                      | [jetcd](https://github.com/etcd-io/jetcd)            | v3        | Support         | Support           | Support           |
--| [Apollo](https://github.com/ctripcorp/apollo) | [Apollo Client](https://github.com/ctripcorp/apollo) | 1.5.0     | Support         | Not Support       | Not Support       |
--| [Nacos](https://nacos.io/zh-cn/docs/sdk.html) | [Nacos Client](https://nacos.io/zh-cn/docs/sdk.html) | 1.0.0     | Support         | Not Support       | Not Support       |
-+|                                               | *Driver*                                             | *Version* | *Config Center* | *Registry Center* |
-+| --------------------------------------------- | ---------------------------------------------------- | --------- | --------------- | ----------------- |
-+| [Zookeeper](https://zookeeper.apache.org/)    | [Apache Curator](http://curator.apache.org/)         | 3.6.x     | Support         | Support           |
-+| [Etcd](https://etcd.io/)                      | [jetcd](https://github.com/etcd-io/jetcd)            | v3        | Support         | Support           |
-+| [Apollo](https://github.com/ctripcorp/apollo) | [Apollo Client](https://github.com/ctripcorp/apollo) | 1.5.0     | Support         | Not Support       |
-+| [Nacos](https://nacos.io/zh-cn/docs/sdk.html) | [Nacos Client](https://nacos.io/zh-cn/docs/sdk.html) | 1.0.0     | Support         | Not Support       |
+ 依据上述加密规则可知，首先需要在数据库表 `t_user` 里新增一个字段叫做 `pwd_cipher`，即 cipherColumn，用于存放密文数据，同时我们把 plainColumn 设置为 `pwd`，用于存放明文数据，而把 logicColumn 也设置为 `pwd`。
+ 由于之前的代码 SQL 就是使用 `pwd` 进行编写，即面向逻辑列进行 SQL 编写，所以业务代码无需改动。
+ 通过 Apache ShardingSphere，针对新增的数据，会把明文写到pwd列，并同时把明文进行加密存储到 `pwd_cipher` 列。
+-此时，由于 `query.with.cipher.column` 设置为 false，对业务应用来说，依旧使用 `pwd` 这一明文列进行查询存储，却在底层数据库表 `pwd_cipher` 上额外存储了新增数据的密文数据，其处理流程如下图所示：
++此时，由于 `query-with-cipher-column` 设置为 false，对业务应用来说，依旧使用 `pwd` 这一明文列进行查询存储，却在底层数据库表 `pwd_cipher` 上额外存储了新增数据的密文数据，其处理流程如下图所示：
+ 
+ ![6](https://shardingsphere.apache.org/document/current/img/encrypt/6.png)
+ 
+@@ -142,15 +142,15 @@ props:
+ 2. 系统迁移中
+ 
+ 新增的数据已被 Apache ShardingSphere 将密文存储到密文列，明文存储到明文列；历史数据被业务方自行加密清洗后，将密文也存储到密文列。
+-也就是说现在的数据库里即存放着明文也存放着密文，只是由于配置项中的 query.with.cipher.column=false，所以密文一直没有被使用过。
+-现在我们为了让系统能切到密文数据进行查询，需要将加密配置中的query.with.cipher.column设置为true。
++也就是说现在的数据库里即存放着明文也存放着密文，只是由于配置项中的 query-with-cipher-column=false，所以密文一直没有被使用过。
++现在我们为了让系统能切到密文数据进行查询，需要将加密配置中的query-with-cipher-column设置为true。
+ 在重启系统后，我们发现系统业务一切正常，但是 Apache ShardingSphere 已经开始从数据库里取出密文列的数据，解密后返回给用户；
+ 而对于用户的增删改需求，则依旧会把原文数据存储到明文列，加密后密文数据存储到密文列。
+ 
+ 虽然现在业务系统通过将密文列的数据取出，解密后返回；但是，在存储的时候仍旧会存一份原文数据到明文列，这是为什么呢？
+ 答案是：为了能够进行系统回滚。
+ **因为只要密文和明文永远同时存在，我们就可以通过开关项配置自由将业务查询切换到 cipherColumn 或 plainColumn。**
+-也就是说，如果将系统切到密文列进行查询时，发现系统报错，需要回滚。那么只需将 query.with.cipher.column=false，Apache ShardingSphere 将会还原，即又重新开始使用 plainColumn 进行查询。
++也就是说，如果将系统切到密文列进行查询时，发现系统报错，需要回滚。那么只需将 query-with-cipher-column=false，Apache ShardingSphere 将会还原，即又重新开始使用 plainColumn 进行查询。
+ 处理流程如下图所示：
+ 
+ ![7](https://shardingsphere.apache.org/document/current/img/encrypt/7.png)
+@@ -180,7 +180,7 @@ props:
+           cipherColumn: pwd_cipher
+           encryptorName: aes_encryptor
+ props:
+-  query.with.cipher.column: true
++  query-with-cipher-column: true
+ ```
+ 
+ 其处理流程如下：
+diff --git a/docs/document/content/features/encrypt/principle.en.md b/docs/document/content/features/encrypt/principle.en.md
+index 9ed756048e..f2363606f5 100644
+--- a/docs/document/content/features/encrypt/principle.en.md
++++ b/docs/document/content/features/encrypt/principle.en.md
+@@ -164,14 +164,14 @@ In addition, demonstrate a set of encryption configuration rules, as follows:
+           cipherColumn: pwd_cipher
+           encryptorName: aes_encryptor
+ props:
+-  query.with.cipher.column: false
++  query-with-cipher-column: false
+ ```
+ 
+ According to the above encryption rules, we need to add a column called pwd_cipher in the t_user table, that is, cipherColumn, which is used to store ciphertext data. 
+ At the same time, we set plainColumn to pwd, which is used to store plaintext data, and logicColumn is also set to pwd. 
+ Because the previous SQL was written using pwd, that is, the SQL was written for logical columns, so the business code did not need to be changed. 
+ Through Apache ShardingSphere, for the incremental data, the plain text will be written to the pwd column, and the plain text will be encrypted and stored in the pwd_cipher column. 
+-At this time, because query.with.cipher.column is set to false, for business applications, the plain text column of pwd is still used for query storage, 
++At this time, because query-with-cipher-column is set to false, for business applications, the plain text column of pwd is still used for query storage, 
+ but the cipher text data of the new data is additionally stored on the underlying database table pwd_cipher. The processing flow is shown below:
+ 
+ ![6](https://shardingsphere.apache.org/document/current/img/encrypt/6_en.png)
+@@ -184,8 +184,8 @@ Now it is necessary to process historical plaintext inventory data.
+ 
+ The incremental data has been stored by Apache ShardingSphere in the ciphertext column and the plaintext is stored in the plaintext column; after the historical data is encrypted and cleaned by the business party itself, 
+ the ciphertext is also stored in the ciphertext column. That is to say, the plaintext and the ciphertext are stored in the current database. 
+-Since the `query.with.cipher.column = false` in the configuration item, the ciphertext has never been used. 
+-Now we need to set the `query.with.cipher.column` in the encryption configuration to true in order for the system to cut the ciphertext data for query. 
++Since the `query-with-cipher-column = false` in the configuration item, the ciphertext has never been used. 
++Now we need to set the `query-with-cipher-column` in the encryption configuration to true in order for the system to cut the ciphertext data for query. 
+ After restarting the system, we found that the system business is normal, but Apache ShardingSphere has started to extract the ciphertext data from the database, 
+ decrypt it and return it to the user; and for the user's insert, delete and update requirements, 
+ the original data will still be stored The plaintext column, the encrypted ciphertext data is stored in the ciphertext column.
+@@ -195,7 +195,7 @@ however, it will still save a copy of the original data to the plaintext column
+ Why? The answer is: in order to be able to roll back the system. 
+ **Because as long as the ciphertext and plaintext always exist at the same time, we can freely switch the business query to cipherColumn or plainColumn through the configuration of the switch item.** 
+ In other words, if the system is switched to the ciphertext column for query, the system reports an error and needs to be rolled back. 
+-Then just set query.with.cipher.column = false, Apache ShardingSphere will restore, that is, start using plainColumn to query again. 
++Then just set query-with-cipher-column = false, Apache ShardingSphere will restore, that is, start using plainColumn to query again. 
+ The processing flow is shown in the following figure:
+ 
+ ![7](https://shardingsphere.apache.org/document/current/img/encrypt/7_en.png)
+@@ -230,7 +230,7 @@ So the encryption configuration after migration is:
+           cipherColumn: pwd_cipher
+           encryptorName: aes_encryptor
+ props:
+-  query.with.cipher.column: true
++  query-with-cipher-column: true
+ ```
+ 
+ The processing flow is as follows:
+diff --git a/docs/document/content/features/governance/management/config-center.cn.md b/docs/document/content/features/governance/management/config-center.cn.md
+index 3c1b717dfe..d3b9e496d3 100644
+--- a/docs/document/content/features/governance/management/config-center.cn.md
++++ b/docs/document/content/features/governance/management/config-center.cn.md
+@@ -42,8 +42,8 @@ password: root
+ 属性配置，详情请参见[配置手册](/cn/user-manual/shardingsphere-jdbc/configuration/)。
+ 
+ ```yaml
+-executor.size: 20
+-sql.show: true
++executor-size: 20
++sql-show: true
+ ```
+ 
+ ### /schemas/${schemeName}/datasource
+diff --git a/docs/document/content/features/governance/management/config-center.en.md b/docs/document/content/features/governance/management/config-center.en.md
+index b20796c007..41b6133d71 100644
+--- a/docs/document/content/features/governance/management/config-center.en.md
++++ b/docs/document/content/features/governance/management/config-center.en.md
+@@ -42,8 +42,8 @@ password: root
+ Properties configuration. Please refer to [Configuration Manual](/en/user-manual/shardingsphere-jdbc/configuration/) for more details.
+ 
+ ```yaml
+-executor.size: 20
+-sql.show: true
++executor-size: 20
++sql-show: true
+ ```
+ 
+ ### /schemas/${schemeName}/datasource
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.cn.md
+index 0e595786ce..9619c39d45 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.cn.md
+@@ -12,9 +12,9 @@ Apache ShardingSphere 提供属性配置的方式配置系统级配置。
+ 
+ | *名称*                             | *数据类型*   | *说明*                                                                                                                                                                                  | *默认值*  |
+ | ---------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+-| sql.show (?)                       | boolean     | 是否在日志中打印 SQL。 <br /> 打印 SQL 可以帮助开发者快速定位系统问题。日志内容包含：逻辑 SQL，真实 SQL 和 SQL 解析结果。<br /> 如果开启配置，日志将使用 Topic `ShardingSphere-SQL`，日志级别是 INFO。 | false    |
++| sql-show (?)                       | boolean     | 是否在日志中打印 SQL。 <br /> 打印 SQL 可以帮助开发者快速定位系统问题。日志内容包含：逻辑 SQL，真实 SQL 和 SQL 解析结果。<br /> 如果开启配置，日志将使用 Topic `ShardingSphere-SQL`，日志级别是 INFO。 | false    |
+ | sql.simple (?)                     | boolean     | 是否在日志中打印简单风格的 SQL。                                                                                                                                                           | false    |
+-| executor.size (?)                  | int         | 用于设置任务处理线程池的大小。每个 ShardingSphereDataSource 使用一个独立的线程池，同一个 JVM 的不同数据源不共享线程池。                                                                           | infinite |
+-| max.connections.size.per.query (?) | int         | 一次查询请求在每个数据库实例中所能使用的最大连接数。                                                                                                                                          | 1        |
+-| check.table.metadata.enabled (?)   | boolean     | 是否在程序启动和更新时检查分片元数据的结构一致性。                                                                                                                                            | false    |
+-| query.with.cipher.column (?)       | boolean     | 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询。                                                                                                                            | true     |
++| executor-size (?)                  | int         | 用于设置任务处理线程池的大小。每个 ShardingSphereDataSource 使用一个独立的线程池，同一个 JVM 的不同数据源不共享线程池。                                                                           | infinite |
++| max-connections-size-per-query (?) | int         | 一次查询请求在每个数据库实例中所能使用的最大连接数。                                                                                                                                          | 1        |
++| check-table-metadata-enabled (?)   | boolean     | 是否在程序启动和更新时检查分片元数据的结构一致性。                                                                                                                                            | false    |
++| query-with-cipher-column (?)       | boolean     | 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询。                                                                                                                            | true     |
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.en.md
+index 39e5fae18f..7000260ef6 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/props.en.md
+@@ -12,9 +12,9 @@ Apache ShardingSphere provides the way of property configuration to configure sy
+ 
+ | *Name*                             | *Data Type* | *Description*                                                                                                                                                                                                                                                | *Default Value* |
+ | ---------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
+-| sql.show (?)                       | boolean     | Whether show SQL or not in log. <br /> Print SQL details can help developers debug easier. The log details include: logic SQL, actual SQL and SQL parse result. <br /> Enable this property will log into log topic `ShardingSphere-SQL`, log level is INFO. | false           |
++| sql-show (?)                       | boolean     | Whether show SQL or not in log. <br /> Print SQL details can help developers debug easier. The log details include: logic SQL, actual SQL and SQL parse result. <br /> Enable this property will log into log topic `ShardingSphere-SQL`, log level is INFO. | false           |
+ | sql.simple (?)                     | boolean     | Whether show SQL details in simple style.                                                                                                                                                                                                                    | false           |
+-| executor.size (?)                  | int         | The max thread size of worker group to execute SQL. One ShardingSphereDataSource will use a independent thread pool, it does not share thread pool even different data source in same JVM.                                                                   | infinite        |
+-| max.connections.size.per.query (?) | int         | Max opened connection size for each query.                                                                                                                                                                                                                   | 1               |
+-| check.table.metadata.enabled (?)   | boolean     | Whether validate table meta data consistency when application startup or updated.                                                                                                                                                                            | false           |
+-| query.with.cipher.column (?)       | boolean     | Whether query with cipher column for data encrypt. User you can use plaintext to query if have.                                                                                                                                                              | true            |
++| executor-size (?)                  | int         | The max thread size of worker group to execute SQL. One ShardingSphereDataSource will use a independent thread pool, it does not share thread pool even different data source in same JVM.                                                                   | infinite        |
++| max-connections-size-per-query (?) | int         | Max opened connection size for each query.                                                                                                                                                                                                                   | 1               |
++| check-table-metadata-enabled (?)   | boolean     | Whether validate table meta data consistency when application startup or updated.                                                                                                                                                                            | false           |
++| query-with-cipher-column (?)       | boolean     | Whether query with cipher column for data encrypt. User you can use plaintext to query if have.                                                                                                                                                              | true            |
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.cn.md
+index 24907a453c..a2d9bb5c50 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.cn.md
+@@ -43,7 +43,7 @@ rules:
+     column: order_id
+ 
+ props:
+-    sql.show: true
++    sql-show: true
+ ```
+ 
+ #### 获取 HintManager
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.en.md
+index 89618d2046..2cb6e996a2 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/sharding/hint.en.md
+@@ -43,7 +43,7 @@ rules:
+     column: order_id
+ 
+ props:
+-    sql.show: true
++    sql-show: true
+ ```
+ 
+ #### Get HintManager
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md
+index ebfde66b17..87ca3fe932 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md
+@@ -12,15 +12,15 @@ Apache ShardingSphere 提供属性配置的方式配置系统级配置。
+ 
+ | *名称*                             | *数据类型*   | *说明*                                                                                                                                                                                  | *默认值*  |
+ | ---------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+-| sql.show (?)                       | boolean     | 是否在日志中打印 SQL。 <br /> 打印 SQL 可以帮助开发者快速定位系统问题。日志内容包含：逻辑 SQL，真实 SQL 和 SQL 解析结果。<br /> 如果开启配置，日志将使用 Topic `ShardingSphere-SQL`，日志级别是 INFO。 | false    |
+-| sql.simple (?)                     | boolean     | 是否在日志中打印简单风格的 SQL。                                                                                                                                                           | false    |
+-| acceptor.size (?)                  | int         | 用于设置接收 TCP 请求线程池的大小。                                                                                                                                                        | CPU * 2  |
+-| executor.size (?)                  | int         | 用于设置任务处理线程池的大小。每个 ShardingSphereDataSource 使用一个独立的线程池，同一个 JVM 的不同数据源不共享线程池。                                                                           | infinite |
+-| max.connections.size.per.query (?) | int         | 一次查询请求在每个数据库实例中所能使用的最大连接数。                                                                                                                                          | 1        |
+-| check.table.metadata.enabled (?)   | boolean     | 是否在程序启动和更新时检查分片元数据的结构一致性。                                                                                                                                            | false    |
+-| query.with.cipher.column (?)       | boolean     | 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询。                                                                                                                            | true     |
+-| proxy.frontend.flush.threshold (?) | int         | 在 ShardingSphere-Proxy 中设置传输数据条数的 IO 刷新阈值。                                                                                                                                  | 128      |
+-| proxy.transaction.type (?)         | String      | ShardingSphere-Proxy 中使用的默认事务类型。包括：LOCAL、XA 和 BASE。                                                                                                                         | LOCAL    |
+-| proxy.opentracing.enabled (?)      | boolean     | 是否允许在 ShardingSphere-Proxy 中使用 OpenTracing。                                                                                                                                       | false    |
+-| proxy.hint.enabled (?)             | boolean     | 是否允许在 ShardingSphere-Proxy 中使用 Hint。使用 Hint 会将 Proxy 的线程处理模型由 IO 多路复用变更为每个请求一个独立的线程，会降低 Proxy 的吞吐量。                                                  | false    |
+-| proxy.cluster.enabled (?)             | boolean     | 是否允许在 ShardingSphere-Proxy 中使用心跳检测。                                                  | false    |
++| sql-show (?)                       | boolean     | 是否在日志中打印 SQL。 <br /> 打印 SQL 可以帮助开发者快速定位系统问题。日志内容包含：逻辑 SQL，真实 SQL 和 SQL 解析结果。<br /> 如果开启配置，日志将使用 Topic `ShardingSphere-SQL`，日志级别是 INFO。 | false    |
++| sql-simple (?)                     | boolean     | 是否在日志中打印简单风格的 SQL。                                                                                                                                                           | false    |
++| acceptor-size (?)                  | int         | 用于设置接收 TCP 请求线程池的大小。                                                                                                                                                        | CPU * 2  |
++| executor-size (?)                  | int         | 用于设置任务处理线程池的大小。每个 ShardingSphereDataSource 使用一个独立的线程池，同一个 JVM 的不同数据源不共享线程池。                                                                           | infinite |
++| max-connections-size-per-query (?) | int         | 一次查询请求在每个数据库实例中所能使用的最大连接数。                                                                                                                                          | 1        |
++| check-table-metadata-enabled (?)   | boolean     | 是否在程序启动和更新时检查分片元数据的结构一致性。                                                                                                                                            | false    |
++| query-with-cipher-column (?)       | boolean     | 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询。                                                                                                                            | true     |
++| proxy-frontend-flush-threshold (?) | int         | 在 ShardingSphere-Proxy 中设置传输数据条数的 IO 刷新阈值。                                                                                                                                  | 128      |
++| proxy-transaction-type (?)         | String      | ShardingSphere-Proxy 中使用的默认事务类型。包括：LOCAL、XA 和 BASE。                                                                                                                         | LOCAL    |
++| proxy-opentracing-enabled (?)      | boolean     | 是否允许在 ShardingSphere-Proxy 中使用 OpenTracing。                                                                                                                                       | false    |
++| proxy-hint-enabled (?)             | boolean     | 是否允许在 ShardingSphere-Proxy 中使用 Hint。使用 Hint 会将 Proxy 的线程处理模型由 IO 多路复用变更为每个请求一个独立的线程，会降低 Proxy 的吞吐量。                                                  | false    |
++| proxy-cluster-enabled (?)             | boolean     | 是否允许在 ShardingSphere-Proxy 中使用心跳检测。                                                  | false    |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md
+index b6a346dd68..d35bafcdbc 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md
+@@ -12,15 +12,15 @@ Apache ShardingSphere provides the way of property configuration to configure sy
+ 
+ | *Name*                             | *Data Type* | *Description*                                                                                                                                                                                                                                                | *Default Value* |
+ | ---------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
+-| sql.show (?)                       | boolean     | Whether show SQL or not in log. <br /> Print SQL details can help developers debug easier. The log details include: logic SQL, actual SQL and SQL parse result. <br /> Enable this property will log into log topic `ShardingSphere-SQL`, log level is INFO. | false           |
+-| sql.simple (?)                     | boolean     | Whether show SQL details in simple style.                                                                                                                                                                                                                    | false           |
+-| acceptor.size (?)                  | int         | The max thread size of accepter group to accept TCP connections.                                                                                                                                                                                             | CPU * 2         |
+-| executor.size (?)                  | int         | The max thread size of worker group to execute SQL. One ShardingSphereDataSource will use a independent thread pool, it does not share thread pool even different data source in same JVM.                                                                   | infinite        |
+-| max.connections.size.per.query (?) | int         | Max opened connection size for each query.                                                                                                                                                                                                                   | 1               |
+-| check.table.metadata.enabled (?)   | boolean     | Whether validate table meta data consistency when application startup or updated.                                                                                                                                                                            | false           |
+-| query.with.cipher.column (?)       | boolean     | Whether query with cipher column for data encrypt. User you can use plaintext to query if have.                                                                                                                                                              | true            |
+-| proxy.frontend.flush.threshold (?) | int         | Flush threshold for every records from databases for ShardingSphere-Proxy.                                                                                                                                                                                   | 128             |
+-| proxy.transaction.type (?)         | String      | Default transaction type of ShardingSphere-Proxy. Include: LOCAL, XA and BASE.                                                                                                                                                                               | LOCAL           |
+-| proxy.opentracing.enabled (?)      | boolean     | Whether enable opentracing for ShardingSphere-Proxy.                                                                                                                                                                                                         | false           |
+-| proxy.hint.enabled (?)             | boolean     | Whether enable hint for ShardingSphere-Proxy. Using Hint will switch proxy thread mode from IO multiplexing to per connection per thread, which will reduce system throughput.                                                                               | false           |
+-| proxy.cluster.enabled (?)             | boolean     | Whether enable Heartbeat Detection for ShardingSphere-Proxy.                                                 | false    |
++| sql-show (?)                       | boolean     | Whether show SQL or not in log. <br /> Print SQL details can help developers debug easier. The log details include: logic SQL, actual SQL and SQL parse result. <br /> Enable this property will log into log topic `ShardingSphere-SQL`, log level is INFO. | false           |
++| sql-simple (?)                     | boolean     | Whether show SQL details in simple style.                                                                                                                                                                                                                    | false           |
++| acceptor-size (?)                  | int         | The max thread size of accepter group to accept TCP connections.                                                                                                                                                                                             | CPU * 2         |
++| executor-size (?)                  | int         | The max thread size of worker group to execute SQL. One ShardingSphereDataSource will use a independent thread pool, it does not share thread pool even different data source in same JVM.                                                                   | infinite        |
++| max-connections-size-per-query (?) | int         | Max opened connection size for each query.                                                                                                                                                                                                                   | 1               |
++| check-table-metadata-enabled (?)   | boolean     | Whether validate table meta data consistency when application startup or updated.                                                                                                                                                                            | false           |
++| query-with-cipher-column (?)       | boolean     | Whether query with cipher column for data encrypt. User you can use plaintext to query if have.                                                                                                                                                              | true            |
++| proxy-frontend-flush-threshold (?) | int         | Flush threshold for every records from databases for ShardingSphere-Proxy.                                                                                                                                                                                   | 128             |
++| proxy-transaction-type (?)         | String      | Default transaction type of ShardingSphere-Proxy. Include: LOCAL, XA and BASE.                                                                                                                                                                               | LOCAL           |
++| proxy-opentracing-enabled (?)      | boolean     | Whether enable opentracing for ShardingSphere-Proxy.                                                                                                                                                                                                         | false           |
++| proxy-hint-enabled (?)             | boolean     | Whether enable hint for ShardingSphere-Proxy. Using Hint will switch proxy thread mode from IO multiplexing to per connection per thread, which will reduce system throughput.                                                                               | false           |
++| proxy-cluster-enabled (?)             | boolean     | Whether enable Heartbeat Detection for ShardingSphere-Proxy.                                                 | false    |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.cn.md
+index 6d5df54fb8..4492b136af 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.cn.md
+@@ -20,4 +20,4 @@ SCTL (ShardingSphere Control Language) 为 ShardingSphere 特有的控制语句
+ |sctl:hint show status                    | 针对当前连接，查询 hint 状态，master_only:true/false，sharding_type:databases_only/databases_tables |
+ |sctl:hint show table status              | 针对当前连接，查询逻辑表的 hint 分片值                                                               |
+ 
+-ShardingSphere-Proxy 默认不支持 hint，如需支持，请在 `conf/server.yaml` 中，将 `properties` 的属性 `proxy.hint.enabled` 设置为 true。
++ShardingSphere-Proxy 默认不支持 hint，如需支持，请在 `conf/server.yaml` 中，将 `properties` 的属性 `proxy-hint-enabled` 设置为 true。
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.en.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.en.md
+index 2b3f941f0e..e9c2e2bbde 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/sctl.en.md
+@@ -19,4 +19,4 @@ SCTL (ShardingSphere-Proxy control language) supports modify and query the state
+ |sctl:hint show status                    | For current connection, query hint status, master_only:true/false, sharding_type:databases_only/databases_tables | sctl:hint show status                          |
+ |sctl:hint show table status              | For current connection, query sharding values of logic tables                                                    | sctl:hint show table status                    |
+ 
+-ShardingSphere-Proxy does not support hint by default, to support it, set the `properties` property `proxy.hint.enabled` to true in `conf/server.yaml`.
++ShardingSphere-Proxy does not support hint by default, to support it, set the `properties` property `proxy-hint-enabled` to true in `conf/server.yaml`.

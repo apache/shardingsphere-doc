@@ -14,8 +14,9 @@ else
     count=1
     echo "check shardingsphere docs document something new, launch a build..."
     cd ..
-    git config --global user.name CaymanHK 
-    git config --global user.email 244124339@qq.com
+    echo config user shardingsphere
+    git config --global user.email "dev@shardingsphere.apache.org"
+    git config --global user.name "shardingsphere"
     mv _shardingsphere/new_version_pdf ./old_version_pdf
     python -m pip install --upgrade pip
     pip install sphinx

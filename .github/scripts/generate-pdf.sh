@@ -96,6 +96,7 @@ else
         do
             sed -i -n '/+++/,/+++/!p' $f
             sed -i /http.*svg/d $f
+            sed -i "s/(\/${lang}/(https:\/\/shardingsphere.apache.org\/document\/current\/${lang}/g" $f
             sed -i /http.*codacy/d $f
             pandoc $f -o "${f}.rst"
             rm $f

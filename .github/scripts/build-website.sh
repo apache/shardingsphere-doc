@@ -16,8 +16,8 @@
 #
 
 echo config user kimmking
-git config --global user.email "kimmking@163.com"
-git config --global user.name "kimmking"
+git config --global user.email "dev@shardingsphere.apache.org"
+git config --global user.name "shardingsphere"
 
 count=0
 export TZ="Asia/Shanghai"

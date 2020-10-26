@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2020-10-23 14:42:00">
+    <meta name="buildDate" content="2020-10-26 20:01:57">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/elasticjob/images/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>Elastic Schedule :: ElasticJob</title>
     
     
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1603435320" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1603435320" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1603435320" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1603435320" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1603435320" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1603435320" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1603435320" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1603435320" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1603713717" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1603713717" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1603713717" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1603713717" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1603713717" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1603713717" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1603713717" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1603713717" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-black.css?1603435320" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-black.css?1603713717" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1603435320"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1603713717"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -1945,6 +1945,17 @@
     </li>
     <li><a href="#maximize-the-usage-of-resources">Maximize the usage of resources</a></li>
     <li><a href="#high-availability">High Availability</a></li>
+    <li><a href="#elasticjob-lite-implementation-principle">ElasticJob-Lite Implementation Principle</a>
+      <ul>
+        <li><a href="#elastic-distributed-implementation">Elastic Distributed Implementation</a></li>
+        <li><a href="#registry-data-structure">Registry Data Structure</a></li>
+        <li><a href="#config-node">config node</a></li>
+        <li><a href="#instances-node">instances node</a></li>
+        <li><a href="#sharding-node">sharding node</a></li>
+        <li><a href="#servers-node">servers node</a></li>
+        <li><a href="#leader-node">leader node</a></li>
+      </ul>
+    </li>
   </ul>
 </nav>
 
@@ -1976,6 +1987,120 @@ The unfinished job from a crashed server will be transferred and executed contin
 <p><img src="https://shardingsphere.apache.org/elasticjob/current/img/elastic/ha.png" alt="HA"></p>
 <p>Setting the total number of sharding items to 1 and more than 1 servers to execute the jobs makes the job run in the mode of <code>1</code> master and <code>n</code> slaves.
 Once the servers that are executing jobs are down, the idle servers will take over the jobs and execute them in the next scheduling, or better, if the failover option is enabled, the idle servers can take over the failed jobs immediately.</p>
+<h2 id="elasticjob-lite-implementation-principle">ElasticJob-Lite Implementation Principle</h2>
+<p>ElasticJob-Lite does not have a job scheduling center node, but the programs based on the deployment job framework trigger the scheduling when the corresponding time point is reached.
+The registration center is only used for job registration and monitoring information storage. The main job node is only used to handle functions such as sharding and cleaning.</p>
+<h3 id="elastic-distributed-implementation">Elastic Distributed Implementation</h3>
+<ul>
+<li>The first server went online to trigger the main server election. Once the main server goes offline, the election is triggered again, and the election process is blocked. Only when the main server election is completed, other tasks will be performed.</li>
+<li>When a job server goes online, it will automatically register the server information to the registry, and automatically update the server status when it goes offline.</li>
+<li>The re-sharding flag will be updated when the master node is elected, the server goes offline, and the total number of shards changes.</li>
+<li>When a scheduled task is triggered, if it needs to be sharded again, it will be sharded by the main server. The sharding process is blocked, and the task can be executed after the sharding ends.
+If the main server goes offline during the sharding process, the master server will be elected first and then perform sharding.</li>
+<li>From the previous description, in order to maintain the stability of the job runtime, only the sharding status will be marked during the running process, and the sharding will not be re-sharded. Sharding can only occur before the next task is triggered.</li>
+<li>Each execution of sharding will sort instances by server IP to ensure that the sharding result will not produce large fluctuations.</li>
+<li>Realize the failover function, actively grab the unallocated shards after a certain server is executed, and actively search for available servers to perform tasks after a certain server goes offline.</li>
+</ul>
+<h3 id="registry-data-structure">Registry Data Structure</h3>
+<p>The registration center creates a job name node under the defined namespace to distinguish different jobs, so once a job is created, the job name cannot be modified. If the name is modified, it will be regarded as a new job.
+There are 5 data sub-nodes under the job name node, namely config, instances, sharding, servers and leader.</p>
+<h3 id="config-node">config node</h3>
+<p>Job configuration information, stored in YAML format.</p>
+<h3 id="instances-node">instances node</h3>
+<p>Job running instance information, the child node is the primary key of the current job running instance.
+The primary key of the job running instance is composed of the IP address and PID of the job running server.
+The primary keys of the job running instance are all ephemeral nodes, which are registered when the job instance is online and automatically cleaned up when the job instance is offline. The registry monitors the changes of these nodes to coordinate the sharding and high availability of distributed jobs.
+You can write TRIGGER in the job running instance node to indicate that the instance will be executed once immediately.</p>
+<h3 id="sharding-node">sharding node</h3>
+<p>Job sharding information. The child node is the sharding item sequence number, starting from zero and ending with the total number of shards minus one.
+The child node of the sharding item sequence number stores detailed information. The child node under each shard is used to control and record the running status of the shard.
+Node details description：</p>
+<table>
+<thead>
+<tr>
+<th>Child node name</th>
+<th align="left">Ephemeral node</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>instance</td>
+<td align="left">NO</td>
+<td align="left">The primary key of the job running instance that executes the shard</td>
+</tr>
+<tr>
+<td>running</td>
+<td align="left">YES</td>
+<td align="left">The running state of the shard item.<br/>Only valid when monitorExecution is configured</td>
+</tr>
+<tr>
+<td>failover</td>
+<td align="left">YES</td>
+<td align="left">If the shard item is assigned to another job server by failover, this node value records the job server IP that executes the shard</td>
+</tr>
+<tr>
+<td>misfire</td>
+<td align="left">NO</td>
+<td align="left">Whether to restart the missed task</td>
+</tr>
+<tr>
+<td>disabled</td>
+<td align="left">NO</td>
+<td align="left">Whether to disable this shard</td>
+</tr>
+</tbody>
+</table>
+<h3 id="servers-node">servers node</h3>
+<p>Job server information, the child node is the IP address of the job server.
+You can write DISABLED in the IP address node to indicate that the server is disabled.
+Under the new cloud-native architecture, the servers node is greatly weakened, only including controlling whether the server can be disabled.
+In order to achieve the core of the job more purely, the server function may be deleted in the future, and the ability to control whether the server is disabled should be delegated to the automated deployment system.</p>
+<h3 id="leader-node">leader node</h3>
+<p>The master node information of the job server is divided into three sub-nodes: election, sharding and failover.
+They are used for master node election, sharding and failover processing respectively.</p>
+<p>The leader node is an internally used node. If you are not interested in the principle of the job framework, you don&rsquo;t need to pay attention to this node.</p>
+<table>
+<thead>
+<tr>
+<th>Child node name</th>
+<th align="left">Ephemeral node</th>
+<th align="left">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>election\instance</td>
+<td align="left">YES</td>
+<td align="left">The IP address of the master node server.<br />Once the node is deleted, a re-election will be triggered.<br />All operations related to the master node will be blocked during the re-election process.</td>
+</tr>
+<tr>
+<td>election\latch</td>
+<td align="left">NO</td>
+<td align="left">Distributed locks elected by the master node<br />Used for distributed locks of curator</td>
+</tr>
+<tr>
+<td>sharding\necessary</td>
+<td align="left">NO</td>
+<td align="left">The flag for re-sharding. If the total number of shards changes, or the job server node goes online or offline or enabled/disabled, as well as the master node election, the re-sharded flag will be triggered. The master node is re-sharded without being interrupted in the middle<br />The sharding will not be triggered when the job is executed</td>
+</tr>
+<tr>
+<td>sharding\processing</td>
+<td align="left">YES</td>
+<td align="left">The node held by the master node during sharding.<br />If there is this node, all job execution will be blocked until the sharding ends.<br />The ephemeral node will be deleted when the master node sharding is over or the master node crashes</td>
+</tr>
+<tr>
+<td>failover\items\shard item</td>
+<td align="left">NO</td>
+<td align="left">Once a job crashes, it will record to this node.<br />When there is an idle job server, it will grab the job items that need to failover from this node</td>
+</tr>
+<tr>
+<td>failover\items\latch</td>
+<td align="left">NO</td>
+<td align="left">Distributed locks used when allocating failover shard items.<br /> Used by curator distributed locks</td>
+</tr>
+</tbody>
+</table>
 
 
 <footer class=" footline" >
@@ -3043,17 +3168,17 @@ Once the servers that are executing jobs are down, the idle servers will take ov
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1603435320"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1603713718"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1603435320"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1603435320"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1603713718"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1603713718"></script>
 
     
 

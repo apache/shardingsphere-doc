@@ -1,22 +1,13 @@
-git clone https://github.com/apache/shardingsphere.git _shardingsphere
-echo check diff
-if  [ ! -s old_version_pdf ]  ; then
-    echo init > old_version_pdf
-fi
-cd _shardingsphere
-git log -1 -p docs > new_version_pdf
-diff ../old_version_pdf new_version_pdf > result_version
-if  [ ! -s result_version ]  ; then
-    echo "shardingsphere docs document sources didn't change and nothing to do!"
-    cd ..
-    rm -rf _shardingsphere
-else
-    count=1
-    echo "check shardingsphere docs document something new, launch a build..."
-    cd ..
-    git config --global user.name CaymanHK 
-    git config --global user.email 244124339@qq.com
-    mv _shardingsphere/new_version_pdf ./old_version_pdf
+function clone_repo {
+    git clone https://github.com/apache/$1.git _$1
+}
+
+clone_repo "shardingsphere"
+clone_repo "shardingsphere-elasticjob"
+
+function prepare {
+    git config --global user.name "shardingsphere"
+    git config --global user.email "dev@shardingsphere.apache.org"
     python -m pip install --upgrade pip
     pip install sphinx
     sudo apt-get update -y 
@@ -40,10 +31,15 @@ else
     unzip source-code-pro -d source-code-pro
     sudo mv source-code-pro /usr/share/fonts/opentype/
     sudo fc-cache -f -v
-    #######################################
-    ##  Making PDFs   ##
-    #######################################
-    targetDir=" _shardingsphere/docs/document/content"
+}
+
+function generate_pdf {
+    mv _$1/new_version_$1 ./old_version_$1
+    if [[ "$1" == "shardingsphere" ]] ;then
+        targetDir=" _$1/docs/document/content"
+    else
+        targetDir=" _$1/docs/content"
+    fi
     localDir="source"
     cp .github/scripts/Makefile .
     for lang in en cn
@@ -52,6 +48,11 @@ else
         cp -r ${targetDir}/* ${localDir}/
         cp .github/scripts/conf.py ${localDir}/
         cd $localDir
+        if [[ "$1" == "shardingsphere" ]] ;then
+            sed -i 's/Apache ShardingSphere document/Apache ShardingSphere ElasticJob document/g' conf.py
+        else
+            sed -i 's/Apache ShardingSphere ElasticJob document/Apache ShardingSphere document/g' conf.py
+        fi
         if [[ "$lang" == "en" ]] ;then
             sed -i "s/language = 'zh_CN'/language = 'en_US'/" conf.py
             echo "printing English version PDF"
@@ -96,6 +97,12 @@ else
         do
             sed -i -n '/+++/,/+++/!p' $f
             sed -i /http.*svg/d $f
+            if [[ "$1" == "shardingsphere" ]] ;then
+                sed -i "s/(\/${lang}/(https:\/\/shardingsphere.apache.org\/document\/current\/${lang}/g" $f
+            else
+                sed -i "s/(\/${lang}/(https:\/\/shardingsphere.apache.org\/elasticjob\/current\/${lang}/g" $f
+                sed -i /branch=master/d $f
+            fi
             sed -i /http.*codacy/d $f
             pandoc $f -o "${f}.rst"
             rm $f
@@ -104,15 +111,39 @@ else
         cd ..
         make latexpdf
         mkdir -p pdf
-        cp _build/latex/*.pdf pdf/shardingsphere_docs_${lang}.pdf
+        cp _build/latex/*.pdf pdf/$1_docs_${lang}.pdf
         echo "shardingsphere_docs_${lang}.pdf"
         make clean
         rm -rf {_build,source}
     done
-    rm -rf {_shardingsphere,Makefile}
+    rm -rf {_$1,Makefile}
     git pull
     git add -A
     dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
     git commit -m  "Update PDF files at $dateStr."
     git push
-fi
+
+}
+
+function check_diff {
+    if  [ ! -s old_version_$1 ]; then
+    echo init > old_version_$1
+    fi
+    cd _$1
+    git log -1 -p docs > new_version_$1
+    cd ..
+    diff old_version_$1 _$1/new_version_$1 > result_version_$1
+    if  [ ! -s result_version_$1 ]  ; then
+        echo "$1 docs document sources didn't change and nothing to do!"
+        rm result_version_$1
+        rm -rf _$1
+    else
+        echo "generate $1 docs pdfs"
+        generate_pdf "$1"
+        rm result_version_$1
+    fi
+}
+
+prepare
+check_diff "shardingsphere"
+check_diff "shardingsphere-elasticjob"

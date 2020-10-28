@@ -32,7 +32,7 @@ extensions = [
   'sphinx.ext.autosectionlabel',
 ]
 
-pygments_style = 'sphinx'
+pygments_style = 'vs'
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 source_suffix = ['.rst']
@@ -73,30 +73,40 @@ latex_elements = {
     'classoptions': ',oneside',
     'passoptionstopackages': r'\PassOptionsToPackage{svgnames}{xcolor}',
     'fontpkg': r'''
-    \setmainfont{Source Serif Pro}
-    \setsansfont{Source Sans Pro}
-    \setmonofont{Source Code Pro}
+\setmainfont{Source Serif Pro}
+\setsansfont{Source Sans Pro}
+\setmonofont{Source Code Pro}
     ''',
     'preamble': r'''
-    \usepackage{ctex}
-    \setCJKmainfont[BoldFont=Source Han Serif SC SemiBold]{Source Han Serif SC}
-    \setCJKsansfont[BoldFont=Source Han Sans SC Medium]{Source Han Sans SC Normal}
-    \setCJKmonofont{Source Han Sans SC Normal}
-    \usepackage[draft]{minted}
-    \fvset{breaklines=true}
-    \setcounter{tocdepth}{3}
-    \usepackage[breaklinks]{hyperref}
+\usepackage{ctex}
+\makeatletter
+\let\old@sverb\@sverb
+\def\@sverb#1{\old@sverb{#1}\zz}
+\def\zz#1{#1\ifx\@undefined#1\else\penalty\z@\expandafter\zz\fi}
+\makeatother
+\setCJKmainfont[BoldFont=Source Han Serif SC SemiBold]{Source Han Serif SC}
+\setCJKsansfont[BoldFont=Source Han Sans SC Medium]{Source Han Sans SC Normal}
+\setCJKmonofont{Source Han Sans SC Normal}
+\usepackage[draft]{minted}
+\setcounter{tocdepth}{3}
+\usepackage{xurl}
+    ''',
+    'fvset': r'''
+\fvset{fontsize=\small}    
     ''',
     'fncychap': r'\usepackage[Bjornstrup]{fncychap}',
     'babel' : r'''
-    \usepackage{polyglossia}
-    \setmainlanguage{english}
+\usepackage{polyglossia}
+\setmainlanguage{english}
     ''',
     'printindex': r'\footnotesize\raggedright\printindex',
     'sphinxsetup':r'''
-    verbatimwithframe=false,
-    VerbatimColor={rgb}{0.95,0.95,0.92},
-    verbatimvisiblespace=\null,
-    verbatimcontinued=\null
+verbatimwithframe=false,
+VerbatimColor={rgb}{0.95,0.95,0.92},
+verbatimvisiblespace=\null,
+verbatimcontinued=\null,
+parsedliteralwraps=true,
+inlineliteralwraps=true,
+verbatimhintsturnover=false,
     '''
 }

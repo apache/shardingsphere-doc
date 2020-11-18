@@ -2,9 +2,6 @@ function clone_repo {
     git clone https://github.com/apache/$1.git _$1
 }
 
-clone_repo "shardingsphere"
-clone_repo "shardingsphere-elasticjob"
-
 function prepare {
     git config --global user.name "shardingsphere"
     git config --global user.email "dev@shardingsphere.apache.org"
@@ -84,7 +81,6 @@ function generate_pdf {
             fi
         done
 
-
         for f in `find . -type f -name "*list.txt"`
         do
             path=${f%/*}
@@ -141,9 +137,14 @@ function check_diff {
         echo "generate $1 docs pdfs"
         generate_pdf "$1"
         rm result_version_$1
+        rm -rf _$1
     fi
 }
 
 prepare
+
+clone_repo "shardingsphere"
 check_diff "shardingsphere"
+
+clone_repo "shardingsphere-elasticjob"
 check_diff "shardingsphere-elasticjob"

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2020-11-16 17:19:13">
+    <meta name="buildDate" content="2020-11-18 19:00:43">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>解析引擎 :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1605518353" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1605518353" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1605518353" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1605518353" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1605518353" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1605518353" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1605518353" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1605518353" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1605697243" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1605697243" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1605697243" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1605697243" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1605697243" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1605697243" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1605697243" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1605697243" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1605518353" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1605697243" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1605518353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1605697243"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -4366,7 +4366,13 @@
 <nav id="TableOfContents">
   <ul>
     <li><a href="#抽象语法树">抽象语法树</a></li>
-    <li><a href="#sql-解析引擎">SQL 解析引擎</a></li>
+    <li><a href="#sql-解析引擎">SQL 解析引擎</a>
+      <ul>
+        <li><a href="#历史">历史</a></li>
+        <li><a href="#功能点">功能点</a></li>
+        <li><a href="#api使用">API使用</a></li>
+      </ul>
+    </li>
   </ul>
 </nav>
 
@@ -4375,24 +4381,101 @@
 <h2 id="抽象语法树">抽象语法树</h2>
 <p>解析过程分为词法解析和语法解析。
 词法解析器用于将 SQL 拆解为不可再分的原子符号，称为 Token。并根据不同数据库方言所提供的字典，将其归类为关键字，表达式，字面量和操作符。
-再使用语法解析器将 SQL 转换为抽象语法树。</p>
+再使用语法解析器将 词法解析器的输出 转换为抽象语法树。</p>
 <p>例如，以下 SQL：</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> id, name <span style="color:#66d9ef">FROM</span> t_user <span style="color:#66d9ef">WHERE</span> status <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;ACTIVE&#39;</span> <span style="color:#66d9ef">AND</span> age <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">18</span>
 </code></pre></div><p>解析之后的为抽象语法树见下图。</p>
 <p><img src="https://shardingsphere.apache.org/document/current/img/sharding/sql_ast.png" alt="SQL抽象语法树"></p>
 <p>为了便于理解，抽象语法树中的关键字的 Token 用绿色表示，变量的 Token 用红色表示，灰色表示需要进一步拆分。</p>
-<p>最后，通过对抽象语法树的遍历去提炼分片所需的上下文，并标记有可能需要改写的位置。
+<p>最后，通过<code>visitor</code>对抽象语法树遍历构造域模型，通过域模型(<code>SQLStatement</code>)去提炼分片所需的上下文，并标记有可能需要改写的位置。
 供分片使用的解析上下文包含查询选择项（Select Items）、表信息（Table）、分片条件（Sharding Condition）、自增主键信息（Auto increment Primary Key）、排序信息（Order By）、分组信息（Group By）以及分页信息（Limit、Rownum、Top）。
 SQL 的一次解析过程是不可逆的，一个个 Token 按 SQL 原本的顺序依次进行解析，性能很高。
 考虑到各种数据库 SQL 方言的异同，在解析模块提供了各类数据库的 SQL 方言字典。</p>
 <h2 id="sql-解析引擎">SQL 解析引擎</h2>
+<h3 id="历史">历史</h3>
 <p>SQL 解析作为分库分表类产品的核心，其性能和兼容性是最重要的衡量指标。
 ShardingSphere 的 SQL 解析器经历了 3 代产品的更新迭代。</p>
 <p>第一代 SQL 解析器为了追求性能与快速实现，在 1.4.x 之前的版本使用 Druid 作为 SQL 解析器。经实际测试，它的性能远超其它解析器。</p>
 <p>第二代 SQL 解析器从 1.5.x 版本开始，ShardingSphere 采用完全自研的 SQL 解析引擎。
 由于目的不同，ShardingSphere 并不需要将 SQL 转为一颗完全的抽象语法树，也无需通过访问器模式进行二次遍历。它采用对 SQL <code>半理解</code>的方式，仅提炼数据分片需要关注的上下文，因此 SQL 解析的性能和兼容性得到了进一步的提高。</p>
-<p>第三代 SQL 解析器从 3.0.x 版本开始，尝试使用 ANTLR 作为 SQL 解析引擎，并采用 Visit 的方式从 AST 中获取 SQL Statement。从5.0.x 版本开始，解析引擎的架构已完成重构调整，同时通过将第一次解析的得到的 AST 放入缓存，方便下次直接获取相同  SQL的解析结果，来提高解析效率。 因此我们建议用户采用 <code>PreparedStatement</code> 这种 SQL 预编译的方式来提升性能。当前，用户还可以独立使用 ShardingSphere 的 SQL 解析引擎，获得多款主流关系型数据库的 AST 及 SQL Statement。 未来，SQL 解析引擎将继续提供 SQL 格式化、 SQL 模板化等强大的功能。</p>
+<p>第三代 SQL 解析器从 3.0.x 版本开始，尝试使用 ANTLR 作为 SQL 解析引擎 的生成器，并采用 Visit 的方式从 AST 中获取 SQL Statement。从5.0.x 版本开始，解析引擎的架构已完成重构调整，同时通过将第一次解析的得到的 AST 放入缓存，方便下次直接获取相同  SQL的解析结果，来提高解析效率。 因此我们建议用户采用 <code>PreparedStatement</code> 这种 SQL 预编译的方式来提升性能。</p>
+<h3 id="功能点">功能点</h3>
+<ul>
+<li>提供独立的SQL解析功能</li>
+<li>可以非常方便的对语法规则进行扩充和修改(使用了<code>ANTLR</code>)</li>
+<li>支持多种方言的SQL解析</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>数据库</th>
+<th>支持状态</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>MySQL</td>
+<td>支持，完善</td>
+</tr>
+<tr>
+<td>PostgreSQL</td>
+<td>支持，完善</td>
+</tr>
+<tr>
+<td>SQLServer</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>Oracle</td>
+<td>支持</td>
+</tr>
+<tr>
+<td>SQL92</td>
+<td>支持</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>提供SQL格式化功能（开发中）</li>
+<li>提供SQL模板话功能（开发中）</li>
+</ul>
+<h3 id="api使用">API使用</h3>
+<p>引入Maven依赖</p>
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;shardingsphere-sql-parser-engine&lt;/artifactId&gt;
+    &lt;version&gt;${project.version}&lt;/version&gt;
+&lt;/dependency&gt;
+// 根据需要引入指定方言的解析模块（以MySQL为例）,可以添加所有支持的方言，也可以只添加使用到的
+&lt;dependency&gt;
+    &lt;groupId&gt;org.apache.shardingsphere&lt;/groupId&gt;
+    &lt;artifactId&gt;shardingsphere-sql-parser-mysql&lt;/artifactId&gt;
+    &lt;version&gt;${project.version}&lt;/version&gt;
+&lt;/dependency&gt;
+</code></pre><p>例子</p>
+<ul>
+<li>获取语法树</li>
+</ul>
+<pre><code>/**
+ * databaseType type:String 可能值 MySQL,Oracle，PostgreSQL，SQL92，SQLServer
+ * sql type:String 解析的SQL
+ * useCache type:boolean 是否使用缓存
+ * @return parse tree
+ */
+ParseTree tree = new SQLParserEngine(databaseType).parse(sql, useCache); 
+</code></pre><ul>
+<li>获取SQLStatement</li>
+</ul>
+<pre><code>/**
+ * databaseType type:String 可能值 MySQL,Oracle，PostgreSQL，SQL92，SQLServer
+ * useCache type:boolean 是否使用缓存
+ * @return SQLStatement
+ */
+ParseTree tree = new SQLParserEngine(databaseType).parse(sql, useCache); 
+SQLVisitorEngine sqlVisitorEngine = new SQLVisitorEngine(databaseType, &quot;STATEMENT&quot;);
+SQLStatement sqlStatement = sqlVisitorEngine.visit(tree);
 
+</code></pre>
 
 <footer class=" footline" >
 	
@@ -6893,17 +6976,17 @@ ShardingSphere 的 SQL 解析器经历了 3 代产品的更新迭代。</p>
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1605518353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1605697243"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1605518353"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1605518353"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1605697243"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1605697243"></script>
 
     
 

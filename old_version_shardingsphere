@@ -1,30 +1,125 @@
-commit 6116ab7812d7a2e76518f5d5602ba776b7af269e
-Author: Zhang Yonglun <zhangyonglun@apache.org>
-Date:   Wed Feb 3 12:42:37 2021 +0800
+commit 988f293601d49134b67d7747da3f9fb7db204c4b
+Author: Liang Zhang <terrymanu@163.com>
+Date:   Wed Feb 3 13:35:34 2021 +0800
 
-    #8903, avoid lock wait timeout (#9279)
+    UUpdate mix config for YAML (#9285)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md
-index 6e3e5a5dd7..8523f2f573 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.cn.md
-@@ -14,7 +14,6 @@ Apache ShardingSphere 提供属性配置的方式配置系统级配置。
- | ---------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
- | sql-show (?)                       | boolean     | 是否在日志中打印 SQL。 <br /> 打印 SQL 可以帮助开发者快速定位系统问题。日志内容包含：逻辑 SQL，真实 SQL 和 SQL 解析结果。<br /> 如果开启配置，日志将使用 Topic `ShardingSphere-SQL`，日志级别是 INFO。 | false    |
- | sql-simple (?)                     | boolean     | 是否在日志中打印简单风格的 SQL。                                                                                                                                                           | false    |
--| acceptor-size (?)                  | int         | 用于设置接收 TCP 请求线程池的大小。                                                                                                                                                        | CPU * 2  |
- | executor-size (?)                  | int         | 用于设置任务处理线程池的大小。每个 ShardingSphereDataSource 使用一个独立的线程池，同一个 JVM 的不同数据源不共享线程池。                                                                           | infinite |
- | max-connections-size-per-query (?) | int         | 一次查询请求在每个数据库实例中所能使用的最大连接数。                                                                                                                                          | 1        |
- | check-table-metadata-enabled (?)   | boolean     | 是否在程序启动和更新时检查分片元数据的结构一致性。                                                                                                                                            | false    |
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md
-index 04665d481f..ed6a814a75 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/configuration/props.en.md
-@@ -14,7 +14,6 @@ Apache ShardingSphere provides the way of property configuration to configure sy
- | ---------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
- | sql-show (?)                       | boolean     | Whether show SQL or not in log. <br /> Print SQL details can help developers debug easier. The log details include: logic SQL, actual SQL and SQL parse result. <br /> Enable this property will log into log topic `ShardingSphere-SQL`, log level is INFO. | false           |
- | sql-simple (?)                     | boolean     | Whether show SQL details in simple style.                                                                                                                                                                                                                    | false           |
--| acceptor-size (?)                  | int         | The max thread size of accepter group to accept TCP connections.                                                                                                                                                                                             | CPU * 2         |
- | executor-size (?)                  | int         | The max thread size of worker group to execute SQL. One ShardingSphereDataSource will use a independent thread pool, it does not share thread pool even different data source in same JVM.                                                                   | infinite        |
- | max-connections-size-per-query (?) | int         | Max opened connection size for each query.                                                                                                                                                                                                                   | 1               |
- | check-table-metadata-enabled (?)   | boolean     | Whether validate table meta data consistency when application startup or updated.                                                                                                                                                                            | false           |
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md
+index cfd4171138..0edfbd6d01 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md
+@@ -11,3 +11,9 @@ chapter = true
+ 
+ ShardingSphere-JDBC 提供了 4 种配置方式，用于不同的使用场景。
+ 通过配置，应用开发者可以灵活的使用数据分片、读写分离、数据加密、影子库等功能，并且能够叠加使用。
++
++混合规则配置与单一规则配置一脉相承，只是从配置单一的规则项到配置多个规则项的异同。
++
++需要注意的是，规则项之间的叠加使用是通过数据源名称和表名称关联的。
++如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
++同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
+index 73a5363992..07ad96b68a 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
+@@ -3,65 +3,64 @@ title = "混合规则"
+ weight = 6
+ +++
+ 
+-* 配置项说明
++混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++
++如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
++同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
+ 
+ ## 配置项说明
++
+ ```yml
++dataSources: # 配置真实存在的数据源作为名称
++  primary_ds:
++    # ...省略具体配置
++  replica_ds_0:
++    # ...省略具体配置
++  replica_ds_0:
++    # ...省略具体配置
++
+ rules:
+-  - !SHARDING
++  - !SHARDING # 配置数据分片规则
+     tables:
+-      t_order_item_calcite_sharding:
+-        actualDataNodes: calcite_ds.t_order_item_calcite_sharding_${0..1}
+-        tableStrategy:
+-          standard:
+-            shardingColumn: item_id
+-            shardingAlgorithmName: table_inline_item_id
+-      t_user_encrypt_calcite_sharding:
+-        actualDataNodes: calcite_ds.t_user_encrypt_calcite_sharding_${0..1}
++      t_user:
++        actualDataNodes: ds.t_user_${0..1} # 数据源名称 `ds` 使用读写分离配置的逻辑数据源名称
+         tableStrategy:
+           standard:
+             shardingColumn: user_id
+-            shardingAlgorithmName: table_inline_user_id
++            shardingAlgorithmName: t_user_inline
+     shardingAlgorithms:
+-      table_inline_item_id:
+-        type: INLINE
+-        props:
+-          algorithm-expression: t_order_item_calcite_sharding_${item_id % 2}
+-      table_inline_user_id:
++      t_order_inline:
+         type: INLINE
+         props:
+-          algorithm-expression: t_user_encrypt_calcite_sharding_${user_id % 2}
+-  - !ENCRYPT
+-    encryptors:
+-      encryptor_aes:
+-        type: aes
+-        props:
+-          aes-key-value: 123456abc
++          algorithm-expression: t_user_${user_id % 2}
++  
++  - !ENCRYPT # 配置数据加密规则
+     tables:
+-      t_user_encrypt_calcite:
++      t_user: # 表名称 `t_user` 使用数据分片配置的逻辑表名称
+         columns:
+           pwd:
+             plainColumn: plain_pwd
+             cipherColumn: cipher_pwd
+             encryptorName: encryptor_aes
+-      t_user_encrypt_calcite_sharding:
+-        columns:
+-          pwd:
+-            plainColumn: plain_pwd
+-            cipherColumn: cipher_pwd
+-            encryptorName: encryptor_aes
+-  - !REPLICA_QUERY
++    encryptors:
++      encryptor_aes:
++        type: aes
++        props:
++          aes-key-value: 123456abc
++  
++  - !REPLICA_QUERY # 配置读写分离规则
+     dataSources:
+-      calcite_ds:
+-        name: calcite_ds
+-        primaryDataSourceName:
+-          - calcite_jdbc_1
++      ds:
++        name: ds # 读写分离的逻辑数据源名称 `ds` 用于在数据分片中使用
++        primaryDataSourceName: primary_ds # 使用真实存在的数据源名称 `primary_ds`
+         replicaDataSourceNames:
+-          - calcite_jdbc_2
++          - replica_ds_0 # 使用真实存在的数据源名称 `replica_ds_0`
++          - replica_ds_1 # 使用真实存在的数据源名称 `replica_ds_1`
+         loadBalancerName: roundRobin
+     loadBalancers:
+       roundRobin:
+         type: ROUND_ROBIN
++
+ props:
+   sql-show: true
+   query-with-cipher-column: true

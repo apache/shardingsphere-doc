@@ -1,20 +1,91 @@
-commit 1e018065a3827b482b7117067c96bafc5d85db87
-Author: Liang Zhang <terrymanu@163.com>
-Date:   Wed Feb 3 13:51:37 2021 +0800
+commit aa5920e190908dceb769e3bdaf18b15f02f2f6c4
+Author: MingHao Li <lmhlmhtju@163.com>
+Date:   Wed Feb 3 15:54:00 2021 +0800
 
-    Update en summary for mix rule configuration (#9288)
+    Translate the mix.en.md in english. (#9289)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md
-index 880d2fb434..e6d4c6d3b5 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md
-@@ -12,3 +12,9 @@ This chapter is a configuration manual for ShardingSphere-JDBC, which can also b
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
+index 07ad96b68a..9d8447a2b7 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
+@@ -29,7 +29,7 @@ rules:
+             shardingColumn: user_id
+             shardingAlgorithmName: t_user_inline
+     shardingAlgorithms:
+-      t_order_inline:
++      t_user_inline:
+         type: INLINE
+         props:
+           algorithm-expression: t_user_${user_id % 2}
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.en.md
+index 34ca4e5cef..0c73a5bf0e 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.en.md
+@@ -3,4 +3,66 @@ title = "Mixed Rules"
+ weight = 6
+ +++
  
- ShardingSphere-JDBC has provided 4 kinds of configuration methods for different situations. 
- By configuration, application developers can flexibly use data sharding, replica query, data encryption, shadow database or the combination of them.
+-TODO
 +
-+Mixed rule configurations are very similar to single rule configuration, except for the differences from single rule to multiple rules.
++The overlay between rule items in a mixed configuration is associated by the data source name and the table name.
 +
-+It should be noted that the superposition between rules are data source and table name related.
-+If the previous rule is data source oriented aggregation, the next rule needs to use the aggregated logical data source name configured by the previous rule when configuring the data source;
-+Similarly, if the previous rule is table oriented aggregation, the next rule needs to use the aggregated logical table name configured by the previous rule when configuring the table.
++If the previous rule is aggregation-oriented, the next rule needs to use the aggregated logical data source name configured by the previous rule when configuring the data source.
++Similarly, if the previous rule is table aggregation-oriented, the next rule needs to use the aggregated logical table name configured by the previous rule when configuring the table.
++
++## Configuration Item Explanation
++
++```yml
++dataSources: # Configure the real data source name.
++  primary_ds:
++    # ...Omit specific configuration.
++  replica_ds_0:
++    # ...Omit specific configuration.
++  replica_ds_0:
++    # ...Omit specific configuration.
++
++rules:
++  - !SHARDING # Configure data sharding rules.
++    tables:
++      t_user:
++        actualDataNodes: ds.t_user_${0..1} # Data source name 'ds' uses the logical data source name of the read-write separation configuration.
++        tableStrategy:
++          standard:
++            shardingColumn: user_id
++            shardingAlgorithmName: t_user_inline
++    shardingAlgorithms:
++      t_user_inline:
++        type: INLINE
++        props:
++          algorithm-expression: t_user_${user_id % 2}
++  
++  - !ENCRYPT # Configure data encryption rules.
++    tables:
++      t_user: # Table `t_user` is the name of the logical table that uses the data sharding configuration.
++        columns:
++          pwd:
++            plainColumn: plain_pwd
++            cipherColumn: cipher_pwd
++            encryptorName: encryptor_aes
++    encryptors:
++      encryptor_aes:
++        type: aes
++        props:
++          aes-key-value: 123456abc
++  
++  - !REPLICA_QUERY # Configure read-write separation rules.
++    dataSources:
++      ds:
++        name: ds # The logical data source name 'ds' for read-write separation is used in data sharding.
++        primaryDataSourceName: primary_ds # Use the real data source name 'primary_ds'.
++        replicaDataSourceNames:
++          - replica_ds_0 # Use the real data source name 'replica_ds_0'.
++          - replica_ds_1 # Use the real data source name 'replica_ds_1'.
++        loadBalancerName: roundRobin
++    loadBalancers:
++      roundRobin:
++        type: ROUND_ROBIN
++
++props:
++  sql-show: true
++  query-with-cipher-column: true
++```

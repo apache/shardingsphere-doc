@@ -1,125 +1,20 @@
-commit 988f293601d49134b67d7747da3f9fb7db204c4b
+commit 1e018065a3827b482b7117067c96bafc5d85db87
 Author: Liang Zhang <terrymanu@163.com>
-Date:   Wed Feb 3 13:35:34 2021 +0800
+Date:   Wed Feb 3 13:51:37 2021 +0800
 
-    UUpdate mix config for YAML (#9285)
+    Update en summary for mix rule configuration (#9288)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md
-index cfd4171138..0edfbd6d01 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.cn.md
-@@ -11,3 +11,9 @@ chapter = true
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md
+index 880d2fb434..e6d4c6d3b5 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/_index.en.md
+@@ -12,3 +12,9 @@ This chapter is a configuration manual for ShardingSphere-JDBC, which can also b
  
- ShardingSphere-JDBC 提供了 4 种配置方式，用于不同的使用场景。
- 通过配置，应用开发者可以灵活的使用数据分片、读写分离、数据加密、影子库等功能，并且能够叠加使用。
+ ShardingSphere-JDBC has provided 4 kinds of configuration methods for different situations. 
+ By configuration, application developers can flexibly use data sharding, replica query, data encryption, shadow database or the combination of them.
 +
-+混合规则配置与单一规则配置一脉相承，只是从配置单一的规则项到配置多个规则项的异同。
++Mixed rule configurations are very similar to single rule configuration, except for the differences from single rule to multiple rules.
 +
-+需要注意的是，规则项之间的叠加使用是通过数据源名称和表名称关联的。
-+如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
-+同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
-index 73a5363992..07ad96b68a 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/mix.cn.md
-@@ -3,65 +3,64 @@ title = "混合规则"
- weight = 6
- +++
- 
--* 配置项说明
-+混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
-+
-+如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
-+同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
- 
- ## 配置项说明
-+
- ```yml
-+dataSources: # 配置真实存在的数据源作为名称
-+  primary_ds:
-+    # ...省略具体配置
-+  replica_ds_0:
-+    # ...省略具体配置
-+  replica_ds_0:
-+    # ...省略具体配置
-+
- rules:
--  - !SHARDING
-+  - !SHARDING # 配置数据分片规则
-     tables:
--      t_order_item_calcite_sharding:
--        actualDataNodes: calcite_ds.t_order_item_calcite_sharding_${0..1}
--        tableStrategy:
--          standard:
--            shardingColumn: item_id
--            shardingAlgorithmName: table_inline_item_id
--      t_user_encrypt_calcite_sharding:
--        actualDataNodes: calcite_ds.t_user_encrypt_calcite_sharding_${0..1}
-+      t_user:
-+        actualDataNodes: ds.t_user_${0..1} # 数据源名称 `ds` 使用读写分离配置的逻辑数据源名称
-         tableStrategy:
-           standard:
-             shardingColumn: user_id
--            shardingAlgorithmName: table_inline_user_id
-+            shardingAlgorithmName: t_user_inline
-     shardingAlgorithms:
--      table_inline_item_id:
--        type: INLINE
--        props:
--          algorithm-expression: t_order_item_calcite_sharding_${item_id % 2}
--      table_inline_user_id:
-+      t_order_inline:
-         type: INLINE
-         props:
--          algorithm-expression: t_user_encrypt_calcite_sharding_${user_id % 2}
--  - !ENCRYPT
--    encryptors:
--      encryptor_aes:
--        type: aes
--        props:
--          aes-key-value: 123456abc
-+          algorithm-expression: t_user_${user_id % 2}
-+  
-+  - !ENCRYPT # 配置数据加密规则
-     tables:
--      t_user_encrypt_calcite:
-+      t_user: # 表名称 `t_user` 使用数据分片配置的逻辑表名称
-         columns:
-           pwd:
-             plainColumn: plain_pwd
-             cipherColumn: cipher_pwd
-             encryptorName: encryptor_aes
--      t_user_encrypt_calcite_sharding:
--        columns:
--          pwd:
--            plainColumn: plain_pwd
--            cipherColumn: cipher_pwd
--            encryptorName: encryptor_aes
--  - !REPLICA_QUERY
-+    encryptors:
-+      encryptor_aes:
-+        type: aes
-+        props:
-+          aes-key-value: 123456abc
-+  
-+  - !REPLICA_QUERY # 配置读写分离规则
-     dataSources:
--      calcite_ds:
--        name: calcite_ds
--        primaryDataSourceName:
--          - calcite_jdbc_1
-+      ds:
-+        name: ds # 读写分离的逻辑数据源名称 `ds` 用于在数据分片中使用
-+        primaryDataSourceName: primary_ds # 使用真实存在的数据源名称 `primary_ds`
-         replicaDataSourceNames:
--          - calcite_jdbc_2
-+          - replica_ds_0 # 使用真实存在的数据源名称 `replica_ds_0`
-+          - replica_ds_1 # 使用真实存在的数据源名称 `replica_ds_1`
-         loadBalancerName: roundRobin
-     loadBalancers:
-       roundRobin:
-         type: ROUND_ROBIN
-+
- props:
-   sql-show: true
-   query-with-cipher-column: true
++It should be noted that the superposition between rules are data source and table name related.
++If the previous rule is data source oriented aggregation, the next rule needs to use the aggregated logical data source name configured by the previous rule when configuring the data source;
++Similarly, if the previous rule is table oriented aggregation, the next rule needs to use the aggregated logical table name configured by the previous rule when configuring the table.

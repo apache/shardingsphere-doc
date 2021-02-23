@@ -1,40 +1,719 @@
-commit 964e5962685f375d06428924043c346a10d5ec05
-Author: QwQyewen <1059475984@qq.com>
-Date:   Tue Feb 9 14:16:06 2021 +0800
+commit eaffc6a7b0ee586bf8727f1fb80b3b8466a4a772
+Author: huanghao495430759 <34728144+huanghao495430759@users.noreply.github.com>
+Date:   Tue Feb 23 10:50:04 2021 +0800
 
-    Issue#9344 (#9394)
+    Issue#9286 (#9379)
+    
+    * Add test case for PostgreSQLCommand #8439
+    
+    * Add test case for UpdateResponseHeader #8440
+    
+    * Add test case for PostgreSQLCommand #8439
+    
+    * Add test case for UpdateResponseHeader #8440
+    
+    * revert commit
+    
+    * Add document of mix rule configuration by spring-boot-starter
+    
+    * add mix rules configuration for spring boot.
+    
+    * add doc of mix rule for spring boot.
+    
+    * Add document of mix rule configuration for spring namespace.
+    
+    * Fixes #9286
+    
+    * Add document of mix rule configuration for java api.
+    
+    * Fixes #9286.
+    add doc for mix rule configuration with java api.
+    
+    * fix error comment in mix.ch.md
+    
+    * Fixes #9286. add sharding rule configurations in java api;
+    
+    * Fixes #9286. delete any comment in mix rule.
+    
+    Co-authored-by: huanghao-jk <huanghao-jk@360jinrong.net>
+    Co-authored-by: huanghao <huanghao-jk@360shuke.com>
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.cn.md
-index fcac99b5e9..28e23fa41b 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.cn.md
-@@ -11,10 +11,10 @@ ShardingSphere-JDBC 提供官方的 Spring Boot Starter，使开发者可以非
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.cn.md
+index a1741432ff..93bd10f7d7 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.cn.md
+@@ -3,4 +3,105 @@ title = "混合规则"
+ weight = 6
+ +++
  
- ```properties
- spring.shardingsphere.datasource.names= # 数据源名称，多数据源以逗号分隔
-+spring.shardingsphere.datasource.common.type=  # 数据库连接池类名称
-+spring.shardingsphere.datasource.common.driver-class-name= # 数据库驱动类名
+-TODO
++混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++
++如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
++同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
++
++## 配置项说明
++
++```java
++/* 数据源配置 */
++HikariDataSource primaryDataSource0 = new HikariDataSource();
++primaryDataSource0.setDriverClassName("com.mysql.jdbc.Driver");
++primaryDataSource0.setJdbcUrl("jdbc:mysql://localhost:3306/db0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8");
++primaryDataSource0.setUsername("root");
++primaryDataSource0.setPassword("");
++
++HikariDataSource primaryDataSource1 = new HikariDataSource();
++// ...忽略其他数据库配置项
++
++HikariDataSource replica0OfPrimaryDataSource0 = new HikariDataSource();
++// ...忽略其他数据库配置项
++
++HikariDataSource replica1OfPrimaryDataSource0 = new HikariDataSource();
++// ...忽略其他数据库配置项
++
++HikariDataSource replica0OfPrimaryDataSource1 = new HikariDataSource();
++// ...忽略其他数据库配置项
++
++HikariDataSource replica1OfPrimaryDataSource1 = new HikariDataSource();
++// ...忽略其他数据库配置项
++
++Map<String, DataSource> datasourceMaps = new HashMap<>(6);
++
++datasourceMaps.put("primary_ds0", primaryDataSource0);
++datasourceMaps.put("primary_ds0_replica0", replica0OfPrimaryDataSource0);
++datasourceMaps.put("primary_ds0_replica1", replica1OfPrimaryDataSource0);
++
++datasourceMaps.put("primary_ds1", primaryDataSource1);
++datasourceMaps.put("primary_ds1_replica0", replica0OfPrimaryDataSource1);
++datasourceMaps.put("primary_ds1_replica1", replica1OfPrimaryDataSource1);
++
++/* 分片规则配置 */
++// 表达式 ds_${0..1} 枚举值表示的是主从配置的逻辑数据源名称列表
++ShardingTableRuleConfiguration tOrderRuleConfiguration = new ShardingTableRuleConfiguration("t_order", "ds_${0..1}.t_order_${[0, 1]}");
++tOrderRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
++tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "tOrderInlineShardingAlgorithm"));
++Properties tOrderShardingInlineProps = new Properties();
++tOrderShardingInlineProps.setProperty("algorithm-expression", "t_order_${order_id % 2}");
++ruleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderInlineShardingAlgorithm", new ShardingSphereAlgorithmConfiguration("INLINE",tOrderShardingInlineProps));
++
++ShardingTableRuleConfiguration tOrderItemRuleConfiguration = new ShardingTableRuleConfiguration("t_order_item", "ds_${0..1}.t_order_item_${[0, 1]}");
++tOrderItemRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_item_id", "snowflake"));
++tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_item_id", "tOrderItemInlineShardingAlgorithm"));
++Properties tOrderItemShardingInlineProps = new Properties();
++tOrderItemShardingInlineProps.setProperty("algorithm-expression", "t_order_item_${order_item_id % 2}");
++ruleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderItemInlineShardingAlgorithm", new ShardingSphereAlgorithmConfiguration("INLINE",tOrderItemShardingInlineProps));
++
++ShardingRuleConfiguration shardingRuleConfiguration = new ShardingRuleConfiguration();
++shardingRuleConfiguration.getTables().add(tOrderRuleConfiguration);
++shardingRuleConfiguration.getTables().add(tOrderItemRuleConfiguration);
++shardingRuleConfiguration.getBindingTableGroups().add("t_order, t_order_item");
++shardingRuleConfiguration.getBroadcastTables().add("t_bank");
++// 默认分库策略
++shardingRuleConfiguration.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "default_db_strategy_inline"));
++Properties defaultDatabaseStrategyInlineProps = new Properties();
++defaultDatabaseStrategyInlineProps.setProperty("algorithm-expression", "ds_${user_id % 2}");
++shardingRuleConfiguration.getShardingAlgorithms().put("default_db_strategy_inline", new ShardingSphereAlgorithmConfiguration("INLINE", defaultDatabaseStrategyInlineProps));
++// 分布式序列算法配置
++Properties snowflakeProperties = new Properties();
++snowflakeProperties.setProperty("worker-id", "123");
++shardingRuleConfiguration.getKeyGenerators().put("snowflake", new ShardingSphereAlgorithmConfiguration("SNOWFLAKE", snowflakeProperties));
++
++/* 数据加密规则配置 */
++Properties encryptProperties = new Properties();
++encryptProperties.setProperty("aes-key-value", "123456");
++EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("user_name", "user_name", "", "user_name_plain", "name_encryptor");
++EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor");
++EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
++
++Map<String, ShardingSphereAlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
++encryptAlgorithmConfigs.put("name_encryptor", new ShardingSphereAlgorithmConfiguration("AES", encryptProperties));
++encryptAlgorithmConfigs.put("pwd_encryptor", new ShardingSphereAlgorithmConfiguration("assistedTest", encryptProperties));
++EncryptRuleConfiguration encryptRuleConfiguration = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
++
++/* 读写分离规则配置 */
++ReplicaQueryDataSourceRuleConfiguration dataSourceConfiguration1 = new ReplicaQueryDataSourceRuleConfiguration("ds_0", "primary_ds0", Arrays.asList("primary_ds0_replica0", "primary_ds0_replica1"), "roundRobin");
++ReplicaQueryDataSourceRuleConfiguration dataSourceConfiguration2 = new ReplicaQueryDataSourceRuleConfiguration("ds_1", "primary_ds0", Arrays.asList("primary_ds1_replica0", "primary_ds1_replica0"), "roundRobin");
++
++//负载均衡算法
++Map<String, ShardingSphereAlgorithmConfiguration> loadBalanceMaps = new HashMap<>(1);
++loadBalanceMaps.put("roundRobin", new ShardingSphereAlgorithmConfiguration("ROUND_ROBIN", new Properties()));
++
++ReplicaQueryRuleConfiguration replicaQueryRuleConfiguration = new ReplicaQueryRuleConfiguration(Arrays.asList(dataSourceConfiguration1, dataSourceConfiguration2), loadBalanceMaps);
++
++/* 其他配置 */
++Properties otherProperties = new Properties();
++otherProperties.setProperty("sql-show", "true");
++otherProperties.setProperty("query-with-cipher-column", "true");
++
++/* shardingDataSource 就是最终被ORM框架或其他jdbc框架引用的数据源名称 */
++DataSource shardingDataSource = ShardingSphereDataSourceFactory.createDataSource(datasourceMaps, Arrays.asList(shardingRuleConfiguration, replicaQueryRuleConfiguration, encryptRuleConfiguration), otherProperties);
++
++```
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.en.md
+index 34ca4e5cef..06abad81f3 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/mix.en.md
+@@ -3,4 +3,101 @@ title = "Mixed Rules"
+ weight = 6
+ +++
  
- spring.shardingsphere.datasource.<datasource-name>.url= # 数据库 URL 连接
--spring.shardingsphere.datasource.<datasource-name>.type=  # 数据库连接池类名称
--spring.shardingsphere.datasource.<datasource-name>.driver-class-name= # 数据库驱动类名
- spring.shardingsphere.datasource.<datasource-name>.username= # 数据库用户名
- spring.shardingsphere.datasource.<datasource-name>.password= # 数据库密码
- spring.shardingsphere.datasource.<datasource-name>.xxx=  # 数据库连接池的其它属性
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.en.md
-index 8f23d72a9e..2496ed0f18 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/_index.en.md
-@@ -11,10 +11,10 @@ ShardingSphere-JDBC provides official Spring Boot Starter to make convenient for
+-TODO
++## Configuration Item Explanation
++
++```java
++/* Data source configuration */
++HikariDataSource primaryDataSource0 = new HikariDataSource();
++primaryDataSource0.setDriverClassName("com.mysql.jdbc.Driver");
++primaryDataSource0.setJdbcUrl("jdbc:mysql://localhost:3306/db0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8");
++primaryDataSource0.setUsername("root");
++primaryDataSource0.setPassword("");
++
++HikariDataSource primaryDataSource1 = new HikariDataSource();
++// ...Omit specific configuration.
++
++HikariDataSource replica0OfPrimaryDataSource0 = new HikariDataSource();
++// ...Omit specific configuration.
++
++HikariDataSource replica1OfPrimaryDataSource0 = new HikariDataSource();
++// ...Omit specific configuration.
++
++HikariDataSource replica0OfPrimaryDataSource1 = new HikariDataSource();
++// ...Omit specific configuration.
++
++HikariDataSource replica1OfPrimaryDataSource1 = new HikariDataSource();
++// ...Omit specific configuration.
++
++Map<String, DataSource> datasourceMaps = new HashMap<>(6);
++
++datasourceMaps.put("primary_ds0", primaryDataSource0);
++datasourceMaps.put("primary_ds0_replica0", replica0OfPrimaryDataSource0);
++datasourceMaps.put("primary_ds0_replica1", replica1OfPrimaryDataSource0);
++
++datasourceMaps.put("primary_ds1", primaryDataSource1);
++datasourceMaps.put("primary_ds1_replica0", replica0OfPrimaryDataSource1);
++datasourceMaps.put("primary_ds1_replica1", replica1OfPrimaryDataSource1);
++
++/* Sharding rule configuration */
++// The enumeration value of `ds_$->{0..1}` is the name of the logical data source configured with replica-query
++ShardingTableRuleConfiguration tOrderRuleConfiguration = new ShardingTableRuleConfiguration("t_order", "ds_${0..1}.t_order_${[0, 1]}");
++tOrderRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
++tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "tOrderInlineShardingAlgorithm"));
++Properties tOrderShardingInlineProps = new Properties();
++tOrderShardingInlineProps.setProperty("algorithm-expression", "t_order_${order_id % 2}");
++ruleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderInlineShardingAlgorithm", new ShardingSphereAlgorithmConfiguration("INLINE",tOrderShardingInlineProps));
++
++ShardingTableRuleConfiguration tOrderItemRuleConfiguration = new ShardingTableRuleConfiguration("t_order_item", "ds_${0..1}.t_order_item_${[0, 1]}");
++tOrderItemRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_item_id", "snowflake"));
++tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_item_id", "tOrderItemInlineShardingAlgorithm"));
++Properties tOrderItemShardingInlineProps = new Properties();
++tOrderItemShardingInlineProps.setProperty("algorithm-expression", "t_order_item_${order_item_id % 2}");
++ruleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderItemInlineShardingAlgorithm", new ShardingSphereAlgorithmConfiguration("INLINE",tOrderItemShardingInlineProps));
++        
++ShardingRuleConfiguration shardingRuleConfiguration = new ShardingRuleConfiguration();
++shardingRuleConfiguration.getTables().add(tOrderRuleConfiguration);
++shardingRuleConfiguration.getTables().add(tOrderItemRuleConfiguration);
++shardingRuleConfiguration.getBindingTableGroups().add("t_order, t_order_item");
++shardingRuleConfiguration.getBroadcastTables().add("t_bank");
++// Default database strategy configuration
++shardingRuleConfiguration.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "default_db_strategy_inline"));
++Properties defaultDatabaseStrategyInlineProps = new Properties();
++defaultDatabaseStrategyInlineProps.setProperty("algorithm-expression", "ds_${user_id % 2}");
++shardingRuleConfiguration.getShardingAlgorithms().put("default_db_strategy_inline", new ShardingSphereAlgorithmConfiguration("INLINE", defaultDatabaseStrategyInlineProps));
++
++// Key generate algorithm configuration
++Properties snowflakeProperties = new Properties();
++snowflakeProperties.setProperty("worker-id", "123");
++shardingRuleConfiguration.getKeyGenerators().put("snowflake", new ShardingSphereAlgorithmConfiguration("SNOWFLAKE", snowflakeProperties));
++
++/* Data encrypt rule configuration */
++Properties encryptProperties = new Properties();
++encryptProperties.setProperty("aes-key-value", "123456");
++EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("user_name", "user_name", "", "user_name_plain", "name_encryptor");
++EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor");
++EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
++// Data encrypt algorithm configuration
++Map<String, ShardingSphereAlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
++encryptAlgorithmConfigs.put("name_encryptor", new ShardingSphereAlgorithmConfiguration("AES", encryptProperties));
++encryptAlgorithmConfigs.put("pwd_encryptor", new ShardingSphereAlgorithmConfiguration("assistedTest", encryptProperties));
++EncryptRuleConfiguration encryptRuleConfiguration = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
++
++/* Replica query rule configuration */
++ReplicaQueryDataSourceRuleConfiguration dataSourceConfiguration1 = new ReplicaQueryDataSourceRuleConfiguration("ds_0", "primary_ds0", Arrays.asList("primary_ds0_replica0", "primary_ds0_replica1"), "roundRobin");
++ReplicaQueryDataSourceRuleConfiguration dataSourceConfiguration2 = new ReplicaQueryDataSourceRuleConfiguration("ds_1", "primary_ds0", Arrays.asList("primary_ds1_replica0", "primary_ds1_replica0"), "roundRobin");
++
++// Load balance algorithm configuration
++Map<String, ShardingSphereAlgorithmConfiguration> loadBalanceMaps = new HashMap<>(1);
++loadBalanceMaps.put("roundRobin", new ShardingSphereAlgorithmConfiguration("ROUND_ROBIN", new Properties()));
++
++ReplicaQueryRuleConfiguration replicaQueryRuleConfiguration = new ReplicaQueryRuleConfiguration(Arrays.asList(dataSourceConfiguration1, dataSourceConfiguration2), loadBalanceMaps);
++
++/* Other Properties configuration */
++Properties otherProperties = new Properties();
++otherProperties.setProperty("sql-show", "true");
++otherProperties.setProperty("query-with-cipher-column", "true");
++
++/* The variable `shardingDataSource` is the logic data source referenced by other frameworks(such as ORM, JPA, etc.) */
++DataSource shardingDataSource = ShardingSphereDataSourceFactory.createDataSource(datasourceMaps, Arrays.asList(shardingRuleConfiguration, replicaQueryRuleConfiguration, encryptRuleConfiguration), otherProperties);
++
++```
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.cn.md
+index a1741432ff..7c2f6b1dee 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.cn.md
+@@ -3,4 +3,94 @@ title = "混合规则"
+ weight = 6
+ +++
  
- ```properties
- spring.shardingsphere.datasource.names= # Data source name, multiple data sources are separated by commas
-+spring.shardingsphere.datasource.common.type= # Database connection pool type name
-+spring.shardingsphere.datasource.common.driver-class-name= # Database driver class name
+-TODO
++混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++
++如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
++同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
++
++## 配置项说明
++```properties
++# 数据源配置
++# 数据源名称，多数据源以逗号分隔
++spring.shardingsphere.datasource.names= primary-ds0,primary-ds1,primary-ds0-replica0,primary-ds1-replica0
++
++spring.shardingsphere.datasource.primary-ds0.url= # 数据库 URL 连接
++spring.shardingsphere.datasource.primary-ds0.type=  # 数据库连接池类名称
++spring.shardingsphere.datasource.primary-ds0.driver-class-name= # 数据库驱动类名
++spring.shardingsphere.datasource.primary-ds0.username= # 数据库用户名
++spring.shardingsphere.datasource.primary-ds0.password= # 数据库密码
++spring.shardingsphere.datasource.primary-ds0.xxx=  # 数据库连接池的其它属性
++
++spring.shardingsphere.datasource.primary-ds1.url= # 数据库 URL 连接
++... 忽略其他数据库配置项
++
++spring.shardingsphere.datasource.primary-ds0-replica0.url= # 数据库 URL 连接
++... 忽略其他数据库配置项
++
++spring.shardingsphere.datasource.primary-ds1-replica0.url= # 数据库 URL 连接
++... 忽略其他数据库配置项
++
++# 分片规则配置
++# 分库策略
++spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-column=user_id
++spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-algorithm-name=default-database-strategy-inline
++# 绑定表规则，多组绑定规则使用数组形式配置
++spring.shardingsphere.rules.sharding.binding-tables[0]=t_user,t_user_detail # 绑定表名称，多个表之间以逗号分隔
++spring.shardingsphere.rules.sharding.binding-tables[1]= # 绑定表名称，多个表之间以逗号分隔
++spring.shardingsphere.rules.sharding.binding-tables[x]= # 绑定表名称，多个表之间以逗号分隔
++# 广播表规则配置
++spring.shardingsphere.rules.sharding.broadcast-tables= # 广播表名称，多个表之间以逗号分隔
++
++# 分表策略
++# 表达式 `ds_$->{0..1}`枚举的数据源为读写分离配置的逻辑数据源名称
++spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=ds_$->{0..1}.t_user_$->{0..1}
++spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-column=user_id
++spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-algorithm-name=user-table-strategy-inline
++
++spring.shardingsphere.rules.sharding.tables.t_user_detail.actual-data-nodes=ds_$->{0..1}.t_user_detail_$->{0..1}
++spring.shardingsphere.rules.sharding.tables.t_user_detail.table-strategy.standard.sharding-column=user_id
++spring.shardingsphere.rules.sharding.tables.t_user_detail.table-strategy.standard.sharding-algorithm-name=user-detail-table-strategy-inline
++
++# 数据加密配置
++# `t_user` 使用分片规则配置的逻辑表名称
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.user_name.cipher-column=user_name
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.user_name.encryptor-name=name-encryptor
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.cipher-column=pwd
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.encryptor-name=pwd-encryptor
++
++# 数据加密算法配置
++spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.type=AES
++spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.props.aes-key-value=123456abc
++spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.type=AES
++spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.props.aes-key-value=123456abc
++
++# 分布式序列策略配置
++spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.column=user_id
++spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.key-generator-name=snowflake
++
++# 分片算法配置
++spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.type=INLINE
++# 表达式`ds_$->{user_id % 2}` 枚举的数据源为读写分离配置的逻辑数据源名称
++spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.algorithm-expression=ds_$->{user_id % 2}
++spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.type=INLINE
++spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.algorithm-expression=t_user_$->{user_id % 2}
++
++spring.shardingsphere.rules.sharding.sharding-algorithms.user-detail-table-strategy-inline.type=INLINE
++spring.shardingsphere.rules.sharding.sharding-algorithms.user-detail-table-strategy-inline.algorithm-expression=t_user_detail_$->{user_id % 2}
++
++# 分布式序列算法配置
++spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
++spring.shardingsphere.rules.sharding.key-generators.snowflake.props.worker-id=123
++
++# 读写分离策略配置
++# ds_0,ds_1为读写分离配置的逻辑数据源名称
++spring.shardingsphere.rules.replica-query.data-sources.ds_0.primary-data-source-name=primary-ds0
++spring.shardingsphere.rules.replica-query.data-sources.ds_0.replica-data-source-names=primary-ds0-replica0
++spring.shardingsphere.rules.replica-query.data-sources.ds_0.load-balancer-name=replica-random
++spring.shardingsphere.rules.replica-query.data-sources.ds_1.primary-data-source-name=primary-ds1
++spring.shardingsphere.rules.replica-query.data-sources.ds_1.replica-data-source-names=primary-ds1-replica0
++spring.shardingsphere.rules.replica-query.data-sources.ds_1.load-balancer-name=replica-random
++
++# 负载均衡算法配置
++spring.shardingsphere.rules.replica-query.load-balancers.replica-random.type=RANDOM
++```
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.en.md
+index 34ca4e5cef..b2c8067a6f 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/mix.en.md
+@@ -3,4 +3,81 @@ title = "Mixed Rules"
+ weight = 6
+ +++
  
- spring.shardingsphere.datasource.<datasource-name>.url= # Database URL connection
--spring.shardingsphere.datasource.<datasource-name>.type= # Database connection pool type name
--spring.shardingsphere.datasource.<datasource-name>.driver-class-name= # Database driver class name
- spring.shardingsphere.datasource.<datasource-name>.username= # Database username
- spring.shardingsphere.datasource.<datasource-name>.password= # Database password
- spring.shardingsphere.datasource.<datasource-name>.xxx= # Other properties of database connection pool
+-TODO
++## Configuration Item Explanation
++```properties
++# data source configuration
++spring.shardingsphere.datasource.names= primary-ds0,primary-ds1,primary-ds0-replica0,primary-ds1-replica0
++
++spring.shardingsphere.datasource.primary-ds0.url= # Database URL connection
++spring.shardingsphere.datasource.primary-ds0.type=  # Database connection pool type name
++spring.shardingsphere.datasource.primary-ds0.driver-class-name= # Database driver class name
++spring.shardingsphere.datasource.primary-ds0.username= # Database username
++spring.shardingsphere.datasource.primary-ds0.password= # Database password
++spring.shardingsphere.datasource.primary-ds0.xxx=  # Other properties of database connection pool
++
++spring.shardingsphere.datasource.primary-ds1.url= # Database URL connection
++# ...Omit specific configuration.
++
++spring.shardingsphere.datasource.primary-ds0-replica0.url= # Database URL connection
++# ...Omit specific configuration.
++
++spring.shardingsphere.datasource.primary-ds1-replica0.url= # Database URL connection
++# ...Omit specific configuration.
++
++# Sharding rules configuration
++# Databases sharding strategy
++spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-column=user_id
++spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-algorithm-name=default-database-strategy-inline
++# Binding table rules configuration ,and multiple groups of binding-tables configured with arrays
++spring.shardingsphere.rules.sharding.binding-tables[0]=t_user,t_user_detail
++spring.shardingsphere.rules.sharding.binding-tables[1]= # Binding table names,multiple table name are separated by commas
++spring.shardingsphere.rules.sharding.binding-tables[x]= # Binding table names,multiple table name are separated by commas
++# Broadcast table rules configuration
++spring.shardingsphere.rules.sharding.broadcast-tables= # Broadcast table names,multiple table name are separated by commas
++
++# Table sharding strategy
++# The enumeration value of `ds_$->{0..1}` is the name of the logical data source configured with replica-query
++spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=ds_$->{0..1}.t_user_$->{0..1}
++spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-column=user_id
++spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-algorithm-name=user-table-strategy-inline
++
++# Data encrypt configuration
++# Table `t_user` is the name of the logical table that uses for data sharding configuration.
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.user_name.cipher-column=user_name
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.user_name.encryptor-name=name-encryptor
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.cipher-column=pwd
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.encryptor-name=pwd-encryptor
++
++# Data encrypt algorithm configuration
++spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.type=AES
++spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.props.aes-key-value=123456abc
++spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.type=AES
++spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.props.aes-key-value=123456abc
++
++# Key generate strategy configuration
++spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.column=user_id
++spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.key-generator-name=snowflake
++
++# Sharding algorithm configuration
++spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.type=INLINE
++# The enumeration value of `ds_$->{user_id % 2}` is the name of the logical data source configured with replica-query
++spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.algorithm-expression=ds$->{user_id % 2}
++spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.type=INLINE
++spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.algorithm-expression=t_user_$->{user_id % 2}
++
++# Key generate algorithm configuration
++spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
++spring.shardingsphere.rules.sharding.key-generators.snowflake.props.worker-id=123
++
++# Replica query configuration
++# ds_0,ds_1 is the logical data source name of the replica-query
++spring.shardingsphere.rules.replica-query.data-sources.ds_0.primary-data-source-name=primary-ds0
++spring.shardingsphere.rules.replica-query.data-sources.ds_0.replica-data-source-names=primary-ds0-replica0
++spring.shardingsphere.rules.replica-query.data-sources.ds_0.load-balancer-name=replica-random
++spring.shardingsphere.rules.replica-query.data-sources.ds_1.primary-data-source-name=primary-ds1
++spring.shardingsphere.rules.replica-query.data-sources.ds_1.replica-data-source-names=primary-ds1-replica0
++spring.shardingsphere.rules.replica-query.data-sources.ds_1.load-balancer-name=replica-random
++
++# Load balance algorithm configuration
++spring.shardingsphere.rules.replica-query.load-balancers.replica-random.type=RANDOM
++```
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.cn.md
+index a1741432ff..7c282587df 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.cn.md
+@@ -3,4 +3,131 @@ title = "混合规则"
+ weight = 6
+ +++
+ 
+-TODO
++混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++
++如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
++同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
++
++## 配置项说明
++```xml
++<beans xmlns="http://www.springframework.org/schema/beans"
++       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++       xmlns:context="http://www.springframework.org/schema/context"
++       xmlns:tx="http://www.springframework.org/schema/tx"
++       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
++       xmlns:replica-query="http://shardingsphere.apache.org/schema/shardingsphere/replica-query"
++       xmlns:encrypt="http://shardingsphere.apache.org/schema/shardingsphere/encrypt"
++       xsi:schemaLocation="http://www.springframework.org/schema/beans 
++                           http://www.springframework.org/schema/beans/spring-beans.xsd 
++                           http://www.springframework.org/schema/context 
++                           http://www.springframework.org/schema/context/spring-context.xsd
++                           http://www.springframework.org/schema/tx 
++                           http://www.springframework.org/schema/tx/spring-tx.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/replica-query
++                           http://shardingsphere.apache.org/schema/shardingsphere/replica-query/replica-query.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt
++                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encrypt.xsd
++                           ">
++						   
++    <bean id="primary_ds0" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
++        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/primary_ds?useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8" />
++        <property name="username" value="root" />
++        <property name="password" value="" />
++    </bean>
++    
++    <bean id="replica_ds0_0" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- 省略详细数据源配置详情 -->
++    </bean>
++    
++    <bean id="replica_ds0_1" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- 省略详细数据源配置详情 -->
++    </bean>
++    
++	<bean id="primary_ds1" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- 省略详细数据源配置详情 -->
++    </bean>
++	
++	<bean id="replica_ds1_0" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- 省略详细数据源配置详情 -->
++    </bean>
++    
++    <bean id="replica_ds1_1" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- 省略详细数据源配置详情 -->
++    </bean>
++	
++	<!-- 主从配置负载均衡策略 -->
++    <replica-query:load-balance-algorithm id="randomStrategy" type="RANDOM" />
++    
++	<!-- 主从规则配置 -->
++    <replica-query:rule id="replicaQueryRuleDs0">
++        <replica-query:data-source-rule id="ds_0" primary-data-source-name="primary_ds0" replica-data-source-names="replica_ds0_0, replica_ds0_1" load-balance-algorithm-ref="randomStrategy" />
++		<replica-query:data-source-rule id="ds_1" primary-data-source-name="primary_ds1" replica-data-source-names="replica_ds1_0, replica_ds1_1" load-balance-algorithm-ref="randomStrategy" />
++    </replica-query:rule>
++    
++	<!-- 分片策略配置 -->
++	<sharding:standard-strategy id="databaseStrategy" sharding-column="user_id" algorithm-ref="inlineDatabaseStrategyAlgorithm" />
++    <sharding:standard-strategy id="orderTableStrategy" sharding-column="order_id" algorithm-ref="inlineOrderTableStrategyAlgorithm" />
++    <sharding:standard-strategy id="orderItemTableStrategy" sharding-column="order_item_id" algorithm-ref="inlineOrderItemTableStrategyAlgorithm" />
++
++    <sharding:sharding-algorithm id="inlineDatabaseStrategyAlgorithm" type="INLINE">
++        <props>
++            <!-- 表达式枚举的数据源名称为主从配置的逻辑数据源名称  -->
++            <prop key="algorithm-expression">ds_${user_id % 2}</prop>
++        </props>
++    </sharding:sharding-algorithm>
++    <sharding:sharding-algorithm id="inlineOrderTableStrategyAlgorithm" type="INLINE">
++        <props>
++            <prop key="algorithm-expression">t_order_${order_id % 2}</prop>
++        </props>
++    </sharding:sharding-algorithm>
++    <sharding:sharding-algorithm id="inlineOrderItemTableStrategyAlgorithm" type="INLINE">
++        <props>
++            <prop key="algorithm-expression">t_order_item_${order_item_id % 2}</prop>
++        </props>
++    </sharding:sharding-algorithm>
++	
++	<!-- 分片规则配置 -->	
++	<sharding:rule id="shardingRule">
++        <sharding:table-rules>
++            <!-- 表达式 ds_${0..1} 枚举的数据源名称为主从配置的逻辑数据源名称  -->
++            <sharding:table-rule logic-table="t_order" actual-data-nodes="ds_${0..1}.t_order_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderTableStrategy" key-generate-strategy-ref="orderKeyGenerator"/>
++            <sharding:table-rule logic-table="t_order_item" actual-data-nodes="ds_${0..1}.t_order_item_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderItemTableStrategy" key-generate-strategy-ref="itemKeyGenerator"/>
++        </sharding:table-rules>
++        <sharding:binding-table-rules>
++            <sharding:binding-table-rule logic-tables="t_order, t_order_item"/>
++        </sharding:binding-table-rules>
++        <sharding:broadcast-table-rules>
++            <sharding:broadcast-table-rule table="t_address"/>
++        </sharding:broadcast-table-rules>
++    </sharding:rule>
++    
++    <!-- 数据加密规则配置 -->
++    <encrypt:encrypt-algorithm id="name_encryptor" type="AES">
++        <props>
++            <prop key="aes-key-value">123456</prop>
++        </props>
++    </encrypt:encrypt-algorithm>
++    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
++    
++    <encrypt:rule id="encryptRule">
++        <encrypt:table name="t_user">
++            <encrypt:column logic-column="user_name" cipher-column="user_name" plain-column="user_name_plain" encrypt-algorithm-ref="name_encryptor" />
++            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
++        </encrypt:table>
++    </encrypt:rule>
++    
++	<!-- 数据源配置 -->
++	<!-- data-source-names 数据源名称为所有的数据源节点名称 -->
++    <shardingsphere:data-source id="replicaQueryDataSource" data-source-names="primary_ds0, replica_ds0_0, replica_ds0_1, primary_ds1, replica_ds1_0, replica_ds1_1" 
++        rule-refs="replicaQueryRule, shardingRule, encryptRule" >
++        <props>
++            <prop key="query-with-cipher-column">true</prop>
++            <prop key="sql-show">true</prop>
++        </props>
++    </shardingsphere:data-source>
++    
++</beans>
++```
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.en.md
+index 34ca4e5cef..eb509a52d8 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/mix.en.md
+@@ -3,4 +3,126 @@ title = "Mixed Rules"
+ weight = 6
+ +++
+ 
+-TODO
++## Configuration Item Explanation
++```xml
++<beans xmlns="http://www.springframework.org/schema/beans"
++       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++       xmlns:context="http://www.springframework.org/schema/context"
++       xmlns:tx="http://www.springframework.org/schema/tx"
++       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
++       xmlns:replica-query="http://shardingsphere.apache.org/schema/shardingsphere/replica-query"
++       xmlns:encrypt="http://shardingsphere.apache.org/schema/shardingsphere/encrypt"
++       xsi:schemaLocation="http://www.springframework.org/schema/beans 
++                           http://www.springframework.org/schema/beans/spring-beans.xsd 
++                           http://www.springframework.org/schema/context 
++                           http://www.springframework.org/schema/context/spring-context.xsd
++                           http://www.springframework.org/schema/tx 
++                           http://www.springframework.org/schema/tx/spring-tx.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/replica-query
++                           http://shardingsphere.apache.org/schema/shardingsphere/replica-query/replica-query.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt
++                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encrypt.xsd
++                           ">
++						   
++    <bean id="primary_ds0" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
++        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/primary_ds?useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8" />
++        <property name="username" value="root" />
++        <property name="password" value="" />
++    </bean>
++    
++    <bean id="replica_ds0_0" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- ...Omit specific configuration. -->
++    </bean>
++    
++    <bean id="replica_ds0_1" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- ...Omit specific configuration. -->
++    </bean>
++    
++	<bean id="primary_ds1" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- ...Omit specific configuration. -->
++    </bean>
++	
++	<bean id="replica_ds1_0" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- ...Omit specific configuration. -->
++    </bean>
++    
++    <bean id="replica_ds1_1" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
++        <!-- ...Omit specific configuration. -->
++    </bean>
++	
++	<!-- load balance algorithm configuration for replica-query -->
++    <replica-query:load-balance-algorithm id="randomStrategy" type="RANDOM" />
++    
++	<!-- replica-query rule configuration -->
++    <replica-query:rule id="replicaQueryRuleDs0">
++        <replica-query:data-source-rule id="ds_0" primary-data-source-name="primary_ds0" replica-data-source-names="replica_ds0_0, replica_ds0_1" load-balance-algorithm-ref="randomStrategy" />
++		<replica-query:data-source-rule id="ds_1" primary-data-source-name="primary_ds1" replica-data-source-names="replica_ds1_0, replica_ds1_1" load-balance-algorithm-ref="randomStrategy" />
++    </replica-query:rule>
++    
++	<!-- sharding strategy configuration -->
++	<sharding:standard-strategy id="databaseStrategy" sharding-column="user_id" algorithm-ref="inlineDatabaseStrategyAlgorithm" />
++    <sharding:standard-strategy id="orderTableStrategy" sharding-column="order_id" algorithm-ref="inlineOrderTableStrategyAlgorithm" />
++    <sharding:standard-strategy id="orderItemTableStrategy" sharding-column="order_item_id" algorithm-ref="inlineOrderItemTableStrategyAlgorithm" />
++
++    <sharding:sharding-algorithm id="inlineDatabaseStrategyAlgorithm" type="INLINE">
++        <props>
++            <!-- the expression enumeration is the logical data source name of the replica-query configuration -->
++            <prop key="algorithm-expression">ds_${user_id % 2}</prop>
++        </props>
++    </sharding:sharding-algorithm>
++    <sharding:sharding-algorithm id="inlineOrderTableStrategyAlgorithm" type="INLINE">
++        <props>
++            <prop key="algorithm-expression">t_order_${order_id % 2}</prop>
++        </props>
++    </sharding:sharding-algorithm>
++    <sharding:sharding-algorithm id="inlineOrderItemTableStrategyAlgorithm" type="INLINE">
++        <props>
++            <prop key="algorithm-expression">t_order_item_${order_item_id % 2}</prop>
++        </props>
++    </sharding:sharding-algorithm>
++	
++	<!-- sharding rule configuration -->	
++	<sharding:rule id="shardingRule">
++        <sharding:table-rules>
++            <!-- the expression 'ds_${0..1}' enumeration is the logical data source name of the replica-query configuration  -->
++            <sharding:table-rule logic-table="t_order" actual-data-nodes="ds_${0..1}.t_order_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderTableStrategy" key-generate-strategy-ref="orderKeyGenerator"/>
++            <sharding:table-rule logic-table="t_order_item" actual-data-nodes="ds_${0..1}.t_order_item_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderItemTableStrategy" key-generate-strategy-ref="itemKeyGenerator"/>
++        </sharding:table-rules>
++        <sharding:binding-table-rules>
++            <sharding:binding-table-rule logic-tables="t_order, t_order_item"/>
++        </sharding:binding-table-rules>
++        <sharding:broadcast-table-rules>
++            <sharding:broadcast-table-rule table="t_address"/>
++        </sharding:broadcast-table-rules>
++    </sharding:rule>
++    
++    <!-- data encrypt configuration -->
++    <encrypt:encrypt-algorithm id="name_encryptor" type="AES">
++        <props>
++            <prop key="aes-key-value">123456</prop>
++        </props>
++    </encrypt:encrypt-algorithm>
++    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
++    
++    <encrypt:rule id="encryptRule">
++        <encrypt:table name="t_user">
++            <encrypt:column logic-column="user_name" cipher-column="user_name" plain-column="user_name_plain" encrypt-algorithm-ref="name_encryptor" />
++            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
++        </encrypt:table>
++    </encrypt:rule>
++    
++	<!-- datasource configuration -->
++	<!-- the element data-source-names's value is all of the datasource name -->
++    <shardingsphere:data-source id="replicaQueryDataSource" data-source-names="primary_ds0, replica_ds0_0, replica_ds0_1, primary_ds1, replica_ds1_0, replica_ds1_1" 
++        rule-refs="replicaQueryRule, shardingRule, encryptRule" >
++        <props>
++            <prop key="query-with-cipher-column">true</prop>
++            <prop key="sql-show">true</prop>
++        </props>
++    </shardingsphere:data-source>
++  
++</beans>
++```

@@ -46,9 +46,9 @@ function generate_pdf {
         cp .github/scripts/conf.py ${localDir}/
         cd $localDir
         if [[ "$1" == "shardingsphere" ]] ;then
-            sed -i 's/Apache ShardingSphere document/Apache ShardingSphere ElasticJob document/g' conf.py
-        else
             sed -i 's/Apache ShardingSphere ElasticJob document/Apache ShardingSphere document/g' conf.py
+        else
+            sed -i 's/Apache ShardingSphere document/Apache ShardingSphere ElasticJob document/g' conf.py
         fi
         if [[ "$lang" == "en" ]] ;then
             sed -i "s/language = 'zh_CN'/language = 'en_US'/" conf.py

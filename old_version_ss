@@ -1,34 +1,171 @@
-commit de2874011f29c415210a8772c14525496e5cd859
-Author: Jieker <jieker_mail@163.com>
-Date:   Mon Mar 29 16:56:39 2021 +0800
+commit 9158d6d499732a919f1cb3aa8dad1e2327a879b3
+Author: xiaoyu <549477611@qq.com>
+Date:   Thu Apr 1 15:35:07 2021 +0800
 
-    add document of single-table (#9864)
-    
-    * add document of single-table
-    
-    * problem fixed
+    add agent doc (#9902)
 
-diff --git a/docs/document/content/features/sharding/concept/sql.cn.md b/docs/document/content/features/sharding/concept/sql.cn.md
-index fdfe1db57a..e080c52f40 100644
---- a/docs/document/content/features/sharding/concept/sql.cn.md
-+++ b/docs/document/content/features/sharding/concept/sql.cn.md
-@@ -49,3 +49,7 @@ SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE
- ## 广播表
- 
- 指所有的分片数据源中都存在的表，表结构和表中的数据在每个数据库中均完全一致。适用于数据量不大且需要与海量数据的表进行关联查询的场景，例如：字典表。
+diff --git a/docs/document/content/features/governance/observability/agnet.cn.md b/docs/document/content/features/governance/observability/agnet.cn.md
+new file mode 100644
+index 0000000000..9b384d52f1
+--- /dev/null
++++ b/docs/document/content/features/governance/observability/agnet.cn.md
+@@ -0,0 +1,76 @@
+++++
++title = "Agent集成"
++weight = 2
+++++
 +
-+## 单表
++## 背景
 +
-+指所有的分片数据源中只存在唯一一张的表。适用于数据量不大且不需要做任何分片操作的场景。
-diff --git a/docs/document/content/features/sharding/concept/sql.en.md b/docs/document/content/features/sharding/concept/sql.en.md
-index 86f39b839d..1592df0b45 100644
---- a/docs/document/content/features/sharding/concept/sql.en.md
-+++ b/docs/document/content/features/sharding/concept/sql.en.md
-@@ -44,3 +44,7 @@ In them, table `t_order` in the left end of FROM will be taken by ShardingSphere
- ## Broadcast Table
- 
- It refers to tables that exist in all sharding database sources. Their structures and data are the same in each database. It can be applied to the small data volume scenario that needs to correlate with big data volume tables to query, dictionary table for example.
++ShardingSphere-Agent 是独立自主设计，基于`Bytebuddy`字节码增加的项目，基于插件化的设计，可以无缝隙的与ShardingSphere集成，
 +
-+## Single Table
++目前有提供 Log, metrics, APM 等可观测性功能。
 +
-+It refers to only one table that exists in all sharding database sources. It is suitable for scenarios where the amount of data is not large and does not require any sharding operations.
++## 使用方法
++
++### 本地构建
++
++```
++ > cd shardingsphere/shardingsphere-agent
++ > mvn clean install
++
++```
++
++### 远程下载(暂未发布)
++
++```
++ > weget http://xxxxx/shardingsphere-agent.tar.gz
++ > tar -zxvcf shardingsphere-agent.tar.gz
++
++```
++
++启动时添加参数
++
++```
++-javaagent: \absolute path\shardingsphere-agent.jar
++```
++
++## Agent配置
++
++在本地打包目录和解压缩目录下找到: `agent.yaml` 
++
++```yaml
++applicationName: shardingsphere-agent # 应用名称
++ignoredPluginNames: #忽略的插件集合，表示集合里面的插件不生效
++  - Opentracing
++  - Jaeger
++  - Zipkin
++  - Prometheus
++  - Logging
++
++plugins:
++  Prometheus:
++    host:  "localhost" #prometheus暴露的host
++    port: 9090 #prometheus暴露的端口
++    props:
++      JVM_INFORMATION_COLLECTOR_ENABLED : "true"
++  Jaeger:
++    host: "localhost" #jaeger服务的host
++    port: 5775 #jaeger服务的端口
++    props:
++      SERVICE_NAME: "shardingsphere-agent"
++      JAEGER_SAMPLER_TYPE: "const"
++      JAEGER_SAMPLER_PARAM: "1"
++      JAEGER_REPORTER_LOG_SPANS: "true"
++      JAEGER_REPORTER_FLUSH_INTERVAL: "1"
++  Zipkin:
++    host: "localhost" #zipkin服务的host
++    port: 9411 #zipkin服务的prot
++    props:
++      SERVICE_NAME: "shardingsphere-agent"
++      URL_VERSION: "/api/v2/spans" #zipkin服务的抓取span的uri
++  Logging:
++    props:
++      LEVEL: "INFO" #打印的日志级别
++
++``
++
++以上为agent的所有配置，注意：当配置 ignoredPluginNames时候，表示集合里面的插件会被忽略！
+\ No newline at end of file
+diff --git a/docs/document/content/features/governance/observability/agnet.en.md b/docs/document/content/features/governance/observability/agnet.en.md
+new file mode 100644
+index 0000000000..0307cfe46b
+--- /dev/null
++++ b/docs/document/content/features/governance/observability/agnet.en.md
+@@ -0,0 +1,75 @@
+++++
++title = "Agent Integration"
++weight = 2
+++++
++
++## Background
++
++ShardingSphere-Agent is an independent and independently designed project based on ByteBuddy bytecode increase. Based on plugin design, it can integrate seamlessly with ShardingSphere.
++There are currently Log, metrics, APM and other observability capabilities available.
++
++## Usage
++
++### Local build
++
++```
++ > cd  shardingsphere/shardingsphere-agent
++ > mvn clean install
++
++```
++
++### Remote download（No release）
++
++```
++ > weget http://xxxxx/shardingsphere-agent.tar.gz
++ > tar -zxvcf shardingsphere-agent.tar.gz
++
++```
++
++Add startup arguments
++
++```
++-javaagent:\absolute path\shardingsphere-agent.jar
++```
++
++## Agent Configuration
++
++It is found under the local package directory and unzip directory : `agent.yaml` 
++
++```yaml
++applicationName: shardingsphere-agent # application name 
++ignoredPluginNames: # A collection of ignored plugins, indicating that the plugins in the collection are not active
++  - Opentracing
++  - Jaeger
++  - Zipkin
++  - Prometheus
++  - Logging
++
++plugins:
++  Prometheus:
++    host:  "localhost" #prometheus host
++    port: 9090 #prometheus port 
++    props:
++      JVM_INFORMATION_COLLECTOR_ENABLED : "true"
++  Jaeger:
++    host: "localhost" #jaeger host
++    port: 5775 #jaeger prot
++    props:
++      SERVICE_NAME: "shardingsphere-agent"
++      JAEGER_SAMPLER_TYPE: "const"
++      JAEGER_SAMPLER_PARAM: "1"
++      JAEGER_REPORTER_LOG_SPANS: "true"
++      JAEGER_REPORTER_FLUSH_INTERVAL: "1"
++  Zipkin:
++    host: "localhost" #zipkin host
++    port: 9411 #zipkin prot
++    props:
++      SERVICE_NAME: "shardingsphere-agent"
++      URL_VERSION: "/api/v2/spans" #zipkin uri
++  Logging:
++    props:
++      LEVEL: "INFO" #log level
++
++``
++
++ When ignoredPluginNames is configured, plugins in the collection are ignored!
+\ No newline at end of file

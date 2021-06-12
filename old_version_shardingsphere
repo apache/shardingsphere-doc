@@ -1,168 +1,1140 @@
-commit 9a53991546d8991fd2acab8faac1353885ce3efe
-Author: Zhengqiang Duan <strongduanmu@gmail.com>
-Date:   Fri Jun 11 18:59:48 2021 +0800
+commit fc811c3472eb4d7ea135ba233d7b773f762f93d5
+Author: Haoran Meng <menghaoranss@gmail.com>
+Date:   Sat Jun 12 13:20:31 2021 +0800
 
-    update sharding document (#10766)
+    Refactor document for DistSQL (#10771)
     
-    * update sharding document
+    * Check duplicate binding tables
     
-    * update sharding document
+    * Refactor document for DistSQL
 
-diff --git a/docs/document/content/features/sharding/use-norms/sql.cn.md b/docs/document/content/features/sharding/use-norms/sql.cn.md
-index 4cfa3f0df7..1485c4ca07 100644
---- a/docs/document/content/features/sharding/use-norms/sql.cn.md
-+++ b/docs/document/content/features/sharding/use-norms/sql.cn.md
-@@ -17,7 +17,7 @@ weight = 1
- 
- ### 路由至多数据节点
- 
--全面支持DML、DDL、DCL、TCL和部分DAL。支持分页、去重、排序、分组、聚合、关联查询（不支持跨库关联）。以下用最为复杂的DML举例：
-+全面支持DML、DDL、DCL、TCL和部分DAL。支持分页、去重、排序、分组、聚合、关联查询。以下用最为复杂的DML举例：
- 
- - SELECT主语句
- 
-@@ -52,10 +52,11 @@ tbl_name [AS] alias] [index_hint_list]
- 部分支持CASE WHEN
- * `CASE WHEN` 中包含子查询不支持
- * `CASE WHEN` 中使用逻辑表名不支持（请使用表别名）
+diff --git a/docs/document/content/features/dist-sql/rdl.en.md b/docs/document/content/features/dist-sql/rdl.en.md
+deleted file mode 100644
+index 8220be3020..0000000000
+--- a/docs/document/content/features/dist-sql/rdl.en.md
++++ /dev/null
+@@ -1,134 +0,0 @@
+-+++
+-title = "RDL"
+-weight = 1
+-+++
+-
+-## Definition
+-
+-RDL（Resource & Rule Definition Language）is used to define data resources and rules.
+-
+-At present, there are the following RDLs,
+-
+-- `Create DATASOURCES` to add database resources to ShardingSphere
+-
+-```sql
+-// SQL
+-CREATE DATASOURCES (
+-ds_key=host_name:host_port:db_name:user_name:pwd
+-[, ds_key=host_name:host_port:db_name:user_name:pwd, ...]
+-)
+-
+-// Example
+-CREATE datasources (
+-ds0=127.0.0.1:3306:demo_ds_0:root:pwd, 
+-ds1=127.0.0.1:3306:demo_ds_1:root:pwd)
+-```
+-- `CREATE SHARDING RULE` to create sharding rule made by table rules
+-```sql
+-// SQL
+-
+-CREATE SHARDING RULE (
+-sharding_table_name=sharding_algorithm(algorithm_property[, algothrim_property])
+-[, sharding_table_name=sharding_algorithm_type(algorithm_property[, algothrim_property]), ...]
+-)
+-
+-sharding_algorithm_type: {MOD | HASH_MODE} 
+-mod_algorithm_properties: sharding_column,shards_amount
+-mod_hash_algorithm_properties: sharding_column,shards_amount
+-
+-// Example
+-CREATE SHARDING RULE (
+-t_order=hash_mod(order_id, 4), 
+-t_item=mod(item_id, 2)
+-)
+-```
+-
+-## Usage
+-
+-### Pre-work
+-
+-1. Start the service of MySQL instances 
+-2. Create MySQL databases (Viewed as the resources for ShardingProxy)
+-3. Create a role or user with creating privileges for ShardingProxy
+-4. Start the service of Zookeeper (For persisting configuration)
+-
+-### Initialize ShardingProxy
+-
+-1. Add `governance` and `authentication` setting item to the `server.yaml`  (Please refer to the example in this file)
+-2. Start the ShardingProxy ([Instruction](/en/quick-start/shardingsphere-proxy-quick-start/))
+-
+-### Create Sharding DBs and Tables
+-
+-1. Connect to ShardingProxy
+-2. Create a sharding database
+-
+-```SQL
+-CREATE DATABASE sharding_db;
+-```
+-
+-3. Use the sharding database
+-
+-```SQL
+-USE sharding_db;
+-```
+-
+-2. Add database resources for this sharding DB
+-
+-```SQL
+-CREATE datasources (
+-ds0=127.0.0.1:3306:demo_ds_2:root:pwd, 
+-ds1=127.0.0.1:3306:demo_ds_3:root:pwd)
+-```
+-
+-3. Create Sharding rule
+-
+-```SQL
+-CREATE SHARDING RULE (
+-t_order=hash_mod(order_id, 4), 
+-t_item=mod(item_id, 2)
+-)
+-```
+-
+-Here `hash_mode` and `mod` are auto sharding algorithm. Please visit [auto-sharding-algorithm](/en/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/sharding/) to learn more.
+-
+-4. Create tables 
+-
+-```SQL
+-CREATE TABLE `t_order` (
+-  `order_id` int NOT NULL,
+-  `user_id` int NOT NULL,
+-  `status` varchar(45) DEFAULT NULL,
+-  PRIMARY KEY (`order_id`)
+-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+-
+-CREATE TABLE `t_item` (
+-  `item_id` int NOT NULL,
+-  `order_id` int NOT NULL,
+-  `user_id` int NOT NULL,
+-  `status` varchar(45) DEFAULT NULL,
+-  PRIMARY KEY (`item_id`)
+-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+-```
+-
+-5. Drop sharding tables
+-
+-```SQL
+-DROP TABLE t_order;
+-DROP TABLE t_item;
+-```
+-
+-6. Drop sharding database
+-
+-```SQL
+-DROP DATABASE sharding_db
+-```
+-
+-### Notices
+-
+-1. Currently, `DROP DB` only removes` the logic sharding schema` instead of removing the actual databases in MySQL instance (**TODO**).
+-2. `DROP TABLE` will drop `the logic sharding table` and `the corresponding actual tables` in MySQL instance together.
+-3. `CREATE DB` just create the logic sharding schema rather than create the actual databases in MySQL instance (**TODO**).
+-4. Add more `auto sharding algorithms`(**TODO**).
+-5. Improvement in `ShardingAlgorithmPropertiesUtil` (**TODO**).
+-6. Synchronized execution for all the clients is necessary (**TODO**).
+-7. Support to execute `ALTER DB`, `ALTER TABLE` (**TODO**).
+diff --git a/docs/document/content/features/dist-sql/rql.cn.md b/docs/document/content/features/dist-sql/rql.cn.md
+deleted file mode 100644
+index 349ac5c557..0000000000
+--- a/docs/document/content/features/dist-sql/rql.cn.md
++++ /dev/null
+@@ -1,10 +0,0 @@
+-+++
+-title = "RQL"
+-weight = 2
+-+++
+-
+-## 定义
+-
+-RDL（Resource & Rule Query Language）用于查询已有的数据源资源和规则。
+-
+-TODO
+diff --git a/docs/document/content/features/dist-sql/rql.en.md b/docs/document/content/features/dist-sql/rql.en.md
+deleted file mode 100644
+index 1bcd10f424..0000000000
+--- a/docs/document/content/features/dist-sql/rql.en.md
++++ /dev/null
+@@ -1,10 +0,0 @@
+-+++
+-title = "RQL"
+-weight = 2
+-+++
+-
+-## Definition
+-
+-RDL（Resource & Rule Query Language）is used to query existed data sources and rules.
+-
+-TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/_index.cn.md b/docs/document/content/features/dist-sql/syntax/_index.cn.md
+new file mode 100644
+index 0000000000..88685181bf
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/_index.cn.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1. </b>"
++title = "Syntax"
++weight = 8
++chapter = true
+++++
 +
- 不支持 HAVING、UNION (ALL)
- 
- 部分支持子查询
--* 子查询中使用WHERE条件时，必须包含分片键，当外层查询中也包含分片键时，子查询和外层查询中的分片键必须保持一致
-+* 子查询和外层查询同时指定分片键时，分片键的值必须保持一致
- 
- 除了分页子查询的支持之外(详情请参考[分页](/cn/features/sharding/use-norms/pagination))，也支持同等模式的子查询。无论嵌套多少层，ShardingSphere都可以解析至第一个包含数据表的子查询，一旦在下层嵌套中再次找到包含数据表的子查询将直接抛出解析异常。
- 
-@@ -63,14 +64,15 @@ tbl_name [AS] alias] [index_hint_list]
- 
- ```sql
- SELECT COUNT(*) FROM (SELECT * FROM t_order) o;
-+SELECT COUNT(*) FROM (SELECT * FROM t_order) o WHERE o.order_id = 1;
- SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o;
- SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 1;
-+SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE product_id = 1) o;
- ```
- 
- 以下子查询不支持：
- 
- ```sql
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE product_id = 1) o;
- SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 2;
- ```
- 
-@@ -105,8 +107,13 @@ SELECT * FROM t_order WHERE to_date(create_time, 'yyyy-mm-dd') = '2019-01-01';
- | SELECT * FROM tbl_name WHERE col1 = ? ORDER BY col2 DESC LIMIT ?                            |                          |
- | SELECT COUNT(*), SUM(col1), MIN(col1), MAX(col1), AVG(col1) FROM tbl_name WHERE col1 = ?    |                          |
- | SELECT COUNT(col1) FROM tbl_name WHERE col2 = ? GROUP BY col1 ORDER BY col3 DESC LIMIT ?, ? |                          |
-+| SELECT DISTINCT * FROM tbl_name WHERE col1 = ?                                              |                          |
-+| SELECT COUNT(DISTINCT col1) FROM tbl_name                                                   |                          |
-+| SELECT subquery_alias.col1 FROM (select tbl_name.col1 from tbl_name where tbl_name.col2=?) subquery_alias                                                   |                                         |
-+| (SELECT * FROM tbl_name)                                                                    |                          |
- | INSERT INTO tbl_name (col1, col2,...) VALUES (?, ?, ....)                                   |                          |
- | INSERT INTO tbl_name VALUES (?, ?,....)                                                     |                          |
-+| INSERT INTO tbl_name (col1, col2, ...) VALUES(1 + 2, ?, ...)                                |                          |
- | INSERT INTO tbl_name (col1, col2, ...) VALUES (?, ?, ....), (?, ?, ....)                    |                          |
- | INSERT INTO tbl_name (col1, col2, ...) SELECT col1, col2, ... FROM tbl_name WHERE col3 = ?  | INSERT表和SELECT表必须为相同表或绑定表 |
- | REPLACE INTO tbl_name (col1, col2, ...) SELECT col1, col2, ... FROM tbl_name WHERE col3 = ? | REPLACE表和SELECT表必须为相同表或绑定表 |
-@@ -119,22 +126,17 @@ SELECT * FROM t_order WHERE to_date(create_time, 'yyyy-mm-dd') = '2019-01-01';
- | CREATE INDEX idx_name ON tbl_name                                                           |                          |
- | DROP INDEX idx_name ON tbl_name                                                             |                          |
- | DROP INDEX idx_name                                                                         |                          |
--| SELECT DISTINCT * FROM tbl_name WHERE col1 = ?                                              |                          |
--| SELECT COUNT(DISTINCT col1) FROM tbl_name                                                   |                          |
--| SELECT subquery_alias.col1 FROM (select tbl_name.col1 from tbl_name where tbl_name.col2=?) subquery_alias                                                   |                                         |
- 
- ### 不支持的SQL
- 
- | SQL                                                                                        | 不支持原因                  |
- | ------------------------------------------------------------------------------------------ | -------------------------- |
--| INSERT INTO tbl_name (col1, col2, ...) VALUES(1+2, ?, ...)                                 | VALUES语句不支持运算表达式   |
- | INSERT INTO tbl_name (col1, col2, ...) SELECT * FROM tbl_name WHERE col3 = ?               | SELECT子句暂不支持使用*号简写及内置的分布式主键生成器 |
- | REPLACE INTO tbl_name (col1, col2, ...) SELECT * FROM tbl_name WHERE col3 = ?              | SELECT子句暂不支持使用*号简写及内置的分布式主键生成器 |
- | SELECT * FROM tbl_name1 UNION SELECT * FROM tbl_name2                                      | UNION                      |
- | SELECT * FROM tbl_name1 UNION ALL SELECT * FROM tbl_name2                                  | UNION ALL                  |
- | SELECT SUM(DISTINCT col1), SUM(col1) FROM tbl_name                                         | 详见DISTINCT支持情况详细说明 |
- | SELECT * FROM tbl_name WHERE to_date(create_time, 'yyyy-mm-dd') = ?                        | 会导致全路由                |
--| (SELECT * FROM tbl_name)                                                                   | 暂不支持加括号的查询                              |
- | SELECT MAX(tbl_name.col1) FROM tbl_name                                                    | 查询列是函数表达式时,查询列前不能使用表名;若查询表存在别名,则可使用表的别名|
- 
- ## DISTINCT支持情况详细说明
-diff --git a/docs/document/content/features/sharding/use-norms/sql.en.md b/docs/document/content/features/sharding/use-norms/sql.en.md
-index 4d9a9bf04d..68dc232b6b 100644
---- a/docs/document/content/features/sharding/use-norms/sql.en.md
-+++ b/docs/document/content/features/sharding/use-norms/sql.en.md
-@@ -17,7 +17,7 @@ It is inevitably to have some unlisted SQLs, welcome to supplement for that. We
- 
- ### Route to multiple data nodes
- 
--Fully support DML, DDL, DCL, TCL and some DAL. Support pagination, DISTINCT, ORDER BY, GROUP BY, aggregation and JOIN (does not support cross-database relevance). Here is an example of a most complex kind of DML:
-+Fully support DML, DDL, DCL, TCL and some DAL. Support pagination, DISTINCT, ORDER BY, GROUP BY, aggregation and JOIN. Here is an example of a most complex kind of DML:
- 
- - Main SELECT
- 
-@@ -54,8 +54,9 @@ Partially support CASE WHEN
- * `CASE WHEN` containing logical-table is not supported(please use alias of table)
- 
- Do not support HAVING and UNION (ALL) 
++本章节将对 DistSQL 的语法进行详细说明，并以实际的列子介绍 DistSQL 的使用。
+diff --git a/docs/document/content/features/dist-sql/syntax/_index.en.md b/docs/document/content/features/dist-sql/syntax/_index.en.md
+new file mode 100644
+index 0000000000..3ca85a5564
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/_index.en.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1. </b>"
++title = "语法"
++weight = 8
++chapter = true
+++++
 +
- Partly available sub-query
--* If subquery contains `WHERE` condition, the sharding key must be included. If the outer query also contains the sharding key, the sharding key in subquery and outer query must be consistent.
-+* If subquery and outer query specify sharding key at the same time, the value of sharding key must be consistent.
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/_index.cn.md b/docs/document/content/features/dist-sql/syntax/rdl/_index.cn.md
+new file mode 100644
+index 0000000000..7d05bca096
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/_index.cn.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1.1 </b>"
++title = "RDL Syntax"
++weight = 8
++chapter = true
+++++
++
++本章节将对 RDL 的语法进行详细说明，并以实际的列子介绍 RDL 的使用。
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/_index.en.md b/docs/document/content/features/dist-sql/syntax/rdl/_index.en.md
+new file mode 100644
+index 0000000000..5793490efe
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/_index.en.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1.1 </b>"
++title = "RDL 语法"
++weight = 8
++chapter = true
+++++
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-db-discovery-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-db-discovery-rule.cn.md
+new file mode 100644
+index 0000000000..1d713dd150
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-db-discovery-rule.cn.md
+@@ -0,0 +1,46 @@
+++++
++title = "数据库发现"
++weight = 5
++
++## 定义
++
++```sql
++CREATE DB_DISCOVERY RULE databaseDiscoveryRuleDefinition [, databaseDiscoveryRuleDefinition] ...
++
++ALTER DB_DISCOVERY RULE databaseDiscoveryRuleDefinition [, databaseDiscoveryRuleDefinition] ...
++
++DROP DB_DISCOVERY RULE ruleName [, ruleName] ...
++
++databaseDiscoveryRuleDefinition:
++    ruleName(resources, discoveryTypeDefinition)
++
++resources:
++    RESOURCES(resourceName [, resourceName] ...)
++
++discoveryTypeDefinition:
++		TYPE(NAME=discoveryType [, PROPERTIES([algorithmProperties] )] )
++
++algorithmProperties:
++    algorithmProperty [, algorithmProperty] ...
++
++algorithmProperty:
++    key=value                          
++```
++- `discoveryType` 指定数据库发现服务类型，`ShardingSphere` 内置支持 `MGR`
++- 重复的 `ruleName` 将无法被创建
++
++## Example
++
++```sql
++CREATE DB_DISCOVERY RULE ha_group_0 (
++RESOURCES(resource_0,resource_1),
++TYPE(NAME=mgr,PROPERTIES(groupName='92504d5b-6dec',keepAliveCron=''))
++);
++
++ALTER DB_DISCOVERY RULE ha_group_0 (
++RESOURCES(resource_0,resource_1,resource_2),
++TYPE(NAME=mgr,PROPERTIES(groupName='92504d5b-6dec' ,keepAliveCron=''))
++);
++
++DROP DB_DISCOVERY RULE ha_group_0;
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-db-discovery-rule.en.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-db-discovery-rule.en.md
+new file mode 100644
+index 0000000000..9aee3c1264
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-db-discovery-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据库发现"
++weight = 5
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-encrypt-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-encrypt-rule.cn.md
+new file mode 100644
+index 0000000000..adc65b4629
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-encrypt-rule.cn.md
+@@ -0,0 +1,54 @@
+++++
++title = "数据加密"
++weight = 4
++
++## 定义
++
++```sql
++CREATE ENCRYPT RULE encryptRuleDefinition [, encryptRuleDefinition] ...
++
++ALTER ENCRYPT RULE encryptRuleDefinition [, encryptRuleDefinition] ...
++
++DROP ENCRYPT RULE tableName [, tableName] ...
++
++encryptRuleDefinition:
++    tableName(COLUMNS(columnDefinition [, columnDefinition] ...))
++
++columnDefinition:
++    (NAME=columnName [, PLAIN=plainColumnName] , CIPHER=cipherColumnName, encryptAlgorithm)
++
++encryptAlgorithm:
++		TYPE(NAME=encryptAlgorithmType [, PROPERTIES([algorithmProperties] )] )
++
++algorithmProperties:
++    algorithmProperty [, algorithmProperty] ...
++
++algorithmProperty:
++    key=value                          
++```
++- `PLAIN` 指定明文数据列，`CIPHER` 指定密文数据列
++- `encryptAlgorithmType` 指定加密算法类型，请参考 [加密算法](/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/encrypt/)
++- 重复的 `tableName` 将无法被创建
++
++## Example
++
++```sql
++CREATE ENCRYPT RULE t_encrypt (
++COLUMNS(
++(NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'=123456abc))),
++(NAME=order_id, CIPHER =order_cipher,TYPE(NAME=MD5))
++)),
++t_encrypt_2 (
++COLUMNS(
++(NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'=123456abc))),
++(NAME=order_id, CIPHER=order_cipher,TYPE(NAME=MD5))
++));
++
++ALTER ENCRYPT RULE t_encrypt (
++COLUMNS(
++(NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'=123456abc))),
++(NAME=order_id,CIPHER=order_cipher,TYPE(NAME=MD5))
++));
++
++DROP ENCRYPT RULE t_encrypt,t_encrypt_2;
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-encrypt-rule.en.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-encrypt-rule.en.md
+new file mode 100644
+index 0000000000..6c57a84dad
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-encrypt-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据加密"
++weight = 4
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-readwrite-splitting-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-readwrite-splitting-rule.cn.md
+new file mode 100644
+index 0000000000..8e7e7a450f
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-readwrite-splitting-rule.cn.md
+@@ -0,0 +1,62 @@
+++++
++title = "读写分离"
++weight = 3
++
++## 定义
++
++```sql
++CREATE READWRITE_SPLITTING RULE readwriteSplittingRuleDefinition [, readwriteSplittingRuleDefinition] ...
++
++ALTER READWRITE_SPLITTING RULE readwriteSplittingRuleDefinition [, readwriteSplittingRuleDefinition] ...
++
++DROP READWRITE_SPLITTING RULE ruleName [, ruleName] ...
++
++readwriteSplittingRuleDefinition:
++    ruleName ([staticReadwriteSplittingRuleDefinition | dynamicReadwriteSplittingRuleDefinition] 
++              [, loadBanlancerDefinition])
++
++staticReadwriteSplittingRuleDefinition:
++    WRITE_RESOURCE=writeResourceName, READ_RESOURCES(resourceName [, resourceName] ... )
++
++dynamicReadwriteSplittingRuleDefinition:
++    AUTO_AWARE_RESOURCE=resourceName
++
++loadBanlancerDefinition:
++		TYPE(NAME=loadBanlancerType [, PROPERTIES([algorithmProperties] )] )
++
++algorithmProperties:
++    algorithmProperty [, algorithmProperty] ...
++
++algorithmProperty:
++    key=value                          
++```
++
++- 支持创建静态读写分离规则和动态读写分离规则
++- 动态读写分离规则依赖于数据库发现规则
++- `loadBanlancerType` 指定负载均衡算法类型，请参考 [负载均衡算法](/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/load-balance/)
++- 重复的 `ruleName` 将无法被创建
++
++## Example
++
++```sql
++// Static
++CREATE READWRITE_SPLITTING RULE ms_group_0 (
++WRITE_RESOURCE=write_ds,
++READ_RESOURCES(read_ds_0,read_ds_1),
++TYPE(NAME=random)
++);
++
++// Dynamic
++CREATE READWRITE_SPLITTING RULE ms_group_1 (
++AUTO_AWARE_RESOURCE=group_0,
++TYPE(NAME=random,PROPERTIES(read_weight='2:1'))
++);
++
++ALTER READWRITE_SPLITTING RULE ms_group_1 (
++WRITE_RESOURCE=write_ds,
++READ_RESOURCES(read_ds_0,read_ds_1,read_ds_2),
++TYPE(NAME=random,PROPERTIES(read_weight='2:0'))
++);
++
++DROP READWRITE_SPLITTING RULE ms_group_1;
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-readwrite-splitting-rule.en.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-readwrite-splitting-rule.en.md
+new file mode 100644
+index 0000000000..e58704466e
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-readwrite-splitting-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "读写分离"
++weight = 3
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-resource.cn.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-resource.cn.md
+new file mode 100644
+index 0000000000..fa7ce25c20
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-resource.cn.md
+@@ -0,0 +1,39 @@
+++++
++title = "数据源资源"
++weight = 1
++
++## 定义
++
++```sql
++ADD RESOURCE dataSource [, dataSource] ...
++
++dataSource:
++    dataSourceName(HOST=hostName,PORT=port,DB=dbName,USER=user [, PASSWORD=password])
++    
++DROP RESOURCE dataSourceName [, dataSourceName] ...    
++```
++
++- 添加资源前请确认已经创建分布式数据库，并执行 `use` 命令成功选择一个数据库
++- 确认增加的资源是可以正常连接的， 否则将不能添加成功
++- 重复的 `dataSourceName` 不允许被添加
++- `DROP RESOURCE` 只会删除逻辑资源，不会删除真实的数据源
++- 被规则引用的资源将无法被删除
++
++## Example
++
++```sql
++ADD RESOURCE resource_0 (
++	HOST=127.0.0.1,
++	PORT=3306,
++	DB=db0,
++	USER=root,
++	PASSWORD=root
++),resource_1 (
++	HOST=127.0.0.1,
++	PORT=3306,
++	DB=db1,
++	USER=root
++);
++
++DROP RESOURCE resource_0, resource_1;
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-resource.en.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-resource.en.md
+new file mode 100644
+index 0000000000..533b22d1d0
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-resource.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据源资源"
++weight = 1
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-sharding-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-sharding-rule.cn.md
+new file mode 100644
+index 0000000000..4f6963e409
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-sharding-rule.cn.md
+@@ -0,0 +1,115 @@
+++++
++title = "数据分片"
++weight = 2
++
++## 定义
++
++### Sharding Table Rule
++
++```sql
++CREATE SHARDING TABLE RULE shardingTableRuleDefinition [, shardingTableRuleDefinition] ...
++
++ALTER SHARDING TABLE RULE shardingTableRuleDefinition [, shardingTableRuleDefinition] ...
++
++DROP SHARDING TABLE RULE tableName [, tableName] ...
++
++shardingTableRuleDefinition:
++    tableName(resources [, shardingColumn] [, shardingAlgorithm] [, keyGenerateStrategy])
++
++resources:
++    RESOURCES(resourceName [, resourceName] ...))
++
++shardingColumn:
++    SHARDING_COLUMN=columnName
++
++shardingAlgorithm:
++		TYPE(NAME=shardingAlgorithmType [, PROPERTIES([algorithmProperties] )] )
++
++keyGenerateStrategy:
++    GENERATED_KEY(COLUMN=columnName,strategyDefinition)
++
++strategyDefinition:
++    TYPE(NAME=keyGenerateStrategyType [, PROPERTIES([algorithmProperties] )] )
++
++algorithmProperties:
++    algorithmProperty [, algorithmProperty] ...
++
++algorithmProperty:
++    key=value                          
++```
++- `RESOURCES` 需使用 RDL 管理的数据源资源
++- `shardingAlgorithmType` 指定自动分片算法类型，请参考  [自动分片算法](/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/sharding/)
++- `keyGenerateStrategyType` 指定分布式主键生成策，请参考 [分布式主键](/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/keygen/)
++- 重复的 `tableName` 将无法被创建
++
++### Sharding Binding Table Rule
++
++```sql
++CREATE SHARDING BINDING TABLE RULES(bindTableRulesDefinition [, bindTableRulesDefinition] ...)
++
++ALTER SHARDING BINDING TABLE RULES(bindTableRulesDefinition [, bindTableRulesDefinition] ...)
++
++DROP SHARDING BINDING TABLE RULES
++
++bindTableRulesDefinition:
++    (tableName [, tableName] ... )
++```
++- `ALTER` 会使用新的配置直接覆盖数据库内的绑定表配置
++
++### Sharding Broadcast Table Rule
++
++```sql
++CREATE SHARDING BROADCAST TABLE RULES (tableName [, tableName] ... )
++
++ALTER SHARDING BROADCAST TABLE RULES (tableName [, tableName] ... )
++
++DROP SHARDING BROADCAST TABLE RULES
++```
++- `ALTER` 会使用新的配置直接覆盖数据库内的广播表配置
++
++## Example
++
++### Sharding Table Rule
++
++```sql
++CREATE SHARDING TABLE RULE t_order (
++RESOURCES(resource_0,resource_1),
++SHARDING_COLUMN=order_id,
++TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=4)),
++GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
++);
++
++ALTER SHARDING TABLE RULE t_order (
++RESOURCES(resource_0,resource_1),
++SHARDING_COLUMN=order_id,
++TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=10)),
++GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
++);
++
++DROP SHARDING TABLE RULE t_order, t_order_item;
++```
++
++### Sharding Binding Table Rule
++
++```sql
++CREATE SHARDING BINDING TABLE RULES (
++(t_order,t_order_item),
++(t_1,t_2)
++);
++
++ALTER SHARDING BINDING TABLE RULES (
++(t_order,t_order_item)
++);
++
++DROP SHARDING BINDING TABLE RULES;
++```
++
++### Sharding Broadcast Table Rule
++
++```sql
++CREATE SHARDING BROADCAST TABLE RULES (t_b,t_a);
++
++ALTER SHARDING BROADCAST TABLE RULES (t_b,t_a,t_3);
++
++DROP SHARDING BROADCAST TABLE RULES;
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-sharding-rule.en.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-sharding-rule.en.md
+new file mode 100644
+index 0000000000..47fab9f01e
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-sharding-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据分片"
++weight = 2
++
++# TODO
+\ No newline at end of file
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/_index.cn.md b/docs/document/content/features/dist-sql/syntax/rql/_index.cn.md
+new file mode 100644
+index 0000000000..0c2a0cbde8
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/_index.cn.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1.2 </b>"
++title = "RQL Syntax"
++weight = 8
++chapter = true
+++++
++
++本章节将对 RQL 的语法进行详细说明，并列举所有查询列的含义。
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/_index.en.md b/docs/document/content/features/dist-sql/syntax/rql/_index.en.md
+new file mode 100644
+index 0000000000..f6968a0013
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/_index.en.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1.2 </b>"
++title = "RQL 语法"
++weight = 8
++chapter = true
+++++
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-db-discovery-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rql/rql-db-discovery-rule.cn.md
+new file mode 100644
+index 0000000000..02dd76c7c2
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-db-discovery-rule.cn.md
+@@ -0,0 +1,18 @@
+++++
++title = "数据库发现"
++weight = 5
++
++## 定义
++
++```sql
++SHOW DB_DISCOVERY RULES [FROM schemaName]              
++```
++
++## 说明
++
++| 列              | 说明               |
++| --------------- | ------------------ |
++| name            | 规则名称           |
++| dataSourceNames | 数据源名称列表     |
++| discoverType    | 数据库发现服务类型 |
++| discoverProps   | 数据库发现服务参数 |
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-db-discovery-rule.en.md b/docs/document/content/features/dist-sql/syntax/rql/rql-db-discovery-rule.en.md
+new file mode 100644
+index 0000000000..5dc173bb9c
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-db-discovery-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据库发现"
++weight = 5
++
++# TODO
+\ No newline at end of file
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-encrypt-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rql/rql-encrypt-rule.cn.md
+new file mode 100644
+index 0000000000..abced0a3b1
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-encrypt-rule.cn.md
+@@ -0,0 +1,23 @@
+++++
++title = "数据加密"
++weight = 4
++
++## 定义
++
++```sql
++SHOW ENCRYPT RULES [FROM schemaName]
++
++SHOW ENCRYPT TABLE RULE tableName [from schemaName]
++```
++- 支持查询所有的数据加密规则和指定逻辑表名查询
++
++## 说明
++
++| 列             | 说明         |
++| -------------- | ------------ |
++| table          | 逻辑表名     |
++| logicColumn    | 逻辑列名     |
++| cipherColumn   | 密文列名     |
++| plainColumn    | 明文列名     |
++| encryptorType  | 加密算法类型 |
++| encryptorProps | 加密算法参数 |
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-encrypt-rule.en.md b/docs/document/content/features/dist-sql/syntax/rql/rql-encrypt-rule.en.md
+new file mode 100644
+index 0000000000..27ab268fd6
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-encrypt-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据加密"
++weight = 4
++
++# TODO
+\ No newline at end of file
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-readwrite-splitting-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rql/rql-readwrite-splitting-rule.cn.md
+new file mode 100644
+index 0000000000..71c0a9ca76
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-readwrite-splitting-rule.cn.md
+@@ -0,0 +1,20 @@
+++++
++title = "读写分离"
++weight = 3
++
++## 定义
++
++```sql
++SHOW READWRITE_SPLITTING RULES [FROM schemaName]               
++```
++
++## 说明
++
++| 列                      | 说明                                           |
++| ----------------------- | ---------------------------------------------- |
++| name                    | 规则名称                                       |
++| autoAwareDataSourceName | 自动发现数据源名称（配置动态读写分离规则显示） |
++| writeDataSourceName     | 写数据源名称                                   |
++| readDataSourceNames     | 读数据源名称列表                               |
++| loadBalancerType        | 负载均衡算法类型                               |
++| loadBalancerProps       | 负载均衡算法参数                               |
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-readwrite-splitting-rule.en.md b/docs/document/content/features/dist-sql/syntax/rql/rql-readwrite-splitting-rule.en.md
+new file mode 100644
+index 0000000000..f3df52249e
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-readwrite-splitting-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "读写分离"
++weight = 3
++
++# TODO
+\ No newline at end of file
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-resource.cn.md b/docs/document/content/features/dist-sql/syntax/rql/rql-resource.cn.md
+new file mode 100644
+index 0000000000..ab4a73a61f
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-resource.cn.md
+@@ -0,0 +1,20 @@
+++++
++title = "数据源资源"
++weight = 1
++
++## 定义
++
++```sql
++SHOW RESOURCES [FROM schemaName]  
++```
++
++## 说明
++
++| 列        | 说明       |
++| --------- | ---------- |
++| name      | 数据源名称 |
++| type      | 数据源类型 |
++| host      | 数据源地址 |
++| port      | 数据源端口 |
++| db        | 数据库名称 |
++| attribute | 数据源参数 |
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-resource.en.md b/docs/document/content/features/dist-sql/syntax/rql/rql-resource.en.md
+new file mode 100644
+index 0000000000..862514f578
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-resource.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据源资源"
++weight = 1
++
++# TODO
+\ No newline at end of file
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-sharding-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rql/rql-sharding-rule.cn.md
+new file mode 100644
+index 0000000000..5d5d542c91
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-sharding-rule.cn.md
+@@ -0,0 +1,60 @@
+++++
++title = "数据分片"
++weight = 2
++
++## 定义
++
++### Sharding Table Rule
++
++```sql
++SHOW SHARDING TABLE tableRule | RULES [FROM schemaName]
++
++tableRule:
++    RULE tableName
++```
++-  支持查询所有数据分片规则和指定表查询
++
++### Sharding Binding Table Rule
++
++```sql
++SHOW SHARDING BINDING TABLE RULES [FROM schemaName]
++```
++
++### Sharding Broadcast Table Rule
++
++```sql
++SHOW SHARDING BROADCAST TABLE RULES [FROM schemaName]
++```
++
++## 说明
++
++### Sharding Table Rule
++
++| 列                             | 说明                                      |
++| ------------------------------ | ----------------------------------------- |
++| table                          | 逻辑表名                                  |
++| actualDataNodes                | 实际的数据节点                            |
++| actualDataSources              | 实际的数据源（通过 RDL 创建的规则时显示） |
++| databaseStrategyType           | 数据库分片策略类型                        |
++| databaseShardingColumn         | 数据库分片键                              |
++| databaseShardingAlgorithmType  | 数据库分片算法类型                        |
++| databaseShardingAlgorithmProps | 数据库分片算法参数                        |
++| tableStrategyType              | 表分片策略类型                            |
++| tableShardingColumn            | 表分片键                                  |
++| tableShardingAlgorithmType     | 表分片算法类型                            |
++| tableShardingAlgorithmProps    | 表分片算法参数                            |
++| keyGenerateColumn              | 分布式主键生成列                          |
++| keyGeneratorType               | 分布式主键生成器类型                      |
++| keyGeneratorProps              | 分布式主键生成器参数                      |
++
++### Sharding Binding Table Rule
++
++| 列                    | 说明       |
++| --------------------- | ---------- |
++| shardingBindingTables | 绑定表名称 |
++
++### Sharding Broadcast Table Rule
++
++| 列                      | 说明       |
++| ----------------------- | ---------- |
++| shardingBroadcastTables | 广播表名称 |
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-sharding-rule.en.md b/docs/document/content/features/dist-sql/syntax/rql/rql-sharding-rule.en.md
+new file mode 100644
+index 0000000000..d0385800b5
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-sharding-rule.en.md
+@@ -0,0 +1,5 @@
+++++
++title = "数据分片"
++weight = 2
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/syntax/sctl/_index.cn.md b/docs/document/content/features/dist-sql/syntax/sctl/_index.cn.md
+new file mode 100644
+index 0000000000..8d81f58ebb
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/sctl/_index.cn.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1.3 </b>"
++title = "SCTL Syntax"
++weight = 8
++chapter = true
+++++
++
++本章节将对 SCTL 的语法进行详细说明，并结合使用实战介绍 SCTL 的使用方法。
+diff --git a/docs/document/content/features/dist-sql/syntax/sctl/_index.en.md b/docs/document/content/features/dist-sql/syntax/sctl/_index.en.md
+new file mode 100644
+index 0000000000..d402f867ba
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/sctl/_index.en.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.1.3 </b>"
++title = "RQL 语法"
++weight = 8
++chapter = true
+++++
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/sctl.cn.md b/docs/document/content/features/dist-sql/syntax/sctl/sctl.cn.md
+similarity index 99%
+rename from docs/document/content/features/dist-sql/sctl.cn.md
+rename to docs/document/content/features/dist-sql/syntax/sctl/sctl.cn.md
+index fd4c48273c..b9a17525ce 100644
+--- a/docs/document/content/features/dist-sql/sctl.cn.md
++++ b/docs/document/content/features/dist-sql/syntax/sctl/sctl.cn.md
+@@ -1,6 +1,6 @@
+ +++
+ title = "SCTL"
+-weight = 3
++weight = 1
+ +++
  
- Support not only pagination sub-query (see [pagination](https://shardingsphere.apache.org/document/current/cn/features/sharding/usage-standard/pagination) for more details), but also sub-query with the same mode. No matter how many layers are nested, ShardingSphere can parse to the first sub-query that contains data table. Once it finds another sub-query of this kind in the sub-level nested, it will directly throw a parsing exception.
+ ## 定义
+diff --git a/docs/document/content/features/dist-sql/sctl.en.md b/docs/document/content/features/dist-sql/syntax/sctl/sctl.en.md
+similarity index 99%
+rename from docs/document/content/features/dist-sql/sctl.en.md
+rename to docs/document/content/features/dist-sql/syntax/sctl/sctl.en.md
+index 09f2c8b6b9..cbc203af2f 100644
+--- a/docs/document/content/features/dist-sql/sctl.en.md
++++ b/docs/document/content/features/dist-sql/syntax/sctl/sctl.en.md
+@@ -1,6 +1,6 @@
+ +++
+ title = "SCTL"
+-weight = 3
++weight = 1
+ +++
  
-@@ -63,14 +64,15 @@ For example, the following sub-query is available:
+ ## Definition
+diff --git a/docs/document/content/features/dist-sql/usage/_index.cn.md b/docs/document/content/features/dist-sql/usage/_index.cn.md
+new file mode 100644
+index 0000000000..63f146f19e
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/usage/_index.cn.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.2 </b>"
++title = "使用"
++weight = 8
++chapter = true
+++++
++
++本章节将结合 DistSQL 的语法，并以实战的形式分别介绍如何使用 DistSQL 管理分布式数据库下数据分片、读写分离等规则。
+diff --git a/docs/document/content/features/dist-sql/usage/_index.en.md b/docs/document/content/features/dist-sql/usage/_index.en.md
+new file mode 100644
+index 0000000000..1efac6f355
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/usage/_index.en.md
+@@ -0,0 +1,8 @@
+++++
++pre = "<b>3.8.2 </b>"
++title = "Usage"
++weight = 8
++chapter = true
+++++
++
++# TODO
+diff --git a/docs/document/content/features/dist-sql/rdl.cn.md b/docs/document/content/features/dist-sql/usage/sharding-rule.cn.md
+similarity index 50%
+rename from docs/document/content/features/dist-sql/rdl.cn.md
+rename to docs/document/content/features/dist-sql/usage/sharding-rule.cn.md
+index 1912928f60..9dc8f7401d 100644
+--- a/docs/document/content/features/dist-sql/rdl.cn.md
++++ b/docs/document/content/features/dist-sql/usage/sharding-rule.cn.md
+@@ -1,48 +1,8 @@
+ +++
+-title = "RDL"
++title = "数据分片"
+ weight = 1
+ +++
  
- ```sql
- SELECT COUNT(*) FROM (SELECT * FROM t_order) o;
-+SELECT COUNT(*) FROM (SELECT * FROM t_order) o WHERE o.order_id = 1;
- SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o;
- SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 1;
-+SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE product_id = 1) o;
+-## 定义
+-
+-RDL（Resource & Rule Definition Language）用于定义数据源资源、创建规则等。
+-
+-RDL 主要包括以下 SQL 内容：
+-
+-- `Create DATASOURCES`，用于注入数据源信息。
+-
+-```sql
+-// SQL
+-CREATE DATASOURCES (
+-ds_key=host_name:host_port:db_name:user_name:pwd
+-[, ds_key=host_name:host_port:db_name:user_name:pwd, ...]
+-)
+-
+-// Example
+-CREATE datasources (
+-ds0=127.0.0.1:3306:demo_ds_0:root:pwd, 
+-ds1=127.0.0.1:3306:demo_ds_1:root:pwd)
+-```
+-- `CREATE SHARDING RULE`，用于配置分片规则。
+-```sql
+-// SQL
+-
+-CREATE SHARDING RULE (
+-sharding_table_name=sharding_algorithm(algorithm_property[, algothrim_property])
+-[, sharding_table_name=sharding_algorithm_type(algorithm_property[, algothrim_property]), ...]
+-)
+-
+-sharding_algorithm_type: {MOD | HASH_MODE} 
+-mod_algorithm_properties: sharding_column,shards_amount
+-mod_hash_algorithm_properties: sharding_column,shards_amount
+-
+-// Example
+-CREATE SHARDING RULE (
+-t_order=hash_mod(order_id, 4), 
+-t_item=mod(item_id, 2)
+-)
+-```
+-
+ ## 使用实战
+ 
+ ### 前置工作
+@@ -75,22 +35,34 @@ USE sharding_db;
+ 2. 配置数据源信息
+ 
+ ```SQL
+-CREATE datasources (
+-ds0=127.0.0.1:3306:demo_ds_2:root:pwd, 
+-ds1=127.0.0.1:3306:demo_ds_3:root:pwd)
++ADD RESOURCE ds_0 (
++HOST=127.0.0.1,
++PORT=3306,
++DB=ds_1,
++USER=root,
++PASSWORD=root
++);
++
++ADD RESOURCE ds_1 (
++HOST=127.0.0.1,
++PORT=3306,
++DB=ds_2,
++USER=root,
++PASSWORD=root
++);
  ```
  
- The following sub-query is unavailable:
+ 3. 创建分片规则
  
- ```sql
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE product_id = 1) o;
- SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 2;
+ ```SQL
+-CREATE SHARDING RULE (
+-t_order=hash_mod(order_id, 4), 
+-t_item=mod(item_id, 2)
+-)
++CREATE SHARDING TABLE RULE t_order(
++RESOURCES(ds_0,ds_1),
++SHARDING_COLUMN=order_id,
++TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=4)),
++GENERATED_KEY(COLUMN=order_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
++);
  ```
  
-@@ -105,8 +107,13 @@ When shardingColumn in expressions and functions, ShardingSphere will use full r
- | SELECT * FROM tbl_name WHERE col1 = ? ORDER BY col2 DESC LIMIT ?                            |                                         |
- | SELECT COUNT(*), SUM(col1), MIN(col1), MAX(col1), AVG(col1) FROM tbl_name WHERE col1 = ?    |                                         |
- | SELECT COUNT(col1) FROM tbl_name WHERE col2 = ? GROUP BY col1 ORDER BY col3 DESC LIMIT ?, ? |                                         |
-+| SELECT DISTINCT * FROM tbl_name WHERE col1 = ?                                              |                                         |
-+| SELECT COUNT(DISTINCT col1) FROM tbl_name                                                   |                                         |
-+| SELECT subquery_alias.col1 FROM (select tbl_name.col1 from tbl_name where tbl_name.col2=?) subquery_alias                                                   |                                         |
-+| (SELECT * FROM tbl_name)                                                                    |                                         |
- | INSERT INTO tbl_name (col1, col2,...) VALUES (?, ?, ....)                                   |                                         |
- | INSERT INTO tbl_name VALUES (?, ?,....)                                                     |                                         |
-+| INSERT INTO tbl_name (col1, col2, ...) VALUES(1 + 2, ?, ...)                                |                                         |
- | INSERT INTO tbl_name (col1, col2, ...) VALUES (?, ?, ....), (?, ?, ....)                    |                                         |
- | INSERT INTO tbl_name (col1, col2, ...) SELECT col1, col2, ... FROM tbl_name WHERE col3 = ?  | The table inserted and the table selected must be the same or bind tables |
- | REPLACE INTO tbl_name (col1, col2, ...) SELECT col1, col2, ... FROM tbl_name WHERE col3 = ? | The table replaced and the table selected must be the same or bind tables |
-@@ -119,22 +126,17 @@ When shardingColumn in expressions and functions, ShardingSphere will use full r
- | CREATE INDEX idx_name ON tbl_name                                                           |                                         |
- | DROP INDEX idx_name ON tbl_name                                                             |                                         |
- | DROP INDEX idx_name                                                                         |                                         |
--| SELECT DISTINCT * FROM tbl_name WHERE col1 = ?                                              |                                         |
--| SELECT COUNT(DISTINCT col1) FROM tbl_name                                                   |                                         |
--| SELECT subquery_alias.col1 FROM (select tbl_name.col1 from tbl_name where tbl_name.col2=?) subquery_alias                                                   |                                         |
+-这里的 `hash_mode` 和 `mod`是自动分片算法的Key。详情请查阅 [auto-sharding-algorithm](/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/sharding/)。
+-
+ 4. 创建切分表
  
- ### Unsupported SQL
+ ```SQL
+@@ -100,27 +72,30 @@ CREATE TABLE `t_order` (
+   `status` varchar(45) DEFAULT NULL,
+   PRIMARY KEY (`order_id`)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+-
+-CREATE TABLE `t_item` (
+-  `item_id` int NOT NULL,
+-  `order_id` int NOT NULL,
+-  `user_id` int NOT NULL,
+-  `status` varchar(45) DEFAULT NULL,
+-  PRIMARY KEY (`item_id`)
+-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+ ```
  
- | SQL                                                                                        | Reason                                              |
- | ------------------------------------------------------------------------------------------ | --------------------------------------------------- |
--| INSERT INTO tbl_name (col1, col2, ...) VALUES(1+2, ?, ...)                                 | VALUES clause does not support operation expression |
- | INSERT INTO tbl_name (col1, col2, ...) SELECT * FROM tbl_name WHERE col3 = ?               | SELECT clause does not support *-shorthand and built-in key generators |
- | REPLACE INTO tbl_name (col1, col2, ...) SELECT * FROM tbl_name WHERE col3 = ?              | SELECT clause does not support *-shorthand and built-in key generators |
- | SELECT * FROM tbl_name1 UNION SELECT * FROM tbl_name2                                      | UNION                                               |
- | SELECT * FROM tbl_name1 UNION ALL SELECT * FROM tbl_name2                                  | UNION ALL                                           |
- | SELECT SUM(DISTINCT col1), SUM(col1) FROM tbl_name                                         | See DISTINCT availability detail                    |
- | SELECT * FROM tbl_name WHERE to_date(create_time, 'yyyy-mm-dd') = ?                        | Lead to full routing                                |
--| (SELECT * FROM tbl_name)                                                                   | Contain brackets                              |
- | SELECT MAX(tbl_name.col1) FROM tbl_name                                                    | The select function item contains TableName. Otherwise, If this query table had an alias, then TableAlias could work well in select function items. |
+ 5. 删除切分表
  
- ## DISTINCT Availability Explanation
+ ```SQL
+ DROP TABLE t_order;
+-DROP TABLE t_item;
+ ```
+ 
+-6. 删除分布式数据库
++6. 删除分片规则
++
++```SQL
++DROP SHARDING TABLE RULE t_order;
++```
++
++7. 删除数据源
++
++```SQL
++DROP RESOURCE ds_0, ds_1;
++```
++
++8. 删除分布式数据库
+ 
+ ```SQL
+-DROP DATABASE sharding_db
++DROP DATABASE sharding_db;
+ ```
+ 
+ ### 注意事项
+diff --git a/docs/document/content/features/dist-sql/usage/sharding-rule.en.md b/docs/document/content/features/dist-sql/usage/sharding-rule.en.md
+new file mode 100644
+index 0000000000..4dcfb99f06
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/usage/sharding-rule.en.md
+@@ -0,0 +1,7 @@
+++++
++title = "数据分片"
++weight = 1
+++++
++
++## Usage
++# TODO

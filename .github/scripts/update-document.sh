@@ -15,13 +15,18 @@
 # limitations under the License.
 #
 
-export TZ="Asia/Shanghai"
+export TZ="Asia/Shanghai";
 
 #######################################
 ##        SHARDINGSPHERE/DOCS        ##
 #######################################
 
-cd document && \
-mv current _current && \
-cp review/ current/ && \
-rm _current -rf;
+cd document;
+
+if [ -d preview ] ; then
+    mv current _current && \
+    cp review/ current/ && \
+    rm _current -rf;
+else
+    echo NO preview/ directory...
+fi

@@ -15,6 +15,9 @@
 # limitations under the License.
 #
 
+echo config user shardingsphere
+git config --global user.email "dev@shardingsphere.apache.org"
+git config --global user.name "shardingsphere"
 export TZ="Asia/Shanghai";
 
 #######################################
@@ -27,7 +30,11 @@ if [ -d preview ] ; then
     mv current _current && \
     cp review/ current/ && \
     rm _current -rf;
-    git push
 else
+    cp current review
     echo the directory preview/ is not found 
 fi
+
+git add .
+git commit -m "update preview-document"
+git push

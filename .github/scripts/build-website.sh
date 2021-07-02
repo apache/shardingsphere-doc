@@ -60,14 +60,14 @@ else
     
     echo replace old files
     # Overwrite HTLM files
-    echo copy document/current to dest dir
-    if [ ! -d "document/current"  ];then
-      mkdir -p document/current
+    echo copy document/preview to dest dir
+    if [ ! -d "document/preview"  ];then
+      mkdir -p document/preview
     else
-      echo document/current  exist
-      rm -rf document/current/*
+      echo document/preview  exist
+      rm -rf document/preview/*
     fi
-    cp -fr sstarget/document/current/* document/current
+    cp -fr sstarget/document/preview/* document/preview
     
     echo copy community to dest dir
     if [ ! -d "community"  ];then

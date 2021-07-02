@@ -28,7 +28,7 @@ cd document;
 
 if [ -d preview ] ; then
     if [ ! -d current ] ; then
-        mkdir current && cp -rf preview current
+        mkdir current && cp -rf preview/* current/
     fi
 
     rm -rf _current &&

@@ -27,6 +27,7 @@ if [ -d preview ] ; then
     mv current _current && \
     cp review/ current/ && \
     rm _current -rf;
+    git push
 else
-    echo NO preview/ directory...
+    echo the directory preview/ is not found 
 fi

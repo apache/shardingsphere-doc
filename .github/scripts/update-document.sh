@@ -27,13 +27,17 @@ export TZ="Asia/Shanghai";
 cd document;
 
 if [ -d preview ] ; then
+    if [ ! -d current ] ; then
+        mkdir current && cp -rf preview current
+    fi
+
     rm -rf _current &&
     mv current _current && \
     rm -rf current && \
     mkdir current && \
     cp -rf review/ current/ && \
     rm _current/ -rf || \
-    ( rm current && mv _current current )  # fall back to initial state
+    ( rm -rf current && mv _current current )  # fall back to initial state
 else
     cp current review
     echo the directory preview/ is not found 

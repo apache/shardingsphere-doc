@@ -35,7 +35,7 @@ if [ -d preview ] ; then
     mv current _current && \
     rm -rf current && \
     mkdir current && \
-    cp -rf review/ current/ && \
+    cp -rf review/* current/* && \
     rm _current/ -rf || \
     ( rm -rf current && mv _current current )  # fall back to initial state
 else

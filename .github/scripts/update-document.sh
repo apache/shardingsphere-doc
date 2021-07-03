@@ -39,7 +39,8 @@ if [ -d preview ] ; then
     rm _current/ -rf || \
     ( rm -rf current && mv _current current )  # fall back to initial state
 else
-    cp current review
+    mkdir review && \
+    cp -rf current/* review/ && \
     echo the directory preview/ is not found 
 fi
 

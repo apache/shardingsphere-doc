@@ -29,6 +29,7 @@ cd document;
 if [ -d preview ] ; then
     if [ ! -d current ] ; then
         mkdir current && cp -rf preview/* current/
+        ls -rsed -i "s/\/document\/preview/\/document\/current/g"
     fi
 
     rm -rf _current &&
@@ -36,11 +37,13 @@ if [ -d preview ] ; then
     rm -rf current && \
     mkdir current && \
     cp -rf review/* current/ && \
+    find . -type f|xargs -i sed -i "s/\/document\/preview/\/document\/current/g" {} && \
     rm _current/ -rf || \
     ( rm -rf current && mv _current current )  # fall back to initial state
 else
     mkdir review && \
     cp -rf current/* review/ && \
+    find . -type f|xargs -i sed -i "s/\/document\/current/\/document\/preview/g" {} && \
     echo the directory preview/ is not found 
 fi
 

@@ -36,13 +36,13 @@ if [ -d preview ] ; then
     mv current _current && \
     rm -rf current && \
     mkdir current && \
-    cp -rf review/* current/ && \
+    cp -rf preview/* current/ && \
     find . -type f|xargs -i sed -i "s/\/document\/preview/\/document\/current/g" {} && \
     rm _current/ -rf || \
     ( rm -rf current && mv _current current )  # fall back to initial state
 else
-    mkdir review && \
-    cp -rf current/* review/ && \
+    mkdir preview && \
+    cp -rf current/* preview/ && \
     find . -type f|xargs -i sed -i "s/\/document\/current/\/document\/preview/g" {} && \
     echo the directory preview/ is not found 
 fi

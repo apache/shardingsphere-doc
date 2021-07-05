@@ -47,6 +47,8 @@ else
     echo the directory preview/ is not found 
 fi
 
+
+
 git add .
 git commit -m "update preview-document"
 git push

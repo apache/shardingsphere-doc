@@ -27,7 +27,7 @@ script_path=$(cd `dirname $0`;pwd)
 echo $script_path
 root=`pwd`
 echo Root: $root
-git clone https://github.com.cnpmjs.org/apache/shardingsphere _shardingsphere 
+git clone https://github.com/apache/shardingsphere _shardingsphere 
 cd _shardingsphere
 git checkout master
 # ---------------------------- build master doc ------------------------------------------#

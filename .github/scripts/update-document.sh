@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+
+
 echo config user shardingsphere
 git config --global user.email "dev@shardingsphere.apache.org"
 git config --global user.name "shardingsphere"
@@ -25,27 +27,6 @@ export TZ="Asia/Shanghai";
 #######################################
 
 cd document;
-
-if [ -d preview ] ; then
-    if [ ! -d current ] ; then
-        mkdir current && cp -rf preview/* current/
-        ls -rsed -i "s/\/document\/preview/\/document\/current/g"
-    fi
-
-    rm -rf _current &&
-    mv current _current && \
-    rm -rf current && \
-    mkdir current && \
-    cp -rf review/* current/ && \
-    find . -type f|xargs -i sed -i "s/\/document\/preview/\/document\/current/g" {} && \
-    rm _current/ -rf || \
-    ( rm -rf current && mv _current current )  # fall back to initial state
-else
-    mkdir review && \
-    cp -rf current/* review/ && \
-    find . -type f|xargs -i sed -i "s/\/document\/current/\/document\/preview/g" {} && \
-    echo the directory preview/ is not found 
-fi
 
 
 

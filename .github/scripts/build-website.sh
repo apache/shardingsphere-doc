@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+set -e  # exit when errors occurred
+
 echo config user shardingsphere
 git config --global user.email "dev@shardingsphere.apache.org"
 git config --global user.name "shardingsphere"
@@ -60,14 +62,14 @@ else
     
     echo replace old files
     # Overwrite HTLM files
-    echo copy document/preview to dest dir
-    if [ ! -d "document/preview"  ];then
-      mkdir -p document/preview
+    echo copy document/master to dest dir
+    if [ ! -d "document/master"  ];then
+      mkdir -p document/master
     else
-      echo document/preview  exist
-      rm -rf document/preview/*
+      echo document/master  exist
+      rm -rf document/master/*
     fi
-    cp -fr sstarget/document/preview/* document/preview
+    cp -fr sstarget/document/master/* document/master
     
     echo copy community to dest dir
     if [ ! -d "community"  ];then

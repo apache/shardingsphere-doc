@@ -104,7 +104,7 @@ do
 done
 # ---------------------------- build legacy doc ------------------------------------------#
 
-# cd $root && rm _shardingsphere -rf
+cd $root && rm _shardingsphere -rf
 cd $root
 git add .
 git commit -m "update documents"

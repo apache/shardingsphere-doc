@@ -93,7 +93,7 @@ do
                     rm _default -rf
                 fi
                 mkdir $root/document/legacy/$dir_name/$tag
-                pwd
+                echo PWD `pwd`
                 mv document/public/* $root/document/legacy/$dir_name/$tag/
             else
                 echo -e "\033[34mWARNING\033[0m -\033[33m Release $tag\033[0m: Document is missing"

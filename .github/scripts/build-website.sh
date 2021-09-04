@@ -45,7 +45,7 @@ if [ ${#TAGS} -gt 0 ] ; then
       dir=$(echo $tag|sed 's/shardingsphere-doc-//g')
       env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
         HUGO_PARAMS_EDITURL="" \
-        sh docs/build.sh
+        bash docs/build.sh
       find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
       mv docs/target/document/current/ ../document/$dir
     fi

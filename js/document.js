@@ -2,6 +2,7 @@ $(() => {
     $.ajax(
         "/versions.json", {
             success: res => {
+                res.reverse();
                 var parent_tag = $("#btn-document > .i-drop-pop");
                 var children = parent_tag.children("a");
                 var done = [];

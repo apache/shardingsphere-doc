@@ -77,7 +77,6 @@ else
     mv _shardingsphere/new_version_ss ./old_version_ss
     
     cp -rf _shardingsphere/docs ./
-    rm -rf _shardingsphere
     mv docs ssdocs
     
     echo build hugo ss documents
@@ -117,6 +116,7 @@ else
     
     rm -rf sstarget
 fi
+rm -rf _shardingsphere
 
 #######################################
 ##  SHARDINGSPHERE-ELASTICJOB/DOCS   ##

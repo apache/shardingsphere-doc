@@ -61,7 +61,6 @@ echo check diff
 if  [ ! -s old_version_ss ]  ; then
     echo init > old_version_ss 
 fi
-cd _shardingsphere
 git checkout master
 git log -1 -p docs > new_version_ss
 diff ../old_version_ss new_version_ss > result_version

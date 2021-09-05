@@ -9,6 +9,9 @@ $(() => {
 
                 var last = null;
                 for (i = 0; i < children.length; i++) {
+                    if($(children[i]).attr("href").includes("/document/current")) {
+                        last = $(children[i]);
+                    }
                     for (j = 0; j < res.length; j++) {
                         var tag = res[j].replace("shardingsphere-doc-", "")
                         if( done.includes(tag) ) {

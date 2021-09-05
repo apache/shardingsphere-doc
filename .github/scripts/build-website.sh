@@ -53,7 +53,7 @@ if [ ${#TAGS} -gt 0 ] ; then
 fi
 
 # generate version data
-echo "[\""$(echo ${TAGS[@]} |xargs|sed 's/ /","/g')"\"]" > ../versions.json
+echo "[\""$(echo ${TAGS[@]}|sed 's/shardingsphere-doc-//g'|xargs|sed 's/ /","/g')"\"]" > ../versions.json
 
 
 # -----------------------------------------------------------------------------------

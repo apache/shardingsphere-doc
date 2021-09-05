@@ -32,13 +32,13 @@ git clone https://github.com/apache/shardingsphere _shardingsphere
 
 # ------------------------- build history docs --------------------------------------
 cd _shardingsphere
-TAGS=(`git tag --sort=-taggerdate -l 'shardingsphere-doc-*'`)
+TAGS=(`git tag --sort=taggerdate -l 'shardingsphere-doc-*'`)
 
 # generate released document
 if [ ${#TAGS} -gt 0 ] ; then
   for tag in ${TAGS[@]}
   do
-    if [ ! -d ../document/$tag ] ; then
+    if [ ! -d ../document/$(echo $tag|sed 's/shardingsphere-doc-//g') ] ; then
       count=1
       echo "generate $tag documnet"
       git checkout $tag

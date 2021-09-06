@@ -30,26 +30,52 @@ echo git clone https://github.com/apache/shardingsphere
 
 git clone https://github.com/apache/shardingsphere _shardingsphere 
 
+# ------------------------- build history docs --------------------------------------
+cd _shardingsphere
+TAGS=(`git tag --sort=taggerdate -l 'shardingsphere-doc-*'`)
+
+# generate released document
+if [ ${#TAGS} -gt 0 ] ; then
+  for tag in ${TAGS[@]}
+  do
+    if [ ! -d ../document/$(echo $tag|sed 's/shardingsphere-doc-//g') ] ; then
+      count=1
+      echo "generate $tag documnet"
+      git checkout $tag
+      dir=$(echo $tag|sed 's/shardingsphere-doc-//g')
+      env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
+        HUGO_PARAMS_EDITURL="" \
+        bash docs/build.sh
+      find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
+      mv docs/target/document/current/ ../document/$dir
+    fi
+  done
+fi
+
+# generate version data
+echo "[\""$(echo ${TAGS[@]}|sed 's/shardingsphere-doc-//g'|xargs|sed 's/ /","/g')"\"]" > ../versions.json
+
+
+# -----------------------------------------------------------------------------------
 echo check diff
 if  [ ! -s old_version_ss ]  ; then
     echo init > old_version_ss 
 fi
-cd _shardingsphere
+git checkout master
 git log -1 -p docs > new_version_ss
 diff ../old_version_ss new_version_ss > result_version
+
 if  [ ! -s result_version ]  ; then
     echo "shardingsphere docs sources didn't change and nothing to do!"
     cd ..
-    rm -rf _shardingsphere
 else
-    count=1
+    count=2
     echo "check shardingsphere something new, launch a build..."
     cd ..
     rm -rf old_version_ss
     mv _shardingsphere/new_version_ss ./old_version_ss
     
     cp -rf _shardingsphere/docs ./
-    rm -rf _shardingsphere
     mv docs ssdocs
     
     echo build hugo ss documents
@@ -89,6 +115,7 @@ else
     
     rm -rf sstarget
 fi
+rm -rf _shardingsphere
 
 #######################################
 ##  SHARDINGSPHERE-ELASTICJOB/DOCS   ##
@@ -110,7 +137,7 @@ if  [ ! -s result_version ]  ; then
     cd ..
     rm -rf _elasticjob
 else
-    count=2
+    count=3
     echo "check elasticjob something new, launch a build..."
     cd ..
     rm -rf old_version_ej

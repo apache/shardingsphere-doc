@@ -32,28 +32,32 @@ git clone https://github.com/apache/shardingsphere _shardingsphere
 
 # ------------------------- build history docs --------------------------------------
 cd _shardingsphere
-TAGS=(`git tag --sort=taggerdate -l 'shardingsphere-doc-*'`)
+TAGS=(`git tag --sort=taggerdate | grep -E '^[[:digit:]]+.[[:digit:]]+.*+'`)
+VALID_TAGS=()
 
 # generate released document
 if [ ${#TAGS} -gt 0 ] ; then
   for tag in ${TAGS[@]}
   do
-    if [ ! -d ../document/$(echo $tag|sed 's/shardingsphere-doc-//g') ] ; then
-      count=1
-      echo "generate $tag documnet"
-      git checkout $tag
-      dir=$(echo $tag|sed 's/shardingsphere-doc-//g')
-      env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
-        HUGO_PARAMS_EDITURL="" \
-        bash docs/build.sh
-      find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
-      mv docs/target/document/current/ ../document/$dir
+    echo "generate $tag documnet"
+    git checkout $tag
+    if [ -d docs/document -a -f docs/build.sh ] ; then
+      VALID_TAGS=(${VALID_TAGS[@]} $tag)
+      if [ ! -d ../document/$tag ] ; then
+        count=1
+        dir=$tag
+        env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
+          HUGO_PARAMS_EDITURL="" \
+          bash docs/build.sh
+        find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
+        mv docs/target/document/current/ ../document/$dir
+      fi
     fi
   done
 fi
 
 # generate version data
-echo "[\""$(echo ${TAGS[@]}|sed 's/shardingsphere-doc-//g'|xargs|sed 's/ /","/g')"\"]" > ../versions.json
+echo "[\""$(echo ${VALID_TAGS[@]}|sed 's/ /","/g')"\"]" > ../versions.json
 
 
 # -----------------------------------------------------------------------------------

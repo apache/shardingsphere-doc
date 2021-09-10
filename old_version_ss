@@ -1,121 +1,543 @@
-commit 09ce87f780977f0c4a566c74b33c5bb9dfb1e290
-Author: Liang Zhang <terrymanu@163.com>
-Date:   Fri Sep 10 06:49:31 2021 +0800
+commit d45b178d1962b8063ce875c24920c10b1f89da99
+Author: zhaojinchao <33742097+zjcnb@users.noreply.github.com>
+Date:   Fri Sep 10 14:52:55 2021 +0800
 
-    Split compute_nodes and storage_nodes, make the concept more clear. (#12323)
+    Update distributed governance document for user manual (#12330)
     
-    * Rename datanodes to storage_nodes
+    * update document
     
-    * Rename proxynodes to compute_nodes
+    * update
+    
+    * update
 
-diff --git a/docs/document/content/features/governance/management/registry-center.cn.md b/docs/document/content/features/governance/management/registry-center.cn.md
-index ccccd38025..3aba8b0053 100644
---- a/docs/document/content/features/governance/management/registry-center.cn.md
-+++ b/docs/document/content/features/governance/management/registry-center.cn.md
-@@ -30,12 +30,12 @@ namespace
-    ├      ├      ├──dataSources                 # 数据源配置
-    ├      ├      ├──rules                       # 规则配置
-    ├      ├      ├──schema                      # 表结构配置
--   ├──states
--   ├    ├──proxynodes
-+   ├──status
-+   ├    ├──compute_nodes
-    ├    ├     ├──${your_instance_ip_a}@${your_instance_pid_x}@${UUID}
-    ├    ├     ├──${your_instance_ip_b}@${your_instance_pid_y}@${UUID}
-    ├    ├     ├──....
--   ├    ├──datanodes
-+   ├    ├──storage_nodes
-    ├    ├     ├──${schema_1}
-    ├    ├     ├      ├──${ds_0}
-    ├    ├     ├      ├──${ds_1}
-@@ -144,13 +144,13 @@ tables:                                       # 表
-         primaryKey: false
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.cn.md
+index 72afa94438..66c4a105a0 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.cn.md
+@@ -8,21 +8,21 @@ weight = 1
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance</artifactId>
++    <artifactId>shardingsphere-jdbc-core</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 ZooKeeper 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 Etcd 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ ```
+@@ -35,25 +35,25 @@ weight = 1
+ // 省略配置数据源以及规则
+ // ...
+ 
+-// 配置注册中心
+-RegistryCenterConfiguration registryCenterConfig = new RegistryCenterConfiguration("Zookeeper", "localhost:2181", new Properties());
++// 配置 ClusterPersistRepositoryConfig
++ClusterPersistRepositoryConfiguration registryCenterConfig = new ClusterPersistRepositoryConfiguration("Zookeeper", "governance-sharding-data-source", "localhost:2181", new Properties());
+ 
+-// 配置治理
+-GovernanceConfiguration governanceConfiguration = new GovernanceConfiguration("governance-sharding-data-source", registryCenterConfig, true);
++// 配置 Cluster Config
++ModeConfiguration modeConfig = new ModeConfiguration("Cluster", registryCenterConfig, true);
+ 
+-// 创建 GovernanceShardingSphereDataSource
+-DataSource dataSource = GovernanceShardingSphereDataSourceFactory.createDataSource(governanceConfiguration);
++// 创建 ShardingSphereDataSource
++DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource(modeConfig);
  ```
  
--### /states/proxynodes
-+### /status/compute_nodes
+-## 使用 GovernanceShardingSphereDataSource
++## 使用 ShardingSphereDataSource
  
- 数据库访问对象运行实例信息，子节点是当前运行实例的标识。
- 运行实例标识由运行服务器的 IP 地址和 PID 构成。运行实例标识均为临时节点，当实例上线时注册，下线时自动清理。
- 注册中心监控这些节点的变化来治理运行中实例对数据库的访问等。
+-通过 GovernanceShardingSphereDataSourceFactory 工厂创建的 GovernanceShardingSphereDataSource 实现自 JDBC 的标准接口 DataSource。
++通过 ShardingSphereDataSourceFactory 工厂创建的 ShardingSphereDataSource 实现自 JDBC 的标准接口 DataSource。
+ 可通过 DataSource 选择使用原生 JDBC，或JPA， MyBatis 等 ORM 框架。
  
--### /states/datanodes
-+### /status/storage_nodes
+ 以原生 JDBC 使用方式为例：
  
- 可以治理读写分离从库，可动态添加删除以及禁用。
+ ```java
+-DataSource dataSource = GovernanceShardingSphereDataSourceFactory.createDataSource(governanceConfiguration);
++DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource(modeConfig);
+ String sql = "SELECT i.* FROM t_order o JOIN t_order_item i ON o.order_id=i.order_id WHERE o.user_id=? AND o.order_id=?";
+ try (
+         Connection conn = dataSource.getConnection();
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.en.md
+index 2eed52b65d..90e9a12cb1 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/java-api.en.md
+@@ -8,21 +8,21 @@ weight = 1
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance</artifactId>
++    <artifactId>shardingsphere-jdbc-core</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
  
-@@ -167,7 +167,7 @@ tables:                                       # 表
- Zookeeper 命令如下：
+ <!-- import if using ZooKeeper -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
  
+ <!-- import if using Etcd -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
  ```
--[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/states/proxynodes/${your_instance_ip_a}@${your_instance_pid_x}@${UUID} DISABLED
-+[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/status/compute_nodes/${your_instance_ip_a}@${your_instance_pid_x}@${UUID} DISABLED
- ```
+@@ -35,25 +35,25 @@ Using ZooKeeper as config center and registry center for example.
+ // Omit configure data sources and rule configurations
+ // ...
  
- ### 禁用从库
-@@ -177,5 +177,5 @@ Zookeeper 命令如下：
- Zookeeper 命令如下：
+-// Configure registry center
+-RegistryCenterConfiguration registryCenterConfig = new RegistryCenterConfiguration("Zookeeper", "localhost:2181", new Properties());
++// Configure ClusterPersistRepositoryConfig
++ClusterPersistRepositoryConfiguration registryCenterConfig = new ClusterPersistRepositoryConfiguration("Zookeeper", "governance-sharding-data-source", "localhost:2181", new Properties());
  
- ```
--[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/states/datanodes/${your_schema_name}/${your_replica_datasource_name} DISABLED
-+[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/status/storage_nodes/${your_schema_name}/${your_replica_datasource_name} DISABLED
- ```
-diff --git a/docs/document/content/features/governance/management/registry-center.en.md b/docs/document/content/features/governance/management/registry-center.en.md
-index c536cdbfbe..b247232b77 100644
---- a/docs/document/content/features/governance/management/registry-center.en.md
-+++ b/docs/document/content/features/governance/management/registry-center.en.md
-@@ -15,7 +15,7 @@ weight = 1
+-// Configure governance
+-        GovernanceConfiguration governanceConfiguration = new GovernanceConfiguration("governance-sharding-data-source", registryCenterConfig, true);
++// Configure Cluster Config
++ModeConfiguration modeConfig = new ModeConfiguration("Cluster", registryCenterConfig, true);
  
- ## Data Structure in Registry Center
- 
--Under defined namespace, `rules`, `props` and `metadata` nodes persist in YAML, modifying nodes can dynamically refresh configurations. `states` node persist the runtime node of database access object, to distinguish different database access instances.
-+Under defined namespace, `rules`, `props` and `metadata` nodes persist in YAML, modifying nodes can dynamically refresh configurations. `status` node persist the runtime node of database access object, to distinguish different database access instances.
- 
- ```
- namespace
-@@ -30,12 +30,12 @@ namespace
-    ├      ├      ├──dataSources                 # Datasource configuration
-    ├      ├      ├──rules                       # Rule configuration
-    ├      ├      ├──schema                      # Table configuration
--   ├──states
--   ├    ├──proxynodes
-+   ├──status
-+   ├    ├──compute_nodes
-    ├    ├     ├──${your_instance_ip_a}@${your_instance_pid_x}@${UUID}
-    ├    ├     ├──${your_instance_ip_b}@${your_instance_pid_y}@${UUID}
-    ├    ├     ├──....
--   ├    ├──datanodes
-+   ├    ├──storage_nodes
-    ├    ├     ├──${schema_1}
-    ├    ├     ├      ├──${ds_0}
-    ├    ├     ├      ├──${ds_1}
-@@ -144,11 +144,11 @@ tables:                                       # Tables
-         primaryKey: false
- ```
- 
--### /states/proxynodes
-+### /status/compute_nodes
- 
- It includes running instance information of database access object, with sub-nodes as the identifiers of currently running instance, which consist of IP and PID. Those identifiers are temporary nodes, which are registered when instances are on-line and cleared when instances are off-line. The registry center monitors the change of those nodes to govern the database access of running instances and other things.
- 
--### /states/datanodes
-+### /status/storage_nodes
- 
- It is able to orchestrate replica database, delete or disable data dynamically.
- 
-@@ -165,7 +165,7 @@ Write `DISABLED` (case insensitive) to `IP@PID@UUID` to disable that instance; d
- Zookeeper command is as follows:
- 
- ```
--[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/states/proxynodes/${your_instance_ip_a}@${your_instance_pid_x}@${UUID} DISABLED
-+[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/status/compute_nodes/${your_instance_ip_a}@${your_instance_pid_x}@${UUID} DISABLED
+-// Create GovernanceShardingSphereDataSource
+-DataSource dataSource = GovernanceShardingSphereDataSourceFactory.createDataSource(governanceConfiguration);
++// Create ShardingSphereDataSource
++DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource(modeConfig);
  ```
  
- ### Disable Replica Database
-@@ -175,5 +175,5 @@ Under replica query scenarios, users can write `DISABLED` (case insensitive) to
- Zookeeper command is as follows:
+-## Use GovernanceShardingSphereDataSource
++## Use ShardingSphereDataSource
  
+-The GovernanceShardingSphereDataSource created by GovernanceShardingSphereDataSourceFactory implements the standard JDBC DataSource interface.
++The ShardingSphereDataSource created by ShardingSphereDataSourceFactory implements the standard JDBC DataSource interface.
+ Developer can choose to use native JDBC or ORM frameworks such as JPA or MyBatis through the DataSource.
+ 
+ Take native JDBC usage as an example:
+ 
+ ```java
+-DataSource dataSource = GovernanceShardingSphereDataSourceFactory.createDataSource(governanceConfiguration);
++DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource(modeConfig);
+ String sql = "SELECT i.* FROM t_order o JOIN t_order_item i ON o.order_id=i.order_id WHERE o.user_id=? AND o.order_id=?";
+ try (
+         Connection conn = dataSource.getConnection();
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.cn.md
+index 667ff91308..9835223452 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.cn.md
+@@ -8,21 +8,21 @@ weight = 3
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance-spring-boot-starter</artifactId>
++    <artifactId>shardingsphere-jdbc-core-spring-boot-starter</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 ZooKeeper 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 Etcd 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
  ```
--[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/states/datanodes/${your_schema_name}/${your_replica_datasource_name} DISABLED
-+[zk: localhost:2181(CONNECTED) 0] set /${your_zk_namespace}/status/storage_nodes/${your_schema_name}/${your_replica_datasource_name} DISABLED
+@@ -30,15 +30,16 @@ weight = 3
+ ## 规则配置
+ 
+ ```properties
+-spring.shardingsphere.governance.name=governance-spring-boot-shardingsphere-test
+-spring.shardingsphere.governance.registry-center.type=Zookeeper
+-spring.shardingsphere.governance.registry-center.server-lists=localhost:2181
+-spring.shardingsphere.governance.overwrite=true
++spring.shardingsphere.mode.type=Cluster
++spring.shardingsphere.mode.repository.type=ZooKeeper
++spring.shardingsphere.mode.repository.props.namespace=governance-spring-boot-shardingsphere-test
++spring.shardingsphere.mode.repository.props.server-lists=localhost:2181
++spring.shardingsphere.mode.overwrite=true
  ```
+ 
+-## 在 Spring 中使用 GovernanceShardingSphereDataSource
++## 在 Spring 中使用 ShardingSphereDataSource
+ 
+-直接通过注入的方式即可使用 GovernanceShardingSphereDataSource；或者将 GovernanceShardingSphereDataSource 配置在JPA， MyBatis 等 ORM 框架中配合使用。
++直接通过注入的方式即可使用 ShardingSphereDataSource；或者将 ShardingSphereDataSource 配置在JPA， MyBatis 等 ORM 框架中配合使用。
+ 
+ ```java
+ @Resource
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.en.md
+index 55d902ce5c..096edac9aa 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-boot-starter.en.md
+@@ -8,21 +8,21 @@ weight = 3
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance-spring-boot-starter</artifactId>
++    <artifactId>shardingsphere-jdbc-core-spring-boot-starter</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- import if using ZooKeeper -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- import if using Etcd -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ ```
+@@ -30,16 +30,17 @@ weight = 3
+ ## Configure Rule
+ 
+ ```properties
+-spring.shardingsphere.governance.name=governance-spring-boot-shardingsphere-test
+-spring.shardingsphere.governance.registry-center.type=Zookeeper
+-spring.shardingsphere.governance.registry-center.server-lists=localhost:2181
+-spring.shardingsphere.governance.overwrite=true
++spring.shardingsphere.mode.type=Cluster
++spring.shardingsphere.mode.repository.type=ZooKeeper
++spring.shardingsphere.mode.repository.props.namespace=governance-spring-boot-shardingsphere-test
++spring.shardingsphere.mode.repository.props.server-lists=localhost:2181
++spring.shardingsphere.mode.overwrite=true
+ ```
+ 
+-## Use GovernanceShardingSphereDataSource in Spring
++## Use ShardingSphereDataSource in Spring
+ 
+-GovernanceShardingSphereDataSource can be used directly by injection; 
+-or configure GovernanceShardingSphereDataSource in ORM frameworks such as JPA or MyBatis.
++ShardingSphereDataSource can be used directly by injection; 
++or configure ShardingSphereDataSource in ORM frameworks such as JPA or MyBatis.
+ 
+ ```java
+ @Resource
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.cn.md
+index 2baa564248..ff86463fcc 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.cn.md
+@@ -8,21 +8,21 @@ weight = 4
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance-spring-namespace</artifactId>
++    <artifactId>shardingsphere-jdbc-core-spring-namespace</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 ZooKeeper 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 Etcd 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ ```
+@@ -32,26 +32,36 @@ weight = 4
+ ```xml
+ <?xml version="1.0" encoding="UTF-8"?>
+ <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-       xmlns:governance="http://shardingsphere.apache.org/schema/shardingsphere/governance"
++       xmlns:cluster="http://shardingsphere.apache.org/schema/shardingsphere/mode-repository/cluster"
++       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
+        xmlns="http://www.springframework.org/schema/beans"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+-                           http://shardingsphere.apache.org/schema/shardingsphere/governance
+-                           http://shardingsphere.apache.org/schema/shardingsphere/governance/governance.xsd">
+-     <util:properties id="instance-properties">
+-         <prop key="max-retries">3</prop>
+-         <prop key="operation-timeout-milliseconds">3000</prop>
+-     </util:properties>
+-     <governance:reg-center id="regCenter" type="Zookeeper" namespace="regCenter" server-lists="localhost:2181" />   
+-     <governance:data-source id="shardingDatabasesTablesDataSource" data-source-names="demo_ds_0, demo_ds_1" reg-center-ref="regCenter" config-center-ref="distMetaDataPersistService" rule-refs="shardingRule" overwrite="true" />
+-     <governance:data-source id="replicaQueryDataSource" data-source-names="demo_primary_ds, demo_replica_ds_0, demo_replica_ds_1" reg-center-ref="regCenter" config-center-ref="distMetaDataPersistService" rule-refs="replicaQueryRule" overwrite="true" />
+-     <governance:data-source id="encryptDataSource" data-source-names="demo_ds" reg-center-ref="regCenter" config-center-ref="distMetaDataPersistService" rule-refs="encryptRule" overwrite="true" />
++                           http://shardingsphere.apache.org/schema/shardingsphere/mode-repository/cluster
++                           http://shardingsphere.apache.org/schema/shardingsphere/mode-repository/cluster/repository.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource 
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd">
++     <cluster:repository id="clusterRepository" type="ZooKeeper" namespace="regCenter" server-lists="localhost:2181">
++         <props>
++             <prop key="max-retries">3</prop>
++             <prop key="operation-timeout-milliseconds">3000</prop>
++         </props>
++     </cluster:repository>
++     <shardingsphere:data-source id="shardingDatabasesTablesDataSource" data-source-names="demo_ds_0, demo_ds_1" rule-refs="shardingRule">
++        <shardingsphere:mode type="Cluster" repository-ref="clusterRepository" overwrite="true"/>
++     </shardingsphere:data-source>
++    <shardingsphere:data-source id="replicaQueryDataSource" data-source-names="demo_primary_ds, demo_replica_ds_0, demo_replica_ds_1" rule-refs="replicaQueryRule">
++        <shardingsphere:mode type="Cluster" repository-ref="clusterRepository" overwrite="true"/>
++    </shardingsphere:data-source>
++    <shardingsphere:data-source id="encryptDataSource" data-source-names="demo_ds" rule-refs="encryptRule">
++        <shardingsphere:mode type="Cluster" repository-ref="clusterRepository" overwrite="true"/>
++    </shardingsphere:data-source>
+ </beans>
+ ```
+ 
+-## 在 Spring 中使用 GovernanceShardingSphereDataSource
++## 在 Spring 中使用 ShardingSphereDataSource
+ 
+-直接通过注入的方式即可使用 GovernanceShardingSphereDataSource；或者将 GovernanceShardingSphereDataSource 配置在JPA， MyBatis 等 ORM 框架中配合使用。
++直接通过注入的方式即可使用 ShardingSphereDataSource；或者将 ShardingSphereDataSource 配置在JPA， MyBatis 等 ORM 框架中配合使用。
+ 
+ ```java
+ @Resource
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.en.md
+index 4b2d594473..f766f7915b 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/spring-namespace.en.md
+@@ -8,21 +8,21 @@ weight = 4
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance-spring-namespace</artifactId>
++    <artifactId>shardingsphere-jdbc-core-spring-namespace</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- import if using ZooKeeper -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- import if using Etcd -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ ```
+@@ -32,26 +32,37 @@ weight = 4
+ ```xml
+ <?xml version="1.0" encoding="UTF-8"?>
+ <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-       xmlns:governance="http://shardingsphere.apache.org/schema/shardingsphere/governance"
++       xmlns:cluster="http://shardingsphere.apache.org/schema/shardingsphere/mode-repository/cluster"
++       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
+        xmlns="http://www.springframework.org/schema/beans"
+        xsi:schemaLocation="http://www.springframework.org/schema/beans
+                            http://www.springframework.org/schema/beans/spring-beans.xsd
+-                           http://shardingsphere.apache.org/schema/shardingsphere/governance
+-                           http://shardingsphere.apache.org/schema/shardingsphere/governance/governance.xsd">
+-     <util:properties id="instance-properties">
+-         <prop key="max-retries">3</prop>
+-         <prop key="operation-timeout-milliseconds">3000</prop>
+-     </util:properties>
+-     <governance:reg-center id="regCenter" type="Zookeeper" namespace="regCenter" server-lists="localhost:2181" />
+-     <governance:data-source id="shardingDatabasesTablesDataSource" data-source-names="demo_ds_0, demo_ds_1" reg-center-ref="regCenter" config-center-ref="distMetaDataPersistService" rule-refs="shardingRule" overwrite="true" />
+-     <governance:data-source id="encryptDataSource" data-source-names="demo_ds" reg-center-ref="regCenter" config-center-ref="distMetaDataPersistService" rule-refs="encryptRule" overwrite="true" />
++                           http://shardingsphere.apache.org/schema/shardingsphere/mode-repository/cluster
++                           http://shardingsphere.apache.org/schema/shardingsphere/mode-repository/cluster/repository.xsd
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource 
++                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd">
++     <cluster:repository id="clusterRepository" type="ZooKeeper" namespace="regCenter" server-lists="localhost:2181">
++         <props>
++             <prop key="max-retries">3</prop>
++             <prop key="operation-timeout-milliseconds">3000</prop>
++         </props>
++     </cluster:repository>
++     <shardingsphere:data-source id="shardingDatabasesTablesDataSource" data-source-names="demo_ds_0, demo_ds_1" rule-refs="shardingRule">
++        <shardingsphere:mode type="Cluster" repository-ref="clusterRepository" overwrite="true"/>
++     </shardingsphere:data-source>
++    <shardingsphere:data-source id="replicaQueryDataSource" data-source-names="demo_primary_ds, demo_replica_ds_0, demo_replica_ds_1" rule-refs="replicaQueryRule">
++        <shardingsphere:mode type="Cluster" repository-ref="clusterRepository" overwrite="true"/>
++    </shardingsphere:data-source>
++    <shardingsphere:data-source id="encryptDataSource" data-source-names="demo_ds" rule-refs="encryptRule">
++        <shardingsphere:mode type="Cluster" repository-ref="clusterRepository" overwrite="true"/>
++    </shardingsphere:data-source>
+ </beans>
+ ```
+ 
+-## Use GovernanceShardingSphereDataSource in Spring
++## Use ShardingSphereDataSource in Spring
+ 
+-GovernanceShardingSphereDataSource can be used directly by injection; 
+-or configure GovernanceShardingSphereDataSource in ORM frameworks such as JPA or MyBatis.
++ShardingSphereDataSource can be used directly by injection; 
++or configure ShardingSphereDataSource in ORM frameworks such as JPA or MyBatis.
+ 
+ ```java
+ @Resource
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.cn.md
+index 3bd470829e..e59eb15bd6 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.cn.md
+@@ -8,21 +8,21 @@ weight = 2
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance</artifactId>
++    <artifactId>shardingsphere-jdbc-core</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 ZooKeeper 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- 使用 Etcd 时，需要引入此模块 -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ ```
+@@ -32,28 +32,30 @@ weight = 2
+ 以下示例将 ZooKeeper 作为配置中心和注册中心。
+ 
+ ```yaml
+-governance:
+-  registryCenter:
+-      type: Zookeeper
++mode:
++  type: Cluster
++  repository:
++    type: ZooKeeper
++    props:
+       namespace: governance_ds
+-      serverLists: localhost:2181
++      server-lists: localhost:2181
+   overwrite: true
+ ```
+ 
+ ```java
+-// 创建 GovernanceShardingSphereDataSource
+-DataSource dataSource = YamlGovernanceShardingSphereDataSourceFactory.createDataSource(yamlFile);
++// 创建 ShardingSphereDataSource
++DataSource dataSource = YamlShardingSphereDataSourceFactory.createDataSource(yamlFile);
+ ```
+ 
+-## 使用 GovernanceShardingSphereDataSource
++## 使用 ShardingSphereDataSource
+ 
+-通过 YamlGovernanceShardingSphereDataSourceFactory 工厂创建的 GovernanceShardingSphereDataSource 实现自 JDBC 的标准接口 DataSource。
++通过 YamlShardingSphereDataSourceFactory 工厂创建的 ShardingSphereDataSource 实现自 JDBC 的标准接口 DataSource。
+ 可通过 DataSource 选择使用原生 JDBC，或JPA， MyBatis 等 ORM 框架。
+ 
+ 以原生 JDBC 使用方式为例：
+ 
+ ```java
+-DataSource dataSource = YamlGovernanceShardingSphereDataSourceFactory.createDataSource(yamlFile);
++DataSource dataSource = YamlShardingSphereDataSourceFactory.createDataSource(yamlFile);
+ String sql = "SELECT i.* FROM t_order o JOIN t_order_item i ON o.order_id=i.order_id WHERE o.user_id=? AND o.order_id=?";
+ try (
+         Connection conn = dataSource.getConnection();
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.en.md
+index cad30333f2..211675bb2e 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/usage/governance/yaml.en.md
+@@ -8,21 +8,21 @@ weight = 2
+ ```xml
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-jdbc-governance</artifactId>
++    <artifactId>shardingsphere-jdbc-core</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- import if using ZooKeeper -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-zookeeper-curator</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-zookeeper-curator</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ 
+ <!-- import if using Etcd -->
+ <dependency>
+     <groupId>org.apache.shardingsphere</groupId>
+-    <artifactId>shardingsphere-governance-repository-etcd</artifactId>
++    <artifactId>shardingsphere-cluster-mode-repository-etcd</artifactId>
+     <version>${shardingsphere.version}</version>
+ </dependency>
+ ```
+@@ -32,28 +32,30 @@ weight = 2
+ Using ZooKeeper as config center and registry center for example.
+ 
+ ```yaml
+-governance:
+-  registryCenter:
+-      type: Zookeeper
++mode:
++  type: Cluster
++  repository:
++    type: ZooKeeper
++    props:
+       namespace: governance_ds
+-      serverLists: localhost:2181
++      server-lists: localhost:2181
+   overwrite: true
+ ```
+ 
+ ```java
+-// Create GovernanceShardingSphereDataSource
+-DataSource dataSource = YamlGovernanceShardingSphereDataSourceFactory.createDataSource(yamlFile);
++// Create ShardingSphereDataSource
++DataSource dataSource = YamlShardingSphereDataSourceFactory.createDataSource(yamlFile);
+ ```
+ 
+-## Use GovernanceShardingSphereDataSource
++## Use ShardingSphereDataSource
+ 
+-The GovernanceShardingSphereDataSource created by YamlGovernanceShardingSphereDataSourceFactory implements the standard JDBC DataSource interface.
++The ShardingSphereDataSource created by YamlShardingSphereDataSourceFactory implements the standard JDBC DataSource interface.
+ Developer can choose to use native JDBC or ORM frameworks such as JPA or MyBatis through the DataSource.
+ 
+ Take native JDBC usage as an example:
+ 
+ ```java
+-DataSource dataSource = YamlGovernanceShardingSphereDataSourceFactory.createDataSource(yamlFile);
++DataSource dataSource = YamlShardingSphereDataSourceFactory.createDataSource(yamlFile);
+ String sql = "SELECT i.* FROM t_order o JOIN t_order_item i ON o.order_id=i.order_id WHERE o.user_id=? AND o.order_id=?";
+ try (
+         Connection conn = dataSource.getConnection();

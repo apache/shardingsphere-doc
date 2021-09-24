@@ -1,102 +1,368 @@
-commit 7b0d42bd9c79706a3ecd620658470ba79dfaf48f
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Fri Sep 24 14:36:54 2021 +0800
+commit d7483b26e1d01436f1e8d17956277d322ec5faa7
+Author: lanchengx <52209337+lanchengx@users.noreply.github.com>
+Date:   Fri Sep 24 02:52:16 2021 -0500
 
-    update subquery document (#12675)
+    Shadow DistSQL doc (#12629)
+    
+    * doc:Shadow distSQL show statement RQL document
+    
+    * doc:Shadow distSQL show statement RDL document
+    
+    * doc:Shadow distSQL show statement RDL document
+    
+    * Document adjustment.
+    
+    * Document adjustment.
+    
+    * Document adjustment.
+    
+    * adjustment
+    
+    * adjustment
+    
+    * Document adjustment.
 
-diff --git a/docs/document/content/features/sharding/use-norms/sql.cn.md b/docs/document/content/features/sharding/use-norms/sql.cn.md
-index a6c36a88a1..f1c34af6ce 100644
---- a/docs/document/content/features/sharding/use-norms/sql.cn.md
-+++ b/docs/document/content/features/sharding/use-norms/sql.cn.md
-@@ -56,29 +56,31 @@ tbl_name [AS] alias] [index_hint_list]
- 不支持 UNION (ALL)
- 
- 部分支持子查询
--* 子查询和外层查询同时指定分片键时，分片键的值必须保持一致
-+* 子查询和外层查询同时指定分片键，且分片键的值保持一致时，子查询由内核支持
-+* 子查询和外层查询未同时指定分片键，或分片键的值不一致时，子查询由 Federation 执行引擎（开发中）支持
- 
--除了分页子查询的支持之外(详情请参考[分页](/cn/features/sharding/use-norms/pagination))，也支持同等模式的子查询。无论嵌套多少层，ShardingSphere都可以解析至第一个包含数据表的子查询，一旦在下层嵌套中再次找到包含数据表的子查询将直接抛出解析异常。
-+除了分页子查询的支持之外(详情请参考[分页](/cn/features/sharding/use-norms/pagination))，也支持同等模式的子查询。
- 
--例如，以下子查询可以支持：
-+例如，以下子查询可以由内核支持：
- 
- ```sql
--SELECT COUNT(*) FROM (SELECT * FROM t_order) o;
--SELECT COUNT(*) FROM (SELECT * FROM t_order) o WHERE o.order_id = 1;
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o;
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 1;
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE product_id = 1) o;
-+SELECT * FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 1;
-+SELECT * FROM (SELECT row_.*, rownum rownum_ FROM (SELECT * FROM t_order) row_ WHERE rownum <= ?) WHERE rownum > ?;
- ```
- 
--以下子查询不支持：
-+以下子查询可以由 Federation 执行引擎（开发中）支持：
- 
- ```sql
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 2;
-+SELECT * FROM (SELECT * FROM t_order) o;
-+SELECT * FROM (SELECT * FROM t_order) o WHERE o.order_id = 1;
-+SELECT * FROM (SELECT * FROM t_order WHERE order_id = 1) o;
-+SELECT * FROM (SELECT * FROM t_order WHERE product_id = 1) o;
-+SELECT * FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 2;
- ```
- 
--简单来说，通过子查询进行非功能需求，在大部分情况下是可以支持的。比如分页、统计总数等；而通过子查询实现业务查询当前并不能支持。
-+简单来说，通过子查询进行非功能需求，在大部分情况下是可以由内核支持的，比如分页、统计总数等。而通过子查询实现复杂的业务查询，需要由 Federation 执行引擎（开发中）支持。
- 
--不支持包含schema的SQL。因为ShardingSphere的理念是像使用一个数据源一样使用多数据源，因此对SQL的访问都是在同一个逻辑schema之上。
-+不支持包含真实 schema 的 SQL，但支持包含逻辑 schema 的 SQL。因为 ShardingSphere 的理念是像使用一个数据源一样使用多数据源，因此对 SQL 的访问都是在同一个逻辑 schema 之上。
- 
- ### 对分片键进行操作
- 
-diff --git a/docs/document/content/features/sharding/use-norms/sql.en.md b/docs/document/content/features/sharding/use-norms/sql.en.md
-index 8d5b77fe61..842b359641 100644
---- a/docs/document/content/features/sharding/use-norms/sql.en.md
-+++ b/docs/document/content/features/sharding/use-norms/sql.en.md
-@@ -56,29 +56,31 @@ Partially support CASE WHEN
- Do not support UNION (ALL) 
- 
- Partly available sub-query
--* If subquery and outer query specify sharding key at the same time, the value of sharding key must be consistent.
-+* Subquery is supported by kernel when sharding keys are specified in both subquery and outer query, and values of sharding keys are the same.
-+* Subquery is supported by federation executor engine (under development) when sharding keys are not specified for both subquery and outer query, or values of sharding keys are not the same.
- 
--Support not only pagination sub-query (see [pagination](https://shardingsphere.apache.org/document/current/cn/features/sharding/usage-standard/pagination) for more details), but also sub-query with the same mode. No matter how many layers are nested, ShardingSphere can parse to the first sub-query that contains data table. Once it finds another sub-query of this kind in the sub-level nested, it will directly throw a parsing exception.
-+Support not only pagination sub-query (see [pagination](https://shardingsphere.apache.org/document/current/cn/features/sharding/usage-standard/pagination) for more details), but also sub-query with the same mode.
- 
--For example, the following sub-query is available:
-+For example, the following subquery is supported by kernel:
- 
- ```sql
--SELECT COUNT(*) FROM (SELECT * FROM t_order) o;
--SELECT COUNT(*) FROM (SELECT * FROM t_order) o WHERE o.order_id = 1;
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o;
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 1;
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE product_id = 1) o;
-+SELECT * FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 1;
-+SELECT * FROM (SELECT row_.*, rownum rownum_ FROM (SELECT * FROM t_order) row_ WHERE rownum <= ?) WHERE rownum > ?;
- ```
- 
--The following sub-query is unavailable:
-+The following subquery is supported by federation executor engine (under development):
- 
- ```sql
--SELECT COUNT(*) FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 2;
-+SELECT * FROM (SELECT * FROM t_order) o;
-+SELECT * FROM (SELECT * FROM t_order) o WHERE o.order_id = 1;
-+SELECT * FROM (SELECT * FROM t_order WHERE order_id = 1) o;
-+SELECT * FROM (SELECT * FROM t_order WHERE product_id = 1) o;
-+SELECT * FROM (SELECT * FROM t_order WHERE order_id = 1) o WHERE o.order_id = 2;
- ```
- 
--To be simple, through sub-query, non-functional requirements are available in most cases, such as pagination, sum count and so on; but functional requirements are unavailable for now.
-+To be simple, through subquery, non-functional requirements are supported by kernel in most cases, such as pagination, sum count and so on. Functional requirements are supported by federation executor engine (under development).
- 
--Do not support SQL that contains schema, for the concept of ShardingSphere is to use multiple data source as one data source, so all the SQL visits are based on one logic schema.
-+Do not support SQL that contains actual schema, but support SQL that contains logic schema. For the concept of ShardingSphere is to use multiple data source as one data source, so all the SQL visits are based on one logic schema.
- 
- ### Operation for shardingColumn
- 
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-shadow-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-shadow-rule.cn.md
+new file mode 100644
+index 0000000000..b27f53e14b
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-shadow-rule.cn.md
+@@ -0,0 +1,63 @@
+++++
++title = "影子库压测"
++weight = 6
+++++
++
++## 定义
++
++```sql
++CREATE SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
++
++ALTER SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
++
++ALTER SHADOW ALGORITHM shadowAlgorithm [, shadowAlgorithm] ...
++
++DROP SHADOW RULE ruleName [, ruleName] ...
++
++DROP SHADOW ALGORITHM algorithmName [, algorithmName] ...
++
++shadowRuleDefinition: ruleName(resourceMapping, shadowTableRule [, shadowTableRule] ...)
++
++resourceMapping: SOURCE=resourceName, SHADOW=resourceName
++
++shadowTableRule: tableName(shadowAlgorithm [, shadowAlgorithm] ...)
++
++shadowAlgorithm: ([algorithmName, ] TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...)))
++
++algorithmProperties: algorithmProperty [, algorithmProperty] ... 
++
++algorithmProperty: key=value
++```
++
++- 重复的`ruleName`无法被创建
++- `resourceMapping` 指定源数据库和影子库的映射关系，需使用 RDL 管理的 `resource` ，请参考 [数据源资源](https://shardingsphere.apache.org/document/current/cn/features/dist-sql/syntax/rdl/rdl-resource/)
++- `shadowAlgorithm` 可同时作用于多个 `shadowTableRule`
++- `algorithmName` 未指定时会根据 `ruleName`、`tableName` 和 `shadowAlgorithmType` 自动生成
++- `shadowAlgorithmType` 目前支持 `COLUMN_REGEX_MATCH` 和 `SIMPLE_NOTE`
++- `shadowTableRule` 能够被不同的 `shadowRuleDefinition` 复用，因此在执行 `DROP SHADOW RULE` 时，对应的 `shadowTableRule` 不会被移除
++- `shadowAlgorithm` 能够被不同的 `shadowTableRule` 复用，因此在执行 `ALTER SHADOW RULE` 时，对应的 `shadowAlgorithm` 不会被移除
++
++
++## 示例
++
++```sql
++CREATE SHADOW RULE shadow_rule(
++SOURCE=demo_ds,
++SHADOW=demo_ds_shadow,
++t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++
++ALTER SHADOW RULE shadow_rule(
++SOURCE=demo_ds,
++SHADOW=demo_ds_shadow,
++t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++
++ALTER SHADOW ALGORITHM 
++(simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar"))), 
++(user_id_match_algorithm, TYPE(NAME=COLUMN_REGEX_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "regex"='[1]')));
++
++DROP SHADOW RULE shadow_rule;
++
++DROP SHADOW ALGORITHM simple_note_algorithm;
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rdl/rdl-shadow-rule.en.md b/docs/document/content/features/dist-sql/syntax/rdl/rdl-shadow-rule.en.md
+new file mode 100644
+index 0000000000..65d62bc3d5
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rdl/rdl-shadow-rule.en.md
+@@ -0,0 +1,63 @@
+++++
++title = "Shadow"
++weight = 6
+++++
++
++## Definition
++
++```sql
++CREATE SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
++
++ALTER SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
++
++ALTER SHADOW ALGORITHM shadowAlgorithm [, shadowAlgorithm] ...
++
++DROP SHADOW RULE ruleName [, ruleName] ...
++
++DROP SHADOW ALGORITHM algorithmName [, algorithmName] ...
++
++shadowRuleDefinition: ruleName(resourceMapping, shadowTableRule [, shadowTableRule] ...)
++
++resourceMapping: SOURCE=resourceName, SHADOW=resourceName
++
++shadowTableRule: tableName(shadowAlgorithm [, shadowAlgorithm] ...)
++
++shadowAlgorithm: ([algorithmName, ] TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...)))
++
++algorithmProperties: algorithmProperty [, algorithmProperty] ... 
++
++algorithmProperty: key=value
++```
++
++-  Duplicate `ruleName` cannot be created
++- `resourceMapping` specifies the mapping relationship between the source database and the shadow library. You need to use the `resource` managed by RDL, please refer to [resource](https:shardingsphere.apache.orgdocumentcurrentcnfeaturesdist-sqlsyntaxrdlrdl-resource)
++- `shadowAlgorithm` can act on multiple `shadowTableRule` at the same time
++- If `algorithmName` is not specified, it will be automatically generated according to `ruleName`, `tableName` and `shadowAlgorithmType`
++- `shadowAlgorithmType` currently supports `COLUMN_REGEX_MATCH` and `SIMPLE_NOTE`
++- `shadowTableRule` can be reused by different `shadowRuleDefinition`, so when executing `DROP SHADOW RULE`, the corresponding `shadowTableRule` will not be removed
++- `shadowAlgorithm` can be reused by different `shadowTableRule`, so when executing `ALTER SHADOW RULE`, the corresponding `shadowAlgorithm` will not be removed
++
++
++## Example
++
++```sql
++CREATE SHADOW RULE shadow_rule(
++SOURCE=demo_ds,
++SHADOW=demo_ds_shadow,
++t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++
++ALTER SHADOW RULE shadow_rule(
++SOURCE=demo_ds,
++SHADOW=demo_ds_shadow,
++t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++
++ALTER SHADOW ALGORITHM 
++(simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar"))), 
++(user_id_match_algorithm, TYPE(NAME=COLUMN_REGEX_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "regex"='[1]')));
++
++DROP SHADOW RULE shadow_rule;
++
++DROP SHADOW ALGORITHM simple_note_algorithm;
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-shadow-rule.cn.md b/docs/document/content/features/dist-sql/syntax/rql/rql-shadow-rule.cn.md
+new file mode 100644
+index 0000000000..049984cb1b
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-shadow-rule.cn.md
+@@ -0,0 +1,97 @@
+++++
++title = "影子库压测" 
++weight = 6 
+++++
++
++## 定义
++
++```sql
++SHOW SHADOW shadowRule | RULES [FROM schemaName]
++
++SHOW SHADOW TABLE RULES [FROM schemaName]
++
++SHOW SHADOW ALGORITHMS [FROM schemaName]
++
++shadowRule: 
++    RULE ruleName
++```
++- 支持查询所有影子规则和指定表查询
++- 支持查询所有表规则
++- 支持查询所有影子算法
++
++## 说明
++
++### Shadow Rule
++
++| 列           | 说明         |
++| -----------  | ----------- |
++| rule_name    | 规则名称     |
++| source_name  | 源数据库     |
++| shadow_name  | 影子数据库   |
++| shadow_table | 影子表       |
++
++### Shadow Table Rule
++
++| 列                     | 说明           |
++| ----------------------| ---------------|
++| shadow_table          | 影子表          |
++| shadow_algorithm_name | 影子算法名称     |
++
++### Shadow Algorithms
++
++| 列                    | 说明          |
++| -------------------   | ------------ |
++| shadow_algorithm_name | 影子算法名称   |
++| type                  | 算法类型      |
++| props                 | 算法参数      |
++
++## 示例
++
++*SHOW SHADOW RULES*
++
++```sql
++mysql> show shadow rules;
+++--------------------+-------------+-------------+--------------+
++| rule_name          | source_name | shadow_name | shadow_table |
+++--------------------+-------------+-------------+--------------+
++| shadow_rule_1      | ds_1        | ds_shadow_1 | t_order      |
++| shadow_rule_2      | ds_2        | ds_shadow_2 | t_order_item |
+++--------------------+-------------+-------------+--------------+
++2 rows in set (0.02 sec)
++```
++*SHOW SHADOW RULE ruleName*
++
++```sql
++mysql> show shadow rule shadow_rule_1;
+++------------------+-------------+-------------+--------------+
++| rule_name        | source_name | shadow_name | shadow_table |
+++------------------+-------------+-------------+--------------+
++| shadow_rule_1    | ds_1        | ds_shadow_1 | t_order      |
+++------------------+-------------+-------------+--------------+
++1 rows in set (0.01 sec)
++```
++
++*SHOW SHADOW TABLE RULES*
++
++```sql
++mysql> show shadow table rules;
+++--------------+--------------------------------------------------------------------------------+
++| shadow_table | shadow_algorithm_name                                                          |
+++--------------+--------------------------------------------------------------------------------+
++| t_order_1    | user_id_match_algorithm,simple_note_algorithm_1                                |  
+++--------------+--------------------------------------------------------------------------------+
++1 rows in set (0.01 sec)
++```
++
++*SHOW SHADOW ALGORITHMS*
++
++```sql
++mysql> show shadow algorithms;
+++-------------------------+--------------------+-------------------------------------------+
++| shadow_algorithm_name   | type               | props                                     |
+++-------------------------+--------------------+-------------------------------------------+
++| user_id_match_algorithm | COLUMN_REGEX_MATCH | operation=insert,column=user_id,regex=[1] |
++| simple_note_algorithm_1 | SIMPLE_NOTE        | shadow=true,foo=bar                       |
+++-------------------------+--------------------+-------------------------------------------+
++2 rows in set (0.01 sec)
++```
+diff --git a/docs/document/content/features/dist-sql/syntax/rql/rql-shadow-rule.en.md b/docs/document/content/features/dist-sql/syntax/rql/rql-shadow-rule.en.md
+new file mode 100644
+index 0000000000..889e7cde1d
+--- /dev/null
++++ b/docs/document/content/features/dist-sql/syntax/rql/rql-shadow-rule.en.md
+@@ -0,0 +1,97 @@
+++++
++title = "Shadow" 
++weight = 6 
+++++
++
++## Definition
++
++```sql
++SHOW SHADOW shadowRule | RULES [FROM schemaName]
++
++SHOW SHADOW TABLE RULES [FROM schemaName]
++
++SHOW SHADOW ALGORITHMS [FROM schemaName]
++
++shadowRule: 
++    RULE ruleName
++```
++- Support querying all shadow rules and specified table query
++- Support querying all shadow table rules
++- Support querying all shadow algorithms
++
++## Description
++
++### Shadow Rule
++
++| Column      | Description      |
++| -----------  | -----------     |
++| rule_name    | Rule name       |
++| source_name  | Source database |
++| shadow_name  | Shadow database |
++| shadow_table | Shadow table    |
++
++### Shadow Table Rule
++
++| Column                 | Description          |
++| ----------------------| --------------------- |
++| shadow_table          | Shadow table          |
++| shadow_algorithm_name | Shadow algorithm name |
++
++### Shadow Algorithms
++
++| Column                | Description                  |
++| -------------------   | ---------------------------- |
++| shadow_algorithm_name | Shadow algorithm name        |
++| type                  | Shadow algorithm type        |
++| properties            | Shadow algorithm parameters  |
++
++## Example
++
++*SHOW SHADOW RULES*
++
++```sql
++mysql> show shadow rules;
+++--------------------+-------------+-------------+--------------+
++| rule_name          | source_name | shadow_name | shadow_table |
+++--------------------+-------------+-------------+--------------+
++| shadow_rule_1      | ds_1        | ds_shadow_1 | t_order      |
++| shadow_rule_2      | ds_2        | ds_shadow_2 | t_order_item |
+++--------------------+-------------+-------------+--------------+
++2 rows in set (0.02 sec)
++```
++*SHOW SHADOW RULE ruleName*
++
++```sql
++mysql> show shadow rule shadow_rule_1;
+++------------------+-------------+-------------+--------------+
++| rule_name        | source_name | shadow_name | shadow_table |
+++------------------+-------------+-------------+--------------+
++| shadow_rule_1    | ds_1        | ds_shadow_1 | t_order      |
+++------------------+-------------+-------------+--------------+
++1 rows in set (0.01 sec)
++```
++
++*SHOW SHADOW TABLE RULES*
++
++```sql
++mysql> show shadow table rules;
+++--------------+--------------------------------------------------------------------------------+
++| shadow_table | shadow_algorithm_name                                                          |
+++--------------+--------------------------------------------------------------------------------+
++| t_order_1    | user_id_match_algorithm,simple_note_algorithm_1                                |  
+++--------------+--------------------------------------------------------------------------------+
++1 rows in set (0.01 sec)
++```
++
++*SHOW SHADOW ALGORITHMS*
++
++```sql
++mysql> show shadow algorithms;
+++-------------------------+--------------------+-------------------------------------------+
++| shadow_algorithm_name   | type               | properties                                |
+++-------------------------+--------------------+-------------------------------------------+
++| user_id_match_algorithm | COLUMN_REGEX_MATCH | operation=insert,column=user_id,regex=[1] |
++| simple_note_algorithm_1 | SIMPLE_NOTE        | shadow=true,foo=bar                       |
+++-------------------------+--------------------+-------------------------------------------+
++2 rows in set (0.01 sec)
++```

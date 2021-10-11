@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2021-10-10 22:23:14">
+    <meta name="buildDate" content="2021-10-11 22:23:35">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>实现原理 :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1633875794" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1633875794" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1633875794" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1633875794" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1633875794" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1633875794" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1633875794" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1633875794" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1633962215" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1633962215" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1633962215" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1633962215" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1633962215" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1633962215" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1633962215" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1633962215" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1633875794" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1633962215" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1633875794"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1633962215"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -5478,31 +5478,129 @@
 
 <nav id="TableOfContents">
   <ul>
-    <li>
+    <li><a href="#整体架构">整体架构</a></li>
+    <li><a href="#影子规则">影子规则</a></li>
+    <li><a href="#路由过程">路由过程</a></li>
+    <li><a href="#影子判定流程">影子判定流程</a>
       <ul>
-        <li><a href="#整体架构">整体架构</a></li>
-        <li><a href="#影子规则">影子规则</a></li>
-        <li><a href="#处理过程">处理过程</a></li>
+        <li><a href="#dml-语句">DML 语句</a></li>
+        <li><a href="#3-混用模式">3. 混用模式</a></li>
+        <li><a href="#ddl-语句">DDL 语句</a></li>
       </ul>
     </li>
   </ul>
 </nav>
 
-<h3 id="整体架构">整体架构</h3>
-<p>Apache ShardingSphere 通过解析 SQL，根据配置文件中用户设置的影子规则，对传入的 SQL 进行路由并改写，删除影子字段与字段值。用户无需关注具体过程，
-使用时仅对 SQL 进行相应改造，添加影子字段与相应的配置即可。</p>
+<h2 id="整体架构">整体架构</h2>
+<p>Apache ShardingSphere 通过解析 SQL，对传入的 SQL 进行影子判定，根据配置文件中用户设置的影子规则，路由到生产库或者影子库。</p>
 <p><img src="https://shardingsphere.apache.org/document/current/img/shadow/execute.png" alt="执行流程"></p>
-<h3 id="影子规则">影子规则</h3>
-<p>影子规则包含影子字段及映射关系。</p>
+<h2 id="影子规则">影子规则</h2>
+<p>影子规则包含影子数据源映射关系，影子表以及影子算法。</p>
 <p><img src="https://shardingsphere.apache.org/document/current/img/shadow/rule_cn.png" alt="规则"></p>
-<h3 id="处理过程">处理过程</h3>
+<h2 id="路由过程">路由过程</h2>
 <p>以 INSERT 语句为例，在写入数据时，Apache ShardingSphere 会对 SQL 进行解析，再根据配置文件中的规则，构造一条路由链。在当前版本的功能中，
 影子功能处于路由链中的最后一个执行单元，即，如果有其他需要路由的规则存在，如分片，Apache ShardingSphere 会首先根据分片规则，路由到某一个数据库，再
-执行影子路由，将影子数据路由到与之对应的影子库，生产数据则维持不变。</p>
-<p>接着对 SQL 进行改写，由于影子字段为逻辑字段，在数据库中实际不存在，所以在改写过程中会删除这个字段及其对应的参数。</p>
-<p>DML 语句的处理过程同理，对于非 DML 语句，如创建数据表等，会在生产数据库与影子数据库分别执行。</p>
-<p><img src="https://shardingsphere.apache.org/document/current/img/shadow/sql.png" alt="sql过程"></p>
-
+执行影子路由判定流程，判定执行SQL满足影子规则的配置，数据路由到与之对应的影子库，生产数据则维持不变。</p>
+<h2 id="影子判定流程">影子判定流程</h2>
+<p>影子库开关开启时，会对执行的 SQL 语句进行影子判定。影子判定目前支持两种类型算法，用户可根据实际业务需求选择一种或者组合使用。</p>
+<h3 id="dml-语句">DML 语句</h3>
+<p>支持两种算法。影子判定会首先判断执行 SQL 关联的表是否和影子表有交集。如果有交集，对交集部分影子表关联的影子算法依次判定。如果影子表关联影子算法有任何一个判定成功。SQL 语句路由到影子库。
+没有交集或者影子算法判定不成功，SQL 语句路由到生产库。</p>
+<p>举例说明，一个电商网站要对下单业务进行压测，对订单表 <code>t_order</code> 进行压测。生产数据执行到生产库，即：ds。测试数据执行到影子库，即：ds-shadow。</p>
+<ol>
+<li>使用列影子算法</li>
+</ol>
+<p>假设 <code>t_order</code> 表中包含字段下单用户ID的 <code>user_id</code>。 如果实现的效果，当用户ID为 <code>0</code> 的用户创建订单产生的数据，即：<code>INSERT INTO t_order (order_id, user_id, ...) VALUES (xxx..., 0, ...)</code> 会执行到影子库，其他数据执行到生产库。</p>
+<p>建议配置如下（YAML 格式展示）：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">enable</span>: <span style="color:#66d9ef">true</span>
+  <span style="color:#66d9ef">data-sources</span>:
+    <span style="color:#66d9ef">shadow-data-source</span>:
+      <span style="color:#66d9ef">source-data-source-name</span>: ds
+      <span style="color:#66d9ef">shadow-data-source-name</span>: ds-shadow
+<span style="color:#66d9ef">tables</span>:
+  <span style="color:#66d9ef">t_order</span>:
+    <span style="color:#66d9ef">data-source-names</span>: shadow-data-source
+    <span style="color:#66d9ef">shadow-algorithm-names</span>:
+      - user-id-match-algorithm
+<span style="color:#66d9ef">shadow-algorithms</span>:
+  <span style="color:#66d9ef">user-id-match-algorithm</span>:
+    <span style="color:#66d9ef">type</span>: COLUMN_REGEX_MATCH
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">operation</span>: insert
+      <span style="color:#66d9ef">column</span>: user_id
+      <span style="color:#66d9ef">regex</span>: <span style="color:#e6db74">&#34;[0]&#34;</span>
+</code></pre></div><p>无需修改任何 SQL 或者代码，只需要对压力测试的数据进行控制就可以实现在线的压力测试。</p>
+<ol start="2">
+<li>使用注解影子算法</li>
+</ol>
+<p>假设 <code>t_order</code> 表中没有存储可以对值进行控制的列。或者控制的值不包含在执行 SQL 的中。可以添加一条注解到执行的 SQL 中，即：<code>SELECT * FROM t_order WHERE order_id = xxx /*shadow:true,foo:bar,...*/</code>  会执行到影子库。</p>
+<p>建议配置如下（YAML 格式展示）：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">enable</span>: <span style="color:#66d9ef">true</span>
+  <span style="color:#66d9ef">data-sources</span>:
+    <span style="color:#66d9ef">shadow-data-source</span>:
+      <span style="color:#66d9ef">source-data-source-name</span>: ds
+      <span style="color:#66d9ef">shadow-data-source-name</span>: ds-shadow
+<span style="color:#66d9ef">tables</span>:
+  <span style="color:#66d9ef">t_order</span>:
+    <span style="color:#66d9ef">data-source-names</span>: shadow-data-source
+    <span style="color:#66d9ef">shadow-algorithm-names</span>:
+      - simple-note-algorithm
+<span style="color:#66d9ef">shadow-algorithms</span>:
+  <span style="color:#66d9ef">simple-note-algorithm</span>:
+    <span style="color:#66d9ef">type</span>: SIMPLE_NOTE
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">shadow</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">foo</span>: bar
+      
+<span style="color:#66d9ef">props</span>:
+  <span style="color:#66d9ef">sql-comment-parse-enabled</span>: <span style="color:#66d9ef">true</span>
+</code></pre></div><p>注意：使用注解影子算法，需配合开起 SQL 注解解析。</p>
+<h3 id="3-混用模式">3. 混用模式</h3>
+<p>假设对 <code>t_order</code> 表压测以上两种场景都需要覆盖。即，<code>INSERT INTO t_order (order_id, user_id, ...) VALUES (xxx..., 0, ...)</code> 和 <code>SELECT * FROM t_order WHERE order_id = xxx /*shadow:true,foo:bar,...*/</code> 都执行到影子库。</p>
+<p>建议配置如下（YAML 格式展示）：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">enable</span>: <span style="color:#66d9ef">true</span>
+  <span style="color:#66d9ef">data-sources</span>:
+    <span style="color:#66d9ef">shadow-data-source</span>:
+      <span style="color:#66d9ef">source-data-source-name</span>: ds
+      <span style="color:#66d9ef">shadow-data-source-name</span>: ds-shadow
+<span style="color:#66d9ef">tables</span>:
+  <span style="color:#66d9ef">t_order</span>:
+    <span style="color:#66d9ef">data-source-names</span>: shadow-data-source
+    <span style="color:#66d9ef">shadow-algorithm-names</span>:
+      - user-id-match-algorithm
+      - simple-note-algorithm
+<span style="color:#66d9ef">shadow-algorithms</span>:
+  <span style="color:#66d9ef">user-id-match-algorithm</span>:
+    <span style="color:#66d9ef">type</span>: COLUMN_REGEX_MATCH
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">operation</span>: insert
+      <span style="color:#66d9ef">column</span>: user_id
+      <span style="color:#66d9ef">regex</span>: <span style="color:#e6db74">&#34;[0]&#34;</span>
+  <span style="color:#66d9ef">simple-note-algorithm</span>:
+    <span style="color:#66d9ef">type</span>: SIMPLE_NOTE
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">shadow</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">foo</span>: bar
+      
+<span style="color:#66d9ef">props</span>:
+  <span style="color:#66d9ef">sql-comment-parse-enabled</span>: <span style="color:#66d9ef">true</span>
+</code></pre></div><p>对复杂场景压力测试支持度高。</p>
+<h3 id="ddl-语句">DDL 语句</h3>
+<p>仅支持影子算法。一般不会对 DDL 语句的压力测试。主要为影子库环境的初始化或者影子表调整时执行。</p>
+<p>影子判定会首先判断执行 SQL 是否包含注解，如果包含注解对影子规则中的注解影子算法依次判定。如果注解影子算法有任何一个判定成功。SQL 语句路由到影子库。
+没有 SQL 不包含注解或者注解影子算法判定不成功，路由到生产库。</p>
+<p>假设需要在影子库创建 <code>t_order</code> 表。即：<code>CREATE TABLE t_order (order_id INT(11) primary key, user_id int(11) not null, ...) /*shadow:true,foo:bar,...*/</code> 执行到影子库。</p>
+<p>影子规则配置只需包含（YAML 格式展示）：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">shadow-algorithms</span>:
+  <span style="color:#66d9ef">simple-note-algorithm</span>:
+    <span style="color:#66d9ef">type</span>: SIMPLE_NOTE
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">shadow</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">foo</span>: bar
+      
+<span style="color:#66d9ef">props</span>:
+  <span style="color:#66d9ef">sql-comment-parse-enabled</span>: <span style="color:#66d9ef">true</span>
+</code></pre></div>
 
 <footer class=" footline" >
 	
@@ -8685,17 +8783,17 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1633875794"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1633962215"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1633875794"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1633875794"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1633962215"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1633962215"></script>
 
     
 

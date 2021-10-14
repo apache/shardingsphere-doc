@@ -593,13 +593,19 @@ SELECT * FROM t_order WHERE id &amp;gt; 100000 LIMIT 10 分页子查询 Oracle�
       <guid>https://shardingsphere.apache.org/document/current/cn/features/shadow/principle/</guid>
       <description>整体架构 Apache ShardingSphere 通过解析 SQL，对传入的 SQL 进行影子判定，根据配置文件中用户设置的影子规则，路由到生产库或者影子库。
 影子规则 影子规则包含影子数据源映射关系，影子表以及影子算法。
+影子库开关：影子库功能开关，默认值 false。可选值 true/false
+影子库映射：生产数据源名称和影子数据源名称映射关系。
+影子表：压测相关的表，影子库中必须包含影子表。影子表需要指定对应的影子库映射和影子算法。
+影子算法：SQL 路由影子算法。
 路由过程 以 INSERT 语句为例，在写入数据时，Apache ShardingSphere 会对 SQL 进行解析，再根据配置文件中的规则，构造一条路由链。在当前版本的功能中， 影子功能处于路由链中的最后一个执行单元，即，如果有其他需要路由的规则存在，如分片，Apache ShardingSphere 会首先根据分片规则，路由到某一个数据库，再 执行影子路由判定流程，判定执行SQL满足影子规则的配置，数据路由到与之对应的影子库，生产数据则维持不变。
 影子判定流程 影子库开关开启时，会对执行的 SQL 语句进行影子判定。影子判定目前支持两种类型算法，用户可根据实际业务需求选择一种或者组合使用。
 DML 语句 支持两种算法。影子判定会首先判断执行 SQL 关联的表是否和影子表有交集。如果有交集，对交集部分影子表关联的影子算法依次判定。如果影子表关联影子算法有任何一个判定成功。SQL 语句路由到影子库。 没有交集或者影子算法判定不成功，SQL 语句路由到生产库。
-举例说明，一个电商网站要对下单业务进行压测，对订单表 t_order 进行压测。生产数据执行到生产库，即：ds。测试数据执行到影子库，即：ds-shadow。
- 使用列影子算法  假设 t_order 表中包含字段下单用户ID的 user_id。 如果实现的效果，当用户ID为 0 的用户创建订单产生的数据，即：INSERT INTO t_order (order_id, user_id, ...) VALUES (xxx..., 0, ...) 会执行到影子库，其他数据执行到生产库。
-建议配置如下（YAML 格式展示）：
-enable: true data-sources: shadow-data-source: source-data-source-name: ds shadow-data-source-name: ds-shadow tables: t_order: data-source-names: shadow-data-source shadow-algorithm-names: - user-id-match-algorithm shadow-algorithms: user-id-match-algorithm: type: COLUMN_REGEX_MATCH props: operation: insert column: user_id regex: &amp;#34;[0]&amp;#34; 无需修改任何 SQL 或者代码，只需要对压力测试的数据进行控制就可以实现在线的压力测试。</description>
+DDL 语句 仅支持影子算法。一般不会对 DDL 语句的压力测试。主要做为影子库环境的初始化或者影子表调整时执行。
+影子判定会首先判断执行 SQL 是否包含注解，如果包含注解对影子规则中的注解影子算法依次判定。如果注解影子算法有任何一个判定成功。SQL 语句路由到影子库。 没有 SQL 不包含注解或者注解影子算法判定不成功，路由到生产库。
+影子算法 影子算法详情，请参见内置影子算法列表。
+使用案例 场景需求 假设一个电商网站要对下单业务进行压测，对订单表 t_order 进行压测。生产数据执行到生产库，即：ds。测试数据执行到影子库，即：ds-shadow。
+影子库配置 建议配置如下（YAML 格式展示）：
+enable: true data-sources: shadow-data-source: source-data-source-name: ds shadow-data-source-name: ds-shadow tables: t_order: data-source-names: shadow-data-source shadow-algorithm-names: - simple-note-algorithm - user-id-match-algorithm shadow-algorithms: simple-note-algorithm: type: SIMPLE_NOTE props: shadow: true foo: bar user-id-match-algorithm: type: COLUMN_REGEX_MATCH props: operation: insert column: user_id regex: &amp;#34;[0]&amp;#34; props: sql-comment-parse-enabled: true 注意：</description>
     </item>
     
     <item>
@@ -876,7 +882,8 @@ dataSources: db: !!com.zaxxer.hikari.HikariDataSource driverClassName: org.h2.Dr
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/document/current/cn/features/shadow/use-norms/</guid>
-      <description>支持项  后端数据库为 MySQL、Oracle、PostgreSQL、SQLServer； 支持MDL，DDL语句； 兼容所有常用SQL；  不支持项  影子字段无法支持范围值匹配操作，如：BETWEEN、HAVING、subQuery等； 使用影子库功能+分库分表功能，部分特殊SQL不支持，请参考SQL使用规范； DDL语句不支持列影子算法；  </description>
+      <description>影子数据库 支持项  后端数据库为 MySQL、Oracle、PostgreSQL、SQLServer；  不支持项  NoSQL 数据库；  影子算法 支持项  注解影子算法支持 MDL，DDL 语句； 列影子算法基本支持常用的 MDL 语句；  不支持项  列影子算法不支持 DDL 语句。 列影子算法不支持范围值匹配操作，比如：子查询、BETWEEN、GROUP BY &amp;hellip; HAVING等； 使用影子库功能+分库分表功能，部分特殊SQL不支持，请参考SQL使用规范；  列影子算法 DML 语句支持度列表  INSERT 语句  对 INSERT 插入的字段和插入的值判定
+   操作类型 SQL语句 是否支持     INSERT INSERT INTO table (column,&amp;hellip;) VALUES (value,&amp;hellip;) 支持   INSERT INSERT INTO table (column,&amp;hellip;) VALUES (value,&amp;hellip;),(value,&amp;hellip;),&amp;hellip; 支持   INSERT INSERT INTO table (column,&amp;hellip;) SELECT column1 from table1 where column1 = value1 不支持     SELECT，UPDATE，DELETE语句  对 WHERE 条件中包含的字段和值进行判定</description>
     </item>
     
     <item>
@@ -1386,7 +1393,7 @@ ShardingSphere 在对排序的查询进行归并时，将每个结果集的当�
       <guid>https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow/</guid>
       <description>列影子算法 列正则表达式匹配影子算法 类型：COLUMN_REGEX_MATCH
 可配置属性：
-   属性名称 数据类型 说明     column String 匹配列   operation String SQL操作类型（insert, update, delete, select）   regex String 匹配正则表达式    注解影子算法 简单SQL注解匹配影子算法 类型：SIMPLE_NOTE
+   属性名称 数据类型 说明     column String 匹配列   operation String SQL操作类型（INSERT, UPDATE, DELETE, SELECT）   regex String 匹配正则表达式    注解影子算法 简单SQL注解匹配影子算法 类型：SIMPLE_NOTE
 可配置属性：
  至少配置一组任意的键值对。比如：foo:bar
     属性名称 数据类型 说明     foo String bar    </description>

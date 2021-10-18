@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2021-10-18 16:16:14">
+    <meta name="buildDate" content="2021-10-18 17:29:56">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>Principle :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1634544974" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1634544974" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1634544974" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1634544974" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1634544974" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1634544974" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1634544974" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1634544974" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1634549396" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1634549396" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1634549396" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1634549396" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1634549396" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1634549396" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1634549396" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1634549396" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1634544974" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1634549396" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1634544974"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1634549396"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -5523,18 +5523,39 @@
 </nav>
 
 <h2 id="overall-architecture">Overall Architecture</h2>
-<p>TODO</p>
+<p>Apache ShardingSphere makes shadow judgments on incoming SQL by parsing SQL, according to the shadow rules set by the user in the configuration file,
+route to production DB or shadow DB.</p>
+<p><img src="https://shardingsphere.apache.org/document/current/img/shadow/execute.png" alt="Execute Process"></p>
 <h2 id="shadow-rule">Shadow Rule</h2>
-<p>TODO</p>
+<p>Shadow rules include shadow data source mapping, shadow tables, and shadow algorithms.</p>
+<p><img src="https://shardingsphere.apache.org/document/current/img/shadow/rule_en.png" alt="Shadow Rule"></p>
+<p><strong>enable</strong>：Shadow DB switch, The default value is <code>false</code>. Optional value <code>true</code>/<code>false</code>.</p>
+<p><strong>data-sources</strong>：Production data source name and shadow data source name mappings.</p>
+<p><strong>tables</strong>：For tables related to stress testing, shadow tables must be included in the shadow library.
+The shadow table needs to specify the corresponding shadow library mapping and shadow algorithm.</p>
+<p><strong>shadow-algorithms</strong>：SQL routing shadow algorithm.</p>
 <h2 id="routing-process">Routing Process</h2>
-<p>TODO</p>
+<p>Take the INSERT statement as an example, When writing data, Apache ShardingSphere will parse the SQL, and then construct a routing chain according to the rules in the configuration file.</p>
+<p>In the current version of the function, the shadow function is the last execution unit in the routing chain, that is, if there are other rules that require routing, such as sharding, Apache ShardingSphere will first route to a certain database according to the sharding rules, and then
+perform the shadow routing decision process.</p>
+<p>It is determined that the execution of SQL satisfies the configuration of the shadow rule, the data is routed to the corresponding shadow database, and the production data remains unchanged.</p>
 <h2 id="shadow-judgment-process">Shadow Judgment Process</h2>
+<p>When the shadow library switch is turned on, a shadow judgment will be made on the executed SQL statement.</p>
+<p>Shadow judgment currently supports two types of algorithms, and users can choose one or combine them according to actual business needs.</p>
 <h3 id="dml-statement">DML Statement</h3>
-<p>TODO</p>
+<p>Support two shadow algorithms.</p>
+<p>The shadow judgment first judges whether the table associated with the SQL execution has an intersection with the shadow table.</p>
+<p>If there is an intersection, the shadow algorithm associated with the shadow table of the intersection is determined in turn.</p>
+<p>If any of the shadow algorithms associated with the shadow table succeeds, the SQL statement is routed to the shadow database.</p>
+<p>If there is no intersection or the shadow algorithm is unsuccessful, the SQL statement is routed to the production database.</p>
 <h3 id="ddl-statement">DDL Statement</h3>
-<p>TODO</p>
+<p>Only support note shadow algorithm.</p>
+<p>Generally, there is no stress test on DDL statements. It is mainly used for the initialization of the shadow library environment or the adjustment of the shadow table.</p>
+<p>The shadow determination will first determine whether the executed SQL contains annotations, and if it contains annotations, the shadow algorithm of the annotations in the shadow rule will be determined in turn.</p>
+<p>If any one of the annotation shadow algorithms succeeds, the SQL statement is routed to the shadow library.</p>
+<p>No SQL does not contain annotations or the annotation shadow algorithm is unsuccessful and is routed to the production database.</p>
 <h2 id="shadow-algorithm">Shadow Algorithm</h2>
-<p>TODO</p>
+<p>Shadow algorithm details, See the <a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow">List of built-in shadow algorithms</a></p>
 <h2 id="use-example">Use Example</h2>
 <p>TODO</p>
 
@@ -8736,17 +8757,17 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1634544974"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1634549396"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1634544974"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1634544974"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1634549396"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1634549396"></script>
 
     
 

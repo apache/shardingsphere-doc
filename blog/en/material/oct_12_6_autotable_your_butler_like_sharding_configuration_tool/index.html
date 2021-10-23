@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>AutoTable: Your Butler-Like Sharding Configuration Tool &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">AutoTable: Your Butler-Like Sharding Configuration Tool</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h1 id="autotable-your-butler-like-sharding-configuration-tool">AutoTable: Your Butler-Like Sharding Configuration Tool</h1>
+<h2 id="summary">Summary</h2>
+<p>In the previous article <em>“An Introduction to DistSQL”</em> written by Haoran Meng, the Apache ShardingSphere Committer shared the motivating reasons behind the design of DistSQL, explained its syntax system, and impressively showcased how you can use one SQL to create a sharding table.</p>
+<p>We believe that you should be now more familair with the new capabilities Apache ShardingSphere can bring you.</p>
+<p>Following the article’s publication, we received many messages from our readers and users. They wanted to know the details of using DistSQL to configure sharding rules, and whether they can still use DistSQL to quickly create and configure a sharding table with configs like YAML or Namespace. Today, we’d like to introduce your new sharding configuration butler AutoTable to you.</p>
+<h2 id="background">Background</h2>
+<p><code>Sharding</code> is the core feature of Apache ShardingSphere. We guess, your old sharding workflow (without data migration) probably looks like the one below:</p>
+<p><strong>Figure 1:</strong> Sharding Workflow</p>
+<p><img src="../../static/img/Blog_22_img_1_sharding_workflow_en.png" alt=""></p>
+<p>In such workflow, you have to clearly know your sharding strategies, and the actual table names and their datasources. Then, you base your sharding rules on such information.</p>
+<p>One of the table distribution results may be 8 sharding databases each containing 4 tables.</p>
+<p><strong>Figure 2:</strong> 8 Databases * 4 Tables Distribution</p>
+<p><img src="../../static/img/Blog_22_img_2_8_Databases_4_Tables_Distribution.png" alt=""></p>
+<h2 id="problem">Problem</h2>
+<p>Only when you are 100% sure about the table distribution you can code the correct actualDataNodes rules. Otherwise, you may write the wrong one. The correct sharding rule in this case looks like this:</p>
+<pre><code>tables:
+t_order:
+actualDataNodes: ds_${0..7}.t_order_${0..3}
+databaseStrategy:
+standard:
+shardingColumn: order_id
+shardingAlgorithmName: database_inline
+tableStrategy:
+standard:
+shardingColumn: order_id
+shardingAlgorithmName: table_inline
+shardingAlgorithms:
+database_inline:
+type: INLINE
+props:
+algorithm-expression: ds_${order_id % 8}
+table_inline:
+type: INLINE
+props:
+algorithm-expression: t_order_${order_id % 4}
+</code></pre><p>ShardingSphere actually has very user-friendly configuration rules. However, users may still have difficulties, such as:</p>
+<ul>
+<li>
+<p>Failure to understand sharding strategies or rules;</p>
+</li>
+<li>
+<p>Inconsistency between sharding rules and actual table distribution;</p>
+</li>
+<li>
+<p>Wrong configuration expressions.</p>
+</li>
+</ul>
+<p><em>We always pay attention to user issues. For example, we have noticed one of our users found the following issue:</em></p>
+<p><img src="../../static/img/Blog_22_img_3_Question_Comment.png" alt=""></p>
+<h2 id="why-you-need-autotable">Why You Need AutoTable？</h2>
+<p>Apache ShardingSphere Version 5.0.0 launched <code>AutoTable</code>, a new method that makes sharding configuration easier for you.</p>
+<p>Literally, <code>AutoTable</code> means automated table sharding. When you use <code>AutoTable</code>, you only need to specify the sharding count and the datasource. Thanks to AutoTable, you no longer need to worry about actual table distribution.The correct configuration format is shown as follows:</p>
+<pre><code>autoTables:
+t_order:
+# Specify your datasources
+actualDataSources: ds_${0..7}
+shardingStrategy:
+standard:
+shardingColumn: order_id
+shardingAlgorithmName: mod
+shardingAlgorithms:
+mod:
+type: MOD
+props:
+# Specify your sharding-count
+sharding-count: 32
+</code></pre><p>Due to AutoTable configuration, ShardingSphere is able to recognize that the logic table <code>t_order</code> has 8 datasources and needs 32 sharding tables, and then it automatically calculates the distribution result: 8 sharding databases* 4 sharding tables. The result is exactly the same.</p>
+<h2 id="autotable--distsql">AutoTable &amp; DistSQL</h2>
+<p>Now, you know more about <code>AutoTable</code>. However, when you combine AutoTable with DistSQL, the results are even more impressive as it can greatly simplify sharding configuration for you. Unlike the old method, the DistSQL configuration rule works immediately so you no longer need to restart it anymore. Besides, one rule change will never have impact on others.</p>
+<p>DistSQL supports three expressions used to manage sharding table rules: create, alter and drop.</p>
+<pre><code># Create a sharding table rule
+CREATE SHARDING TABLE RULE t_order (
+RESOURCES(resource_0,resource_1),
+SHARDING_COLUMN=order_id,TYPE(NAME=hash_mod,PROPERTIES(&quot;sharding-count&quot;=4))
+);
+# Ater a sharding table rule
+ALTER SHARDING TABLE RULE t_order (
+RESOURCES(resource_0,resource_1),
+SHARDING_COLUMN=order_id,TYPE(NAME=hash_mod,PROPERTIES(&quot;sharding-count&quot;=10))
+);
+# Drop a sharding table rule
+DROP SHARDING TABLE RULE t_order;
+</code></pre><p><em>&gt; Note: Rule alteration may have impact on old data. In order to fix the problem, we provide ShardingSphere Scaling that allows you to migrate data and makes it more convenient for you to manage distributed data. We are happy to share more about ShardingSphere Scaling in the near future.</em></p>
+<h2 id="faq">FAQ</h2>
+<p><strong>Can I use AutoTable in ShardingSphere-JDBC?</strong></p>
+<p>Yes, you can.</p>
+<p>Both ShardingSphere-JDBC and ShardingSphere-Proxy support AutoTable. What’s more, you can also use DistSQL in Proxy for dynamic configuration in order to meet your various access demands.</p>
+<p><strong>Which Sharding Algorithms Does AutoTable Support?</strong></p>
+<p>AutoTable supports all automatic sharding algorithms:</p>
+<ul>
+<li>
+<p>MOD：Modulo Sharding Algorithm</p>
+</li>
+<li>
+<p>HASH_MOD ：Hash Modulo Sharding Algorithm</p>
+</li>
+<li>
+<p>VOLUME_RANGE：Volume Based Range Sharding Algorithm</p>
+</li>
+<li>
+<p>BOUNDARY_RANGE：Boundary Based Range Sharding Algorithm</p>
+</li>
+<li>
+<p>AUTO_INTERVAL : Auto Interval Sharding Algorithm</p>
+</li>
+</ul>
+<p>For more information, please read the Apache ShardingSphere document <em>“Automatic Sharding Algorithm”.</em></p>
+<p>In addition to using build-in algorithms, you can also develop SPI extension to customize your own sharding algorithm when necessary.</p>
+<p><strong>I Have Already Used YAML. Can I Use AutoTable Now?</strong></p>
+<p>We don’t recommend you to do that.</p>
+<p>If you’re sure that such switch can make the table distribution result conform to your expectation, you may have a try. Otherwise, please don’t do that.</p>
+<p>However, if you want to create a new table, you are welcome to use AutoTable.</p>
+<p><strong>What‘s the Best Scenario for AutoTable?</strong></p>
+<p>AutoTable aims to be your butler for sharding configuration. All you need to do is to tell it how many shards you need, and then it saves you the trouble of remembering the actual table location and table count.</p>
+<p>To use AutoTable, you better configure rules first and then use <code>CREATE TABLE</code> to create tables. Old habits die hard but please change your old habit: create tables first and then configure rules. Now ShardingSphere is more like an access point of your distributed database, instead of middleware.</p>
+<p><strong>My Datasource Names Are Non-Contiguous or I Have Too Many Datasource Names. Can I Use AutoTable?</strong></p>
+<p>Yes, you can. When you specify your datasources, their names are not required to be continuous. To solve the problem, you can use enumeration-expression and inline-expression at the same time:</p>
+<pre><code>CREATE SHARDING TABLE RULE t_order (
+RESOURCES('resource_${0..9}',resource_12,resource_15,&quot;resource_$-&gt;{17..19}&quot;),
+...
+);
+</code></pre><p><strong>Can I use AutoTable and the Old Method Together?</strong></p>
+<p>Yes, you can.</p>
+<p>For more information, please read: [https://github.com/apache/shardingsphere/blob/master/shardingsphere-jdbc/shardingsphere-jdbc-core/src/test/resources/config/config-sharding.yaml] ()</p>
+<h2 id="reward">Reward:</h2>
+<p>@CatYangWei was the first GitHub user to ask about <code>AutoTable</code>.</p>
+<p><img src="../../static/img/Blog_22_img_4_Rewarded_User_Issue_Snapshot.png" alt=""></p>
+<p>We’d like to thank him for helping us find the problem. We do appreciate that. In order to express our gratitude, we will contact you later and send you a gift. as a token of appreciation from the community👏👏👏</p>
+<p>We also welcome other community members to help us find more issues, to improve the community.</p>
+<h2 id="shardingsphere-community">ShardingSphere Community:</h2>
+<p>ShardingSphere Github: <a href="">https://github.com/apache/shardingsphere</a></p>
+<p>ShardingSphere Twitter: <a href="">https://twitter.com/ShardingSphere</a></p>
+<p>ShardingSphere Slack Channel: <a href="">apacheshardingsphere.slack.com</a></p>
+<p>Contributor Guide：<a href="">https://shardingsphere.apache.org/community/en/contribute/</a></p>
+<h2 id="author">Author</h2>
+<p>Longtao Jiang</p>
+<p><img src="../../static/img/Blog_22_img_5_Liang_Longtao_Photo.png" alt=""></p>
+<blockquote>
+<p>SphereEx Middleware Development Engineer &amp; Apache ShardingSphere Contributor.</p>
+</blockquote>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/oct_12_7_opengauss_shardingsphere_one_of_the_top_distribution_solutions/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/oct_12_5_e_hualu_shardingsphere_hulu_story_data_processing_shortcut/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

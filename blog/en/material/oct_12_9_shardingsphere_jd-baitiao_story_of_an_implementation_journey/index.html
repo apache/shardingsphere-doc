@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>ShardingSphere x JD Baitiao: Story of an Implementation Journey &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+					
+					<a style="color: white;" href="https://shardingsphere.apache.org/blog/cn/material/oct_12_9_shardingsphere_jd-baitiao_story_of_an_implementation_journey/">中文</a>
+					
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">ShardingSphere x JD Baitiao: Story of an Implementation Journey</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h1 id="apache-shardingsphere-x-jd-baitiao-story-of-an-implementation-journey">Apache ShardingSphere x JD Baitiao: Story of an Implementation Journey</h1>
+<blockquote>
+<p>Apache ShardingSphere has become the best solution for JD Baitiao&rsquo;s very large storage scenarios and scale-up. JD&rsquo;s shopping festival weighed very much on our big data storage. I mean, like hundreds of millions of data sets.</p>
+</blockquote>
+<blockquote>
+<p>JD Baitiao, an internet credit products provider launched in 2014, has always been challenged by data explosion. Every shopping festival is like a technical test for us, but every time the technical staff professionals take proactive strategic initiatives in data architecture development to ensure everything goes smoothly.</p>
+</blockquote>
+<blockquote>
+<p>&ndash;Dongfang Zhang，JD Batiao R&amp;D Director</p>
+</blockquote>
+<h2 id="the-baitiao-data-architecture-evolution">The Baitiao Data Architecture Evolution</h2>
+<p>Launched in Feb. 2014, JD Baitiao&rsquo;s data architecture has already evolved for several times because of rapid increase in data volume and rapid business growth.</p>
+<p><strong>From 2014 to 2015</strong></p>
+<p>Baitiao first adopted the Solr + HBase solution to connect core business systems and other systems with key databases. Solr indexing is able to achieve fast search responses and HBase is used to store a massive amount of data.</p>
+<ul>
+<li>
+<p>A Solr cluster can help the core database reduce reads and writes stress.</p>
+</li>
+<li>
+<p>However, Solr is not perfect: it has unsatisfying extensibility and intrusions.</p>
+</li>
+</ul>
+<p><strong>From 2015 to 2016</strong></p>
+<p>The company chose NoSQL to store monthly data tables in Mongo DB clusters, temporarily meeting the demand for importing/exporting massive data in payment settlement scenarios.</p>
+<ul>
+<li>
+<p>The change made it quite efficient to query hot data. In addition, thanks to such unstructured data storage, staff can easily modify table structures.</p>
+</li>
+<li>
+<p>Nevertheless, the plan was still problematic: bad extensibility, intrusions, and memory hog.</p>
+</li>
+</ul>
+<p><strong>From 2016 to 2017</strong></p>
+<p>Growing business and growing data. Tens of billions of data volume imposed more performance and volume pressure on MongoDB. JD Baitiao&rsquo;s Big Data Platform used DBRep and MySQL Slave to capture data changes and store the information data in its message center, to later be written to ES and HBase.</p>
+<ul>
+<li>
+<p>This plan was actually much better. It focused on real-time data and improved extensibility.</p>
+</li>
+<li>
+<p>However, Baitiao faced high costs to maintain its code because of the data sharding problem in its architecture.</p>
+</li>
+</ul>
+<p>The architecture evolution of JD Baitiao is just an illustration of rapidly growing Internet consumer finance. All the methods Baitiao adopted in the past were not comprehensive, indicating that every solution would be outdated soon.</p>
+<h2 id="time-to-adopt-a-decoupled-architecture">Time to Adopt a Decoupled Architecture</h2>
+<p>To ensure good system performance even with rapidly increasing data volumes, the technical team first chose the sharding architecture pattern that not only guaranteed excellent performance, but also kept code under control.</p>
+<p><strong>The data striping plan was actually based on application architecture:</strong></p>
+<p>The product continuously developed but the early solution had now become one of the biggest problems. The old data sharding plan makes code even more complex and increases maintenance expenditure. Developers have to spend much time adjusting sharding every time when the application upgrades, so they cannot concentrate on their own developments. In fact, tight coupling is to blame for the problem.</p>
+<p>Therefore, the team decided to use a mature sharding component that simplifies system upgrades and architecture changes. To compare Baitiao&rsquo;s shard and ShardingSphere shard, their differences are shown in the following table.</p>
+<p><img src="../../static/img/Blog_25_img_1_JD_VS_ShardingSphere_Table.en.png" alt=""></p>
+<p>For Baitiao, decoupling was the next task.</p>
+<p>Apparently, JD Baitiao‘s data architecture will experience a brand-new journey to decoupling. The following three directions definitely fueled its transformation:</p>
+<p><strong>Concentration:</strong> instead of database sharding built in its architecture, it applied a sharding component to place more energy on it own product development.</p>
+<p><strong>Easier Upgrade:</strong> it used a decoupled architecture to simplify the R&amp;D process of system upgrades.</p>
+<p><strong>Future-Oriented Plan:</strong> it aims to improve system extensibility so that Baitiao will be more capable of confidently holding large online shopping festivals like the 618 Shopping Festival and Double 11 Shopping Festival (also known as Singles Day on November 11th).</p>
+<p>JD Baitiao is a huge business, so its business scenario is truly related to finance, high concurrency, and massive data volumes. Baitiao&rsquo;s sharding component must have the following features:</p>
+<ol>
+<li>
+<p>Be a mature product</p>
+</li>
+<li>
+<p>Have excellent performance</p>
+</li>
+<li>
+<p>Be able to handle big data</p>
+</li>
+<li>
+<p>Have an extensible architecture</p>
+</li>
+</ol>
+<p>##The Apache ShardingSphere Solution</p>
+<p>The lightweight Java framework ShardingSphere-JDBC is Apache ShardingSpheres&rsquo;s first product providing services such as a Java Database Connectivity (JDBC) API. ShardingSphere JDBC uses jar archive file installation package and allows the client-side to directly connect to databases. So, it requires no extra deployment dependencies. It is like an enhanced JDBC driver fully compatible with JDBC and ORM frameworks.</p>
+<p>ShardingSphere - JDBC provides the following features, making it the best solution in the Baitiao scenario.</p>
+<p><strong>Mature Product:</strong> ShardingSphere - JDBC is a mature product developed for years, and its open source community is very active.</p>
+<p><strong>Excellent Performance:</strong> its micro-kernel and lightweight design hardly hinder performance.</p>
+<p><strong>Minimum Changes:</strong> it supports native MySQL protocol and minimizes R&amp;D workload.</p>
+<p><strong>Extensibility:</strong> users can combine with the migration sync component to easily extend data.</p>
+<p><img src="../../static/img/Blog_25_img_2_JD_ShardingSphere_JDBC_en.png" alt=""></p>
+<p>After being systematically tested for several times, Apache ShardingSphere became JD Baitiao&rsquo;s first choice of data sharding middleware. The cooperation started at the end of 2018.</p>
+<p>##Product Adaptation</p>
+<p>To provide Baitiao with better services and support the business, Apache ShardingSphere has made many improvements to its product features and performance during the implementation process. At the same time, the user case helps optimize the product in return.</p>
+<p><strong>Upgrade the SQL Engine</strong></p>
+<p>Baitiao&rsquo;s business logic is extremely complicated; its diversified scenario demands require the best SQL compatibility levels. Thus, Apache ShardingSphere restructures the SQL parser module to support more SQLs.</p>
+<ul>
+<li>
+<p>Single data node routing：100% SQL compatibility</p>
+</li>
+<li>
+<p>Multi data node routing：comprehensively support DML, DDL, DCL, TCL and partly DAL. Support features such as pagination, deduplication, ranking, grouping, aggregation and correlated query.</p>
+</li>
+</ul>
+<p><strong>Distributed Key</strong></p>
+<p>Apache ShardingSphere provides built-in distributed key generators, such as UUID, and SNOWFLAKE. It also provides its distributed key generation API so that users can develop custom key generation algorithms to meet their special needs.</p>
+<p><strong>Shard Key Value Injection</strong></p>
+<p>If a SQL has no shard condition, Apache ShardingSphere uses ThreadLoad to manage shard key value, and users can program and add a shard condition to HintManager, making the condition only effective in the current thread. That&rsquo;s so-called SQL zero intrusion.</p>
+<p>Additionally, Apache ShardingSphere continues to optimize its other features in order to meet Baitiao&rsquo;s need for high performance such as：</p>
+<ul>
+<li>
+<p>SQL parsing result cache</p>
+</li>
+<li>
+<p>JDBC metadata cache</p>
+</li>
+<li>
+<p>Bind table &amp; Broadcast table</p>
+</li>
+<li>
+<p>Automated execution engine &amp; Stream merge</p>
+</li>
+</ul>
+<p>JD Baitiao &amp; ShardingSphere teams joint efforts amde all indicators of the product live up to their expectation. The resulting final performance is almost the same as that of a native JDBC.</p>
+<p><img src="../../static/img/Blog_25_img_JD_System_en.png" alt=""></p>
+<p>##Cutover</p>
+<p>Apache ShardingSphere uses its custom HASH strategy to shard data, effectively avoiding the hot data problem. The total of data nodes almost reaches ten thousand. The cutover process lasts for about 4 weeks.</p>
+<ol>
+<li>
+<p>After DBRep reads data, Apache ShardingSphere synchronizes the data to the target database cluster.</p>
+</li>
+<li>
+<p>Two clusters run together. After a data migration, Baitiao uses its own tool to verify business and data.</p>
+</li>
+</ol>
+<p>DBRep is fundamental to the product design of ShardingSphere-Scaling. The automation feature of Scaling definitely facilitates migration and scale-up.</p>
+<p>##Apache ShardingSphere Brings Many Benefits</p>
+<p><strong>Simplified Upgrade Path</strong></p>
+<p>The decoupled architecture effectively simplifies a technology stack required in a system upgrade, so the developer team no longer need to worry about table sharding. Instead, they can focus on the business itself. In brief, ShardingSphere greatly helps Baitiao optimize the upgrade path.</p>
+<p><strong>Save R&amp;D Cost</strong></p>
+<p>Baitiao directly uses the mature product Apache ShardingSphere, so they do not need to reinvent the wheel and save a lot of time and energy.</p>
+<p><strong>Improve Architecture Extensibility</strong></p>
+<p>Baitiao also uses the sync migration component Scaling that makes system scale-up even more flexible. It&rsquo;s the company&rsquo;s secret for online shopping festival successes.</p>
+<p>##Summary</p>
+<p>The growth of JD Baitiao&rsquo;s business greatly stimulates its data architecture upgrades. This time, it chose Apache ShardingSphere to decouple its architecture and make future upgrades less complicated. Thank to this from now on, developers only have to concentrate on their own product optimization because its data architecture is extensible enough. The case is really a good example of ShardingSphere application in the consumer finance scenario.</p>
+<p>Now, there are more and more internet credit payment models. In the future, Apache ShardingSphere in collaboration with JD Technology will explore more business scenarios, and contribute finance-related technological innovations, further improving Internet finance.</p>
+<p>###About Apache ShardingSphere</p>
+<p>ShardingSphere is one of the Apache Software Foundation Top-Level Open Source projects, used by over 170 enterprises worldwide, across various verticals such as finance, e-commerce, cloud services, tourism, logistics, education, and entertainment. Its GitHub community has so far cumulated over 14,000 stars.</p>
+<p>We welcome more technical professionals to write articles and share their experiences and thoughts. If you are interested, feel free to contact us:</p>
+<p>ShardingSphere Github: <a href="">https://github.com/apache/shardingsphere</a></p>
+<p>ShardingSphere Twitter: <a href="">https://twitter.com/ShardingSphere</a></p>
+<p>ShardingSphere Slack Channel:<a href="">ShardingSphere Slack Channel:</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/oct_12_8_shardingsphere_google_summer_of_code_students_how_was_your_open_source_experience/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

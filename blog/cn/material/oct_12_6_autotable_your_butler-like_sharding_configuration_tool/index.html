@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>分片利器 AutoTable：为用户带来「管家式」分片配置体验 &middot; ShardingSphere - 博客</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - 博客" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - 博客</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/cn/material/">
+							<h3>文章</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/cn/videos/">
+							<h3>视频</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">分片利器 AutoTable：为用户带来「管家式」分片配置体验</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h1 id="分片利器-autotable为用户带来管家式分片配置体验">分片利器 AutoTable：为用户带来「管家式」分片配置体验</h1>
+<p>在<a href="https://mp.weixin.qq.com/s/fdCtxd_xYNll0_ZdAjDvCA">《DistSQL：像数据库一样使用 Apache ShardingSphere》</a>一文中，Committer 孟浩然为大家介绍了 DistSQL 的设计初衷和语法体系，并通过实战操作<strong>展示了一条 SQL 创建分布式数据库表的强大能力，展现了 Apache ShardingSphere 在新形态下的交互体验。</strong></p>
+<p>在前文发布后，小助手陆续收到热心读者的私信，询问使用 DistSQL 配置分片规则的细节，以及使用 YAML、Namespace 等形式的配置时，是否可以像 DistSQL 一样快速方便的完成分布式表的配置和创建？本文将为大家解答这些疑问。</p>
+<p><strong>江龙滔</strong></p>
+<p>SphereEx 中间件研发工程师，Apache ShardingSphere contributor。目前专注于 ShardingSphere 数据库中间件研发及开源社区建设。</p>
+<h2 id="背景">背景</h2>
+<p><strong>Sharding</strong>是 Apache ShardingSphere 的核心特性，也是 ShardingSphere 最被人们熟知的一项能力。在过去，用户若需要进行分库分表，一种典型的实施流程（不含数据迁移）如下：</p>
+<p><img src="../../static/img/Blog_22_img_4_Rewarded_User_Issue_Snapshot.png" alt=""></p>
+<pre><code>                图1 Sharding 实施流程示意图
+</code></pre>
+<p>在这一过程中，用户需要准确的理解每一张数据表的分片策略、明确的知晓每张表的实际表名和所在数据库，并根据这些信息来配置分片规则。</p>
+<p>以上述分库分表场景为例，实际的数据表分布情况可能如下：</p>
+<p><img src="../../static/img/Blog_22_img_2_8_Databases_4_Tables_Distribution.png" alt=""></p>
+<pre><code>                图2 8 库 * 4 表分布示意图
+</code></pre>
+<h2 id="痛点">痛点</h2>
+<p>在前述的分库分表场景中，作为 <strong>Sharding</strong> 功能的用户，必须要对数据表的分布情况了然于心，才能写出正确的 <strong>actualDataNodes</strong> 规则。如上述 t_order 表对应的分片配置如下：</p>
+<pre><code>tables:
+  t_order:
+    actualDataNodes: ds_${0..7}.t_order_${0..3}
+    databaseStrategy: 
+      standard:
+        shardingColumn: order_id
+        shardingAlgorithmName: database_inline
+    tableStrategy: 
+      standard:
+        shardingColumn: order_id
+        shardingAlgorithmName: table_inline
+shardingAlgorithms:
+  database_inline:
+    type: INLINE
+    props:
+      algorithm-expression: ds_${order_id % 8}
+  table_inline:
+    type: INLINE
+    props:
+      algorithm-expression: t_order_${order_id % 4}
+</code></pre><p>尽管 ShardingSphere 的配置规则已经非常的规范和简洁，但仍有用户在使用中遇到各种麻烦：</p>
+<ul>
+<li>
+<p>不理解分片策略或配置规则，无从下手</p>
+</li>
+<li>
+<p>分片配置与数据表实际分布不匹配</p>
+</li>
+<li>
+<p>配置表达式格式不正确</p>
+</li>
+<li>
+<p>等等</p>
+</li>
+</ul>
+<p>如这位用户提出的 issue：</p>
+<p><img src="../../static/img/Blog_22_img_3_Question_Comment.png" alt=""></p>
+<h2 id="autotable-横空出世">AutoTable 横空出世</h2>
+<p>为了帮助用户更好的使用分片功能，降低配置复杂度和提升使用体验，Apache ShardingSphere 5.0.0 版本推出了一种新的分片配置方式：<strong>AutoTable。</strong></p>
+<p>顾名思义，<strong>AutoTable</strong> 类型的数据表，<strong>交由 ShardingSphere 自动管理分片，用户只需要指定分片数量和使用的数据源，无需再关心表的具体分布</strong>，配置格式如下：</p>
+<pre><code>autoTables:
+  t_order:
+    # 指定使用的数据源
+    actualDataSources: ds_${0..7}
+    shardingStrategy:
+      standard:
+        shardingColumn: order_id
+        shardingAlgorithmName: mod
+shardingAlgorithms:
+  mod:
+    type: MOD
+    props:
+      # 指定分片数量
+      sharding-count: 32
+</code></pre><p>通过以上配置，ShardingSphere 识别出逻辑表 <code>t_order</code> 需要分为 32 片且使用 8 个数据源，则自动计算出 <strong>8 库 * 4表</strong> 的分布关系，实现和传统方式等效的配置结果。</p>
+<h2 id="与-distsql-结合">与 DistSQL 结合</h2>
+<p>通过前一节的配置对比，相信读者已经感受到了 <strong>AutoTable</strong> 带来的变革。不过，随着 DistSQL 的公开，ShardingSphere 还能带给我们更多。</p>
+<p>在使用 DistSQL 进行数据管理的场景下，<strong>AutoTable</strong> 能够极大的降低分片配置复杂度。并且，与传统文件配置形式相比，通过 DistSQL 来配置分片规则是即时生效的，<strong>无需重启</strong>，这样也就完全不用担心单张表的规则调整影响其他在线业务。</p>
+<p>除了新增分片配置，DistSQL 也提供了修改和删除分片规则的语法，格式如下：</p>
+<pre><code># 新增分片规则
+CREATE SHARDING TABLE RULE t_order (
+RESOURCES(resource_0,resource_1),
+SHARDING_COLUMN=order_id,TYPE(NAME=hash_mod,PROPERTIES(&quot;sharding-count&quot;=4))
+);
+# 修改分片规则
+ALTER SHARDING TABLE RULE t_order (
+RESOURCES(resource_0,resource_1),
+SHARDING_COLUMN=order_id,TYPE(NAME=hash_mod,PROPERTIES(&quot;sharding-count&quot;=10))
+);
+# 移除分片规则
+DROP SHARDING TABLE RULE t_order;
+</code></pre><p>**注：**若规则修改影响到存量数据，ShardingSphere 还将提供“弹性扩缩容”的功能用作数据迁移，帮助用户方便快捷的管理分布式数据。有关“弹性扩缩容”的具体细节，请关注后续推送。</p>
+<h3 id="faq">FAQ</h3>
+<p><strong>Q1:</strong>
+ShardingSphere-JDBC 中可以使用 AutoTable 分片配置吗？</p>
+<p>可以。AutoTable 分片配置方式适用于 ShardingSphere-JDBC 和 ShardingSphere-Proxy，在 Proxy 中更可以通过 DistSQL 进行动态配置，满足各种接入方式的需要。</p>
+<p><strong>Q2:</strong>
+AutoTable 支持哪些分片算法？</p>
+<p>AutoTable 支持全部的自动分片算法，包括：</p>
+<ul>
+<li>
+<p>MOD：取模分片算法</p>
+</li>
+<li>
+<p>HASH_MOD：哈希取模分片算法</p>
+</li>
+<li>
+<p>VOLUME_RANGE：基于分片容量的范围分片算法</p>
+</li>
+<li>
+<p>BOUNDARY_RANGE：基于分片边界的范围分片算法</p>
+</li>
+<li>
+<p>AUTO_INTERVAL：自动时间段分片算法</p>
+</li>
+</ul>
+<p>关于以上算法的更多详细信息，请阅读 <strong>Apache ShardingSphere 官方文档-自动分片算法：</strong>
+<a href="https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/sharding/">https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/sharding/</a></p>
+<p>除内置算法外，用户也可以通过 SPI 扩展的方式加载自定义的分片算法，满足更加定制化的分片需求。</p>
+<p><strong>Q3:</strong>
+业务已经使用了 YAML 配置分片规则，可以转换为 AutoTable 配置形式吗？</p>
+<p>不推荐。如果是已经存在分片规则的数据表，除非能确定切换为 AutoTable 配置后，表分布状态与预期完全一致，否则不建议尝试切换已有配置。</p>
+<p>不过若是在原有应用的基础上新增数据表，那么新增的表是可以使用 AutoTable 配置的。</p>
+<p><strong>Q4:</strong>
+AutoTable 的推荐使用场景？</p>
+<p>无论是在 ShardingSphere-JDBC 还是 ShardingSphere-Proxy 中，AutoTable 都希望为用户带来「管家式」的分片配置体验。即用户只告诉 ShardingSphere 分片数量，不需要关心实际表在哪个库、哪个库有几张表等问题。</p>
+<p>因此，若要使用 AutoTable 配置，推荐用户忘却「先建表、再配规则」的传统思维，改为先配置规则再通过 <strong>CREATE TABLE</strong> 语句创建数据表。把 ShardingSphere 看作分布式数据库的接入点，而不是中间件。</p>
+<p><strong>Q5:</strong>
+数据源名称不是连续的，或数量太多，可以使用 AutoTable 吗？</p>
+<p>可以。指定数据源时并不要求名称连续，可以同时使用枚举和 INLINE 表达式，如以下形式：</p>
+<pre><code>CREATE SHARDING TABLE RULE t_order (
+RESOURCES('resource_${0..9}',resource_12,resource_15,&quot;resource_$-&gt;{17..19}&quot;),
+...
+);
+</code></pre><p><strong>Q6:</strong>
+AutoTable 配置和传统的分片配置可以混合使用吗？</p>
+<p>可以。请参考完整的配置样例：
+<a href="https://github.com/apache/shardingsphere/blob/master/shardingsphere-jdbc/shardingsphere-jdbc-core/src/test/resources/config/config-sharding.yaml">https://github.com/apache/shardingsphere/blob/master/shardingsphere-jdbc/shardingsphere-jdbc-core/src/test/resources/config/config-sharding.yaml</a></p>
+<h3 id="彩蛋">彩蛋</h3>
+<p>GitHub ID 为 @CatYangWei 的用户第一个发现并提出了关于 AutoTable 相关的问题：</p>
+<p>图5<img src="" alt=""></p>
+<p>感谢这位细心的用户，我们将会通过 GitHub 与您联系，并送上社区的精美周边。👏👏👏也欢迎更多的社区小伙伴向我们提出优化建议，帮助社区更好地成长～</p>
+<h2 id="结语">结语</h2>
+<p>以上就是本次分享的全部内容，如果读者对 Apache ShardingSphere 有任何疑问或建议，欢迎在 GitHub issue 列表提出，也可提交 Pull Request 参与到开源社区，为社区贡献力量。</p>
+<p><strong>GitHub issue：</strong></p>
+<p><a href="https://github.com/apache/shardingsphere/issues">https://github.com/apache/shardingsphere/issues</a></p>
+<p><strong>贡献指南：</strong></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/contribute/">https://shardingsphere.apache.org/community/cn/contribute/</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/cn/material/oct_12_7_opengauss_x_shardingspher_one_of_the_top_distribution_solutions/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/cn/material/oct_12_5_e-hualu_x_shardingsphere__hulu_storys_data_processing_shortcut/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

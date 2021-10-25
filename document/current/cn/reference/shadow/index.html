@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2021-10-25 14:37:53">
+    <meta name="buildDate" content="2021-10-25 16:51:20">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>影子库 :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1635143873" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1635143873" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1635143873" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1635143873" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1635143873" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1635143873" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1635143873" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1635143873" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1635151880" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1635151880" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1635151880" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1635151880" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1635151880" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1635151880" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1635151880" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1635151880" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1635143873" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1635151880" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1635143873"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1635151880"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -5574,6 +5574,7 @@
 <p><strong>影子库映射</strong>：生产数据源名称和影子数据源名称映射关系。</p>
 <p><strong>影子表</strong>：压测相关的表，影子库中必须包含影子表。影子表需要指定对应的影子库映射和影子算法。</p>
 <p><strong>影子算法</strong>：SQL 路由影子算法。</p>
+<p><strong>默认影子算法</strong>：默认影子算法，选配项。对于没有配置影子算法表的默认匹配算法。</p>
 <h2 id="路由过程">路由过程</h2>
 <p>以 INSERT 语句为例，在写入数据时，Apache ShardingSphere 会对 SQL 进行解析，再根据配置文件中的规则，构造一条路由链。在当前版本的功能中，
 影子功能处于路由链中的最后一个执行单元，即，如果有其他需要路由的规则存在，如分片，Apache ShardingSphere 会首先根据分片规则，路由到某一个数据库，再
@@ -5687,7 +5688,49 @@
     <span style="color:#66d9ef">props</span>:
       <span style="color:#66d9ef">shadow</span>: <span style="color:#66d9ef">true</span>
       <span style="color:#66d9ef">foo</span>: bar
-</code></pre></div>
+</code></pre></div><ol start="4">
+<li>使用默认影子算法</li>
+</ol>
+<p>假设对 <code>t_order</code> 表压测使用列影子算法，其他相关其他表都需要使用注解影子算法。即,</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order (order_id, user_id, ...) <span style="color:#66d9ef">VALUES</span> (xxx..., <span style="color:#ae81ff">0</span>, ...);
+
+<span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_order_item (order_item_id, order_id, ...) <span style="color:#66d9ef">VALUES</span> (xxx..., xxx..., ...) <span style="color:#75715e">/*shadow:true,foo:bar,...*/</span>;
+
+<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order_item <span style="color:#66d9ef">WHERE</span> order_id <span style="color:#f92672">=</span> xxx <span style="color:#75715e">/*shadow:true,foo:bar,...*/</span>;
+
+<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order_xxx <span style="color:#66d9ef">WHERE</span> order_id <span style="color:#f92672">=</span> xxx <span style="color:#75715e">/*shadow:true,foo:bar,...*/</span>;
+</code></pre></div><p>都会执行到影子库。</p>
+<p>配置如下（YAML 格式展示）：</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">enable</span>: <span style="color:#66d9ef">true</span>
+  <span style="color:#66d9ef">data-sources</span>:
+    <span style="color:#66d9ef">shadow-data-source</span>:
+      <span style="color:#66d9ef">source-data-source-name</span>: ds
+      <span style="color:#66d9ef">shadow-data-source-name</span>: ds-shadow
+<span style="color:#66d9ef">tables</span>:
+  <span style="color:#66d9ef">t_order</span>:
+    <span style="color:#66d9ef">data-source-names</span>: shadow-data-source
+    <span style="color:#66d9ef">shadow-algorithm-names</span>:
+      - simple-note-algorithm
+      - user-id-match-algorithm
+<span style="color:#66d9ef">default-shadow-algorithm-name</span>: simple-note-algorithm
+<span style="color:#66d9ef">shadow-algorithms</span>:
+  <span style="color:#66d9ef">simple-note-algorithm</span>:
+    <span style="color:#66d9ef">type</span>: SIMPLE_NOTE
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">shadow</span>: <span style="color:#66d9ef">true</span>
+      <span style="color:#66d9ef">foo</span>: bar
+  <span style="color:#66d9ef">user-id-match-algorithm</span>:
+    <span style="color:#66d9ef">type</span>: COLUMN_REGEX_MATCH
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">operation</span>: insert
+      <span style="color:#66d9ef">column</span>: user_id
+      <span style="color:#66d9ef">regex</span>: <span style="color:#e6db74">&#34;[0]&#34;</span>
+      
+<span style="color:#66d9ef">props</span>:
+  <span style="color:#66d9ef">sql-comment-parse-enabled</span>: <span style="color:#66d9ef">true</span>
+</code></pre></div><p>我们只需要配置默认影子算法 <code>default-shadow-algorithm-name</code>。 除了影子表 <code>t_order</code> 其它相关表都会进行默认影子算法的判定。</p>
+<p><strong>注意</strong>：默认影子算法仅支持注解影子算法。</p>
+
 
 <footer class=" footline" >
 	
@@ -8853,17 +8896,17 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1635143873"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1635151880"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1635143873"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1635143873"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1635151880"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1635151880"></script>
 
     
 

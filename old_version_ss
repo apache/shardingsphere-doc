@@ -1,184 +1,100 @@
-commit efea1ab2485b00823dcd1e660ddc30da47f4a4ea
-Author: Liang Zhang <terrymanu@163.com>
-Date:   Thu Oct 28 06:50:57 2021 +0800
+commit 2b99ee82ceee53f01df1497fcea2236d0de920a2
+Author: Guocheng Tang <totalo@qq.com>
+Date:   Thu Oct 28 12:37:40 2021 +0800
 
-    Move empty judge from ShardingRule to ShardingRuleBuilder (#13321)
+    [DistSQL] Support table level `queryWithCipherColumn` configuration (#13297)
     
-    * Move empty judge from ShardingRule to ShardingRuleBuilder
+    * [DistSQL] Support table level `queryWithCipherColumn` configuration
     
-    * Move empty judge from ShardingRule to ShardingRuleBuilder
+    * Support uppercase & update documents
     
-    * Update index of data sharding of Apache ShardingSphere's document
+    * fix code style
     
-    * Add overview of sharding table
-    
-    * Update table
+    * remove bank line
 
-diff --git a/docs/document/content/features/sharding/concept/_index.cn.md b/docs/document/content/features/sharding/concept/_index.cn.md
-index 3c063bb9ac..eb53f028f8 100644
---- a/docs/document/content/features/sharding/concept/_index.cn.md
-+++ b/docs/document/content/features/sharding/concept/_index.cn.md
-@@ -6,11 +6,4 @@ chapter = true
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.cn.md
+index 69dd4400a9..2229a149f9 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.cn.md
+@@ -13,7 +13,7 @@ ALTER ENCRYPT RULE encryptRuleDefinition [, encryptRuleDefinition] ...
+ DROP ENCRYPT RULE tableName [, tableName] ...
  
- ## 导览
+ encryptRuleDefinition:
+-    tableName(COLUMNS(columnDefinition [, columnDefinition] ...))
++    tableName(COLUMNS(columnDefinition [, columnDefinition] ...), QUERY_WITH_CIPHER_COLUMN=queryWithCipherColumn)
  
--本小节主要介绍数据分片的核心概念，主要包括：
--
--* SQL核心概念
--* 分片核心概念
--* 配置核心概念
--* 行表达式
--* 分布式主键
--* 强制分片路由
-+本小节主要介绍数据分片的核心概念。
-diff --git a/docs/document/content/features/sharding/concept/_index.en.md b/docs/document/content/features/sharding/concept/_index.en.md
-index 81d004ced1..3b07b49f5b 100644
---- a/docs/document/content/features/sharding/concept/_index.en.md
-+++ b/docs/document/content/features/sharding/concept/_index.en.md
-@@ -6,11 +6,4 @@ chapter = true
+ columnDefinition:
+     (NAME=columnName [, PLAIN=plainColumnName] , CIPHER=cipherColumnName, encryptAlgorithm)
+@@ -30,6 +30,7 @@ algorithmProperty:
+ - `PLAIN` 指定明文数据列，`CIPHER` 指定密文数据列
+ - `encryptAlgorithmType` 指定加密算法类型，请参考 [加密算法](/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/encrypt/)
+ - 重复的 `tableName` 将无法被创建
++- `queryWithCipherColumn` 支持大写或小写的 true 或 false
  
- ## Overview
+ ## 示例
  
--This chapter is to introduce core concepts of data sharding, including:
--
--- Core concepts of SQL
--- Core concepts of sharding
--- Core concepts of configuration
--- Inline expression
--- Distributed primary key
--- Hint Sharding route
-\ No newline at end of file
-+This chapter is to introduce core concepts of data sharding.
-diff --git a/docs/document/content/features/sharding/concept/table.cn.md b/docs/document/content/features/sharding/concept/table.cn.md
-index fb530975b9..81f79dc003 100644
---- a/docs/document/content/features/sharding/concept/table.cn.md
-+++ b/docs/document/content/features/sharding/concept/table.cn.md
-@@ -3,21 +3,30 @@ title = "表"
- weight = 1
- +++
+@@ -38,18 +39,18 @@ CREATE ENCRYPT RULE t_encrypt (
+ COLUMNS(
+ (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'='123456abc'))),
+ (NAME=order_id, CIPHER =order_cipher,TYPE(NAME=MD5))
+-)),
++),QUERY_WITH_CIPHER_COLUMN=true),
+ t_encrypt_2 (
+ COLUMNS(
+ (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'='123456abc'))),
+ (NAME=order_id, CIPHER=order_cipher,TYPE(NAME=MD5))
+-));
++), QUERY_WITH_CIPHER_COLUMN=FALSE);
  
-+表是透明化数据分片的关键概念。
-+Apache ShardingSphere 通过提供多样化的表类型，适配不同场景下的数据分片需求。
-+
- ## 逻辑表
+ ALTER ENCRYPT RULE t_encrypt (
+ COLUMNS(
+ (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'='123456abc'))),
+ (NAME=order_id,CIPHER=order_cipher,TYPE(NAME=MD5))
+-));
++), QUERY_WITH_CIPHER_COLUMN=TRUE);
  
--水平拆分的数据库（表）的相同逻辑和数据结构表的总称。例：订单数据根据主键尾数拆分为 10 张表，分别是 `t_order_0` 到 `t_order_9`，他们的逻辑表名为 `t_order`。
-+相同结构的水平拆分数据库（表）的逻辑名称，是 SQL 中表的逻辑标识。
-+例：订单数据根据主键尾数拆分为 10 张表，分别是 `t_order_0` 到 `t_order_9`，他们的逻辑表名为 `t_order`。
- 
- ## 真实表
- 
--在分片的数据库中真实存在的物理表。即上个示例中的 `t_order_0` 到 `t_order_9`。
-+在水平拆分的数据库中真实存在的物理表。
-+即上个示例中的 `t_order_0` 到 `t_order_9`。
- 
- ## 数据节点
- 
--数据分片的最小单元。由数据源名称和数据表组成，例：`ds_0.t_order_0`。
-+数据分片的最小单元，由数据源名称和真实表组成。
-+例：`ds_0.t_order_0`。
- 
- ## 绑定表
- 
--指分片规则一致的主表和子表。例如：`t_order` 表和 `t_order_item` 表，均按照 `order_id` 分片，则此两张表互为绑定表关系。绑定表之间的多表关联查询不会出现笛卡尔积关联，关联查询效率将大大提升。举例说明，如果 SQL 为：
-+指分片规则一致的主表和子表。
-+例如：`t_order` 表和 `t_order_item` 表，均按照 `order_id` 分片，则此两张表互为绑定表关系。
-+绑定表之间的多表关联查询不会出现笛卡尔积关联，关联查询效率将大大提升。
-+举例说明，如果 SQL 为：
- 
- ```sql
- SELECT i.* FROM t_order o JOIN t_order_item i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
-@@ -44,12 +53,15 @@ SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE
+ DROP ENCRYPT RULE t_encrypt,t_encrypt_2;
  ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.en.md
+index 7c2efe40e1..8e9403db1b 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-encrypt-rule.en.md
+@@ -13,7 +13,7 @@ ALTER ENCRYPT RULE encryptRuleDefinition [, encryptRuleDefinition] ...
+ DROP ENCRYPT RULE tableName [, tableName] ...
  
- 其中 `t_order` 在 FROM 的最左侧，ShardingSphere 将会以它作为整个绑定表的主表。
--所有路由计算将会只使用主表的策略，那么 `t_order_item` 表的分片计算将会使用 `t_order` 的条件。故绑定表之间的分区键要完全相同。
-+所有路由计算将会只使用主表的策略，那么 `t_order_item` 表的分片计算将会使用 `t_order` 的条件。
-+因此，绑定表间的分区键需要完全相同。
+ encryptRuleDefinition:
+-    tableName(COLUMNS(columnDefinition [, columnDefinition] ...))
++    tableName(COLUMNS(columnDefinition [, columnDefinition] ...), QUERY_WITH_CIPHER_COLUMN=queryWithCipherColumn)
  
- ## 广播表
+ columnDefinition:
+     (NAME=columnName [, PLAIN=plainColumnName] , CIPHER=cipherColumnName, encryptAlgorithm)
+@@ -30,6 +30,7 @@ algorithmProperty:
+ - `PLAIN` specifies the plain column, `CIPHER` specifies the cipher column
+ - `encryptAlgorithmType` specifies the encryption algorithm type, please refer to [Encryption Algorithm](/en/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/encrypt/)
+ - Duplicate `tableName` will not be created
++- `queryWithCipherColumn` support uppercase or lowercase true or false
  
--指所有的分片数据源中都存在的表，表结构和表中的数据在每个数据库中均完全一致。适用于数据量不大且需要与海量数据的表进行关联查询的场景，例如：字典表。
-+指所有的分片数据源中都存在的表，表结构及其数据在每个数据库中均完全一致。
-+适用于数据量不大且需要与海量数据的表进行关联查询的场景，例如：字典表。
+ ## Example
  
- ## 单表
+@@ -38,18 +39,18 @@ CREATE ENCRYPT RULE t_encrypt (
+ COLUMNS(
+ (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'='123456abc'))),
+ (NAME=order_id, CIPHER =order_cipher,TYPE(NAME=MD5))
+-)),
++), QUERY_WITH_CIPHER_COLUMN=true),
+ t_encrypt_2 (
+ COLUMNS(
+ (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'='123456abc'))),
+ (NAME=order_id, CIPHER=order_cipher,TYPE(NAME=MD5))
+-));
++), QUERY_WITH_CIPHER_COLUMN=FALSE);
  
--指所有的分片数据源中只存在唯一一张的表。适用于数据量不大且不需要做任何分片操作的场景。
-+指所有的分片数据源中仅唯一存在的表。
-+适用于数据量不大且无需分片的表。
-diff --git a/docs/document/content/features/sharding/concept/table.en.md b/docs/document/content/features/sharding/concept/table.en.md
-index 2e1eb5523b..8624f8d86c 100644
---- a/docs/document/content/features/sharding/concept/table.en.md
-+++ b/docs/document/content/features/sharding/concept/table.en.md
-@@ -3,21 +3,28 @@ title = "Table"
- weight = 1
- +++
+ ALTER ENCRYPT RULE t_encrypt (
+ COLUMNS(
+ (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES('aes-key-value'='123456abc'))),
+ (NAME=order_id,CIPHER=order_cipher,TYPE(NAME=MD5))
+-));
++), QUERY_WITH_CIPHER_COLUMN=TRUE);
  
-+Table is the core concept of data sharding transparently. 
-+There are diversified tables provided for different data sharding requirements by Apache ShardingSphere. 
-+
- ## Logic Table
- 
--It refers collectively to horizontal sharding databases (tables) with the same logic and data structure. For instance, the order data is divided into 10 tables according to the last number of the primary key, and they are from `t_order_0` to `t_order_9`, whose logic name is `t_order`.
-+The logical name of the horizontal sharding databases (tables) with the same schema, it is the logical table identification in SQL.
-+For instance, the data of order is divided into 10 tables according to the last number of the primary key, and they are from `t_order_0` to `t_order_9`, whose logic name is `t_order`.
- 
- ## Actual Table
- 
--The physical table that really exists in the sharding database, i.e., `t_order_0` to `t_order_9` in the instance above.
-+The physical table that really exists in the horizontal sharding database, i.e., `t_order_0` to `t_order_9` in the instance above.
- 
- ## Data Node
- 
--As the smallest unit of sharding, it consists of data source name and table name, e.g. `ds_0.t_order_0`.
-+As the atomic unit of sharding, it consists of data source name and actual table name, e.g. `ds_0.t_order_0`.
- 
- ## Binding Table
- 
--It refers to the primary table and the joiner table with the same sharding rules, for example, `t_order` and `t_order_item` are both sharded by `order_id`,  so they are binding tables with each other. Cartesian product correlation will not appear in the multi-table correlating query, so the query efficiency will increase greatly. Take this one for example, if SQL is:
-+It refers to the primary table and the joiner table with the same sharding rules.
-+for example, `t_order` and `t_order_item` are both sharded by `order_id`, so they are binding tables with each other. 
-+Cartesian product correlation will not appear in the multi-tables correlating query, so the query efficiency will increase greatly.
-+Take this one for example, if SQL is:
- 
- ```sql
- SELECT i.* FROM t_order o JOIN t_order_item i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
-@@ -27,8 +34,11 @@ When binding table relations are not configured, suppose the sharding key `order
- 
- ```sql
- SELECT i.* FROM t_order_0 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
-+
- SELECT i.* FROM t_order_0 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
-+
- SELECT i.* FROM t_order_1 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
-+
- SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
+ DROP ENCRYPT RULE t_encrypt,t_encrypt_2;
  ```
- 
-@@ -36,15 +46,22 @@ With binding table configuration, there should be 2 SQLs after routing:
- 
- ```sql
- SELECT i.* FROM t_order_0 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
-+
- SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
- ```
- 
--In them, table `t_order` in the left end of FROM will be taken by ShardingSphere as the primary table of query. In a similar way, ShardingSphere will also take table `t_order` in the left end of FROM as the primary table of the whole binding table. All the route computations will only use the sharding strategy of the primary table, so sharding computation of `t_order_item` table will use the conditions of `t_order`. Due to this, sharding keys in binding tables should be totally identical.
-+In them, table `t_order` in the left end of FROM will be taken by ShardingSphere as the primary table of query.
-+In a similar way, ShardingSphere will also take table `t_order` in the left end of FROM as the primary table of the whole binding table. 
-+All the route computations will only use the sharding strategy of the primary table, so sharding computation of `t_order_item` table will use the conditions of `t_order`. 
-+Due to this, sharding keys in binding tables should be totally identical.
- 
- ## Broadcast Table
- 
--It refers to tables that exist in all sharding database sources. Their structures and data are the same in each database. It can be applied to the small data volume scenario that needs to correlate with big data volume tables to query, dictionary table for example.
-+It refers to tables that exist in all sharding database sources. 
-+The schema and data must consist in each database. 
-+It can be applied to the small data volume that needs to correlate with big data tables to query, dictionary table for example.
- 
- ## Single Table
- 
--It refers to only one table that exists in all sharding database sources. It is suitable for scenarios where the amount of data is not large and does not require any sharding operations.
-+It refers to only one table that exists in all sharding database sources. 
-+It is suitable for little data in table without sharding.

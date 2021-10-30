@@ -101,6 +101,17 @@ CREATE TABLE `tbl` ( `id` bigint(20) NOT NULL AUTO_INCREMENT, `k` int(11) NOT NU
     
     <item>
       <title>XA 事务</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/xa/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/xa/</guid>
+      <description>两阶段事务提交采用的是 X/OPEN 组织所定义的 DTP 模型所抽象的 AP（应用程序）, TM（事务管理器）和 RM（资源管理器） 概念来保证分布式事务的强一致性。 其中 TM 与 RM 间采用 XA 的协议进行双向通信。 与传统的本地事务相比，XA 事务增加了准备阶段，数据库除了被动接受提交指令外，还可以反向通知调用方事务是否可以被提交。 TM 可以收集所有分支事务的准备结果，并于最后进行原子提交，以保证事务的强一致性。
+Java 通过定义 JTA 接口实现了 XA 模型，JTA 接口中的 ResourceManager 需要数据库厂商提供 XA 驱动实现， TransactionManager 则需要事务管理器的厂商实现，传统的事务管理器需要同应用服务器绑定，因此使用的成本很高。 而嵌入式的事务管器可以通过 jar 形式提供服务，同 Apache ShardingSphere 集成后，可保证分片后跨库事务强一致性。
+通常，只有使用了事务管理器厂商所提供的 XA 事务连接池，才能支持 XA 的事务。 Apache ShardingSphere 在整合 XA 事务时，采用分离 XA 事务管理和连接池管理的方式，做到对应用程序的零侵入。</description>
+    </item>
+    
+    <item>
+      <title>XA 事务</title>
       <link>https://shardingsphere.apache.org/document/current/cn/reference/transaction/2pc-xa-transaction/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
@@ -111,17 +122,6 @@ CREATE TABLE `tbl` ( `id` bigint(20) NOT NULL AUTO_INCREMENT, `k` int(11) NOT NU
 例如:
 XAResource1.start ## Enlist阶段执行 statement.execute(&amp;quot;sql1&amp;quot;); ## 模拟执行一个分片SQL1 statement.execute(&amp;quot;sql2&amp;quot;); ## 模拟执行一个分片SQL2 XAResource1.end ## 提交阶段执行 示例中的 sql1 和 sql2 将会被标记为 XA 事务。
 提交或回滚事务 XAShardingSphereTransactionManager 在接收到接入端的提交命令后，会委托实际的 XA 事务管理进行提交动作， 事务管理器将收集到的当前线程中所有注册的 XAResource，并发送 XAResource.end 指令，用以标记此 XA 事务边界。 接着会依次发送 prepare 指令，收集所有参与 XAResource 投票。 若所有 XAResource 的反馈结果均为正确，则调用 commit 指令进行最终提交； 若有任意 XAResource 的反馈结果不正确，则调用 rollback 指令进行回滚。 在事务管理器发出提交指令后，任何 XAResource 产生的异常都会通过恢复日志进行重试，以保证提交阶段的操作原子性，和数据强一致性。</description>
-    </item>
-    
-    <item>
-      <title>XA两阶段事务</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/2pc-xa-transaction/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/2pc-xa-transaction/</guid>
-      <description>两阶段事务提交采用的是 X/OPEN 组织所定义的DTP模型所抽象的 AP（应用程序）, TM（事务管理器）和 RM（资源管理器） 概念来保证分布式事务的强一致性。 其中 TM 与 RM 间采用 XA 的协议进行双向通信。 与传统的本地事务相比，XA 事务增加了准备阶段，数据库除了被动接受提交指令外，还可以反向通知调用方事务是否可以被提交。 TM 可以收集所有分支事务的准备结果，并于最后进行原子提交，以保证事务的强一致性。
-Java 通过定义 JTA 接口实现了 XA 模型，JTA 接口中的 ResourceManager 需要数据库厂商提供 XA 驱动实现， TransactionManager 则需要事务管理器的厂商实现，传统的事务管理器需要同应用服务器绑定，因此使用的成本很高。 而嵌入式的事务管器可以以 jar 包的形式提供服务，同 Apache ShardingSphere 集成后，可保证分片后跨库事务强一致性。
-通常，只有使用了事务管理器厂商所提供的 XA 事务连接池，才能支持 XA 的事务。Apache ShardingSphere 在整合 XA 事务时，采用分离 XA 事务管理和连接池管理的方式，做到对应用程序的零侵入。</description>
     </item>
     
     <item>
@@ -732,18 +732,6 @@ String sql = &amp;#34;SELECT * FROM t_order&amp;#34;; try ( HintManager hintMana
     
     <item>
       <title>Seata 柔性事务</title>
-      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-seata/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      
-      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base-transaction-seata/</guid>
-      <description>Seata是阿里集团和蚂蚁金服联合打造的分布式事务框架。 其 AT 事务的目标是在微服务架构下，提供增量的事务 ACID 语意，让开发者像使用本地事务一样，使用分布式事务，核心理念同 Apache ShardingSphere 一脉相承。
-Seata AT 事务模型包含TM (事务管理器)，RM (资源管理器) 和 TC (事务协调器)。 TC 是一个独立部署的服务，TM 和 RM 以 jar 包的方式同业务应用一同部署，它们同 TC 建立长连接，在整个事务生命周期内，保持远程通信。 TM 是全局事务的发起方，负责全局事务的开启，提交和回滚。 RM 是全局事务的参与者，负责分支事务的执行结果上报，并且通过 TC 的协调进行分支事务的提交和回滚。
-Seata 管理的分布式事务的典型生命周期：
- TM 要求 TC 开始一个全新的全局事务。TC 生成一个代表该全局事务的 XID。 XID 贯穿于微服务的整个调用链。 作为该 XID 对应到的 TC 下的全局事务的一部分，RM 注册本地事务。 TM 要求 TC 提交或回滚 XID 对应的全局事务。 TC 驱动 XID 对应的全局事务下的所有分支事务完成提交或回滚。  </description>
-    </item>
-    
-    <item>
-      <title>Seata 柔性事务</title>
       <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/use-norms/base-transaction-seata/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
@@ -953,6 +941,17 @@ SELECT order_id FROM t_order_1 WHERE order_id=1 AND remarks=&amp;#39; t_order xx
       
       <guid>https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/usage/distsql/usage/encrypt-rule/</guid>
       <description>使用实战 前置工作  启动 MySQL 服务 创建 MySQL 数据库(参考 ShardingProxy 数据源配置规则) 为 ShardingProxy 创建一个拥有创建权限的角色或者用户 启动 Zookeeper 服务 (为了持久化配置)  启动 ShardingProxy  添加 mode 和 authentication 配置参数到 server.yaml (请参考相关 example 案例) 启动 ShardingProxy (相关介绍)  创建分布式数据库和分片表  连接到 ShardingProxy 创建分布式数据库  CREATE DATABASE encrypt_db; 使用新创建的数据库  USE encrypt_db; 配置数据源信息  ADD RESOURCE ds_0 ( HOST=127.0.0.1, PORT=3306, DB=ds_0, USER=root, PASSWORD=root ); 创建加密表  CREATE TABLE `t_encrypt` ( `order_id` int NOT NULL, `user_plain` varchar(45) DEFAULT NULL, `user_cipher` varchar(45) DEFAULT NULL, PRIMARY KEY (`order_id`) ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 创建加密规则  CREATE ENCRYPT RULE t_encrypt ( COLUMNS( (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES(&amp;#39;aes-key-value&amp;#39;=&amp;#39;123456abc&amp;#39;))), (NAME=order_id, CIPHER =order_cipher,TYPE(NAME=MD5)) )); 修改加密规则  CREATE ENCRYPT RULE t_encrypt ( COLUMNS( (NAME=user_id,PLAIN=user_plain,CIPHER=user_cipher,TYPE(NAME=AES,PROPERTIES(&amp;#39;aes-key-value&amp;#39;=&amp;#39;123456abc&amp;#39;))), )); 删除加密规则  DROP ENCRYPT RULE t_encrypt; 删除数据源  DROP RESOURCE ds_0; 删除分布式数据库  DROP DATABASE encrypt_db; 注意事项  当前, DROP DATABASE 只会移除逻辑的分布式数据库，不会删除用户真实的数据库。 DROP TABLE 会将逻辑分片表和数据库中真实的表全部删除。 CREATE DATABASE 只会创建逻辑的分布式数据库，所以需要用户提前创建好真实的数据库。  </description>
+    </item>
+    
+    <item>
+      <title>柔性事务</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/features/transaction/concept/base/</guid>
+      <description>柔性事务在 2008 年发表的一篇论文中被最早提到， 它提倡采用最终一致性放宽对强一致性的要求，以达到事务处理并发度的提升。
+TCC 和 Sage 是两种常见实现方案。 他们主张开发者自行实现对数据库的反向操作，来达到数据在回滚时仍能够保证最终一致性。 SEATA 实现了 SQL 反向操作的自动生成，可以使柔性事务不再必须由开发者介入才能使用。
+Apache ShardingSphere 集成了 SEATA 作为柔性事务的使用方案。</description>
     </item>
     
     <item>

@@ -1,242 +1,353 @@
-commit d7f17ed069746a196dff8aace600f7e0292ff519
-Author: Hongsheng Zhong <sandynz@126.com>
-Date:   Sat Oct 30 21:13:05 2021 +0800
+commit 7f39442be1734c653f504c5f4ed11e6c29f40dca
+Author: Liang Zhang <terrymanu@163.com>
+Date:   Sat Oct 30 22:44:42 2021 +0800
 
-    Recheck and update scaling doc for 5.0.0 (#13358)
-    
-    * Recheck and update scaling doc for 5.0.0
-    
-    * Add openGauss as supported
+    Update transaction document (#13369)
 
-diff --git a/docs/document/content/dev-manual/scaling.en.md b/docs/document/content/dev-manual/scaling.en.md
-index 2a79012cf7..798572fe76 100644
---- a/docs/document/content/dev-manual/scaling.en.md
-+++ b/docs/document/content/dev-manual/scaling.en.md
-@@ -5,7 +5,7 @@ weight = 10
- chapter = true
+diff --git a/docs/document/content/features/transaction/_index.cn.md b/docs/document/content/features/transaction/_index.cn.md
+index 4d910b526d..3a27a06945 100644
+--- a/docs/document/content/features/transaction/_index.cn.md
++++ b/docs/document/content/features/transaction/_index.cn.md
+@@ -7,18 +7,20 @@ chapter = true
+ 
+ ## 背景
+ 
+-数据库事务需要满足 `ACID`（原子性、一致性、隔离性、持久性）四个特性。
++数据库事务需要满足 ACID（原子性、一致性、隔离性、持久性）四个特性。
+ 
+-- 原子性（Atomicity）指事务作为整体来执行，要么全部执行，要么全不执行。
+-- 一致性（Consistency）指事务应确保数据从一个一致的状态转变为另一个一致的状态。
+-- 隔离性（Isolation）指多个事务并发执行时，一个事务的执行不应影响其他事务的执行。
++- 原子性（Atomicity）指事务作为整体来执行，要么全部执行，要么全不执行；
++- 一致性（Consistency）指事务应确保数据从一个一致的状态转变为另一个一致的状态；
++- 隔离性（Isolation）指多个事务并发执行时，一个事务的执行不应影响其他事务的执行；
+ - 持久性（Durability）指已提交的事务修改数据会被持久保存。
+ 
+-在单一数据节点中，事务仅限于对单一数据库资源的访问控制，称之为本地事务。几乎所有的成熟的关系型数据库都提供了对本地事务的原生支持。
++在单一数据节点中，事务仅限于对单一数据库资源的访问控制，称之为本地事务。
++几乎所有的成熟的关系型数据库都提供了对本地事务的原生支持。
+ 但是在基于微服务的分布式应用环境下，越来越多的应用场景要求对多个服务的访问及其相对应的多个数据库资源能纳入到同一个事务当中，分布式事务应运而生。
+ 
+-关系型数据库虽然对本地事务提供了完美的 `ACID` 原生支持。
+-但在分布式的场景下，它却成为系统性能的桎梏。如何让数据库在分布式场景下满足 `ACID` 的特性或找寻相应的替代方案，是分布式事务的重点工作。
++关系型数据库虽然对本地事务提供了完美的 ACID 原生支持。
++但在分布式的场景下，它却成为系统性能的桎梏。
++如何让数据库在分布式场景下满足 ACID 的特性或找寻相应的替代方案，是分布式事务的重点工作。
+ 
+ ### 本地事务
+ 
+@@ -32,43 +34,46 @@ XA协议最早的分布式事务模型是由 `X/Open` 国际联盟提出的 `X/O
+ 
+ 基于XA协议实现的分布式事务对业务侵入很小。
+ 它最大的优势就是对使用方透明，用户可以像使用本地事务一样使用基于XA协议的分布式事务。
+-XA协议能够严格保障事务 `ACID` 特性。
++XA协议能够严格保障事务 ACID 特性。
+ 
+-严格保障事务 `ACID` 特性是一把双刃剑。
++严格保障事务 ACID 特性是一把双刃剑。
+ 事务执行在过程中需要将所需资源全部锁定，它更加适用于执行时间确定的短事务。
+ 对于长事务来说，整个事务进行期间对数据的独占，将导致对热点数据依赖的业务系统并发性能衰退明显。
+-因此，在高并发的性能至上场景中，基于XA协议的分布式事务并不是最佳选择。
++因此，在高并发的性能至上场景中，基于 XA 协议的分布式事务并不是最佳选择。
+ 
+ ### 柔性事务
+ 
+-如果将实现了 `ACID` 的事务要素的事务称为刚性事务的话，那么基于 `BASE` 事务要素的事务则称为柔性事务。
+-`BASE` 是基本可用、柔性状态和最终一致性这三个要素的缩写。
++如果将实现了 ACID 的事务要素的事务称为刚性事务的话，那么基于 BASE 事务要素的事务则称为柔性事务。
++BASE 是基本可用、柔性状态和最终一致性这三个要素的缩写。
+ 
+-- 基本可用（Basically Available）保证分布式事务参与方不一定同时在线。
+-- 柔性状态（Soft state）则允许系统状态更新有一定的延时，这个延时对客户来说不一定能够察觉。
++- 基本可用（Basically Available）保证分布式事务参与方不一定同时在线；
++- 柔性状态（Soft state）则允许系统状态更新有一定的延时，这个延时对客户来说不一定能够察觉；
+ - 而最终一致性（Eventually consistent）通常是通过消息传递的方式保证系统的最终一致性。
+ 
+-在 `ACID` 事务中对隔离性的要求很高，在事务执行过程中，必须将所有的资源锁定。
+-柔性事务的理念则是通过业务逻辑将互斥锁操作从资源层面上移至业务层面。通过放宽对强一致性要求，来换取系统吞吐量的提升。
++在 ACID 事务中对隔离性的要求很高，在事务执行过程中，必须将所有的资源锁定。
++柔性事务的理念则是通过业务逻辑将互斥锁操作从资源层面上移至业务层面。
++通过放宽对强一致性要求，来换取系统吞吐量的提升。
+ 
+-基于 `ACID` 的强一致性事务和基于 `BASE` 的最终一致性事务都不是银弹，只有在最适合的场景中才能发挥它们的最大长处。
++基于 ACID 的强一致性事务和基于 BASE 的最终一致性事务都不是银弹，只有在最适合的场景中才能发挥它们的最大长处。
+ 可通过下表详细对比它们之间的区别，以帮助开发者进行技术选型。
+ 
+ |          | *本地事务*      | *两（三）阶段事务* | *柔性事务*     |
+-| -------- | -------------- | ---------------- | ------------- |
++| -------- | ------------- | ---------------- | ------------ |
+ | 业务改造  | 无             | 无               | 实现相关接口    |
+ | 一致性    | 不支持          | 支持             | 最终一致       |
+ | 隔离性    | 不支持          | 支持             | 业务方保证     |
+ | 并发性能  | 无影响          | 严重衰退          | 略微衰退       |
+-| 适合场景  | 业务方处理不一致 | 短事务 & 低并发   | 长事务 & 高并发 |
++| 适合场景  | 业务方处理不一致  | 短事务 & 低并发   | 长事务 & 高并发 |
+ 
+ ## 挑战
+ 
+ 由于应用的场景不同，需要开发者能够合理的在性能与功能之间权衡各种分布式事务。
+ 
+-强一致的事务与柔性事务的API和功能并不完全相同，在它们之间并不能做到自由的透明切换。在开发决策阶段，就不得不在强一致的事务和柔性事务之间抉择，使得设计和开发成本被大幅增加。
++强一致的事务与柔性事务的 API 和功能并不完全相同，在它们之间并不能做到自由的透明切换。
++在开发决策阶段，就不得不在强一致的事务和柔性事务之间抉择，使得设计和开发成本被大幅增加。
+ 
+-基于XA的强一致事务使用相对简单，但是无法很好的应对互联网的高并发或复杂系统的长事务场景；柔性事务则需要开发者对应用进行改造，接入成本非常高，并且需要开发者自行实现资源锁定和反向补偿。
++基于 XA 的强一致事务使用相对简单，但是无法很好的应对互联网的高并发或复杂系统的长事务场景；
++柔性事务则需要开发者对应用进行改造，接入成本非常高，并且需要开发者自行实现资源锁定和反向补偿。
+ 
+ ## 目标
+ 
+diff --git a/docs/document/content/features/transaction/_index.en.md b/docs/document/content/features/transaction/_index.en.md
+index 901d04cfd7..050235bee3 100644
+--- a/docs/document/content/features/transaction/_index.en.md
++++ b/docs/document/content/features/transaction/_index.en.md
+@@ -7,11 +7,11 @@ chapter = true
+ 
+ ## Background
+ 
+-Database transactions should satisfy the features of `ACID ` (atomicity, consistency, isolation and durability).
++Database transactions should satisfy the features of ACID (atomicity, consistency, isolation and durability).
+ 
+-- Atomicity guarantees that each transaction is treated as a single unit, which either succeeds completely, or fails completely.
+-- Consistency ensures that a transaction can only bring the database from one valid state to another, maintaining database invariants.
+-- Isolation ensures that concurrent execution of transactions leaves the database in the same state that would have been obtained if the transactions were executed sequentially.
++- Atomicity guarantees that each transaction is treated as a single unit, which either succeeds completely, or fails completely;
++- Consistency ensures that a transaction can only bring the database from one valid state to another, maintaining database invariants;
++- Isolation ensures that concurrent execution of transactions leaves the database in the same state that would have been obtained if the transactions were executed sequentially;
+ - Durability guarantees that once a transaction has been committed, it will remain committed even in the case of a system failure (e.g., power outage or crash).
+ 
+ In single data node, transactions are only restricted to the access and control of single database resources, called local transactions. 
+@@ -19,8 +19,8 @@ Almost all the mature relational databases have provided native support for loca
+ But in distributed application situations based on micro-services, more and more of them require to include multiple accesses to services and the corresponding database resources in the same transaction. 
+ As a result, distributed transactions appear. 
+ 
+-Though the relational database has provided perfect native `ACID` support, it can become an obstacle to the system performance under distributed situations. 
+-How to make databases satisfy `ACID` features under distributed situations or find a corresponding substitute solution, is the priority work of distributed transactions.
++Though the relational database has provided perfect native ACID support, it can become an obstacle to the system performance under distributed situations. 
++How to make databases satisfy ACID features under distributed situations or find a corresponding substitute solution, is the priority work of distributed transactions.
+ 
+ ### Local Transaction
+ 
+@@ -34,7 +34,7 @@ The earliest distributed transaction model of XA standard is `X/Open Distributed
+ 
+ Distributed transaction based on XA standard has little intrusion to businesses. 
+ Its biggest advantage is the transparency to users, who can use distributed transactions based on XA standard just as local transactions. 
+-XA standard can strictly guarantee `ACID` features of transactions.
++XA standard can strictly guarantee ACID features of transactions.
+ 
+ That guarantee can be a double-edged sword. 
+ It is more proper in the implementation of short transactions with fixed time, because it will lock all the resources needed during the implementation process. 
+@@ -43,18 +43,18 @@ Therefore, in high concurrency situations that take performance as the highest,
+ 
+ ### BASE Transaction
+ 
+-If we call transactions that satisfy `ACID` features as hard transactions, then transactions based on `BASE` features are called soft transactions. 
+-`BASE` is the abbreviation of basically available, soft state and eventually consistent those there factors.
++If we call transactions that satisfy ACID features as hard transactions, then transactions based on BASE features are called soft transactions. 
++BASE is the abbreviation of basically available, soft state and eventually consistent those there factors.
+ 
+ - Basically available feature means not all the participants of distributed transactions have to be online at the same time.
+ - Soft state feature permits some time delay in system renewal, which may not be noticed by users.
+ - Eventually consistent feature of systems is usually guaranteed by message availability.
+ 
+-There is a high requirement for isolation in `ACID` transactions: all the resources must be locked during the transaction implementation process. 
++There is a high requirement for isolation in ACID transactions: all the resources must be locked during the transaction implementation process. 
+ The concept of BASE transactions is uplifting mutex operation from resource level to business level through business logic. 
+ Broaden the requirement for high consistency to exchange the rise in system throughput.
+ 
+-Highly consistent transactions based on `ACID` and eventually consistent transactions based on `BASE` are not silver bullets, and they can only take the most effect in the most appropriate situations. 
++Highly consistent transactions based on ACID and eventually consistent transactions based on BASE are not silver bullets, and they can only take the most effect in the most appropriate situations. 
+ The detailed distinctions between them are illustrated in the following table to help developers to choose technically:
+ 
+ |                         | *Local transaction*                     | *2PC (3PC) transaction*             | *BASE transaction*                  |
+diff --git a/docs/document/content/features/transaction/concept/_index.cn.md b/docs/document/content/features/transaction/concept/_index.cn.md
+index 1cb5c27cf0..e7a9df3f38 100644
+--- a/docs/document/content/features/transaction/concept/_index.cn.md
++++ b/docs/document/content/features/transaction/concept/_index.cn.md
+@@ -9,4 +9,4 @@ chapter = true
+ 本小节主要介绍分布式事务的核心概念，主要包括：
+ 
+ * 基于 XA 协议的两阶段事务
+-* 基于 Seata 的柔性事务
++* 基于最终一致性的柔性事务
+diff --git a/docs/document/content/features/transaction/concept/_index.en.md b/docs/document/content/features/transaction/concept/_index.en.md
+index a883dcbe5c..8b36ac79e5 100644
+--- a/docs/document/content/features/transaction/concept/_index.en.md
++++ b/docs/document/content/features/transaction/concept/_index.en.md
+@@ -8,5 +8,5 @@ chapter = true
+ 
+ This chapter mainly introduces the core concepts of distributed transactions, including:
+ 
+-* 2PC transaction with XA
+-* BASE transaction with Seata
++* XA transaction 
++* BASE transaction
+diff --git a/docs/document/content/features/transaction/concept/base-transaction-seata.cn.md b/docs/document/content/features/transaction/concept/base-transaction-seata.cn.md
+deleted file mode 100644
+index eaae48c248..0000000000
+--- a/docs/document/content/features/transaction/concept/base-transaction-seata.cn.md
++++ /dev/null
+@@ -1,22 +0,0 @@
+-+++
+-title = "Seata 柔性事务"
+-weight = 3
+-+++
+-
+-[Seata](https://github.com/seata/seata)是阿里集团和蚂蚁金服联合打造的分布式事务框架。
+-其 AT 事务的目标是在微服务架构下，提供增量的事务 ACID 语意，让开发者像使用本地事务一样，使用分布式事务，核心理念同 Apache ShardingSphere 一脉相承。
+-
+-Seata AT 事务模型包含TM (事务管理器)，RM (资源管理器) 和 TC (事务协调器)。
+-TC 是一个独立部署的服务，TM 和 RM 以 jar 包的方式同业务应用一同部署，它们同 TC 建立长连接，在整个事务生命周期内，保持远程通信。
+-TM 是全局事务的发起方，负责全局事务的开启，提交和回滚。
+-RM 是全局事务的参与者，负责分支事务的执行结果上报，并且通过 TC 的协调进行分支事务的提交和回滚。
+-
+-Seata 管理的分布式事务的典型生命周期：
+-
+-1. TM 要求 TC 开始一个全新的全局事务。TC 生成一个代表该全局事务的 XID。
+-2. XID 贯穿于微服务的整个调用链。
+-3. 作为该 XID 对应到的 TC 下的全局事务的一部分，RM 注册本地事务。
+-4. TM 要求 TC 提交或回滚 XID 对应的全局事务。
+-5. TC 驱动 XID 对应的全局事务下的所有分支事务完成提交或回滚。
+-
+-![Seata AT事务模型](https://shardingsphere.apache.org/document/current/img/transaction/seata-at-transaction.png)
+diff --git a/docs/document/content/features/transaction/concept/base-transaction-seata.en.md b/docs/document/content/features/transaction/concept/base-transaction-seata.en.md
+deleted file mode 100644
+index 1a6f37a1f6..0000000000
+--- a/docs/document/content/features/transaction/concept/base-transaction-seata.en.md
++++ /dev/null
+@@ -1,26 +0,0 @@
+-+++
+-title = "Seata BASE transaction"
+-weight = 3
+-+++
+-
+-[Seata](https://github.com/seata/seata) is a distributed transaction framework developed by Alibaba Group and Ant Finance. 
+-The goal of AT transaction is to provide incremental transaction ACID semantics under the micro-service architecture, 
+-so that developers can use distributed transactions as they use local transactions. 
+-The core idea of AT transaction is the same as Apache ShardingSphere.
+-
+-Seata AT transaction model includes TM (Transaction Manager), RM (Resource Manager) and TC (Transaction Coordinator). 
+-TC is an independent service that needs to be deployed separately. 
+-TM and RM are deployed together with user applications in the form of jar packages. 
+-They establish long connections with TC and keep RPC throughout the transaction life cycle.
+-The initiator of global transaction is TM, which is in charge of begin and commit/rollback of global transaction.
+-The participant of global transaction is RM, which is in charge of reporting the execution results of branch transaction, and commit/rollback is executed through TC coordination.
+-
+-A typical lifecycle of Seata managed distributed transaction:
+-
+-1. TM asks TC to begin a new global transaction. TC generates a XID representing the global transaction.
+-2. XID is propagated through micro-services' invoke chain.
+-3. RM register local transaction as a branch of the corresponding global transaction of XID to TC.
+-4. TM asks TC for commit or rollback the corresponding global transaction of XID.
+-5. TC drives all branch transactions under the corresponding global transaction of XID to finish branch commit or rollback.
+-
+-![Seata AT transaction model](https://shardingsphere.apache.org/document/current/img/transaction/seata-at-transaction.png)
+diff --git a/docs/document/content/features/transaction/concept/base.cn.md b/docs/document/content/features/transaction/concept/base.cn.md
+new file mode 100644
+index 0000000000..5a50020e97
+--- /dev/null
++++ b/docs/document/content/features/transaction/concept/base.cn.md
+@@ -0,0 +1,13 @@
+++++
++title = "柔性事务"
++weight = 3
+++++
++
++柔性事务在 2008 年发表的一篇[论文](https://queue.acm.org/detail.cfm?id=1394128)中被最早提到，
++它提倡采用最终一致性放宽对强一致性的要求，以达到事务处理并发度的提升。
++
++TCC 和 Sage 是两种常见实现方案。
++他们主张开发者自行实现对数据库的反向操作，来达到数据在回滚时仍能够保证最终一致性。
++[SEATA](https://github.com/seata/seata) 实现了 SQL 反向操作的自动生成，可以使柔性事务不再必须由开发者介入才能使用。
++
++Apache ShardingSphere 集成了 SEATA 作为柔性事务的使用方案。
+diff --git a/docs/document/content/features/transaction/concept/base.en.md b/docs/document/content/features/transaction/concept/base.en.md
+new file mode 100644
+index 0000000000..61141e1157
+--- /dev/null
++++ b/docs/document/content/features/transaction/concept/base.en.md
+@@ -0,0 +1,14 @@
+++++
++title = "BASE"
++weight = 3
+++++
++
++A [paper](https://queue.acm.org/detail.cfm?id=1394128) published in 2008 first mentioned on BASE transaction,
++it advocates the use of eventual consistency to instead of consistency when improve concurrency of transaction processing.
++
++TCC and Sage are two regular implementations.
++They use reverse operation implemented by developers themselves to ensure the eventual consistency when data rollback.
++[SEATA](https://github.com/seata/seata) implements SQL reverse operation automatically, 
++so that BASE transaction can be used without the intervention of developers.
++
++Apache ShardingSphere integrates SEATA as solution of BASE transaction.
+diff --git a/docs/document/content/features/transaction/concept/2pc-xa-transaction.cn.md b/docs/document/content/features/transaction/concept/xa.cn.md
+similarity index 53%
+rename from docs/document/content/features/transaction/concept/2pc-xa-transaction.cn.md
+rename to docs/document/content/features/transaction/concept/xa.cn.md
+index 74d24f2c5f..1c5f163cad 100644
+--- a/docs/document/content/features/transaction/concept/2pc-xa-transaction.cn.md
++++ b/docs/document/content/features/transaction/concept/xa.cn.md
+@@ -1,17 +1,18 @@
+ +++
+-title = "XA两阶段事务"
++title = "XA 事务"
+ weight = 1
  +++
  
--### ScalingEntry
-+## ScalingEntry
+-两阶段事务提交采用的是 X/OPEN 组织所定义的[DTP模型](http://pubs.opengroup.org/onlinepubs/009680699/toc.pdf)所抽象的 AP（应用程序）, TM（事务管理器）和 RM（资源管理器） 概念来保证分布式事务的强一致性。
++两阶段事务提交采用的是 X/OPEN 组织所定义的 [DTP 模型](http://pubs.opengroup.org/onlinepubs/009680699/toc.pdf)所抽象的 AP（应用程序）, TM（事务管理器）和 RM（资源管理器） 概念来保证分布式事务的强一致性。
+ 其中 TM 与 RM 间采用 XA 的协议进行双向通信。
+ 与传统的本地事务相比，XA 事务增加了准备阶段，数据库除了被动接受提交指令外，还可以反向通知调用方事务是否可以被提交。
+ `TM` 可以收集所有分支事务的准备结果，并于最后进行原子提交，以保证事务的强一致性。
  
- | *SPI Name*             | *Description*               |
- | ---------------------- | --------------------------- |
-diff --git a/docs/document/content/quick-start/shardingsphere-scaling-quick-start.cn.md b/docs/document/content/quick-start/shardingsphere-scaling-quick-start.cn.md
-index 44a4939c0e..3e5f5302a2 100644
---- a/docs/document/content/quick-start/shardingsphere-scaling-quick-start.cn.md
-+++ b/docs/document/content/quick-start/shardingsphere-scaling-quick-start.cn.md
-@@ -6,7 +6,7 @@ weight = 3
+-![两阶段提交模型](https://shardingsphere.apache.org/document/current/img/transaction/2pc-tansaction-modle.png)
++![两阶段提交模型](https://shardingsphere.apache.org/document/current/img/transaction/2pc-tansaction.png)
  
- ## 1. 规则配置
+ Java 通过定义 JTA 接口实现了 XA 模型，JTA 接口中的 `ResourceManager` 需要数据库厂商提供 XA 驱动实现，
+ `TransactionManager` 则需要事务管理器的厂商实现，传统的事务管理器需要同应用服务器绑定，因此使用的成本很高。
+-而嵌入式的事务管器可以以 jar 包的形式提供服务，同 Apache ShardingSphere 集成后，可保证分片后跨库事务强一致性。
++而嵌入式的事务管器可以通过 jar 形式提供服务，同 Apache ShardingSphere 集成后，可保证分片后跨库事务强一致性。
  
--编辑`%SHARDINGSPHERE_PROXY_HOME%/conf/server.yaml`。详情请参见[使用手册](/cn/user-manual/shardingsphere-scaling/usage/)。
-+编辑`%SHARDINGSPHERE_PROXY_HOME%/conf/server.yaml`。详情请参见[运行部署](/cn/user-manual/shardingsphere-scaling/build/)。
+-通常，只有使用了事务管理器厂商所提供的 XA 事务连接池，才能支持 XA 的事务。Apache ShardingSphere 在整合 XA 事务时，采用分离 XA 事务管理和连接池管理的方式，做到对应用程序的零侵入。
++通常，只有使用了事务管理器厂商所提供的 XA 事务连接池，才能支持 XA 的事务。
++Apache ShardingSphere 在整合 XA 事务时，采用分离 XA 事务管理和连接池管理的方式，做到对应用程序的零侵入。
+diff --git a/docs/document/content/features/transaction/concept/2pc-xa-transaction.en.md b/docs/document/content/features/transaction/concept/xa.en.md
+similarity index 95%
+rename from docs/document/content/features/transaction/concept/2pc-xa-transaction.en.md
+rename to docs/document/content/features/transaction/concept/xa.en.md
+index 79faea7e5c..b2cde76fbd 100644
+--- a/docs/document/content/features/transaction/concept/2pc-xa-transaction.en.md
++++ b/docs/document/content/features/transaction/concept/xa.en.md
+@@ -1,5 +1,5 @@
+ +++
+-title = "XA Transaction"
++title = "XA"
+ weight = 1
+ +++
  
- > %SHARDINGSPHERE_PROXY_HOME% 为 Proxy 解压后的路径，例：/Users/ss/shardingsphere-proxy-bin/
+@@ -9,7 +9,7 @@ TM and RM use XA protocol for bidirectional streaming.
+ Compared with traditional local transactions, XA transactions have a prepared phase, where the database cannot only passively receive commands, but also notify the submitter whether the transaction can be accepted. 
+ TM can collect all the prepared results of branch transactions before submitting all of them together, which has guaranteed the distributed consistency.
  
-diff --git a/docs/document/content/quick-start/shardingsphere-scaling-quick-start.en.md b/docs/document/content/quick-start/shardingsphere-scaling-quick-start.en.md
-index aaea1dbe89..83459ae432 100644
---- a/docs/document/content/quick-start/shardingsphere-scaling-quick-start.en.md
-+++ b/docs/document/content/quick-start/shardingsphere-scaling-quick-start.en.md
-@@ -6,7 +6,7 @@ weight = 3
+-![2PC XA model](https://shardingsphere.apache.org/document/current/img/transaction/2pc-tansaction-modle.png)
++![2PC XA model](https://shardingsphere.apache.org/document/current/img/transaction/2pc-tansaction.png)
  
- ## 1. Rule Configuration
- 
--Edit `%SHARDINGSPHERE_PROXY_HOME%/conf/server.yaml`. Please refer to [Configuration Manual](/en/user-manual/shardingsphere-scaling/usage/) for more details.
-+Edit `%SHARDINGSPHERE_PROXY_HOME%/conf/server.yaml`. Please refer to [Build Manual](/en/user-manual/shardingsphere-scaling/build/) for more details.
- 
- > %SHARDINGSPHERE_PROXY_HOME% is the shardingsphere proxy extract path. for example: /Users/ss/shardingsphere-proxy-bin/
- 
-@@ -26,7 +26,7 @@ sh %SHARDINGSPHERE_PROXY_HOME%/bin/start.sh
- 
- Use DistSQL interface to manage the migration jobs.
- 
--Please refer to [Configuration Manual](/en/user-manual/shardingsphere-scaling/usage/) for more details. 
-+Please refer to [Usage Manual](/en/user-manual/shardingsphere-scaling/usage/) for more details. 
- 
- ## 5. Related documents
- - [Features#Scaling](/en/features/scaling/) : Core Concept, User Norms
-diff --git a/docs/document/content/user-manual/shardingsphere-scaling/build.cn.md b/docs/document/content/user-manual/shardingsphere-scaling/build.cn.md
-index b76807ab0d..0b9077b29a 100644
---- a/docs/document/content/user-manual/shardingsphere-scaling/build.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-scaling/build.cn.md
-@@ -46,13 +46,9 @@ mode:
- 
- 打开`clusterAutoSwitchAlgorithm`配置代表开启自动检测任务是否完成及切换配置，目前系统提供了`IDLE`类型实现。
- 
--打开`dataConsistencyCheckAlgorithm`配置设置数据校验算法，目前系统提供了`DEFAULT`类型实现。`DEFAULT`算法目前支持的数据库：`MySQL`。其他数据库还不能打开这个配置项。其他数据库的支持还在开发中。
-+打开`dataConsistencyCheckAlgorithm`配置设置数据校验算法，关闭该配置系统将不进行数据校验。目前系统提供了`DEFAULT`类型实现，`DEFAULT`算法目前支持的数据库：`MySQL`。其他数据库还不能打开这个配置项，相关支持还在开发中。
- 
--可以通过`ScalingClusterAutoSwitchAlgorithm`接口自定义一个SPI实现。
--
--可以通过`ScalingDataConsistencyCheckAlgorithm`接口自定义一个SPI实现。
--
--详情请参见[开发者手册#弹性伸缩](/cn/dev-manual/scaling/)。
-+可以通过`ScalingClusterAutoSwitchAlgorithm`接口自定义一个SPI实现，通过`ScalingDataConsistencyCheckAlgorithm`接口自定义一个SPI实现。详情请参见[开发者手册#弹性伸缩](/cn/dev-manual/scaling/)。
- 
- 3. 启动 ShardingSphere-Proxy：
- 
-@@ -64,16 +60,12 @@ sh bin/start.sh
- 
- ## 结束
- 
--### ShardingSphere-Proxy
--
- ```
-  sh bin/stop.sh
- ```
- 
- ## 应用配置项
- 
--### ShardingSphere-Scaling
--
- 应用现有配置项如下，相应的配置可在 `conf/server.yaml` 中修改：
- 
- | 名称           | 说明                                    | 默认值 |
-diff --git a/docs/document/content/user-manual/shardingsphere-scaling/build.en.md b/docs/document/content/user-manual/shardingsphere-scaling/build.en.md
-index 5fab5a5b89..91d107fd0c 100644
---- a/docs/document/content/user-manual/shardingsphere-scaling/build.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-scaling/build.en.md
-@@ -46,13 +46,9 @@ mode:
- 
- Enable `clusterAutoSwitchAlgorithm` indicate system will detect when scaling job is finished and switch cluster configuration automatically. Currently, system supply `IDLE` type implementation.
- 
--Enable `dataConsistencyCheckAlgorithm` indicate system will use this defined algorithm to do data consistency check when it's emitted. Currently, system supply `DEFAULT` type implementation. `DEFAULT` type algorithm support following database types: `MySQL`, you could not enable it if you're running other database types for now. Support of other database types is under development.
-+Enable `dataConsistencyCheckAlgorithm` indicate system will use this defined algorithm to do data consistency check when it's emitted, if it's disabled, then data consistency check will be ignored. Currently, system supply `DEFAULT` type implementation, it supports following database types: `MySQL`, you could not enable it if you're running other database types for now, support of other database types is under development.
- 
--You could customize an auto switch algorithm by implementing `ScalingClusterAutoSwitchAlgorithm` SPI interface.
--
--You could customize a check algorithm by implementing `ScalingDataConsistencyCheckAlgorithm` SPI interface.
--
--Please refer to [Dev Manual#Scaling](/en/dev-manual/scaling/).
-+You could customize an auto switch algorithm by implementing `ScalingClusterAutoSwitchAlgorithm` SPI interface, and customize a check algorithm by implementing `ScalingDataConsistencyCheckAlgorithm` SPI interface. Please refer to [Dev Manual#Scaling](/en/dev-manual/scaling/) for more details.
- 
- 3. Start up ShardingSphere-Proxy:
- 
-@@ -64,16 +60,12 @@ sh bin/start.sh
- 
- ## Shutdown
- 
--### ShardingSphere-Proxy
--
- ```
- sh bin/stop.sh
- ```
- 
- ## Configuration
- 
--### ShardingSphere-Scaling
--
- The existing configuration items are as follows, we can modify them in `conf/server.yaml`:
- 
- | Name           | Description                                                                               | Default value |
-diff --git a/docs/document/content/user-manual/shardingsphere-scaling/usage.cn.md b/docs/document/content/user-manual/shardingsphere-scaling/usage.cn.md
-index 6698de78fb..cacd27f2e5 100644
---- a/docs/document/content/user-manual/shardingsphere-scaling/usage.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-scaling/usage.cn.md
-@@ -11,14 +11,15 @@ weight = 2
- 
- 支持迁移场景如下：
- 
--| 源端                  | 目标端                | 是否支持 |
--| --------------------- | -------------------- | ------- |
--| MySQL(5.1.15 ~ 5.7.x) | ShardingSphere-Proxy | 是      |
--| PostgreSQL(9.4 ~ )    | ShardingSphere-Proxy | 是      |
-+| 源端                   | 目标端                |
-+| --------------------- | -------------------- |
-+| MySQL(5.1.15 ~ 5.7.x) | MySQL                |
-+| PostgreSQL(9.4 ~ )    | PostgreSQL           |
-+| openGauss(2.1.0)      | openGauss            |
- 
- **注意**：
- 
--如果后端连接 MySQL 数据库，请下载 [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar)，并将其放入 `${shardingsphere-proxy}\lib` 目录。
-+如果后端连接 MySQL 数据库，请下载 [mysql-connector-java-5.1.47.jar]( https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar )，并将其放入 `${shardingsphere-proxy}/lib` 目录。
- 
- ### 权限要求
- 
-@@ -71,6 +72,7 @@ mysql> preview select count(1) from t_order;
- #### 创建迁移任务
- 
- 1. 添加新的数据源
-+
- 详情请参见[RDL#数据源资源](/cn/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-resource/)。
- 
- 示例：
-@@ -85,6 +87,7 @@ ADD RESOURCE ds_2 (
- ```
- 
- 2. 修改分片规则
-+
- 详情请参见[RDL#数据分片](/cn/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule/)。
- 
- 示例：
-@@ -100,6 +103,7 @@ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123))
- 比如说`RESOURCES`和`sharding-count`修改了会触发迁移。
- 
- #### 查询所有迁移任务
-+
- 详情请参见[RAL#弹性伸缩](/cn/user-manual/shardingsphere-proxy/usage/distsql/syntax/ral/ral/#%E5%BC%B9%E6%80%A7%E4%BC%B8%E7%BC%A9)。
- 
- 示例：
-diff --git a/docs/document/content/user-manual/shardingsphere-scaling/usage.en.md b/docs/document/content/user-manual/shardingsphere-scaling/usage.en.md
-index bf56f93693..b837516340 100644
---- a/docs/document/content/user-manual/shardingsphere-scaling/usage.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-scaling/usage.en.md
-@@ -11,14 +11,15 @@ JAVA，JDK 1.8+.
- 
- The migration scene we support:
- 
--| Source                     | Target          | Support |
--| -------------------------- | -------------------- | ------- |
--| MySQL(5.1.15 ~ 5.7.x)      | ShardingSphere-Proxy | Yes     |
--| PostgreSQL(9.4 ~ )         | ShardingSphere-Proxy | Yes     |
-+| Source                     | Target               |
-+| -------------------------- | -------------------- |
-+| MySQL(5.1.15 ~ 5.7.x)      | MySQL                |
-+| PostgreSQL(9.4 ~ )         | PostgreSQL           |
-+| openGauss(2.1.0)           | openGauss            |
- 
- **Attention**: 
- 
--If the backend database is MySQL, please download [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar) and put it into `${shardingsphere-scaling}\lib directory`.
-+If the backend database is MySQL, please download [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar) and put it into `${shardingsphere-proxy}/lib directory`.
- 
- ### Privileges
- 
-@@ -71,7 +72,8 @@ mysql> preview select count(1) from t_order;
- #### Start scaling job
- 
- 1. Add new data source resources
--Please refer to [RDL#Data Source](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-resource/).
-+
-+Please refer to [RDL#Data Source](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-resource/) for more details.
- 
- Example:
- ```sql
-@@ -85,7 +87,8 @@ ADD RESOURCE ds_2 (
- ```
- 
- 2. Alter sharding table rule
--Please refer to [RDL#Sharding](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule/).
-+
-+Please refer to [RDL#Sharding](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule/) for more details.
- 
- Example:
- ```sql
-@@ -100,7 +103,8 @@ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123))
- If `RESOURCES` and `sharding-count` is changed, then scaling job will be emitted.
- 
- #### List scaling jobs
--Please refer to [RAL#Scaling](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/ral/ral/#scaling).
-+
-+Please refer to [RAL#Scaling](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/ral/ral/#scaling) for more details.
- 
- Example:
- ```sql
-@@ -177,4 +181,4 @@ mysql> preview select count(1) from t_order;
- ```
- 
- #### Other DistSQL
--Please refer to [RAL#Scaling](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/ral/ral/#scaling).
-+Please refer to [RAL#Scaling](/en/user-manual/shardingsphere-proxy/usage/distsql/syntax/ral/ral/#scaling) for more details.
+ Java implements the XA model through defining a JTA interface, in which `ResourceManager` requires an XA driver provided by database manufacturers and `TransactionManager` is provided by transaction manager manufacturers. 
+ Traditional transaction managers need to be bound with application server, which poises a high use cost. Built-in transaction managers have already been able to provide services through jar packages. 
+diff --git a/docs/document/static/img/transaction/2pc-tansaction-modle.png b/docs/document/static/img/transaction/2pc-tansaction-modle.png
+deleted file mode 100644
+index 74450433cd..0000000000
+Binary files a/docs/document/static/img/transaction/2pc-tansaction-modle.png and /dev/null differ
+diff --git a/docs/document/static/img/transaction/2pc-tansaction.png b/docs/document/static/img/transaction/2pc-tansaction.png
+new file mode 100644
+index 0000000000..d138166641
+Binary files /dev/null and b/docs/document/static/img/transaction/2pc-tansaction.png differ
+diff --git a/docs/document/static/img/transaction/seata-at-transaction.png b/docs/document/static/img/transaction/seata-at-transaction.png
+deleted file mode 100644
+index 9333b0a3b2..0000000000
+Binary files a/docs/document/static/img/transaction/seata-at-transaction.png and /dev/null differ
+diff --git a/docs/document/static/img/transaction/sharding-transaction-base-saga-design.png b/docs/document/static/img/transaction/sharding-transaction-base-saga-design.png
+deleted file mode 100644
+index 547e921c51..0000000000
+Binary files a/docs/document/static/img/transaction/sharding-transaction-base-saga-design.png and /dev/null differ

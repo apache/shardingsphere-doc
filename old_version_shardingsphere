@@ -1,173 +1,86 @@
-commit 6b3095a2088cea902a047a68e1cea2af1656e7b9
-Author: Liang Zhang <terrymanu@163.com>
-Date:   Mon Nov 1 13:09:19 2021 +0800
+commit 8a69095957b8486389ea3aea5cc153db26cda976
+Author: zhaojinchao <33742097+zjcnb@users.noreply.github.com>
+Date:   Mon Nov 1 16:00:28 2021 +0800
 
-    Keep data consistent in same transaction for readwrite-splitting only (#13375)
+    Add primary data source name for show db discovery document (#13380)
+    
+    * Add primary data source name for show db discovery
+    
+    * update
 
-diff --git a/docs/document/content/features/readwrite-splitting/use-norms.cn.md b/docs/document/content/features/readwrite-splitting/use-norms.cn.md
-index 310130c89a..799535d7e3 100644
---- a/docs/document/content/features/readwrite-splitting/use-norms.cn.md
-+++ b/docs/document/content/features/readwrite-splitting/use-norms.cn.md
-@@ -6,18 +6,12 @@ weight = 2
- ## 支持项
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.cn.md
+index 218a38b332..1630c0df9b 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.cn.md
+@@ -11,21 +11,22 @@ SHOW DB_DISCOVERY RULES [FROM schemaName]
  
- * 提供一主多从的读写分离配置，可独立使用，也可配合数据分片使用；
--* 独立使用读写分离支持 SQL 透传；
-+* 事务中的数据读写均用主库；
- * 基于 Hint 的强制主库路由。
+ ## 说明
  
- ## 不支持项
+-| 列              | 说明            |
+-| --------------- | -------------- |
+-| name            | 规则名称         |
+-| dataSourceNames | 数据源名称列表    |
+-| discoverType    | 数据库发现服务类型 |
+-| discoverProps   | 数据库发现服务参数 |
++| 列                    | 说明            |
++| --------------------- | --------------- |
++| name                  | 规则名称         |
++| dataSourceNames       | 数据源名称列表    |
++| primaryDataSourceName | 主数据源名称      |
++| discoverType          | 数据库发现服务类型 |
++| discoverProps         | 数据库发现服务参数 |
  
- * 主库和从库的数据同步；
- * 主库和从库的数据同步延迟导致的数据不一致；
--* 主库双写或多写；
--* 跨主库和从库之间的事务的数据不一致。主从模型中，事务中读写均用主库。
--
--## 可选项
--
--| 配置项           | 详细说明                                                                                 | 默认值  | 适用范围            |
--|:--------------- |:-------------------------------------------------------------------------------------- |:------ |:------------------ |
--| queryConsistent | 配置为 `true` 时，若在同一线程且同一数据库连接内有写入操作，以后的读操作均从主库读取，用于保证数据一致性 | false | ShardingSphere-JDBC |
-+* 主库多写；
-+* 主从库间的事务一致性。主从模型中，事务中的数据读写均用主库。
-diff --git a/docs/document/content/features/readwrite-splitting/use-norms.en.md b/docs/document/content/features/readwrite-splitting/use-norms.en.md
-index 61362400e9..63e16ef2ef 100644
---- a/docs/document/content/features/readwrite-splitting/use-norms.en.md
-+++ b/docs/document/content/features/readwrite-splitting/use-norms.en.md
-@@ -6,7 +6,7 @@ weight = 2
- ## Supported
+ ## 示例
  
- * Provide the readwrite-splitting configuration of one primary database with multiple replica databases, which can be used alone or with sharding table and database;
--* Support SQL pass-through in independent use of readwrite-splitting;
-+* Primary nodes need to be used for both reading and writing in the transaction;
- * Forcible primary database route based on SQL Hint;
+ ```sql
+ mysql> show db_discovery rules from database_discovery_db;
+-+-------+--------------------+--------------+-------------------------------------------------------------------------------------------------------------+
+-| name  | dataSourceNames    | discoverType | discoverProps                                                                                               |
+-+-------+--------------------+--------------+-------------------------------------------------------------------------------------------------------------+
+-| pr_ds |  ds_0, ds_1, ds_2  | MGR          |  keepAliveCron=0/5 * * * * ?, zkServerLists=localhost:2181, groupName=92504d5b-6dec-11e8-91ea-246e9612aaf1  |
+-+-------+--------------------+--------------+-------------------------------------------------------------------------------------------------------------+
+++-------+---------------------+--------------------------+---------------+------------------------------------------------------------------------------------------------------------+
++| name  | data_source_names   | primary_data_source_name | discover_type | discover_props                                                                                             |
+++-------+---------------------+--------------------------+---------------+------------------------------------------------------------------------------------------------------------+
++| pr_ds | ds_0, ds_1, ds_2    | ds_0                     | MGR           | keepAliveCron=0/50 * * * * ?, zkServerLists=localhost:2181, groupName=b13df29e-90b6-11e8-8d1b-525400fc3996 |
+++-------+---------------------+--------------------------+---------------+------------------------------------------------------------------------------------------------------------+
+ 1 row in set (0.00 sec)
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.en.md
+index 9be6885f61..b988364364 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rql/rql-db-discovery-rule.en.md
+@@ -11,21 +11,22 @@ SHOW DB_DISCOVERY RULES [FROM schemaName]
  
- ## Unsupported
-@@ -15,10 +15,4 @@ weight = 2
- * Data inconsistency caused by replication delay between databases;
- * Double or multiple primary databases to provide write operation;
- * The data for transaction across primary and replica nodes are inconsistent;
--In the readwrite-splitting model, the primary nodes need to be used for both reading and writing in the transaction.
--
--## Optional
--
--| Item            | Description                                                                                                                                                                                | Default | Range Of Application |
--|:--------------- |:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |:------- |:-------------------- |
--| queryConsistent | When the value is `true`, if there is write operation in the same thread and database connection, all the following read operations are from the write database to ensure data consistency | false   | ShardingSphere-JDBC  |
-+In the readwrite-splitting model, primary nodes need to be used for both reading and writing in the transaction.
-diff --git a/docs/document/content/reference/api-change-history/shardingsphere-jdbc/spring-namespace-configuration.en.md b/docs/document/content/reference/api-change-history/shardingsphere-jdbc/spring-namespace-configuration.en.md
-index 0ad92f9d1a..8fb1c1264d 100644
---- a/docs/document/content/reference/api-change-history/shardingsphere-jdbc/spring-namespace-configuration.en.md
-+++ b/docs/document/content/reference/api-change-history/shardingsphere-jdbc/spring-namespace-configuration.en.md
-@@ -142,7 +142,6 @@ Namespace: [http://shardingsphere.apache.org/schema/shardingsphere/readwrite-spl
- | write-data-source-name     | Attribute  | Write data source name                                                  |
- | read-data-source-names     | Attribute  | Read data source names, multiple data source names separated with comma |
- | load-balance-algorithm-ref | Attribute  | Load balance algorithm name                                             |
--| query-consistent           | Attribute  | Whether to enable query consistent routing                              |
+ ## Description
  
- \<readwrite-splitting:load-balance-algorithm />
+-| Column          | Description           |
+-| --------------- | --------------------- |
+-| name            | Rule name             |
+-| dataSourceNames | Data source name list |
+-| discoverType    | Database discovery service type        |
+-| discoverProps   | Database discovery service parameters  |
++| Column                | Description                            |
++| --------------------- | -------------------------------------- |
++| name                  | Rule name                              |
++| dataSourceNames       | Data source name list                  |
++| primaryDataSourceName | Primary data source name               |
++| discoverType          | Database discovery service type        |
++| discoverProps         | Database discovery service parameters  |
  
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.cn.md
-index 81d43c0012..18ecef0273 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.cn.md
-@@ -26,7 +26,6 @@ weight = 2
- | writeDataSourceName        | String               | 写库数据源名称        | -             |
- | readDataSourceNames (+)    | Collection\<String\> | 读库数据源名称列表    | -             |
- | loadBalancerName (?)       | String               | 读库负载均衡算法名称  | 轮询负载均衡算法 |
--| queryConsistent (?)        | boolean              | 是否启用查询一致性路由 | false         |
+ ## Example
  
- 算法类型的详情，请参见[内置负载均衡算法列表](/cn/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/load-balance)。
- 查询一致性路由的详情，请参见[使用规范](/cn/features/readwrite-splitting/use-norms)。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.en.md
-index eea026208d..89a6a3a627 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/java-api/readwrite-splitting.en.md
-@@ -26,7 +26,6 @@ Attributes:
- | writeDataSourceName        | String               | Write sources source name                      | -                                  |
- | readDataSourceNames (+)    | Collection\<String\> | Read sources source name list                  | -                                  |
- | loadBalancerName (?)       | String               | Load balance algorithm name of replica sources | Round robin load balance algorithm |
--| queryConsistent (?)        | boolean              | Whether to enable query consistent routing     | false                              |
- 
- Please refer to [Built-in Load Balance Algorithm List](/en/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/load-balance) for more details about type of algorithm.
- Please refer to [Use Norms](/en/features/readwrite-splitting/use-norms) for more details about query consistent routing.
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.cn.md
-index 34b6f3b682..c3ba2ba590 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.cn.md
-@@ -11,7 +11,6 @@ spring.shardingsphere.datasource.names= # 省略数据源配置，请参考使
- spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.write-data-source-name= # 写数据源名称
- spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.read-data-source-names= # 读数据源名称，多个从数据源用逗号分隔
- spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.load-balancer-name= # 负载均衡算法名称
--spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.query-consistent= # 是否启用查询一致性路由
- 
- # 负载均衡算法配置
- spring.shardingsphere.rules.readwrite-splitting.load-balancers.<load-balance-algorithm-name>.type= # 负载均衡算法类型
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.en.md
-index 457d1e4837..79ade137c0 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-boot-starter/readwrite-splitting.en.md
-@@ -11,7 +11,6 @@ spring.shardingsphere.datasource.names= # Omit the data source configuration, pl
- spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.primary-data-source-name= # Write data source name
- spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.replica-data-source-names= # Read data source names, multiple data source names separated with comma
- spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.load-balancer-name= # Load balance algorithm name
--spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.query-consistent= # Whether to enable query consistent routing
- 
- # Load balance algorithm configuration
- spring.shardingsphere.rules.readwrite-splitting.load-balancers.<load-balance-algorithm-name>.type= # Load balance algorithm type
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.cn.md
-index c81ed432bb..360cb9f045 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.cn.md
-@@ -22,13 +22,12 @@ weight = 2
- | write-data-source-name     | 属性  | 写数据源名称                      |
- | read-data-source-names     | 属性  | 读数据源名称，多个读数据源用逗号分隔 |
- | load-balance-algorithm-ref | 属性  | 负载均衡算法名称                   |
--| query-consistent           | 属性  | 是否启用查询一致性路由              |
- 
- 
- \<readwrite-splitting:load-balance-algorithm />
- 
--| *名称*    | *类型* | *说明*            |
--| --------- | ----- | ----------------- |
-+| *名称*     | *类型* | *说明*           |
-+| --------- | ----- | ---------------- |
- | id        | 属性  | 负载均衡算法名称    |
- | type      | 属性  | 负载均衡算法类型    |
- | props (?) | 标签  | 负载均衡算法属性配置 |
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.en.md
-index e192c05eae..da7fb1432d 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/spring-namespace/readwrite-splitting.en.md
-@@ -22,7 +22,6 @@ Namespace: [http://shardingsphere.apache.org/schema/shardingsphere/readwrite-spl
- | write-data-source-name     | Attribute  | Write data source name                                                  |
- | read-data-source-names     | Attribute  | Read data source names, multiple data source names separated with comma |
- | load-balance-algorithm-ref | Attribute  | Load balance algorithm name                                             |
--| query-consistent           | Attribute  | Whether to enable query consistent routing                              |
- 
- \<readwrite-splitting:load-balance-algorithm />
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.cn.md
-index fa47406254..fb6ee4529c 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.cn.md
-@@ -16,7 +16,6 @@ rules:
-       readDataSourceNames: 
-         - <read-data_source-name> (+) # 读库数据源名称
-       loadBalancerName: # 负载均衡算法名称
--      queryConsistent: # 是否启用查询一致性路由
-   
-   # 负载均衡算法配置
-   loadBalancers:
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.en.md
-index 70b25c782f..ff412e2770 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/yaml/readwrite-splitting.en.md
-@@ -16,7 +16,6 @@ rules:
-       readDataSourceNames: 
-         - <read-data-source-name> (+) # Read data source name
-       loadBalancerName: # Load balance algorithm name
--      queryConsistent: # Whether to enable query consistent routing
-   
-   # Load balance algorithm configuration
-   loadBalancers:
+ ```sql
+ mysql> show db_discovery rules from database_discovery_db;
+-+-------+--------------------+--------------+-------------------------------------------------------------------------------------------------------------+
+-| name  | dataSourceNames    | discoverType | discoverProps                                                                                               |
+-+-------+--------------------+--------------+-------------------------------------------------------------------------------------------------------------+
+-| pr_ds |  ds_0, ds_1, ds_2  | MGR          |  keepAliveCron=0/5 * * * * ?, zkServerLists=localhost:2181, groupName=92504d5b-6dec-11e8-91ea-246e9612aaf1  |
+-+-------+--------------------+--------------+-------------------------------------------------------------------------------------------------------------+
+++-------+---------------------+--------------------------+---------------+------------------------------------------------------------------------------------------------------------+
++| name  | data_source_names   | primary_data_source_name | discover_type | discover_props                                                                                             |
+++-------+---------------------+--------------------------+---------------+------------------------------------------------------------------------------------------------------------+
++| pr_ds | ds_0, ds_1, ds_2    | ds_0                     | MGR           | keepAliveCron=0/50 * * * * ?, zkServerLists=localhost:2181, groupName=b13df29e-90b6-11e8-8d1b-525400fc3996 |
+++-------+---------------------+--------------------------+---------------+------------------------------------------------------------------------------------------------------------+
+ 1 row in set (0.00 sec)
+ ```

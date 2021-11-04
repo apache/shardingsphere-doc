@@ -1,302 +1,154 @@
-commit eb28b124bae6104490a36be18affc4a3c1bee729
-Author: gin <jacky7boy@163.com>
-Date:   Thu Nov 4 11:51:25 2021 +0800
+commit 435c8ffb6334d8c321720c481136f0ca8e996921
+Author: lanchengx <52209337+lanchengx@users.noreply.github.com>
+Date:   Thu Nov 4 10:06:58 2021 -0500
 
-    Optimizate shadow algorithm type (#13432)
+    [DistSQL] Support `alter sharding algorithm` statement (#13424)
+    
+    * Support `alter sharding algorithm` statement
+    
+    * Add `alter sharding algorithm` test
+    
+    * Add doc.
+    
+    * Modify doc.
+    
+    * Update rdl-sharding-rule.cn.md
+    
+    * Update rdl-sharding-rule.en.md
+    
+    * Update rdl-sharding-rule.cn.md
+    
+    * Update rdl-sharding-rule.en.md
+    
+    * Update rdl-sharding-rule.cn.md
+    
+    * Update rdl-sharding-rule.en.md
+    
+    * Update rdl-sharding-rule.cn.md
+    
+    * Update rdl-sharding-rule.en.md
+    
+    * Update alter.xml
+    
+    * Update alter.xml
 
-diff --git a/docs/document/content/features/shadow/concept.cn.md b/docs/document/content/features/shadow/concept.cn.md
-index 1b05f17979..1579d72356 100644
---- a/docs/document/content/features/shadow/concept.cn.md
-+++ b/docs/document/content/features/shadow/concept.cn.md
-@@ -24,7 +24,7 @@ weight = 1
- 通过识别 SQL 中的数据，匹配路由至影子库的场景。
- 适用于由压测数据名单驱动的压测场景。
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.cn.md
+index f335c53c11..c870a43091 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.cn.md
+@@ -18,6 +18,8 @@ DROP SHARDING TABLE RULE tableName [, tableName] ...
  
--- 基于标记的影子算法 
-+- 基于 Hint 的影子算法 
+ CREATE SHARDING ALGORITHM shardingAlgorithmDefinition [,  shardingAlgorithmDefinition] ...
  
- 通过识别 SQL 中的注释，匹配路由至影子库的场景。
- 适用于由上游系统透传标识驱动的压测场景。
-diff --git a/docs/document/content/features/shadow/concept.en.md b/docs/document/content/features/shadow/concept.en.md
-index 20f6b104dd..4ce0655c42 100644
---- a/docs/document/content/features/shadow/concept.en.md
-+++ b/docs/document/content/features/shadow/concept.en.md
-@@ -24,7 +24,7 @@ The shadow algorithms are closely related to business, there are 2 types of shad
- Recognize data from SQL and route to shadow databases.
- Suitable for test data driven scenario.
++ALTER SHARDING ALGORITHM shardingAlgorithmDefinition [,  shardingAlgorithmDefinition] ...
++
+ DROP SHARDING ALGORITHM algorithmName [, algorithmName] ...
  
--- Note based shadow algorithm
-+- Hint based shadow algorithm
+ shardingTableRuleDefinition:
+@@ -124,21 +126,21 @@ SHARDING_COLUMN=order_id,
+ TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=4)),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
+ ),t_order_item (
+-DATANODES("resource_${0..1}.t_order${0..1}"),
++DATANODES("resource_${0..1}.t_order_item_${0..1}"),
+ DATABASE_STRATEGY(TYPE=standard,SHARDING_COLUMN=user_id,SHARDING_ALGORITHM=database_inline),
+-TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=database_inline),
++TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=table_inline),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
+ );
  
- Recognize comment from SQL and route to shadow databases.
- Suitable for identify passed by upstream system scenario.
-diff --git a/docs/document/content/reference/shadow/_index.cn.md b/docs/document/content/reference/shadow/_index.cn.md
-index ae2c4c02db..cf7034742e 100644
---- a/docs/document/content/reference/shadow/_index.cn.md
-+++ b/docs/document/content/reference/shadow/_index.cn.md
-@@ -71,16 +71,16 @@ tables:
-   t_order:
-     data-source-names: shadow-data-source
-     shadow-algorithm-names:
--      - simple-note-algorithm
--      - user-id-match-algorithm
-+      - simple-hint-algorithm
-+      - user-id-value-match-algorithm
- shadow-algorithms:
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-@@ -121,8 +121,8 @@ INSERT INTO t_order (order_id, user_id, ...) VALUES (xxx..., 0, ...)
+ ALTER SHARDING TABLE RULE t_order (
+-RESOURCES(resource_0,resource_1),
++RESOURCES(resource_0,resource_1,resource_2,resource_3),
+ SHARDING_COLUMN=order_id,
+-TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=10)),
++TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=16)),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
+ ),t_order_item (
+-DATANODES("resource_0.t_order${0..1}"),
++DATANODES("resource_${0..3}.t_order_item${0..3}"),
+ DATABASE_STRATEGY(TYPE=standard,SHARDING_COLUMN=user_id,SHARDING_ALGORITHM=database_inline),
+-TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=database_inline),
++TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=table_inline),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=uuid,PROPERTIES("worker-id"=123)))
+ );
  
- ```yaml
- shadow-algorithms:
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-@@ -131,7 +131,7 @@ shadow-algorithms:
+@@ -148,8 +150,16 @@ CREATE DEFAULT SHARDING DATABASE STRATEGY (
+ TYPE = standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=algorithmsName
+ );
  
- **注意**：影子表使用列影子算法时，相同类型操作（INSERT, UPDATE, DELETE, SELECT）目前仅支持单个字段。
+-CREATE SHARDING ALGORITHM algorithmName (
+-TYPE(NAME=hash_mod,PROPERTIES("algorithm-expression"="t_order_${order_id % 2}"))
++CREATE SHARDING ALGORITHM database_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${user_id % 2}"))
++),table_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${order_id % 2}"))
++);
++
++ALTER SHARDING ALGORITHM database_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${user_id % 4}"))
++),table_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${order_id % 4}"))
+ );
  
--2. 使用注解影子算法
-+2. 使用HINT影子算法
+ DROP SHARDING ALGORITHM t_order_hash_mod;
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.en.md
+index ad203c94cd..a6c4bac54f 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-sharding-rule.en.md
+@@ -18,6 +18,8 @@ DROP SHARDING TABLE RULE tableName [, tableName] ...
  
- 假设 `t_order` 表中不包含可以对值进行匹配的列。添加注解 `/*shadow:true,foo:bar,...*/` 到执行 SQL 中，即：
+ CREATE SHARDING ALGORITHM shardingAlgorithmDefinition [,  shardingAlgorithmDefinition] ...
  
-@@ -145,8 +145,8 @@ SELECT * FROM t_order WHERE order_id = xxx /*shadow:true,foo:bar,...*/
++ALTER SHARDING ALGORITHM shardingAlgorithmDefinition [,  shardingAlgorithmDefinition] ...
++
+ DROP SHARDING ALGORITHM algorithmName [, algorithmName] ...
  
- ```yaml
- shadow-algorithms:
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
-@@ -168,14 +168,14 @@ SELECT * FROM t_order WHERE order_id = xxx /*shadow:true,foo:bar,...*/;
+ shardingTableRuleDefinition:
+@@ -124,21 +126,21 @@ SHARDING_COLUMN=order_id,
+ TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=4)),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
+ ),t_order_item (
+-DATANODES("resource_${0..1}.t_order${0..1}"),
++DATANODES("resource_${0..1}.t_order_item_${0..1}"),
+ DATABASE_STRATEGY(TYPE=standard,SHARDING_COLUMN=user_id,SHARDING_ALGORITHM=database_inline),
+-TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=database_inline),
++TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=table_inline),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
+ );
  
- ```yaml
- shadow-algorithms:
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-       value: 0
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
-@@ -209,17 +209,17 @@ tables:
-   t_order:
-     data-source-names: shadow-data-source
-     shadow-algorithm-names:
--      - simple-note-algorithm
--      - user-id-match-algorithm
-+      - simple-hint-algorithm
-+      - user-id-value-match-algorithm
- default-shadow-algorithm-name: simple-note-algorithm
- shadow-algorithms:
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-@@ -229,4 +229,4 @@ props:
-   sql-comment-parse-enabled: true
- ```
+ ALTER SHARDING TABLE RULE t_order (
+-RESOURCES(resource_0,resource_1),
++RESOURCES(resource_0,resource_1,resource_2,resource_3),
+ SHARDING_COLUMN=order_id,
+-TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=10)),
++TYPE(NAME=hash_mod,PROPERTIES("sharding-count"=16)),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=snowflake,PROPERTIES("worker-id"=123)))
+ ),t_order_item (
+-DATANODES("resource_0.t_order${0..1}"),
++DATANODES("resource_${0..3}.t_order_item_${0..3}"),
+ DATABASE_STRATEGY(TYPE=standard,SHARDING_COLUMN=user_id,SHARDING_ALGORITHM=database_inline),
+-TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=database_inline),
++TABLE_STRATEGY(TYPE=standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=table_inline),
+ GENERATED_KEY(COLUMN=another_id,TYPE(NAME=uuid,PROPERTIES("worker-id"=123)))
+ );
  
--**注意**：默认影子算法仅支持注解影子算法。
-+**注意**：默认影子算法仅支持HINT影子算法。
-diff --git a/docs/document/content/reference/shadow/_index.en.md b/docs/document/content/reference/shadow/_index.en.md
-index 3323689de6..92197612ae 100644
---- a/docs/document/content/reference/shadow/_index.en.md
-+++ b/docs/document/content/reference/shadow/_index.en.md
-@@ -90,16 +90,16 @@ tables:
-   t_order:
-     data-source-names: shadow-data-source
-     shadow-algorithm-names:
--      - simple-note-algorithm
--      - user-id-match-algorithm
-+      - simple-hint-algorithm
-+      - user-id-value-match-algorithm
- shadow-algorithms:
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-@@ -141,8 +141,8 @@ Column Shadow algorithm configuration (YAML):
+@@ -148,8 +150,16 @@ CREATE DEFAULT SHARDING DATABASE STRATEGY (
+ TYPE = standard,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=algorithmsName
+ );
  
- ```yaml
- shadow-algorithms:
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-@@ -151,7 +151,7 @@ shadow-algorithms:
+-CREATE SHARDING ALGORITHM algorithmName (
+-TYPE(NAME=hash_mod,PROPERTIES("algorithm-expression"="t_order_${order_id % 2}"))
++CREATE SHARDING ALGORITHM database_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${user_id % 2}"))
++),table_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${order_id % 2}"))
++);
++
++ALTER SHARDING ALGORITHM database_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${user_id % 4}"))
++),table_inline (
++TYPE(NAME=inline,PROPERTIES("algorithm-expression"="resource_${order_id % 4}"))
+ );
  
- **Note**: When the shadow table uses the column shadow algorithm, the same type of shadow operation (INSERT, UPDATE, DELETE, SELECT) currently only supports a single column.
- 
--2. Note shadow algorithm example
-+2. Hint shadow algorithm example
- 
- Assume that the `t_order` table does not contain columns that can matching. Executed SQL statement need to add SQL note `/*shadow:true,foo:bar,.. .*/`
- 
-@@ -164,8 +164,8 @@ Note Shadow algorithm configuration (YAML):
- 
- ```yaml
- shadow-algorithms:
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
-@@ -187,14 +187,14 @@ Both will be executed to shadow DB, other data executed to production DB.
- 
- ```yaml
- shadow-algorithms:
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-       value: 0
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
-@@ -228,17 +228,17 @@ tables:
-   t_order:
-     data-source-names: shadow-data-source
-     shadow-algorithm-names:
--      - simple-note-algorithm
--      - user-id-match-algorithm
-+      - simple-hint-algorithm
-+      - user-id-value-match-algorithm
- default-shadow-algorithm-name: simple-note-algorithm
- shadow-algorithms:
--  simple-note-algorithm:
--    type: SIMPLE_NOTE
-+  simple-hint-algorithm:
-+    type: SIMPLE_HINT
-     props:
-       shadow: true
-       foo: bar
--  user-id-match-algorithm:
--    type: COLUMN_VALUE_MATCH
-+  user-id-value-match-algorithm:
-+    type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.cn.md
-index 250b118a3f..a0310a2638 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.cn.md
-@@ -7,7 +7,7 @@ weight = 5
- 
- ### 列值匹配影子算法
- 
--类型：COLUMN_VALUE_MATCH
-+类型：VALUE_MATCH
- 
- 可配置属性：
- 
-@@ -19,7 +19,7 @@ weight = 5
- 
- ### 列正则表达式匹配影子算法
- 
--类型：COLUMN_REGEX_MATCH
-+类型：REGEX_MATCH
- 
- 可配置属性：
- 
-@@ -33,7 +33,7 @@ weight = 5
- 
- ### 简单SQL注解匹配影子算法
- 
--类型：SIMPLE_NOTE
-+类型：SIMPLE_HINT
- 
- 可配置属性：
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.en.md
-index d9364a9408..178fdd8b95 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/configuration/built-in-algorithm/shadow.en.md
-@@ -7,7 +7,7 @@ weight = 5
- 
- ### Column Value Match Shadow Algorithm
- 
--Type：COLUMN_VALUE_MATCH
-+Type：VALUE_MATCH
- 
- Attributes:
- 
-@@ -19,7 +19,7 @@ Attributes:
- 
- ### Column Regex Match Shadow Algorithm
- 
--Type: COLUMN_REGEX_MATCH
-+Type: REGEX_MATCH
- 
- Attributes:
- 
-@@ -33,7 +33,7 @@ Attributes:
- 
- ### Simple SQL Note Shadow Algorithm
- 
--Type: SIMPLE_NOTE
-+Type: SIMPLE_HINT
- 
- Attributes:
- 
+ DROP SHARDING ALGORITHM t_order_hash_mod;

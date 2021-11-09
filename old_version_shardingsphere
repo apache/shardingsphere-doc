@@ -1,30 +1,124 @@
-commit 602c04182a2e9afb4b7cec69f2340d3b56264838
-Author: Liang Zhang <terrymanu@163.com>
-Date:   Mon Nov 8 22:44:50 2021 +0800
+commit 6ac39fed001fcc44b853309516a4e7ec53782628
+Author: lanchengx <52209337+lanchengx@users.noreply.github.com>
+Date:   Tue Nov 9 05:03:44 2021 -0600
 
-    Update index of User Manual (#13505)
+    [DistSQL] Support create shadow algorithm statement. (#13510)
+    
+    * Support `create shadow algorithm` statement.
+    
+    * Add `create shadow algorithm` statement test.
+    
+    * Adjustment for compare
+    
+    * Add `create shadow algorithm` statement doc.
+    
+    * Update `create shadow algorithm` statement doc.
+    
+    * Update rdl-shadow-rule.en.md
+    
+    * Update rdl-shadow-rule.cn.md
 
-diff --git a/docs/document/content/user-manual/_index.cn.md b/docs/document/content/user-manual/_index.cn.md
-index 4ad822a399..7e0ee2d83c 100644
---- a/docs/document/content/user-manual/_index.cn.md
-+++ b/docs/document/content/user-manual/_index.cn.md
-@@ -5,5 +5,5 @@ weight = 5
- chapter = true
- +++
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.cn.md
+index b27f53e14b..21e831cc48 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.cn.md
+@@ -9,6 +9,8 @@ weight = 6
+ CREATE SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
  
--本章节详细阐述 Apache ShardingSphere 的 3 个相关产品 ShardingSphere-JDBC、ShardingSphere-Proxy 和 ShardingSphere-Sidecar，
--及其衍生产品 ShardingSphere-Scaling 的使用。
-+本章节面向 Apache ShardingSphere 的用户，详细阐述项目的使用说明。
-+用户不必通读本章节，可以在需要时当作字典查阅。
-diff --git a/docs/document/content/user-manual/_index.en.md b/docs/document/content/user-manual/_index.en.md
-index db2608a62a..c28be79119 100644
---- a/docs/document/content/user-manual/_index.en.md
-+++ b/docs/document/content/user-manual/_index.en.md
-@@ -5,5 +5,5 @@ weight = 5
- chapter = true
- +++
+ ALTER SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
++``
++CREATE SHADOW ALGORITHM shadowAlgorithm [, shadowAlgorithm] ...
  
--This chapter describes how to use projects of Apache ShardingSphere: ShardingSphere-JDBC, ShardingSphere-Proxy and ShardingSphere-Sidecar.
--Except main projects, this chapter also describe how to use derivative projects of Apache ShardingSphere: ShardingSphere-Scaling.
-+This chapter describes how to use projects of Apache ShardingSphere.
-+Users do not have to read this chapter through, but can refer to it as a dictionary when necessary.
+ ALTER SHADOW ALGORITHM shadowAlgorithm [, shadowAlgorithm] ...
+ 
+@@ -33,7 +35,7 @@ algorithmProperty: key=value
+ - `resourceMapping` 指定源数据库和影子库的映射关系，需使用 RDL 管理的 `resource` ，请参考 [数据源资源](https://shardingsphere.apache.org/document/current/cn/features/dist-sql/syntax/rdl/rdl-resource/)
+ - `shadowAlgorithm` 可同时作用于多个 `shadowTableRule`
+ - `algorithmName` 未指定时会根据 `ruleName`、`tableName` 和 `shadowAlgorithmType` 自动生成
+-- `shadowAlgorithmType` 目前支持 `COLUMN_REGEX_MATCH` 和 `SIMPLE_NOTE`
++- `shadowAlgorithmType` 目前支持 `VALUE_MATCH`、`REGEX_MATCH` 和 `SIMPLE_HINT`
+ - `shadowTableRule` 能够被不同的 `shadowRuleDefinition` 复用，因此在执行 `DROP SHADOW RULE` 时，对应的 `shadowTableRule` 不会被移除
+ - `shadowAlgorithm` 能够被不同的 `shadowTableRule` 复用，因此在执行 `ALTER SHADOW RULE` 时，对应的 `shadowAlgorithm` 不会被移除
+ 
+@@ -44,18 +46,23 @@ algorithmProperty: key=value
+ CREATE SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++t_order((simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=VALUE_MATCH, PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
+ 
+ ALTER SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++t_order((simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=VALUE_MATCH, PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
++
++CREATE SHADOW ALGORITHM 
++(simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="true", "foo"="bar"))), 
++(user_id_match_algorithm, TYPE(NAME=REGEX_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "regex"='[1]')));
++
+ 
+ ALTER SHADOW ALGORITHM 
+-(simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar"))), 
+-(user_id_match_algorithm, TYPE(NAME=COLUMN_REGEX_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "regex"='[1]')));
++(simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="false", "foo"="bar"))), 
++(user_id_match_algorithm, TYPE(NAME=VALUE_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "value"='1')));
+ 
+ DROP SHADOW RULE shadow_rule;
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.en.md
+index 65d62bc3d5..05b3eef1bf 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/usage/distsql/syntax/rdl/rdl-shadow-rule.en.md
+@@ -9,6 +9,8 @@ weight = 6
+ CREATE SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
+ 
+ ALTER SHADOW RULE shadowRuleDefinition [, shadowRuleDefinition] ... 
++```
++CREATE SHADOW ALGORITHM shadowAlgorithm [, shadowAlgorithm] ...
+ 
+ ALTER SHADOW ALGORITHM shadowAlgorithm [, shadowAlgorithm] ...
+ 
+@@ -33,7 +35,7 @@ algorithmProperty: key=value
+ - `resourceMapping` specifies the mapping relationship between the source database and the shadow library. You need to use the `resource` managed by RDL, please refer to [resource](https:shardingsphere.apache.orgdocumentcurrentcnfeaturesdist-sqlsyntaxrdlrdl-resource)
+ - `shadowAlgorithm` can act on multiple `shadowTableRule` at the same time
+ - If `algorithmName` is not specified, it will be automatically generated according to `ruleName`, `tableName` and `shadowAlgorithmType`
+-- `shadowAlgorithmType` currently supports `COLUMN_REGEX_MATCH` and `SIMPLE_NOTE`
++- `shadowAlgorithmType` currently supports `VALUE_MATCH`, `REGEX_MATCH` and `SIMPLE_HINT`
+ - `shadowTableRule` can be reused by different `shadowRuleDefinition`, so when executing `DROP SHADOW RULE`, the corresponding `shadowTableRule` will not be removed
+ - `shadowAlgorithm` can be reused by different `shadowTableRule`, so when executing `ALTER SHADOW RULE`, the corresponding `shadowAlgorithm` will not be removed
+ 
+@@ -44,18 +46,23 @@ algorithmProperty: key=value
+ CREATE SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++t_order((simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=VALUE_MATCH, PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
+ 
+ ALTER SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=COLUMN_REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar")))));
++t_order((simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="true", foo="bar"))),(TYPE(NAME=REGEX_MATCH, PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
++t_order_item((TYPE(NAME=VALUE_MATCH, PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
++
++CREATE SHADOW ALGORITHM 
++(simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="true", "foo"="bar"))), 
++(user_id_match_algorithm, TYPE(NAME=REGEX_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "regex"='[1]')));
++
+ 
+ ALTER SHADOW ALGORITHM 
+-(simple_note_algorithm, TYPE(NAME=SIMPLE_NOTE, PROPERTIES("shadow"="true", "foo"="bar"))), 
+-(user_id_match_algorithm, TYPE(NAME=COLUMN_REGEX_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "regex"='[1]')));
++(simple_hint_algorithm, TYPE(NAME=SIMPLE_HINT, PROPERTIES("shadow"="false", "foo"="bar"))), 
++(user_id_match_algorithm, TYPE(NAME=VALUE_MATCH,PROPERTIES("operation"="insert", "column"="user_id", "value"='1')));
+ 
+ DROP SHADOW RULE shadow_rule;
+ 

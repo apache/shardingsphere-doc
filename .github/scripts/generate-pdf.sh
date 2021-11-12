@@ -12,12 +12,14 @@ function prepare {
     sudo apt-get install texlive-xetex latex-cjk-all
     sudo apt-get install pandoc
     #wget https://github.com/adobe-fonts/source-han-sans/raw/release/OTF/SourceHanSansSC.zip
+    wget https://github.com/adobe-fonts/source-han-sans/releases/latest/download/SourceHanSansSC.zip
     #wget https://github.com/adobe-fonts/source-han-serif/raw/release/OTF/SourceHanSerifSC_SB-H.zip
     #wget https://github.com/adobe-fonts/source-han-serif/raw/release/OTF/SourceHanSerifSC_EL-M.zip
-    #unzip SourceHanSansSC.zip -d SourceHanSansSC
+    unzip SourceHanSansSC.zip -d SourceHanSansSC
     #unzip SourceHanSerifSC_EL-M.zip -d SourceHanSerifSC_EL-M
     #unzip SourceHanSerifSC_SB-H.zip -d SourceHanSerifSC_SB-H
     #sudo mv SourceHanSansSC SourceHanSerifSC_EL-M SourceHanSerifSC_SB-H /usr/share/fonts/opentype/
+    sudo mv SourceHanSansSC /usr/share/fonts/opentype/
     wget -O source-serif-pro.zip https://www.fontsquirrel.com/fonts/download/source-serif-pro
     unzip source-serif-pro -d source-serif-pro
     sudo mv source-serif-pro /usr/share/fonts/opentype/

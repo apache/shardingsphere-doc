@@ -68,7 +68,7 @@ latex_engine = 'xelatex'
 
 latex_elements = {
     'papersize': 'a4paper',
-    'pointsize': '10pt',
+    #'pointsize': '10pt',
     'figure_align': 'htbp',
     'classoptions': ',oneside',
     'passoptionstopackages': r'\PassOptionsToPackage{svgnames}{xcolor}',

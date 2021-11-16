@@ -97,6 +97,7 @@ function generate_pdf {
         do
             sed -i -n '/+++/,/+++/!p' $f
             sed -i /http.*svg/d $f
+            sed -i /http.*badge.*/d $f
             if [[ "$1" == "shardingsphere" ]] ;then
                 sed -i "s/(\/${lang}/(https:\/\/shardingsphere.apache.org\/document\/current\/${lang}/g" $f
             else

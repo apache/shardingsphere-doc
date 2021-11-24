@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Integrating SCTL into RAL &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Integrating SCTL into RAL</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h1 id="integrating-sctl-into-ral">Integrating SCTL into RAL</h1>
+<p>In the previous article <a href="https://shardingsphere.apache.org/blog/en/material/jul_26_an_introduction_to_distsql/">“An Introduction to DistSQL”</a> written by Haoran Meng, the Apache ShardingSphere Committer shared the motivating reasons behind the design of DistSQL, explained its syntax system, and impressively showcased how you can use one SQL to create a sharding table.</p>
+<p>Recently, the ShardingSphere community has redesigned the SCTL grammar and the execution engine, integrating SCTL into the DistSQL syntax system. Now RAL contains the old SCTL function, making ShardingSphere&rsquo;s command language even more convenient for database management. Today, our community author would like to introduce the changes and elaborate on how you can use the new RAL command lines. We always pursue better user experience, and the upgrade we developed this time is just another typical example.</p>
+<h2 id="review-whats-ral">Review: What&rsquo;s RAL?</h2>
+<p>RAL is a subtype of DistSQL. DistSQL contains three types:  RDL、RQL and RAL.</p>
+<ul>
+<li>
+<p>Resource &amp; Rule Definition Language (RDL)：to create, modify or delete resources and rules.</p>
+</li>
+<li>
+<p>Resource &amp; Rule Query Language (RQL): to query and display resources and rules.</p>
+</li>
+<li>
+<p>Resource &amp; Rule Administration Language (RAL): to control senior functions of resources and rules management.</p>
+</li>
+</ul>
+<h2 id="whats-sctl">What&rsquo;s SCTL?</h2>
+<p>ShardingSphere Control Language (SCTL) is the command language of Apache ShardingSphere to execute a series of operations on enhanced features such as Hint, transaction type switch and sharding execution query.</p>
+<p>SCTL is made of the below commands：</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sctl:set transaction_type=XX</td>
+<td>Change the transaction type ( LOCAL, XA, or BASE), e.g. sctl:set transaction_type=XA.</td>
+</tr>
+<tr>
+<td>sctl:show transaction_type</td>
+<td>Query the transaction type.</td>
+</tr>
+<tr>
+<td>sctl:show cached_connections</td>
+<td>Query the numbuer of physical database cached connections.</td>
+</tr>
+<tr>
+<td>sctl:explain SQL</td>
+<td>Query the execution plan of the logic SQL, e.g. sctl:explain select * from t_order;</td>
+</tr>
+<tr>
+<td>sctl:hint set PRIMARY_ONLY=true</td>
+<td>For the current connection only. Choose whether to hint at the primary database.</td>
+</tr>
+<tr>
+<td>sctl:hint set DatabaseShardingValue=yy</td>
+<td>For the current connection only. The Hint setting only works for database sharding. Add the database sharding value yy.</td>
+</tr>
+<tr>
+<td>sctl:hint addDatabaseShardingValue xx=yy</td>
+<td>For the current connection. Add database sharding value yy to the logical table xx.</td>
+</tr>
+<tr>
+<td>sctl:hint addTableShardingValue xx=yy</td>
+<td>For the current connection. Add table sharding value yy to the logical table xx.</td>
+</tr>
+<tr>
+<td>sctl:hint clear</td>
+<td>For the current connection only. Clear all hint setting.</td>
+</tr>
+<tr>
+<td>sctl:hint show status</td>
+<td>For the current connection only. Query hint status: <code>primary_only:true/false，sharding_type:databases_only/databases_tables</code></td>
+</tr>
+<tr>
+<td>sctl:hint show table status</td>
+<td>For the current connection only. Query hint database sharding value of the logical table.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-integrate-sctl-now">Why Integrate SCTL Now?</h2>
+<ul>
+<li>
+<p>The SCTL feature was released in ShardingSphere v3.1.0. At that time, we did not even create the DistSQL concept - now DistSQL can provide the new API with enriched features and consistent concepts. To avoid an excessively steep learning curve, we chose to integrate SCTL into RAL.</p>
+</li>
+<li>
+<p>SCTL syntax is actually very easy to identify: it is marked with the special prefix &ldquo;sctl:&quot;. Instead of using our Parser engine, parsing a SCTL command relies on string matching. Now that DistSQL is mature enough, it&rsquo;s time to delete these special codes and let the Parser engine handle them.</p>
+</li>
+<li>
+<p>Additionally, SCTL syntax is not real SQL. Apache ShardingSphere 5.0.0 has just been released, and DistSQL is already the best solution to manage resources and rules. This SQL created by ShardingSphere is truly SQL in practice - so why not integrate SCTL into DistSQL?</p>
+</li>
+</ul>
+<h2 id="analysis">Analysis</h2>
+<p>Our community has discussed at length on how to handle the change. Finally, we decided to replace SCTL syntax with new RAL commands (see the table below):</p>
+<table>
+<thead>
+<tr>
+<th>Before</th>
+<th>After</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>sctl:set transaction_type=XX</td>
+<td>set variable transaction_type=XX</td>
+</tr>
+<tr>
+<td>sctl:show transaction_type</td>
+<td>show variable transaction_type</td>
+</tr>
+<tr>
+<td>sctl:show cached_connections</td>
+<td>show variable cached_connections</td>
+</tr>
+<tr>
+<td>sctl:explain SQL</td>
+<td>preview SQL</td>
+</tr>
+<tr>
+<td>sctl:hint set PRIMARY_ONLY=true</td>
+<td>set readwrite_splitting hint source = [auto / write]</td>
+</tr>
+<tr>
+<td>sctl:hint set DatabaseShardingValue=yy</td>
+<td>set sharding hint database_value = yy;</td>
+</tr>
+<tr>
+<td>sctl:hint addDatabaseShardingValue xx=yy</td>
+<td>add sharding hint database_value xx= yy;</td>
+</tr>
+<tr>
+<td>sctl:hint addTableShardingValue xx=yy</td>
+<td>add sharding hint table_value xx = yy</td>
+</tr>
+<tr>
+<td>sctl:hint clear</td>
+<td>clear [hint / sharding hint / readwrite_splitting hint]</td>
+</tr>
+<tr>
+<td>sctl:hint show status</td>
+<td>how [sharding / readwrite_splitting] hint status</td>
+</tr>
+<tr>
+<td>sctl:hint show table status</td>
+<td>Catagorized into 【show sharding hint status】</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Now, Let&rsquo;s analyze these commands one by one:</strong></p>
+<ul>
+<li><code>show variable transaction_type</code></li>
+</ul>
+<blockquote>
+<p>Query the current transaction type.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; show variable transaction_type;
+</code></pre>
+<p>Output</p>
+<pre><code>+------------------+
+| TRANSACTION_TYPE |
++------------------+
+| LOCAL            |
++------------------+
+</code></pre>
+<ul>
+<li><code>set variable transaction_type</code></li>
+</ul>
+<blockquote>
+<p>Modify the current transaction type (LOCAL, XA, or BASE; case insensitive).</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; set variable transaction_type=XA;
+</code></pre>
+<p>Output</p>
+<p>a. If successful, display &ldquo;Query OK, 0 rows affected&rdquo;；</p>
+<p>b. Execute <code>show variable transaction_type</code> again and the type is XA now.</p>
+<ul>
+<li><code>show variable cached_connection</code></li>
+</ul>
+<blockquote>
+<p>Query how many physical database cached connections.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; show variable cached_connections;
+</code></pre>
+<p>Output</p>
+<pre><code>+--------------------+
+| CACHED_CONNECTIONS |
++--------------------+
+| 0                  |
++--------------------+
+</code></pre>
+<ul>
+<li><code>preview SQL</code></li>
+</ul>
+<blockquote>
+<p>Preview the actual SQL. Here, we give an example in read-write splitting scenario. ShardingSphere supports previewing any SQL commands.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; preview select * from t_order;
+</code></pre>
+<p>Output</p>
+<pre><code>+-----------------+----------------------------------------------+
+| datasource_name | sql                                          |
++-----------------+----------------------------------------------+
+| read_ds_0       | select * from t_order ORDER BY order_id ASC  |
+| read_ds_1       | select * from t_order ORDER BY order_id ASC  |
++-----------------+----------------------------------------------+
+</code></pre>
+<p><strong>Note：This is an Hint example in read-write splitting scenario. We configure two rules: read-write splitting and sharding. The configuration is the following:</strong></p>
+<pre><code>rules:
+- !READWRITE_SPLITTING
+dataSources:
+ds_0:
+  writeDataSourceName: write_ds_0
+  readDataSourceNames: 
+    - read_ds_0
+ds_1:
+  writeDataSourceName: write_ds_1
+  readDataSourceNames: 
+    - read_ds_1
+- !SHARDING
+tables:
+t_order:
+  actualDataNodes: ds_${0..1}.t_order
+defaultDatabaseStrategy:
+standard:
+  shardingColumn: user_id
+  shardingAlgorithmName: database_inline
+defaultTableStrategy:
+none:
+shardingAlgorithms:
+database_inline:
+  type: INLINE
+  props:
+    algorithm-expression: ds_${user_id % 2}
+</code></pre>
+<ul>
+<li><code>show readwrite_splitting hint status</code></li>
+</ul>
+<blockquote>
+<p>For the current connection only. Query hint status of readwrite_splitting.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; show readwrite_splitting hint status;
+</code></pre>
+<p>Output</p>
+<pre><code>+--------+
+| source |
++--------+
+| auto   |
++--------+
+</code></pre>
+<ul>
+<li><code>set readwrite_splitting hint source</code></li>
+</ul>
+<blockquote>
+<p>For the current connection only. Set read-write splitting hint strategy (AUTO or WRITE).
+Supported source types include：AUTO and WRITE（case insensitive）.</p>
+<ul>
+<li>AUTO： automated readwrite splitting hint</li>
+<li>WRITE：compulsory hint at the master library</li>
+</ul>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; set readwrite_splitting hint source=write;
+</code></pre>
+<p>Output</p>
+<p>a. If sucessful，show &ldquo;Query OK, 0 rows affected&rdquo;；
+b. Re-execute <code>show readwrite_splitting hint status</code>; show the ource is changed into Write；
+c. Execute <code>preview select * from t_order</code>and see the queried SQL will go to the master database.</p>
+<pre><code>mysql&gt; preview select * from t_order;
++-----------------+----------------------------------------------+
+| datasource_name | sql                                          |
++-----------------+----------------------------------------------+
+| write_ds_0      | select * from t_order ORDER BY order_id ASC  |
+| write_ds_1      | select * from t_order ORDER BY order_id ASC  |
++-----------------+----------------------------------------------+
+</code></pre>
+<ul>
+<li><code>clear readwrite_splitting hint</code></li>
+</ul>
+<blockquote>
+<p>For the current connection only. Clear the read-write splitting hint setting.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; clear readwrite_splitting hint;
+</code></pre>
+<p>Output</p>
+<p>a. If successful, show &ldquo;Query OK, 0 rows affected&rdquo;;
+b. Recover default of readwrite_splitting hint; use <code>show readwrite_splitting hint status</code> command to see the result.</p>
+<p><strong>Note：Here is another sharding example for Hint. Hint algorithm is used for both database sharding and table sharding. The sharding configuration rules are shown below:</strong></p>
+<pre><code>rules:
+- !SHARDING
+tables:
+t_order_item:
+  actualDataNodes: ds_${0..1}.t_order_item_${0..1}
+  databaseStrategy:
+    hint:
+      shardingAlgorithmName: database_inline
+  tableStrategy:
+    hint:
+      shardingAlgorithmName: table_inline
+shardingAlgorithms:
+database_inline:
+  type: HINT_INLINE
+  props:
+    algorithm-expression: ds_${Integer.valueOf(value) % 2}
+table_inline:
+  type: HINT_INLINE
+  props:
+    algorithm-expression: t_order_item_${Integer.valueOf(value) % 2}
+</code></pre>
+<p><code>show sharding hint status</code></p>
+<blockquote>
+<p>For the current connection only. Query sharding hint status.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; show sharding hint status;
+</code></pre>
+<p>Output</p>
+<p>The initial status output is ：
+<img src="../../static/img/Blog_27_img_1_codes.png" alt=""></p>
+<p>Verify the hint and input the command:</p>
+<pre><code>preview select * from t_order_item;
+</code></pre>
+<p>Output
+No hint value now. Query is fully dependent on the hint.</p>
+<p><img src="../../static/img/Blog_27_img_2_codes.png" alt=""></p>
+<p>-<code>set sharding hint database_value;</code></p>
+<blockquote>
+<p>For the current connection only. Set the Hint as for database sharding only, and add database value=1.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; set sharding hint database_value = 1;
+</code></pre>
+<p>Output</p>
+<p>a. If successful, show &ldquo;Query OK, 0 rows affected&rdquo;；
+b. Execute <code>show sharding hint status</code>; show  <code>t_order_item</code>'s <code>database_sharding_values</code> as 1. Update <code>sharding_type value</code> as <code>databases_only</code>.</p>
+<p><img src="../../static/img/Blog_27_img_3_codes.png" alt=""></p>
+<p>c. Execute <code>preview select * from t_order_item</code>; SQL all hinted to ds_1：</p>
+<p><img src="../../static/img/Blog_27_img_4_codes.png" alt=""></p>
+<p>*<strong>Note: According to the sharding rules of YAML configuration, when database_value is an odd number, hint at ds_1; when database_value is an even number, hint at ds_0.</strong></p>
+<p>-<code>add sharding hint database_value;</code></p>
+<blockquote>
+<p>For the current connection only. Add  <code>t_order_item</code>'s database sharding value.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; add sharding hint database_value t_order_item = 5;
+</code></pre>
+<p>Output</p>
+<p>a. If successful，show &ldquo;Query OK, 0 rows affected&rdquo;；
+b. Execute <code>show sharding hint status</code>; Show <code>t_order_item</code>'s <code>database_sharding_values</code> as 5; update <code>sharding_type value</code> as <code>databases_tables</code>；</p>
+<p><img src="../../static/img/Blog_27_img_5_codes.png" alt=""></p>
+<p>c. Execute <code>preview select * from t_order_item</code>; SQL commands are all hinted to ds_1：</p>
+<p><img src="../../static/img/Blog_27_img_6_codes.png" alt=""></p>
+<p>Enter the add command again to add an even value.</p>
+<pre><code>mysql&gt; add sharding hint database_value t_order_item = 10;
+</code></pre>
+<p>Output：</p>
+<p>a. If successful，show &ldquo;Query OK, 0 rows affected&rdquo;；
+b. Execute <code>show sharding hint status</code>; show <code>t_order_item</code>'s <code>database_sharding_values</code> = &lsquo;5,10&rsquo;：</p>
+<p><img src="../../static/img/Blog_27_img_7_codes.png" alt=""></p>
+<p>c. Execute <code>preview select * from t_order_item</code>; SQL hint contains ds_0 and ds_1：（ Because the hint values include both odd and even number so it contains all target data sources）</p>
+<p><img src="../../static/img/Blog_27_img_8_codes.png" alt=""></p>
+<p>-<code>add sharding hint table_value;</code></p>
+<blockquote>
+<p>For the current connection only. Add database sharding value for <code>t_order_item</code>.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; add sharding hint table_value t_order_item = 0;
+</code></pre>
+<p>Output</p>
+<p>a. If successful，show &ldquo;Query OK, 0 rows affected&rdquo;；
+b. Execute <code>show sharding hint status</code>; show <code>t_order_item</code>'s <code>database_sharding_values</code>  as &lsquo;5,10&rsquo; while <code>table_sharding_values</code> is &lsquo;0&rsquo;：</p>
+<p><img src="../../static/img/Blog_27_img_9_codes.png" alt=""></p>
+<p>c. Execute <code>preview select * from t_order_item</code>; the Hint condition is shown in the figure below; Every database only queries <code>t_order_item_0</code>:</p>
+<p><img src="../../static/img/Blog_27_img_10_codes.png" alt=""></p>
+<p><strong>Note: According to the sharding rules of YAML configuration, when <code>table_value</code> is an odd number, hint <code>t_order_item_1</code>; when <code>database_value</code> is an even number, hint <code>t_order_item_0</code>.
+It&rsquo;s quite similar to <code>add sharding hint database_value</code>; you can set more than one hint values in <code>add sharding hint database_value</code>, to cover more shards.</strong></p>
+<p><code>clear sharding hint</code></p>
+<blockquote>
+<p>For the current connection only. Clear sharding hint setting.</p>
+</blockquote>
+<p>Input command</p>
+<pre><code>mysql&gt; clear sharding hint;
+</code></pre>
+<p>Output
+a. If successful, show &ldquo;Query OK, 0 rows affected&rdquo;;
+b. Clear sharding hint and recover default; use <code>show sharding hint status</code>; to see the result. The initial status is:</p>
+<p><img src="../../static/img/Blog_27_img_11_codes.png" alt=""></p>
+<p><code>clear hint</code></p>
+<blockquote>
+<p>It is a special command because it contains the features of <code>clear readwrite_splitting hint</code> and <code>clear sharding hint</code>. It can clear all hint values of read-write splitting and sharding. Use the command, and you will get the initial status.</p>
+</blockquote>
+<p>Set hint value and then execute the command;</p>
+<pre><code>mysql&gt; clear hint;
+</code></pre>
+<p>Output</p>
+<p>a. If successful，show &ldquo;Query OK, 0 rows affected&rdquo;;
+b. Get readwrite_splitting hint default and sharding hint default; use <code>show readwrite_splitting hint status ;</code> or <code>show sharding hint status;</code> command to see the result.</p>
+<p><strong>Note: Please remember: if you need to use DistSQL Hint, you need to enable the configuration<code>proxy-hint-enabled</code>of ShardingSphere-Proxy. For more information, please read:</strong>
+<a href="">https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/props/</a></p>
+<h3 id="there-are-more-concerning-ral-commands">There Are More Concerning RAL Commands</h3>
+<p>RAL not only contains all the SCTL functions, but also provides other useful administrational features including elastic scaling, instance ciruit-breaker, disabling read database for read-write splitting, etc.</p>
+<p>For more details about RAL, please consult the relevant documentation:
+<a href="">https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/distsql/syntax/ral/</a></p>
+<p>###Conclusion</p>
+<p>That&rsquo;s all folks. If you have any questions or suggestions, feel free to comment on our GitHub Issues or Discussions sections. You&rsquo;re welcome to submit your pull request and start contributing to the open source community, too. We&rsquo;ve also set up a Slack channel, where you can connect with other members of our community and discuss technology with us.</p>
+<h3 id="open-source-project-links">Open Source Project Links:</h3>
+<p><em><strong>ShardingSphere Github:</strong></em> <a href="">https://github.com/apache/shardingsphere</a></p>
+<p><em><strong>ShardingSphere Twitter:</strong></em> <a href="">https://twitter.com/ShardingSphere</a></p>
+<p><em><strong>ShardingSphere Slack Channel:</strong></em> <a href="">https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg</a></p>
+<p><em><strong>GitHub Issues</strong></em>
+<a href="">https://github.com/apache/shardingsphere/issues</a></p>
+<p><em><strong>Contributor Guide:</strong></em>
+<a href="">https://shardingsphere.apache.org/community/cn/contribute/</a></p>
+<h3 id="references">References</h3>
+<p><a href="">https://github.com/apache/shardingsphere/pull/1586</a></p>
+<p><a href="">https://github.com/apache/shardingsphere/issues/11677</a></p>
+<h3 id="authors">Authors</h3>
+<p>Jiang Longtao</p>
+<p><img src="../../static/img/Blog_22_img_5_Liang_Longtao_Photo.png" alt=""></p>
+<blockquote>
+<p>SphereEx Middleware Development Engineer &amp; Apache ShardingSphere Committer. Currently, he is in charge of DistSQL and permission control development.</p>
+</blockquote>
+<p>Lan Chengxiang</p>
+<p><img src="../../static/img/Blog_27_img__Lan_Chengxiang_Photo.png" alt=""></p>
+<blockquote>
+<p>SphereEx Middleware Development Engineer &amp; Apache ShardingSphere Contributor. He focuses on DisSQL design and development.</p>
+</blockquote>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/nov_22_5.0.0_new/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

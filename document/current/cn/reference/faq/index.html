@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2021-11-29 18:35:33">
+    <meta name="buildDate" content="2021-11-30 14:01:32">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>FAQ :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1638182133" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1638182133" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1638182133" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1638182133" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1638182133" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1638182133" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1638182133" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1638182133" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1638252092" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1638252092" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1638252092" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1638252092" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1638252092" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1638252092" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1638252092" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1638252092" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1638182133" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1638252092" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1638182133"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1638252092"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -6009,6 +6009,7 @@
     <li><a href="#26-其他-服务启动时如何加快-metadata-加载速度">26. [其他] 服务启动时如何加快 <code>metadata</code> 加载速度？</a></li>
     <li><a href="#27-其他-antlr-插件在-src-同级目录下生成代码容易误提交如何避免">27. [其他] ANTLR 插件在 src 同级目录下生成代码，容易误提交，如何避免？</a></li>
     <li><a href="#28-其他-使用-proxool-时分库结果不正确">28. [其他] 使用 <code>Proxool</code> 时分库结果不正确？</a></li>
+    <li><a href="#29-其他-使用-spring-boot-2x-集成-shardingsphere-时配置文件中的属性设置不生效">29. [其他] 使用 Spring Boot 2.x 集成 ShardingSphere 时，配置文件中的属性设置不生效？</a></li>
   </ul>
 </nav>
 
@@ -6235,6 +6236,36 @@ META-INF\namespace\sharding.xsd 和 META-INF\namespace\replica-query.xsd，只�
     <span style="color:#f92672">}</span>
 </code></pre></div><p>更多关于 alias 使用方法请参考 <a href="http://proxool.sourceforge.net/configure.html">Proxool官网</a>。</p>
 <p>PS：sourceforge 网站需要翻墙访问。</p>
+<h2 id="29-其他-使用-spring-boot-2x-集成-shardingsphere-时配置文件中的属性设置不生效">29. [其他] 使用 Spring Boot 2.x 集成 ShardingSphere 时，配置文件中的属性设置不生效？</h2>
+<p>回答：</p>
+<p>需要特别注意，Spring Boot 2.x 环境下配置文件的属性名称约束为仅允许小写字母、数字和短横线，即<code>[a-z][0-9]</code>和<code>-</code>。</p>
+<p>原因如下:</p>
+<p>Spring Boot 2.x 环境下，ShardingSphere 通过 Binder 来绑定配置文件，属性名称不规范（如：驼峰或下划线等）会导致属性设置不生效从而校验属性值时抛出 <code>NullPointerException</code> 异常。参考以下错误示例：</p>
+<p>下划线示例：database_inline</p>
+<pre><code>spring.shardingsphere.rules.sharding.sharding-algorithms.database_inline.type=INLINE
+spring.shardingsphere.rules.sharding.sharding-algorithms.database_inline.props.algorithm-expression=ds-$-&gt;{user_id % 2}
+</code></pre><pre><code>Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'database_inline': Initialization of bean failed; nested exception is java.lang.NullPointerException: Inline sharding algorithm expression cannot be null.
+	... 
+Caused by: java.lang.NullPointerException: Inline sharding algorithm expression cannot be null.
+	at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:897)
+	at org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm.getAlgorithmExpression(InlineShardingAlgorithm.java:58)
+	at org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm.init(InlineShardingAlgorithm.java:52)
+	at org.apache.shardingsphere.spring.boot.registry.AbstractAlgorithmProvidedBeanRegistry.postProcessAfterInitialization(AbstractAlgorithmProvidedBeanRegistry.java:98)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyBeanPostProcessorsAfterInitialization(AbstractAutowireCapableBeanFactory.java:431)
+	... 
+</code></pre><p>驼峰示例：databaseInline</p>
+<pre><code>spring.shardingsphere.rules.sharding.sharding-algorithms.databaseInline.type=INLINE
+spring.shardingsphere.rules.sharding.sharding-algorithms.databaseInline.props.algorithm-expression=ds-$-&gt;{user_id % 2}
+</code></pre><pre><code>Caused by: org.springframework.beans.factory.BeanCreationException: Error creating bean with name 'databaseInline': Initialization of bean failed; nested exception is java.lang.NullPointerException: Inline sharding algorithm expression cannot be null.
+	... 
+Caused by: java.lang.NullPointerException: Inline sharding algorithm expression cannot be null.
+	at com.google.common.base.Preconditions.checkNotNull(Preconditions.java:897)
+	at org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm.getAlgorithmExpression(InlineShardingAlgorithm.java:58)
+	at org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm.init(InlineShardingAlgorithm.java:52)
+	at org.apache.shardingsphere.spring.boot.registry.AbstractAlgorithmProvidedBeanRegistry.postProcessAfterInitialization(AbstractAlgorithmProvidedBeanRegistry.java:98)
+	at org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.applyBeanPostProcessorsAfterInitialization(AbstractAutowireCapableBeanFactory.java:431)
+	... 
+</code></pre><p>从异常堆栈中分析可知： <code>AbstractAlgorithmProvidedBeanRegistry.registerBean</code> 方法调用 <code>PropertyUtil.containPropertyPrefix(environment, prefix)</code> 方法判断指定前缀 <code>prefix</code> 的配置是否存在，而 <code>PropertyUtil.containPropertyPrefix(environment, prefix)</code> 方法，在 Spring Boot 2.x 环境下使用了 Binder，不规范的属性名称（如：驼峰或下划线等）会导致属性设置不生效。</p>
 
 
 <footer class=" footline" >
@@ -9587,17 +9618,17 @@ META-INF\namespace\sharding.xsd 和 META-INF\namespace\replica-query.xsd，只�
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1638182133"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1638252092"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1638182133"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1638182133"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1638252092"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1638252092"></script>
 
     
 

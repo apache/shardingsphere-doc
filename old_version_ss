@@ -1,60 +1,181 @@
-commit f4742d1b396c64ba09f59b6bf5ad774d7c45b242
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Thu Dec 2 14:03:53 2021 +0800
+commit 867a116b981b775183b8cb89315a1cb292fe28b5
+Author: Dachuan J <46773294+dachuan9e@users.noreply.github.com>
+Date:   Thu Dec 2 14:51:40 2021 +0800
 
-    optimize binding table route logic (#13892)
-    
-    * optimize binding table route logic
-    
-    * fix rewrite test
-    
-    * update binding table doc
-    
-    * refactor unit test
+    Update doc (#13898)
 
-diff --git a/docs/document/content/features/sharding/concept/table.cn.md b/docs/document/content/features/sharding/concept/table.cn.md
-index ae1337afd9..f0c86393c0 100644
---- a/docs/document/content/features/sharding/concept/table.cn.md
-+++ b/docs/document/content/features/sharding/concept/table.cn.md
-@@ -19,7 +19,8 @@ Apache ShardingSphere 通过提供多样化的表类型，适配不同场景下
- ## 绑定表
+diff --git a/docs/document/content/features/observability/_index.cn.md b/docs/document/content/features/observability/_index.cn.md
+index 9d6256c01e..29d2dd9d43 100644
+--- a/docs/document/content/features/observability/_index.cn.md
++++ b/docs/document/content/features/observability/_index.cn.md
+@@ -9,35 +9,39 @@ chapter = true
  
- 指分片规则一致的主表和子表。
--例如：`t_order` 表和 `t_order_item` 表，均按照 `order_id` 分片，则此两张表互为绑定表关系。
-+使用绑定表进行多表关联查询时，必须使用分片键进行关联，否则会出现笛卡尔积关联或跨库关联，从而影响查询效率。
-+例如：`t_order` 表和 `t_order_item` 表，均按照 `order_id` 分片，并且使用 `order_id` 进行关联，则此两张表互为绑定表关系。
- 绑定表之间的多表关联查询不会出现笛卡尔积关联，关联查询效率将大大提升。
- 举例说明，如果 SQL 为：
+ 如何观测集群的运行状态，使运维人员可以快速掌握当前系统现状，并进行进一步的维护工作，是分布式系统的全新挑战。
+ 登录到具体服务器的点对点运维方式，无法适用于面向大量分布式服务器的场景。
+-可观察性和遥测是分布式系统推荐的运维方式。
+-APM（应用性能监控）和 Metrics（统计指标监控）是系统运行状况和健康度的重要可观察性指标。
++通过对可系统观察性数据的遥测是分布式系统推荐的运维方式。
++Tracing（链路跟踪）、 Metrics（指标监控）和 Logging （日志）是系统运行状况的可观察性数据重要的获取手段。
  
-@@ -39,7 +40,7 @@ SELECT i.* FROM t_order_1 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE
- SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
- ```
+-APM 是应用性能监控的缩写。
+-主要功能着眼于分布式系统的性能诊断，包括调用链展示，应用拓扑分析等。
++APM（应用性能监控）
++是通过对系统可观察性数据进行采集、存储和分析，进行系统的性能监控与诊断，主要功能包括性能指标监控、调用链分析，应用拓扑图等。
  
--在配置绑定表关系后，路由的 SQL 应该为 2 条：
-+在配置绑定表关系，并且使用 `order_id` 进行关联后，路由的 SQL 应该为 2 条：
+-Apache ShardingSphere 并不负责如何采集、存储以及展示应用性能监控的相关数据，而是将 SQL 解析与 SQL 执行这两块数据分片的最核心的相关信息发送至应用性能监控系统，并交由其处理。
+-换句话说，Apache ShardingSphere 仅负责产生具有价值的数据，并通过标准协议递交至相关系统，可通过三种方式对接应用性能监控系统。
++Apache ShardingSphere 并不负责如何采集、存储以及展示应用性能监控的相关数据，而是为应用监控系统提供必要的指标数据。
++换句话说，Apache ShardingSphere 仅负责产生具有价值的数据，并通过标准协议或插件化的方式递交给相关系统。
  
- ```sql
- SELECT i.* FROM t_order_0 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
-diff --git a/docs/document/content/features/sharding/concept/table.en.md b/docs/document/content/features/sharding/concept/table.en.md
-index 406cb242dd..7357d703dd 100644
---- a/docs/document/content/features/sharding/concept/table.en.md
-+++ b/docs/document/content/features/sharding/concept/table.en.md
-@@ -18,7 +18,8 @@ The physical table that really exists in the horizontal sharding database, i.e.,
- ## Binding Table
+-- 使用 OpenTracing API 发送性能追踪数据
++Tracing 用于获取 SQL 解析与 SQL 执行的链路跟踪信息。Apache ShardingSphere 默认提供了对 SkyWalking，Zipkin，Jaeger 和 OpenTelemetry 的支持，也支持用户通过插件化的方式开发自定义的 Tracing 组件。
  
- It refers to the primary table and the joiner table with the same sharding rules.
--for example, `t_order` and `t_order_item` are both sharded by `order_id`, so they are binding tables with each other. 
-+When using binding tables in multi-table correlating query, you must use the sharding key for correlation, otherwise Cartesian product correlation or cross-database correlation will appear, which will affect query efficiency.
-+For example, `t_order` and `t_order_item` are both sharded by `order_id`, and use `order_id` to correlate, so they are binding tables with each other. 
- Cartesian product correlation will not appear in the multi-tables correlating query, so the query efficiency will increase greatly.
- Take this one for example, if SQL is:
+-面向 OpenTracing 协议的 APM 产品都可以与 Apache ShardingSphere 自动对接，比如 SkyWalking，Zipkin 和 Jaeger。
+-使用这种方式只需要在启动时配置 OpenTracing 协议的实现者即可。
+-它的优点是可以兼容所有的与 OpenTracing 协议兼容的产品作为 APM 的展现系统，如果采用公司愿意实现自己的 APM 系统，也只需要实现 OpenTracing 协议，即可自动展示 Apache ShardingSphere 的链路追踪信息。
+-缺点是 OpenTracing 协议发展并不稳定，较新的版本实现者较少，且协议本身过于中立，对于个性化的相关产品的实现不如原生支持强大。
++- 使用 Zipkin 和 Jaeger
++  
++通过在agent配置文件中开启对应的插件，并配置好 Zipkin 或者 Jaeger 服务器信息即可。
++
++- 使用 OpenTelemetry
  
-@@ -38,7 +39,7 @@ SELECT i.* FROM t_order_1 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE
- SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
- ```
+-- 使用 OpenTelemetry 发送性能追踪数据
+ OpenTelemetry 在2019年由 OpenTracing 和 OpenCencus 合并而来。
+ 使用这种方式，只需要在agent配置文件中，根据 [OpenTelemetry SDK自动配置说明](https://github.com/open-telemetry/opentelemetry-java/tree/main/sdk-extensions/autoconfigure) ，填写合适的配置即可。
  
--With binding table configuration, there should be 2 SQLs after routing:
-+With binding table configuration and use `order_id` to correlate, there should be 2 SQLs after routing:
+-- 使用 SkyWalking 的自动探针
++- 使用 SkyWalking
++  
++需要在 agent 配置中配置启用对应插件，并且需要同时配置使用 SkyWalking 的 apm-toolkit 工具。
++
++- 使用 SkyWalking 的内置自动探针
  
- ```sql
- SELECT i.* FROM t_order_0 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
+-[Apache ShardingSphere](https://shardingsphere.apache.org) 团队与[Apache SkyWalking](https://skywalking.apache.org) 团队共同合作，在 SkyWalking 中实现了 Apache ShardingSphere 自动探针，可以将相关的应用性能数据自动发送到 SkyWalking 中。
++[Apache ShardingSphere](https://shardingsphere.apache.org) 团队与[Apache SkyWalking](https://skywalking.apache.org) 团队共同合作，在 SkyWalking 中实现了 Apache ShardingSphere 自动探针，可以将相关的应用性能数据自动发送到 SkyWalking 中。注意这种方式的自动探针不能与 Apache ShardingSphere 插件探针同时使用。
+ 
+-Metrics 则用于收集和展示整个集群的统计指标。
++Metrics 则用于收集和展示整个集群的统计指标。Apache ShardingSphere 默认提供了对 Prometheus 的支持。
+ 
+ ## 挑战
+ 
+-APM 和 Metrics 需要通过埋点来收集系统信息。
++Tracing 和 Metrics 需要通过埋点来收集系统信息。
+ 大量的埋点使项目核心代码支离破碎，难于维护，且不易定制化统计指标。
+ 
+ ## 目标
+diff --git a/docs/document/content/features/observability/_index.en.md b/docs/document/content/features/observability/_index.en.md
+index 2bd1cbb810..34b4cde6ae 100644
+--- a/docs/document/content/features/observability/_index.en.md
++++ b/docs/document/content/features/observability/_index.en.md
+@@ -9,39 +9,38 @@ chapter = true
+ 
+ In order to grasp the distributed system status, observe running state of the cluster is a new challenge.
+ The point-to-point operation mode of logging in to a specific server cannot suite to large number of distributed servers.
+-Observability and telemetry are the recommended operation way for them.
+-APM (application performance monitoring) and metrics (statistical indicator monitoring) are important system health indicators.
++Telemetry through observable data is the recommended operation and maintenance mode for them.
++Tracking, metrics and logging are important ways to obtain observable data of system status.
+ 
+-APM is the abbreviation for application performance monitoring.
+-It works for performance diagnosis of distributed systems, including chain demonstration, application topology analysis and so on.
++APM (application performance monitoring) is to monitor and diagnose the performance of the system by collecting, storing and analyzing the observable data of the system. Its main functions include performance index monitoring, call stack analysis, service topology, etc.
+ 
+-Apache ShardingSphere is not responsible for gathering, storing and demonstrating APM data, but sends the core information of SQL parsing and enforcement to APM to process.
+-In other words, Apache ShardingSphere is only responsible for generating valuable data and submitting it to relevant systems through standard protocol.
+-It can connect to APM systems in 3 ways.
++Apache ShardingSphere is not responsible for gathering, storing and demonstrating APM data, but provides the necessary information for the APM.
++In other words, Apache ShardingSphere is only responsible for generating valuable data and submitting it to relevant systems through standard protocols or plug-ins.
++Tracing is to obtain the tracking information of SQL parsing and SQL execution. Apache ShardingSphere provides support for SkyWalking, Zipkin, Jaeger and OpenTelemetry by default. It also supports users to develop customized components through plug-in.
+ 
+-- Use OpenTracing API
++- Use Zipkin or Jaeger
+ 
+-APM products facing OpenTracing protocol can all automatically connect to Apache ShardingSphere, like SkyWalking, Zipkin and Jaeger.
+-In this way, users only need to configure the implementation of OpenTracing protocol at the start.
+-Its advantage is the compatibility of all the products compatible of OpenTracing protocol, such as the APM demonstration system.
+-If companies intend to implement their own APM systems, they only need to implement the OpenTracing protocol, and they can automatically show the chain tracing information of Apache ShardingSphere.
+-Its disadvantage is that OpenTracing protocol is not stable in its development, has only a few new versions, and is too neutral to support customized products as native ones do.
++Just provides correct Zipkin or Jaeger server information in the agent configuration file.
+ 
+-- Use OpenTelemetry API 
++- Use OpenTelemetry
+ 
+ OpenTelemetry was merged by OpenTracing and OpenCencus in 2019.
+ In this way, you only need to fill in the appropriate configuration in the agent configuration file according to [OpenTelemetry SDK Autoconfigure Guide](https://github.com/open-telemetry/opentelemetry-java/tree/main/sdk-extensions/autoconfigure).
+ 
+-- Use SkyWalking's automatic monitor agent
++- Use SkyWalking
++
++Enable the SkyWalking plug-in in configuration file and need to configure the SkyWalking apm-toolkit.
++
++- Use SkyWalking's automatic monitor probe
+ 
+ Cooperating with [Apache SkyWalking](https://skywalking.apache.org/) team,
+-Apache ShardingSphere team has realized `ShardingSphere` automatic monitor agent to automatically send application performance data to `SkyWalking`.
++Apache ShardingSphere team has realized `ShardingSphere` automatic monitor probe to automatically send performance data to `SkyWalking`. Note that automatic probe in this way cannot be used together with Apache ShardingSphere plug-in probe.
+ 
+-Metrics used to collect and display statistical indicator of cluster. 
++Metrics used to collect and display statistical indicator of cluster. Apache ShardingSphere supports Prometheus by default.
+ 
+ ## Challenges
+ 
+-APM and metrics need to collect system information through event tracking.
++Tracing and metrics need to collect system information through event tracking.
+ Lots of events tracking make kernel code mess, difficult to maintain, and difficult to customize extend.
+ 
+ ## Goal
+diff --git a/docs/document/content/features/observability/concept.cn.md b/docs/document/content/features/observability/concept.cn.md
+index 4e16c709aa..71f2668e4a 100644
+--- a/docs/document/content/features/observability/concept.cn.md
++++ b/docs/document/content/features/observability/concept.cn.md
+@@ -3,16 +3,19 @@ title = "核心概念"
+ weight = 1
+ +++
+ 
+-## 探针
++## 代理
+ 
+-基于字节码增强和插件化设计提供 APM 和 metrics 埋点，以及日志输出功能。
+-需要开启探针后，才能将监控指标数据输出至第三方 APM 中展示。
++基于字节码增强和插件化设计，以提供 tracing 和 metrics 埋点，以及日志输出功能。
++需要开启代理的插件功能后，才能将监控指标数据输出至第三方 APM 中展示。
+ 
+ ## APM
+ 
+ APM 是应用性能监控的缩写。
+ 着眼于分布式系统的性能诊断，其主要功能包括调用链展示，应用拓扑分析等。
+-通过探针发送调用链数据至第三方 APM 协议。
++
++## Tracing
++
++链路跟踪，通过探针收集调用链数据，并发送到第三方 APM 系统。
+ 
+ ## Metrics
+ 
+diff --git a/docs/document/content/features/observability/concept.en.md b/docs/document/content/features/observability/concept.en.md
+index 8ba2d8b91e..2780ad8f7e 100644
+--- a/docs/document/content/features/observability/concept.en.md
++++ b/docs/document/content/features/observability/concept.en.md
+@@ -5,14 +5,17 @@ weight = 1
+ 
+ ## Agent
+ 
+-Based on bytecode enhance and plugin design to provide APM, metrics event tracing and log output.
+-Enable agent to collection data and then can display data into integrated 3rd APM projects. 
++Based on bytecode enhance and plug-in design to provide tracing, metrics and logging features.
++Enable the plugin in agent to collect data and send data to the integrated 3rd APM system. 
+ 
+ ## APM
+ 
+ APM is the abbreviation for application performance monitoring.
+-It works for performance diagnosis of distributed systems, including chain demonstration, application topology analysis and so on.
+-Use agent to send tracing data into 3rd party APM protocols.
++It works for performance diagnosis of distributed systems, including chain demonstration, service topology analysis and so on.
++
++## Tracing
++
++Tracing data between distributed services or internal processes will be collected by agent. It then will be sent to APM system.
+ 
+ ## Metrics
+ 

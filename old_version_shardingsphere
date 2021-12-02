@@ -1,172 +1,60 @@
-commit 2144c7ea0003fca3f122b843a560fb397af011e1
-Author: tuichenchuxin <86938616+tuichenchuxin@users.noreply.github.com>
-Date:   Thu Dec 2 12:35:13 2021 +0800
+commit f4742d1b396c64ba09f59b6bf5ad774d7c45b242
+Author: Zhengqiang Duan <duanzhengqiang@apache.org>
+Date:   Thu Dec 2 14:03:53 2021 +0800
 
-    support sql hint comment doc (#13874)
+    optimize binding table route logic (#13892)
     
-    * support sql hint comment doc
+    * optimize binding table route logic
     
-    * support sql hint comment doc
+    * fix rewrite test
     
-    * support sql hint comment doc
+    * update binding table doc
     
-    * support sql hint comment doc
-    
-    * support sql hint comment doc
+    * refactor unit test
 
-diff --git a/docs/document/content/features/sharding/concept/hint.cn.md b/docs/document/content/features/sharding/concept/hint.cn.md
-index b5e3784a23..b776c39087 100644
---- a/docs/document/content/features/sharding/concept/hint.cn.md
-+++ b/docs/document/content/features/sharding/concept/hint.cn.md
-@@ -16,6 +16,6 @@ weight = 6
- Apache ShardingSphere 使用 `ThreadLocal` 管理分片键值。
- 可以通过编程的方式向 `HintManager` 中添加分片条件，该分片条件仅在当前线程内生效。
+diff --git a/docs/document/content/features/sharding/concept/table.cn.md b/docs/document/content/features/sharding/concept/table.cn.md
+index ae1337afd9..f0c86393c0 100644
+--- a/docs/document/content/features/sharding/concept/table.cn.md
++++ b/docs/document/content/features/sharding/concept/table.cn.md
+@@ -19,7 +19,8 @@ Apache ShardingSphere 通过提供多样化的表类型，适配不同场景下
+ ## 绑定表
  
--除了通过编程的方式使用强制分片路由，Apache ShardingSphere 还计划通过 SQL 中的特殊注释的方式引用 Hint，使开发者可以采用更加透明的方式使用该功能。
-+除了通过编程的方式使用强制分片路由，Apache ShardingSphere 还可以通过 SQL 中的特殊注释的方式引用 Hint，使开发者可以采用更加透明的方式使用该功能。
+ 指分片规则一致的主表和子表。
+-例如：`t_order` 表和 `t_order_item` 表，均按照 `order_id` 分片，则此两张表互为绑定表关系。
++使用绑定表进行多表关联查询时，必须使用分片键进行关联，否则会出现笛卡尔积关联或跨库关联，从而影响查询效率。
++例如：`t_order` 表和 `t_order_item` 表，均按照 `order_id` 分片，并且使用 `order_id` 进行关联，则此两张表互为绑定表关系。
+ 绑定表之间的多表关联查询不会出现笛卡尔积关联，关联查询效率将大大提升。
+ 举例说明，如果 SQL 为：
  
- 指定了强制分片路由的 SQL 将会无视原有的分片逻辑，直接路由至指定的真实数据节点。
-diff --git a/docs/document/content/features/sharding/concept/hint.en.md b/docs/document/content/features/sharding/concept/hint.en.md
-index 2a3e0f30bd..653ed0df30 100644
---- a/docs/document/content/features/sharding/concept/hint.en.md
-+++ b/docs/document/content/features/sharding/concept/hint.en.md
-@@ -16,6 +16,6 @@ So it requires to designate sharding result externally, which is referred to as
- Apache ShardingSphere uses `ThreadLocal` to manage sharding key values. 
- Users can program to add sharding conditions to `HintManager`, but the condition is only effective within the current thread.
- 
--In addition to the programming method, Apache ShardingSphere also plans to cite Hint through special notation in SQL, so that users can use that function in a more transparent way.
-+In addition to the programming method, Apache ShardingSphere is able to cite Hint through special notation in SQL, so that users can use that function in a more transparent way.
- 
- The SQL designated with sharding hint will ignore the former sharding logic but directly route to the designated node.
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md
-index 38ab5e7d62..499136373a 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md
-@@ -6,12 +6,14 @@ weight = 1
- ## 简介
- 
- Apache ShardingSphere 使用 ThreadLocal 管理分片键值进行强制路由。
--可以通过编程的方式向 HintManager 中添加分片值，该分片值仅在当前线程内生效。
-+可以通过编程的方式向 HintManager 中添加分片值，该分片值仅在当前线程内生效。  
-+Apache ShardingSphere 还可以通过 SQL 中增加注释的方式进行强制路由。
- 
- Hint 的主要使用场景：
- 
- * 分片字段不存在 SQL 和数据库表结构中，而存在于外部业务逻辑。
- * 强制在主库进行某些数据操作。
-+* 强制在指定数据库进行某些数据操作。
- 
- ## 使用方法
- 
-@@ -125,3 +127,44 @@ try (HintManager hintManager = HintManager.getInstance();
-     }
- }
+@@ -39,7 +40,7 @@ SELECT i.* FROM t_order_1 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE
+ SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
  ```
-+
-+### 使用 Hint 路由至指定数据库
-+
-+#### 使用手动编程的方式
-+
-+##### 获取 HintManager
-+
-+与基于 Hint 的数据分片相同。
-+
-+##### 设置路由至指定数据库
-+
-+- 使用 `hintManager.setDataSourceName` 设置数据库名称。
-+
-+##### 完整代码示例
-+
-+```java
-+String sql = "SELECT * FROM t_order";
-+try (HintManager hintManager = HintManager.getInstance();
-+     Connection conn = dataSource.getConnection();
-+     PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-+    hintManager.setDataSourceName("ds_0");
-+    try (ResultSet rs = preparedStatement.executeQuery()) {
-+        while (rs.next()) {
-+            // ...
-+        }
-+    }
-+}
-+```
-+
-+#### 使用 SQL 注释的方式
-+
-+##### 使用规范
-+
-+SQL Hint 功能需要用户提前开启解析注释的配置，设置 `sql-comment-parse-enabled` 为 `true`，目前只支持路由至一个数据源。
-+注释格式暂时只支持`/* */`，内容需要以`sql hint:`开始，属性名为 `dataSourceName`。
-+
-+##### 完整示例
-+```sql
-+/* sql hint: dataSourceName=ds_0 */
-+SELECT * FROM t_order;
-+```
-\ No newline at end of file
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md
-index fe6109371e..1441d9ca10 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md
-@@ -6,12 +6,14 @@ weight = 1
- ## Introduction
  
- Apache ShardingSphere uses ThreadLocal to manage sharding key value or hint route. 
--Users can add sharding values to HintManager, and those values only take effect within the current thread. 
-+Users can add sharding values to HintManager, and those values only take effect within the current thread.  
-+Apache ShardingSphere is able to add special comments in SQL to hint route too.
+-在配置绑定表关系后，路由的 SQL 应该为 2 条：
++在配置绑定表关系，并且使用 `order_id` 进行关联后，路由的 SQL 应该为 2 条：
  
- Usage of hint:
+ ```sql
+ SELECT i.* FROM t_order_0 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
+diff --git a/docs/document/content/features/sharding/concept/table.en.md b/docs/document/content/features/sharding/concept/table.en.md
+index 406cb242dd..7357d703dd 100644
+--- a/docs/document/content/features/sharding/concept/table.en.md
++++ b/docs/document/content/features/sharding/concept/table.en.md
+@@ -18,7 +18,8 @@ The physical table that really exists in the horizontal sharding database, i.e.,
+ ## Binding Table
  
- * Sharding columns are not in SQL and table definition, but in external business logic.
- * Some operations forced to do in the primary database.
-+* Some operations forced to do in the database chosen by yourself.
+ It refers to the primary table and the joiner table with the same sharding rules.
+-for example, `t_order` and `t_order_item` are both sharded by `order_id`, so they are binding tables with each other. 
++When using binding tables in multi-table correlating query, you must use the sharding key for correlation, otherwise Cartesian product correlation or cross-database correlation will appear, which will affect query efficiency.
++For example, `t_order` and `t_order_item` are both sharded by `order_id`, and use `order_id` to correlate, so they are binding tables with each other. 
+ Cartesian product correlation will not appear in the multi-tables correlating query, so the query efficiency will increase greatly.
+ Take this one for example, if SQL is:
  
- ## Usage
- 
-@@ -125,3 +127,44 @@ try (HintManager hintManager = HintManager.getInstance();
-     }
- }
+@@ -38,7 +39,7 @@ SELECT i.* FROM t_order_1 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE
+ SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);
  ```
-+
-+### Route to the specified database with Hint
-+
-+#### Use manual programming
-+
-+##### Get HintManager
-+
-+Be the same as sharding based on hint.
-+
-+##### Configure Database Route
-+
-+- Use `hintManager.setDataSourceName` to configure database route.
-+
-+##### Codes:
-+
-+```java
-+String sql = "SELECT * FROM t_order";
-+try (HintManager hintManager = HintManager.getInstance();
-+     Connection conn = dataSource.getConnection();
-+     PreparedStatement preparedStatement = conn.prepareStatement(sql)) {
-+    hintManager.setDataSourceName("ds_0");
-+    try (ResultSet rs = preparedStatement.executeQuery()) {
-+        while (rs.next()) {
-+            // ...
-+        }
-+    }
-+}
-+```
-+
-+#### Use special SQL comments
-+
-+##### Terms of Use
-+
-+To use SQL Hint function, users need to set `sql-comment-parse-enabled` to `true`. Currently, only support routing to one data source.
-+The comment format only supports `/* */` for now. The content needs to start with `sql hint:`, and the attribute name needs to be `dataSourceName`.
-+
-+##### Codes:
-+```sql
-+/* sql hint: dataSourceName=ds_0 */
-+SELECT * FROM t_order;
-+```
-\ No newline at end of file
+ 
+-With binding table configuration, there should be 2 SQLs after routing:
++With binding table configuration and use `order_id` to correlate, there should be 2 SQLs after routing:
+ 
+ ```sql
+ SELECT i.* FROM t_order_0 o JOIN t_order_item_0 i ON o.order_id=i.order_id WHERE o.order_id in (10, 11);

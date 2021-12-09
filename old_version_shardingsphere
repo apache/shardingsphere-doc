@@ -1,102 +1,73 @@
-commit 829edd0a4839e2aebbd18d2ebcb9dbd6b5f5d0a8
-Author: cherubimLV <36401996+cherubimLV@users.noreply.github.com>
-Date:   Thu Dec 9 15:04:40 2021 +0800
+commit e54a3437d3e6ec71629d461a5421f85796016420
+Author: Zhengqiang Duan <duanzhengqiang@apache.org>
+Date:   Thu Dec 9 19:14:19 2021 +0800
 
-    add Weight replica load-balance algorithm (#13943)
-    
-    * add Weight replica load-balance algorithm
-    
-    * Adjust the code style
-    
-    * Solve license missing issues
-    
-    * Solve license missing issues
-    
-    * definition cumulative accuracy loss threshold
-    
-    * definition cumulative accuracy loss threshold
-    
-    * method of extraction
-    
-    * delete field document
-    
-    * Adjust the use of double
-    Adjust the use of lombok
-    
-    * Update readwrite-splitting.en.md
-    
-    add  WeightReplicaLoadBalanceAlgorithm Documentation
-    
-    * Update load-balance.en.md
-    
-    Add  weight algorithm documentation
-    
-    * Update readwrite-splitting.cn.md
-    
-    添加权重算法文档
-    
-    * Update load-balance.cn.md
-    
-    添加权重访问算法文档
-    
-    * Add parameter range description
+    support select union/union all by federation engine (#14020)
 
-diff --git a/docs/document/content/dev-manual/readwrite-splitting.cn.md b/docs/document/content/dev-manual/readwrite-splitting.cn.md
-index 84f62a2590..95aa3cfd59 100644
---- a/docs/document/content/dev-manual/readwrite-splitting.cn.md
-+++ b/docs/document/content/dev-manual/readwrite-splitting.cn.md
-@@ -15,3 +15,4 @@ chapter = true
- | ----------------------------------------- | ----------------------- |
- | RoundRobinReplicaLoadBalanceAlgorithm     | 基于轮询的读库负载均衡算法 |
- | RandomReplicaLoadBalanceAlgorithm         | 基于随机的读库负载均衡算法 |
-+| WeightReplicaLoadBalanceAlgorithm         | 基于权重的读库负载均衡算法 |
-diff --git a/docs/document/content/dev-manual/readwrite-splitting.en.md b/docs/document/content/dev-manual/readwrite-splitting.en.md
-index 508cf0de67..a825405b4a 100644
---- a/docs/document/content/dev-manual/readwrite-splitting.en.md
-+++ b/docs/document/content/dev-manual/readwrite-splitting.en.md
-@@ -15,3 +15,4 @@ chapter = true
- | ------------------------------------- | ------------------------------------------------------- |
- | RoundRobinReplicaLoadBalanceAlgorithm | Round robin load balance algorithm of replica databases |
- | RandomReplicaLoadBalanceAlgorithm     | Random load balance algorithm of replica databases      |
-+| WeightReplicaLoadBalanceAlgorithm     | Weight load balance algorithm of replica databases      |
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.cn.md
-index 6be093873f..a3b2366c45 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.cn.md
-@@ -14,3 +14,15 @@ weight = 4
- 类型：RANDOM
+diff --git a/docs/document/content/features/sharding/use-norms/sql.cn.md b/docs/document/content/features/sharding/use-norms/sql.cn.md
+index 4853e00213..8535f4a106 100644
+--- a/docs/document/content/features/sharding/use-norms/sql.cn.md
++++ b/docs/document/content/features/sharding/use-norms/sql.cn.md
+@@ -116,10 +116,6 @@ SELECT * FROM t_user u RIGHT JOIN t_user_role r ON u.user_id = r.user_id WHERE u
+ * `CASE WHEN` 中包含子查询
+ * `CASE WHEN` 中使用逻辑表名（请使用表别名）
  
- 可配置属性：无
-+
-+## 权重访问算法
-+
-+类型：WEIGHT
-+
-+可配置属性：
-+
-+> 使用中的读库都必须配置权重
-+
-+| *属性名称*                     | *数据类型* | *说明*                                         |
-+| ------------------------------ | ---------- | ---------------------------------------------- |
-+| \- <read-data_source-name> (+) | double     | 属性名字使用读库名字，参数填写读库对应的权重值。权重参数范围最小值>0，合计<=Double.MAX_VALUE。  |
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.en.md
-index a75af6e37b..2c492030ef 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/builtin-algorithm/load-balance.en.md
-@@ -14,3 +14,16 @@ Attributes: None
- Type: RANDOM
+-以下 UNION 和 UNION ALL 语句不支持：
+-
+-* 包含分片表和广播表
+-
+ ## SQL 示例
  
- Attributes: None
-+
-+## Weight Algorithm
-+
-+Type: WEIGHT
-+
-+Attributes: 
-+
-+> All read data in use must be configured with weights
-+
-+| *Name*                 | *DataType* | *Description*                              |
-+| ---------------------------------- | ---------- | ---------------------------------------------- |
-+| \- <read-data_source-name> (+) | double     | The attribute name uses the read database name, and the parameter fills in the weight value corresponding to the read database.The minimum value of the weight parameter range>0,the total <=Double.MAX_VALUE. |
-+
+ | 稳定支持的 SQL                                                                                | 必要条件                          |
+@@ -152,14 +148,16 @@ SELECT * FROM t_user u RIGHT JOIN t_user_role r ON u.user_id = r.user_id WHERE u
+ ***
+ 
+ | 实验性支持的 SQL                                                           | 必要条件                          |
+-| ------------------------------------------------------------------------ | -------------------------------- |
++|--------------------------------------------------------------------------| -------------------------------- |
+ | SELECT * FROM (SELECT * FROM tbl_name) o                                 |                                  |
+ | SELECT * FROM (SELECT * FROM tbl_name) o WHERE o.col1 = ?                |                                  |
+ | SELECT * FROM (SELECT * FROM tbl_name WHERE col1 = ?) o                  |                                  |
+-| SELECT * FROM (SELECT * FROM tbl_name WHERE col1 = ?) o WHERE o.col1 = ? | 子查询和外层查询不在同一分片后的数据节点 |
++| SELECT * FROM (SELECT * FROM tbl_name WHERE col1 = ?) o WHERE o.col1 = ? | 子查询和外层查询不在同一分片后的数据节点|
+ | SELECT (SELECT MAX(col1) FROM tbl_name) a, col2 from tbl_name            |                                  |
+ | SELECT SUM(DISTINCT col1), SUM(col1) FROM tbl_name                       |                                  |
+ | SELECT col1, SUM(col2) FROM tbl_name GROUP BY col1 HAVING SUM(col2) > ?  |                                  |
++| SELECT col1, col2 FROM tbl_name UNION SELECT col1, col2 FROM tbl_name    |                                  |
++| SELECT col1, col2 FROM tbl_name UNION ALL SELECT col1, col2 FROM tbl_name|                                  |
+ 
+ ***
+ 
+diff --git a/docs/document/content/features/sharding/use-norms/sql.en.md b/docs/document/content/features/sharding/use-norms/sql.en.md
+index 4427740420..e8d234bb5e 100644
+--- a/docs/document/content/features/sharding/use-norms/sql.en.md
++++ b/docs/document/content/features/sharding/use-norms/sql.en.md
+@@ -117,10 +117,6 @@ CASE WHEN can not support as following:
+ * `CASE WHEN` containing sub-query
+ * `CASE WHEN` containing logical-table (instead of table alias)
+ 
+-UNION and UNION ALL can not support as following:
+-
+-* containing sharding or broadcast table
+-
+ ### SQL Example
+ 
+ | Stable supported SQL                                                                        | Necessary conditions                                           |
+@@ -153,7 +149,7 @@ UNION and UNION ALL can not support as following:
+ ***
+ 
+ | Experimental supported SQL                                               | Necessary conditions                                                |
+-| ------------------------------------------------------------------------ | ------------------------------------------------------------------- |
++| ------------------------------------------------------------------------ |---------------------------------------------------------------------|
+ | SELECT * FROM (SELECT * FROM tbl_name) o                                 |                                                                     |
+ | SELECT * FROM (SELECT * FROM tbl_name) o WHERE o.col1 = ?                |                                                                     |
+ | SELECT * FROM (SELECT * FROM tbl_name WHERE col1 = ?) o                  |                                                                     |
+@@ -161,6 +157,8 @@ UNION and UNION ALL can not support as following:
+ | SELECT (SELECT MAX(col1) FROM tbl_name) a, col2 from tbl_name            |                                                                     |
+ | SELECT SUM(DISTINCT col1), SUM(col1) FROM tbl_name                       |                                                                     |
+ | SELECT col1, SUM(col2) FROM tbl_name GROUP BY col1 HAVING SUM(col2) > ?  |                                                                     |
++| SELECT col1, col2 FROM tbl_name UNION SELECT col1, col2 FROM tbl_name    |                                                                     |
++| SELECT col1, col2 FROM tbl_name UNION ALL SELECT col1, col2 FROM tbl_name|                                                                     |
+ 
+ ***
+ 

@@ -1,293 +1,54 @@
-commit c618972e85bec6981da0db8654d1e64cf7e833d4
-Author: lanchengx <52209337+lanchengx@users.noreply.github.com>
-Date:   Mon Dec 20 22:53:47 2021 +0800
+commit d08a80a18ad308557778559c9593b5db250d9466
+Author: zhaojinchao <33742097+zjcnb@users.noreply.github.com>
+Date:   Mon Dec 20 23:31:58 2021 +0800
 
-    [DistSQL]Add DB_Discovery document and optimize verification logic (#14174)
-    
-    * Add Discovery related documents.
-    
-    * Fix failure when `Drop discovery type/heartbeat`.
-    
-    * Reformat.
-    
-    * Add document.
+    update ha document about springboot (#14178)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.cn.md
-index 312aa415e8..164c721af2 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.cn.md
-@@ -6,42 +6,120 @@ weight = 4
- ## 语法说明
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md
+index d8c4af64b6..4b3d7cfcf8 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md
+@@ -3,4 +3,18 @@ title = "高可用"
+ weight = 3
+ +++
  
- ```sql
--CREATE DB_DISCOVERY RULE databaseDiscoveryRuleDefinition [, databaseDiscoveryRuleDefinition] ...
-+CREATE DB_DISCOVERY RULE ruleDefinition [, ruleDefinition] ...
- 
--ALTER DB_DISCOVERY RULE databaseDiscoveryRuleDefinition [, databaseDiscoveryRuleDefinition] ...
-+ALTER DB_DISCOVERY RULE ruleDefinition [, ruleDefinition] ...
- 
- DROP DB_DISCOVERY RULE ruleName [, ruleName] ...
- 
--databaseDiscoveryRuleDefinition:
--    ruleName(resources, discoveryTypeDefinition)
-+CREATE DB_DISCOVERY TYPE databaseDiscoveryTypeDefinition [, databaseDiscoveryTypeDefinition] ...
+-TODO
++## 配置项说明
 +
-+ALTER DB_DISCOVERY TYPE databaseDiscoveryTypeDefinition [, databaseDiscoveryTypeDefinition] ...
++```properties
++spring.shardingsphere.datasource.names= # 省略数据源配置，请参考使用手册
 +
-+DROP DB_DISCOVERY TYPE discoveryTypeName [, discoveryTypeName] ...
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.data-source-names= # 数据源名称，多个数据源用逗号分隔 如：ds_0， ds_1
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-heartbeat-name= # 检测心跳名称
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-type-name= # 高可用类型名称
 +
-+CREATE DB_DISCOVERY HEARTBEAT databaseDiscoveryHeartbaetDefinition [, databaseDiscoveryHeartbaetDefinition] ...
++spring.shardingsphere.rules.database-discovery.discovery-heartbeats.<discovery-heartbeat-name>.props.keep-alive-cron= # cron 表达式，如：'0/5 * * * * ?'
 +
-+ALTER DB_DISCOVERY HEARTBEAT databaseDiscoveryHeartbaetDefinition [, databaseDiscoveryHeartbaetDefinition] ...
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.type= # 高可用类型，如： MGR、openGauss
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.props.group-name= # 高可用类型必要参数，如 MGR 的 group-name ：b13df29e-90b6-11e8-8d1b-525400fc3996
 +
-+DROP DB_DISCOVERY HEARTBEAT discoveryHeartbeatName [, discoveryHeartbeatName] ...
-+
-+ruleDefinition:
-+    (databaseDiscoveryRuleDefinition | databaseDiscoveryRuleConstruction)
-+
-+databaseDiscoveryRuleDefinition
-+    ruleName (resources, typeDefinition, heartbeatDefinition)
-+
-+databaseDiscoveryRuleConstruction
-+    ruleName (resources, TYPE = discoveryTypeName, HEARTBEAT = discoveryHeartbeatName)
-+
-+databaseDiscoveryTypeDefinition
-+    discoveryTypeName (typeDefinition)
-+
-+databaseDiscoveryHeartbaetDefinition
-+    discoveryHeartbeatName (PROPERTIES (properties)) 
- 
- resources:
-     RESOURCES(resourceName [, resourceName] ...)
- 
--discoveryTypeDefinition:
--    TYPE(NAME=discoveryType [, PROPERTIES([algorithmProperties] )] )
-+typeDefinition:
-+    TYPE(NAME=typeName [, PROPERTIES([properties] )] )
-+
-+heartbeatDefinition
-+    HEARTBEAT (PROPERTIES (properties)) 
- 
--algorithmProperties:
--    algorithmProperty [, algorithmProperty] ...
-+properties:
-+    property [, property] ...
- 
--algorithmProperty:
-+property:
-     key=value                          
- ```
-+
- - `discoveryType` 指定数据库发现服务类型，`ShardingSphere` 内置支持 `MGR`
- - 重复的 `ruleName` 将无法被创建
-+- 正在被使用的 `discoveryType` 和 `discoveryHeartbeat` 无法被删除
-+- 带有 `-` 的命名在改动时需要使用 `" "`
-+- 移除 `discoveryRule` 时不会移除被该 `discoveryRule` 使用的 `discoveryType` 和 `discoveryHeartbeat`
- 
- ## 示例
- 
-+### 创建 `discoveryRule` 时同时创建 `discoveryType` 和 `discoveryHeartbeat`
-+
- ```sql
- CREATE DB_DISCOVERY RULE ha_group_0 (
--RESOURCES(resource_0,resource_1),
--TYPE(NAME=mgr,PROPERTIES(groupName='92504d5b-6dec',keepAliveCron=''))
-+RESOURCES(ds_0, ds_1, ds_2),
-+TYPE(NAME=mgr,PROPERTIES('groupName'='92504d5b-6dec')),
-+HEARTBEAT(PROPERTIES('keepAliveCron'='0/5 * * * * ?'))
- );
- 
- ALTER DB_DISCOVERY RULE ha_group_0 (
--RESOURCES(resource_0,resource_1,resource_2),
--TYPE(NAME=mgr,PROPERTIES(groupName='92504d5b-6dec' ,keepAliveCron=''))
-+RESOURCES(ds_0, ds_1, ds_2),
-+TYPE(NAME=mgr,PROPERTIES('groupName'='246e9612-aaf1')),
-+HEARTBEAT(PROPERTIES('keepAliveCron'='0/5 * * * * ?'))
- );
- 
- DROP DB_DISCOVERY RULE ha_group_0;
-+
-+DROP DB_DISCOVERY TYPE ha_group_0_mgr;
-+
-+DROP DB_DISCOVERY HEARTBEAT ha_group_0_heartbeat;
-+
- ```
-+
-+### 使用已有的 `discoveryType` 和 `discoveryHeartbeat` 创建 `discoveryRule`
-+
-+```sql
-+CREATE DB_DISCOVERY TYPE ha_group_1_mgr(
-+  TYPE(NAME=mgr,PROPERTIES('groupName'='92504d5b-6dec'))
-+);
-+
-+CREATE DB_DISCOVERY HEARTBEAT ha_group_1_heartbeat(
-+  PROPERTIES('keepAliveCron'='0/5 * * * * ?')
-+);
-+
-+CREATE DB_DISCOVERY RULE ha_group_1 (
-+RESOURCES(ds_0, ds_1, ds_2),
-+TYPE=ha_group_1_mgr,
-+HEARTBEAT=ha_group_1_heartbeat
-+);
-+
-+ALTER DB_DISCOVERY TYPE ha_group_1_mgr(
-+  TYPE(NAME=mgr,PROPERTIES('groupName'='246e9612-aaf1'))
-+);
-+
-+ALTER DB_DISCOVERY HEARTBEAT ha_group_1_heartbeat(
-+  PROPERTIES('keepAliveCron'='0/10 * * * * ?')
-+);
-+
-+ALTER DB_DISCOVERY RULE ha_group_1 (
-+RESOURCES(ds_0, ds_1),
-+TYPE=ha_group_1_mgr,
-+HEARTBEAT=ha_group_1_heartbeat
-+);
-+
-+DROP DB_DISCOVERY RULE ha_group_1;
-+
-+DROP DB_DISCOVERY TYPE ha_group_1_mgr;
-+
-+DROP DB_DISCOVERY HEARTBEAT ha_group_1_heartbeat;
 +```
-\ No newline at end of file
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.en.md
-index 9ab39a29ea..bd712d248c 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/db-discovery.en.md
-@@ -6,42 +6,121 @@ weight = 4
- ## Syntax
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.en.md
+index fdbdfbf1ef..79eba34131 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.en.md
+@@ -3,4 +3,18 @@ title = "HA"
+ weight = 3
+ +++
  
- ```sql
--CREATE DB_DISCOVERY RULE databaseDiscoveryRuleDefinition [, databaseDiscoveryRuleDefinition] ...
-+CREATE DB_DISCOVERY RULE ruleDefinition [, ruleDefinition] ...
- 
--ALTER DB_DISCOVERY RULE databaseDiscoveryRuleDefinition [, databaseDiscoveryRuleDefinition] ...
-+ALTER DB_DISCOVERY RULE ruleDefinition [, ruleDefinition] ...
- 
- DROP DB_DISCOVERY RULE ruleName [, ruleName] ...
- 
--databaseDiscoveryRuleDefinition:
--    ruleName(resources, discoveryTypeDefinition)
-+CREATE DB_DISCOVERY TYPE databaseDiscoveryTypeDefinition [, databaseDiscoveryTypeDefinition] ...
+-TODO
++## Configuration Item Explanation
 +
-+ALTER DB_DISCOVERY TYPE databaseDiscoveryTypeDefinition [, databaseDiscoveryTypeDefinition] ...
++```properties
++spring.shardingsphere.datasource.names= # Omit the data source configuration, please refer to the usage
 +
-+DROP DB_DISCOVERY TYPE discoveryTypeName [, discoveryTypeName] ...
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.data-source-names= # Data source names, multiple data source names separated with comma. Such as: ds_0, ds_1
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-heartbeat-name= # Detect heartbeat name
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-type-name= # Highly available type name
 +
-+CREATE DB_DISCOVERY HEARTBEAT databaseDiscoveryHeartbaetDefinition [, databaseDiscoveryHeartbaetDefinition] ...
++spring.shardingsphere.rules.database-discovery.discovery-heartbeats.<discovery-heartbeat-name>.props.keep-alive-cron= # This is cron expression, such as：'0/5 * * * * ?'
 +
-+ALTER DB_DISCOVERY HEARTBEAT databaseDiscoveryHeartbaetDefinition [, databaseDiscoveryHeartbaetDefinition] ...
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.type= # Highly available type, such as: MGR、openGauss
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.props.group-name= # Required parameters for high-availability types, such as MGR 's group-name ：b13df29e-90b6-11e8-8d1b-525400fc3996
 +
-+DROP DB_DISCOVERY HEARTBEAT discoveryHeartbeatName [, discoveryHeartbeatName] ...
-+
-+ruleDefinition:
-+    (databaseDiscoveryRuleDefinition | databaseDiscoveryRuleConstruction)
-+
-+databaseDiscoveryRuleDefinition
-+    ruleName (resources, typeDefinition, heartbeatDefinition)
-+
-+databaseDiscoveryRuleConstruction
-+    ruleName (resources, TYPE = discoveryTypeName, HEARTBEAT = discoveryHeartbeatName)
-+
-+databaseDiscoveryTypeDefinition
-+    discoveryTypeName (typeDefinition)
-+
-+databaseDiscoveryHeartbaetDefinition
-+    discoveryHeartbeatName (PROPERTIES (properties)) 
- 
- resources:
-     RESOURCES(resourceName [, resourceName] ...)
- 
--discoveryTypeDefinition:
--    TYPE(NAME=discoveryType [, PROPERTIES([algorithmProperties] )] )
-+typeDefinition:
-+    TYPE(NAME=typeName [, PROPERTIES([properties] )] )
-+
-+heartbeatDefinition
-+    HEARTBEAT (PROPERTIES (properties)) 
- 
--algorithmProperties:
--    algorithmProperty [, algorithmProperty] ...
-+properties:
-+    property [, property] ...
- 
--algorithmProperty:
-+property:
-     key=value                          
- ```
-+
- - `discoveryType` specifies the database discovery service type, `ShardingSphere` has built-in support for `MGR`
- - Duplicate `ruleName` will not be created
-+- The `discoveryType` and `discoveryHeartbeat` being used cannot be deleted
-+- Names with `-` need to use `" "` when changing
-+- When removing the `discoveryRule`, the `discoveryType` and `discoveryHeartbeat` used by the `discoveryRule` will not be removed
-+
- 
- ## Example
- 
-+### When creating a `discoveryRule`, create both `discoveryType` and `discoveryHeartbeat`
-+
- ```sql
- CREATE DB_DISCOVERY RULE ha_group_0 (
--RESOURCES(resource_0,resource_1),
--TYPE(NAME=mgr,PROPERTIES(groupName='92504d5b-6dec',keepAliveCron=''))
-+RESOURCES(ds_0, ds_1, ds_2),
-+TYPE(NAME=mgr,PROPERTIES('groupName'='92504d5b-6dec')),
-+HEARTBEAT(PROPERTIES('keepAliveCron'='0/5 * * * * ?'))
- );
- 
- ALTER DB_DISCOVERY RULE ha_group_0 (
--RESOURCES(resource_0,resource_1,resource_2),
--TYPE(NAME=mgr,PROPERTIES(groupName='92504d5b-6dec' ,keepAliveCron=''))
-+RESOURCES(ds_0, ds_1, ds_2),
-+TYPE(NAME=mgr,PROPERTIES('groupName'='246e9612-aaf1')),
-+HEARTBEAT(PROPERTIES('keepAliveCron'='0/5 * * * * ?'))
- );
- 
- DROP DB_DISCOVERY RULE ha_group_0;
-+
-+DROP DB_DISCOVERY TYPE ha_group_0_mgr;
-+
-+DROP DB_DISCOVERY HEARTBEAT ha_group_0_heartbeat;
-+
- ```
-+
-+### Use the existing `discoveryType` and `discoveryHeartbeat` to create a `discoveryRule`
-+
-+```sql
-+CREATE DB_DISCOVERY TYPE ha_group_1_mgr(
-+  TYPE(NAME=mgr,PROPERTIES('groupName'='92504d5b-6dec'))
-+);
-+
-+CREATE DB_DISCOVERY HEARTBEAT ha_group_1_heartbeat(
-+  PROPERTIES('keepAliveCron'='0/5 * * * * ?')
-+);
-+
-+CREATE DB_DISCOVERY RULE ha_group_1 (
-+RESOURCES(ds_0, ds_1, ds_2),
-+TYPE=ha_group_1_mgr,
-+HEARTBEAT=ha_group_1_heartbeat
-+);
-+
-+ALTER DB_DISCOVERY TYPE ha_group_1_mgr(
-+  TYPE(NAME=mgr,PROPERTIES('groupName'='246e9612-aaf1'))
-+);
-+
-+ALTER DB_DISCOVERY HEARTBEAT ha_group_1_heartbeat(
-+  PROPERTIES('keepAliveCron'='0/10 * * * * ?')
-+);
-+
-+ALTER DB_DISCOVERY RULE ha_group_1 (
-+RESOURCES(ds_0, ds_1),
-+TYPE=ha_group_1_mgr,
-+HEARTBEAT=ha_group_1_heartbeat
-+);
-+
-+DROP DB_DISCOVERY RULE ha_group_1;
-+
-+DROP DB_DISCOVERY TYPE ha_group_1_mgr;
-+
-+DROP DB_DISCOVERY HEARTBEAT ha_group_1_heartbeat;
 +```
-\ No newline at end of file

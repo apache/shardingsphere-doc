@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2021-12-21 11:26:18">
+    <meta name="buildDate" content="2021-12-21 11:43:08">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>XA :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1640057178" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1640057178" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1640057178" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1640057178" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1640057178" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1640057178" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1640057178" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1640057178" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1640058188" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1640058188" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1640058188" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1640058188" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1640058188" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1640058188" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1640058188" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1640058188" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1640057178" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1640058188" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1640057178"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1640058188"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -6148,6 +6148,7 @@
   <ul>
     <li><a href="#supported">Supported</a></li>
     <li><a href="#unsupported">Unsupported</a></li>
+    <li><a href="#xa-transaction-managed-by-xa-statement">XA Transaction managed by XA Statement</a></li>
   </ul>
 </nav>
 
@@ -6162,6 +6163,93 @@
 <ul>
 <li>Recover committing and rolling back in other machines after the service is down.</li>
 </ul>
+<h2 id="xa-transaction-managed-by-xa-statement">XA Transaction managed by XA Statement</h2>
+<ul>
+<li>When using XA START to open a XA Transaction, ShardingSphere will pass it to backend database directly, you have to manage this transaction by yourself;</li>
+<li>When recover from a crush, you have to call XA RECOVER to check unfinished transaction, and choose to commit or rollback using xid. Or you can use ONE PHASE commit without PREPARE.</li>
+</ul>
+<p>MySQL [(none)]&gt; use test1                                                                               │MySQL [(none)]&gt; use test2
+Reading table information for completion of table and column names                                      │Reading table information for completion of table and column names
+You can turn off this feature to get a quicker startup with -A                                          │You can turn off this feature to get a quicker startup with -A
+│
+Database changed                                                                                        │Database changed
+MySQL [test1]&gt; XA START &lsquo;61c052438d3eb&rsquo;;                                                                │MySQL [test2]&gt; XA START &lsquo;61c0524390927&rsquo;;
+Query OK, 0 rows affected (0.030 sec)                                                                   │Query OK, 0 rows affected (0.009 sec)
+│
+MySQL [test1]&gt; update test set val = &lsquo;xatest1&rsquo; where id = 1;                                            │MySQL [test2]&gt; update test set val = &lsquo;xatest2&rsquo; where id = 1;
+Query OK, 1 row affected (0.077 sec)                                                                    │Query OK, 1 row affected (0.010 sec)
+│
+MySQL [test1]&gt; XA END &lsquo;61c052438d3eb&rsquo;;                                                                  │MySQL [test2]&gt; XA END &lsquo;61c0524390927&rsquo;;
+Query OK, 0 rows affected (0.006 sec)                                                                   │Query OK, 0 rows affected (0.008 sec)
+│
+MySQL [test1]&gt; XA PREPARE &lsquo;61c052438d3eb&rsquo;;                                                              │MySQL [test2]&gt; XA PREPARE &lsquo;61c0524390927&rsquo;;
+Query OK, 0 rows affected (0.018 sec)                                                                   │Query OK, 0 rows affected (0.011 sec)
+│
+MySQL [test1]&gt; XA COMMIT &lsquo;61c052438d3eb&rsquo;;                                                               │MySQL [test2]&gt; XA COMMIT &lsquo;61c0524390927&rsquo;;
+Query OK, 0 rows affected (0.011 sec)                                                                   │Query OK, 0 rows affected (0.018 sec)
+│
+MySQL [test1]&gt; select * from test where id = 1;                                                         │MySQL [test2]&gt; select * from test where id = 1;
++&mdash;-+&mdash;&mdash;&mdash;+                                                                                        │+&mdash;-+&mdash;&mdash;&mdash;+
+| id | val     |                                                                                        │| id | val     |
++&mdash;-+&mdash;&mdash;&mdash;+                                                                                        │+&mdash;-+&mdash;&mdash;&mdash;+
+|  1 | xatest1 |                                                                                        │|  1 | xatest2 |
++&mdash;-+&mdash;&mdash;&mdash;+                                                                                        │+&mdash;-+&mdash;&mdash;&mdash;+
+1 row in set (0.016 sec)                                                                                │1 row in set (0.129 sec)</p>
+<p>MySQL [test1]&gt; XA START &lsquo;61c05243994c3&rsquo;;                                                                │MySQL [test2]&gt; XA START &lsquo;61c052439bd7b&rsquo;;
+Query OK, 0 rows affected (0.047 sec)                                                                   │Query OK, 0 rows affected (0.006 sec)
+│
+MySQL [test1]&gt; update test set val = &lsquo;xarollback&rsquo; where id = 1;                                         │MySQL [test2]&gt; update test set val = &lsquo;xarollback&rsquo; where id = 1;
+Query OK, 1 row affected (0.175 sec)                                                                    │Query OK, 1 row affected (0.008 sec)
+│
+MySQL [test1]&gt; XA END &lsquo;61c05243994c3&rsquo;;                                                                  │MySQL [test2]&gt; XA END &lsquo;61c052439bd7b&rsquo;;
+Query OK, 0 rows affected (0.007 sec)                                                                   │Query OK, 0 rows affected (0.014 sec)
+│
+MySQL [test1]&gt; XA PREPARE &lsquo;61c05243994c3&rsquo;;                                                              │MySQL [test2]&gt; XA PREPARE &lsquo;61c052439bd7b&rsquo;;
+Query OK, 0 rows affected (0.013 sec)                                                                   │Query OK, 0 rows affected (0.019 sec)
+│
+MySQL [test1]&gt; XA ROLLBACK &lsquo;61c05243994c3&rsquo;;                                                             │MySQL [test2]&gt; XA ROLLBACK &lsquo;61c052439bd7b&rsquo;;
+Query OK, 0 rows affected (0.010 sec)                                                                   │Query OK, 0 rows affected (0.010 sec)
+│
+MySQL [test1]&gt; select * from test where id = 1;                                                         │MySQL [test2]&gt; select * from test where id = 1;
++&mdash;-+&mdash;&mdash;&mdash;+                                                                                        │+&mdash;-+&mdash;&mdash;&mdash;+
+| id | val     |                                                                                        │| id | val     |
++&mdash;-+&mdash;&mdash;&mdash;+                                                                                        │+&mdash;-+&mdash;&mdash;&mdash;+
+|  1 | xatest1 |                                                                                        │|  1 | xatest2 |
++&mdash;-+&mdash;&mdash;&mdash;+                                                                                        │+&mdash;-+&mdash;&mdash;&mdash;+
+1 row in set (0.009 sec)                                                                                │1 row in set (0.083 sec)</p>
+<p>MySQL [test1]&gt;  XA START &lsquo;61c052438d3eb&rsquo;;
+Query OK, 0 rows affected (0.030 sec)</p>
+<p>MySQL [test1]&gt; update test set val = &lsquo;recover&rsquo; where id = 1;
+Query OK, 1 row affected (0.072 sec)</p>
+<p>MySQL [test1]&gt; select * from test where id = 1;
++&mdash;-+&mdash;&mdash;&mdash;+
+| id | val     |
++&mdash;-+&mdash;&mdash;&mdash;+
+|  1 | recover |
++&mdash;-+&mdash;&mdash;&mdash;+
+1 row in set (0.039 sec)</p>
+<p>MySQL [test1]&gt;  XA END &lsquo;61c052438d3eb&rsquo;;
+Query OK, 0 rows affected (0.005 sec)</p>
+<p>MySQL [test1]&gt; XA PREPARE &lsquo;61c052438d3eb&rsquo;;
+Query OK, 0 rows affected (0.020 sec)</p>
+<p>MySQL [test1]&gt; XA RECOVER;
++&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;+
+| formatID | gtrid_length | bqual_length | data          |
++&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;+
+|        1 |           13 |            0 | 61c052438d3eb |
++&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;+
+1 row in set (0.010 sec)</p>
+<p>MySQL [test1]&gt; XA RECOVER CONVERT XID;
++&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+
+| formatID | gtrid_length | bqual_length | data                         |
++&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+
+|        1 |           13 |            0 | 0x36316330353234333864336562 |
++&mdash;&mdash;&mdash;-+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&ndash;+&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;&mdash;+
+1 row in set (0.011 sec)</p>
+<p>MySQL [test1]&gt; XA COMMIT 0x36316330353234333864336562;
+Query OK, 0 rows affected (0.029 sec)</p>
+<p>MySQL [test1]&gt; XA RECOVER;
+Empty set (0.011 sec)</p>
 
 
 <footer class=" footline" >
@@ -9617,17 +9705,17 @@
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1640057179"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1640058188"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1640057179"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1640057179"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1640058188"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1640058188"></script>
 
     
 

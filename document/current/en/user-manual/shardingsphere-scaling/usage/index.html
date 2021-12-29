@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.70.0" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2021-12-29 14:14:46">
+    <meta name="buildDate" content="2021-12-29 15:14:06">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/document/current/img/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>Manual :: ShardingSphere</title>
     
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1640758486" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1640758486" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1640758486" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1640758486" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1640758486" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1640758486" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1640758486" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1640758486" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1640762046" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/font-awesome.min.css?1640762046" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1640762046" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1640762046" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1640762046" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1640762046" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1640762046" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1640762046" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1640758486" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/document/current/css/theme-black.css?1640762046" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1640758486"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-2.x.min.js?1640762046"></script>
     
     <style type="text/css">
       :root #header + #content > #left > #rlblock_left{ 
@@ -6410,7 +6410,13 @@
 <td>Supported</td>
 </tr>
 <tr>
-<td>Default data consistency check algorithm</td>
+<td>DATA_MATCH data consistency check</td>
+<td>Supported</td>
+<td>Supported</td>
+<td>Supported</td>
+</tr>
+<tr>
+<td>CRC32_MATCH data consistency check</td>
 <td>Supported</td>
 <td>Unsupported</td>
 <td>Unsupported</td>
@@ -6420,8 +6426,18 @@
 <p><strong>Attention</strong>:</p>
 <p>For RDBMS which <code>Create table automatically</code> feature is not supported, we need to create sharding tables manually.</p>
 <h3 id="privileges">Privileges</h3>
-<p>We need to enable <code>binlog</code> for MySQL. Privileges of users scaling used should include Replication privileges.</p>
-<p>Execute the following SQL to confirm whether binlog is turned on or not:</p>
+<h4 id="mysql">MySQL</h4>
+<ol>
+<li>Enable <code>binlog</code></li>
+</ol>
+<p>Configuration Example of MySQL 5.7 <code>my.cnf</code>:</p>
+<pre><code>[mysqld]
+server-id=1
+log-bin=mysql-bin
+binlog-format=row
+binlog-row-image=full
+max_connections=600
+</code></pre><p>Execute the following SQL to confirm whether binlog is turned on or not:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">show</span> variables <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%log_bin%&#39;</span>;
 <span style="color:#66d9ef">show</span> variables <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;%binlog%&#39;</span>;
 </code></pre></div><p>As shown below, it means binlog has been turned on:</p>
@@ -6432,15 +6448,31 @@
 | binlog_format                           | ROW                                   |
 | binlog_row_image                        | FULL                                  |
 +-----------------------------------------+---------------------------------------+
-</code></pre><p>Execute the following SQL to confirm whether the user has migration permission or not:</p>
+</code></pre><ol start="2">
+<li>Privileges of account that scaling use should include Replication privileges.</li>
+</ol>
+<p>Execute the following SQL to confirm whether the user has migration permission or not:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SHOW</span> GRANTS <span style="color:#e6db74">&#39;user&#39;</span>;
-</code></pre></div><pre><code>+------------------------------------------------------------------------------+
+</code></pre></div><p>Result Example:</p>
+<pre><code>+------------------------------------------------------------------------------+
 |Grants for ${username}@${host}                                                |
 +------------------------------------------------------------------------------+
 |GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO ${username}@${host}     |
 |.......                                                                       |
 +------------------------------------------------------------------------------+
-</code></pre><p>PostgreSQL need to support and open <a href="https://www.postgresql.org/docs/9.4/test-decoding.html">test_decoding</a> feature.</p>
+</code></pre><h4 id="postgresql">PostgreSQL</h4>
+<ol>
+<li>
+<p>Enable <a href="https://www.postgresql.org/docs/9.4/test-decoding.html">test_decoding</a> feature.</p>
+</li>
+<li>
+<p>Adjust WAL configuration</p>
+</li>
+</ol>
+<p>Configuration Example of <code>postgresql.conf</code>:</p>
+<pre><code>wal_level = logical
+max_replication_slots = 10
+</code></pre><p>Please refer to <a href="https://www.postgresql.org/docs/9.6/runtime-config-wal.html">Write Ahead Log</a> and <a href="https://www.postgresql.org/docs/9.6/runtime-config-replication.html">Replication</a> for more details.</p>
 <h3 id="distsql-api-for-auto-mode">DistSQL API for auto mode</h3>
 <h4 id="preview-current-sharding-rule">Preview current sharding rule</h4>
 <p>Example:</p>
@@ -6464,15 +6496,25 @@
 <p>Create database on underlying RDBMS first, it will be used in following <code>DistSQL</code>.</p>
 <p>Example:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">ADD</span> RESOURCE ds_2 (
-    URL<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;jdbc:mysql://127.0.0.1:3306/db2?serverTimezone=UTC&amp;useSSL=false&#34;</span>,
+    URL<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;jdbc:mysql://127.0.0.1:3306/scaling_ds_2?serverTimezone=UTC&amp;useSSL=false&#34;</span>,
+    <span style="color:#66d9ef">USER</span><span style="color:#f92672">=</span>root,
+    PASSWORD<span style="color:#f92672">=</span>root,
+    PROPERTIES(<span style="color:#e6db74">&#34;maximumPoolSize&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">10</span>,<span style="color:#e6db74">&#34;idleTimeout&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;30000&#34;</span>)
+), ds_3 (
+    URL<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;jdbc:mysql://127.0.0.1:3306/scaling_ds_3?serverTimezone=UTC&amp;useSSL=false&#34;</span>,
+    <span style="color:#66d9ef">USER</span><span style="color:#f92672">=</span>root,
+    PASSWORD<span style="color:#f92672">=</span>root,
+    PROPERTIES(<span style="color:#e6db74">&#34;maximumPoolSize&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">10</span>,<span style="color:#e6db74">&#34;idleTimeout&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;30000&#34;</span>)
+), ds_4 (
+    URL<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;jdbc:mysql://127.0.0.1:3306/scaling_ds_4?serverTimezone=UTC&amp;useSSL=false&#34;</span>,
     <span style="color:#66d9ef">USER</span><span style="color:#f92672">=</span>root,
     PASSWORD<span style="color:#f92672">=</span>root,
     PROPERTIES(<span style="color:#e6db74">&#34;maximumPoolSize&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">10</span>,<span style="color:#e6db74">&#34;idleTimeout&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;30000&#34;</span>)
 );
-<span style="color:#75715e">-- ds_3, ds_4
-</span></code></pre></div><ol start="2">
+</code></pre></div><ol start="2">
 <li>Alter sharding table rule</li>
 </ol>
+<p>Currently, scaling job could only be emitted by executing <code>ALTER SHARDING TABLE RULE</code> DistSQL.</p>
 <p>Please refer to <a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding/">RDL#Sharding</a> for more details.</p>
 <p><code>SHARDING TABLE RULE</code> support two types: <code>TableRule</code> and <code>AutoTableRule</code>. Following is a comparison of the two sharding rule types:</p>
 <table>
@@ -6496,10 +6538,10 @@
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">ALTER</span> SHARDING <span style="color:#66d9ef">TABLE</span> <span style="color:#66d9ef">RULE</span> t_order (
 RESOURCES(ds_2, ds_3, ds_4),
 SHARDING_COLUMN<span style="color:#f92672">=</span>order_id,
-<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span>hash_mod,PROPERTIES(<span style="color:#e6db74">&#34;sharding-count&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">10</span>)),
+<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span>hash_mod,PROPERTIES(<span style="color:#e6db74">&#34;sharding-count&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">6</span>)),
 GENERATED_KEY(<span style="color:#66d9ef">COLUMN</span><span style="color:#f92672">=</span>order_id,<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span>snowflake,PROPERTIES(<span style="color:#e6db74">&#34;worker-id&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">123</span>)))
 );
-</code></pre></div><p>If <code>RESOURCES</code> and <code>sharding-count</code> is changed, then scaling job will be emitted.</p>
+</code></pre></div><p><code>RESOURCES</code> is altered from <code>(ds_0, ds_1)</code> to <code>(ds_2, ds_3, ds_4)</code>, and <code>sharding-count</code> is altered from <code>4</code> to <code>6</code>, it will emit scaling job.</p>
 <p>Uncompleted example of alter <code>TableRule</code>:</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">ALTER</span> SHARDING ALGORITHM database_inline (
 <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span>INLINE,PROPERTIES(<span style="color:#e6db74">&#34;algorithm-expression&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;ds_${user_id % 3 + 2}&#34;</span>))
@@ -6516,7 +6558,7 @@ DATABASE_STRATEGY(<span style="color:#66d9ef">TYPE</span><span style="color:#f92
 TABLE_STRATEGY(<span style="color:#66d9ef">TYPE</span><span style="color:#f92672">=</span>standard,SHARDING_COLUMN<span style="color:#f92672">=</span>order_id,SHARDING_ALGORITHM<span style="color:#f92672">=</span>t_order_item_inline),
 GENERATED_KEY(<span style="color:#66d9ef">COLUMN</span><span style="color:#f92672">=</span>order_item_id,<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span>snowflake,PROPERTIES(<span style="color:#e6db74">&#34;worker-id&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">123</span>)))
 );
-</code></pre></div><p>If <code>algorithm-expression</code> of <code>database_inline</code> and <code>DATANODES</code> of <code>t_order</code> is changed, then scaling job will be emitted.</p>
+</code></pre></div><p><code>algorithm-expression</code> of <code>database_inline</code> is alerted from <code>ds_${user_id % 2}</code> to <code>ds_${user_id % 3 + 2}</code>, and <code>DATANODES</code> of <code>t_order</code> is alerted from <code>ds_${0..1}.t_order_${0..1}</code> to <code>ds_${2..4}.t_order_${0..1}</code>, it will emit scaling job.</p>
 <h4 id="list-scaling-jobs">List scaling jobs</h4>
 <p>Please refer to <a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/ral/#scaling">RAL#Scaling</a> for more details.</p>
 <p>Example:</p>
@@ -6526,8 +6568,8 @@ GENERATED_KEY(<span style="color:#66d9ef">COLUMN</span><span style="color:#f9267
 +--------------------+-----------------------+----------------------+--------+---------------------+---------------------+
 | id                 | tables                | sharding_total_count | active | create_time         | stop_time           |
 +--------------------+-----------------------+----------------------+--------+---------------------+---------------------+
-| 659853312085983232 | t_order_item, t_order | 2                    | 0      | 2021-10-26 20:21:31 | 2021-10-26 20:24:01 |
-| 660152090995195904 | t_order_item, t_order | 2                    | 0      | 2021-10-27 16:08:43 | 2021-10-27 16:11:00 |
+| 659853312085983232 | t_order_item, t_order | 2                    | false  | 2021-10-26 20:21:31 | 2021-10-26 20:24:01 |
+| 660152090995195904 | t_order_item, t_order | 2                    | false  | 2021-10-27 16:08:43 | 2021-10-27 16:11:00 |
 +--------------------+-----------------------+----------------------+--------+---------------------+---------------------+
 2 rows in set (0.04 sec)
 </code></pre><h4 id="get-scaling-progress">Get scaling progress</h4>
@@ -10207,17 +10249,17 @@ GENERATED_KEY(<span style="color:#66d9ef">COLUMN</span><span style="color:#f9267
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1640758486"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/html5shiv-printshiv.min.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1640762046"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1640758486"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1640758486"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom.71422.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1640762046"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1640762046"></script>
 
     
 

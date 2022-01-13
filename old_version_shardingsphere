@@ -1,32 +1,224 @@
-commit 1d0b5436973451c1c8c0d0788f80dce359b1f204
-Author: Hongsheng Zhong <sandynz@126.com>
-Date:   Wed Jan 12 19:37:41 2022 +0800
+commit 49dca69babff6674d5ac0c3a40da45357236e7e9
+Author: yx9o <yangx_soft@163.com>
+Date:   Thu Jan 13 10:21:25 2022 +0800
 
-    Change "checkout scaling jobId" to "apply scaling jobId" (#14711)
+    Add distsql new syntax document. (#14712)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.cn.md
-index e81a7e25e8..ce254f7ddc 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.cn.md
-@@ -33,7 +33,7 @@ RAL (Resource & Rule Administration Language) 为 Apache ShardingSphere 的管
- | show scaling check algorithms                       | 展示可用的一致性校验算法                                          | show scaling check algorithms                   |
- | check scaling {jobId} by type(name={algorithmType}) | 数据一致性校验，使用指定的校验算法                                  | check scaling 1234 by type(name=DEFAULT)        |
- | stop scaling source writing xx                      | 旧的 ShardingSphere 数据源停写，xx：任务id                        | stop scaling source writing 1234                |
--| checkout scaling xx                                 | 切换至新的 ShardingSphere 数据源，xx：任务id                      | checkout scaling 1234                           |
-+| apply scaling xx                                    | 切换至新的 ShardingSphere 元数据，xx：任务id                      | apply scaling 1234                              |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
+index 9e5a61b27f..682552f46d 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
+@@ -12,8 +12,12 @@ SHOW SHARDING TABLE tableRule | RULES [FROM schemaName]
  
+ SHOW SHARDING ALGORITHMS [FROM schemaName]
  
- ## 熔断
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.en.md
-index e0e6071158..9b01d14096 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/_index.en.md
-@@ -32,7 +32,7 @@ RAL (Resource & Rule Administration Language) responsible for the added-on featu
- | show scaling check algorithms                        | Show available consistency check algorithms                       | show scaling check algorithms            |
- | check scaling {jobId} by type(name={algorithmType})  | Data consistency check with defined algorithm                     | check scaling 1234 by type(name=DEFAULT) |
- | stop scaling source writing xx                       | The source ShardingSphere data source is discontinued, xx: jobId  | stop scaling source writing 1234         |
--| checkout scaling xx                                  | Switch to target ShardingSphere data source, xx: jobId            | checkout scaling 1234                    |
-+| apply scaling xx                                     | Switch to target ShardingSphere metadata, xx: jobId               | apply scaling 1234                       |
++SHOW UNUSED SHARDING ALGORITHMS [FROM schemaName]
++
+ SHOW SHARDING KEY GENERATORS [FROM schemaName]
  
- ## Circuit Breaker
++SHOW UNUSED SHARDING KEY GENERATORS [FROM schemaName]
++
+ SHOW DEFAULT SHARDING STRATEGY 
  
+ SHOW SHARDING TABLE NODES;
+@@ -65,6 +69,30 @@ SHOW SHARDING BROADCAST TABLE RULES [FROM schemaName]
+ | type  | 分片算法类型    |
+ | props | 分片算法参数    |
+ 
++### Unused Sharding Algorithms
++
++| 列     | 说明          |
++| ------| --------------|
++| name  | 分片算法名称    |
++| type  | 分片算法类型    |
++| props | 分片算法参数    |
++
++### Sharding Key Generators
++
++| 列     | 说明             |
++| ------| -----------------|
++| name  | 分片列生成器名称    |
++| type  | 分片列生成器类型    |
++| props | 分片列生成器参数    |
++
++### Unused Sharding Key Generators
++
++| 列     | 说明             |
++| ------| -----------------|
++| name  | 分片列生成器名称    |
++| type  | 分片列生成器类型    |
++| props | 分片列生成器参数    |
++
+ ### Default Sharding Strategy
+ 
+ | 列                        | 说明          |
+@@ -128,13 +156,48 @@ mysql> show sharding table rule t_order;
+ mysql> show sharding algorithms;
+ +-------------------------+--------+-----------------------------------------------------+
+ | name                    | type   | props                                               |
+-+-------------------------+--------------------------------------------------------------+
+++-------------------------+--------+-----------------------------------------------------+
+ | t_order_inline          | INLINE | algorithm-expression=t_order_${order_id % 2}        |
+ | t_order_item_inline     | INLINE | algorithm-expression=t_order_item_${order_id % 2}   |
+ +-------------------------+--------+-----------------------------------------------------+
+ 2 row in set (0.01 sec)
+ ```
+ 
++*SHOW UNUSED SHARDING ALGORITHMS*
++```sql
++mysql> show unused sharding algorithms;
+++---------------+--------+-----------------------------------------------------+
++| name          | type   | props                                               |
+++---------------+--------+-----------------------------------------------------+
++| t1_inline     | INLINE | algorithm-expression=t_order_${order_id % 2}        |
+++---------------+--------+-----------------------------------------------------+
++1 row in set (0.01 sec)
++```
++
++*SHOW SHARDING KEY GENERATORS*
++```sql
++mysql> show sharding key generators;
+++------------------------+-----------+-----------------+
++| name                   | type      | props           |
+++------------------------+-----------+-----------------+
++| t_order_snowflake      | snowflake | {worker-id=123} |
++| t_order_item_snowflake | snowflake | {worker-id=123} |
++| uuid_key_generator     | uuid      |                 |
+++------------------------+-----------+-----------------+
++3 row in set (0.01 sec)
++```
++
++*SHOW UNUSED SHARDING KEY GENERATORS*
++```sql
++mysql> show unused sharding key generators;
+++------------------------+-----------+-----------------+
++| name                   | type      | props           |
+++------------------------+-----------+-----------------+
++| uuid_key_generator     | uuid      |                 |
+++------------------------+-----------+-----------------+
++1 row in set (0.01 sec)
++```
++
+ *SHOW DEFAULT SHARDING STRATEGY*
+ ```sql
+ mysql> SHOW DEFAULT SHARDING STRATEGY ;
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md
+index 5c3a94140a..d7384b2a07 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md
+@@ -12,8 +12,12 @@ SHOW SHARDING TABLE tableRule | RULES [FROM schemaName]
+ 
+ SHOW SHARDING ALGORITHMS [FROM schemaName]
+ 
++SHOW UNUSED SHARDING ALGORITHMS [FROM schemaName]
++
+ SHOW SHARDING KEY GENERATORS [FROM schemaName]
+ 
++SHOW UNUSED SHARDING KEY GENERATORS [FROM schemaName]
++
+ SHOW DEFAULT SHARDING STRATEGY 
+ 
+ SHOW SHARDING TABLE NODES;
+@@ -48,14 +52,14 @@ SHOW SHARDING BROADCAST TABLE RULES [FROM schemaName]
+ | database_strategy_type            | Database sharding strategy type                           |
+ | database_sharding_column          | Database sharding column                                  |
+ | database_sharding_algorithm_type  | Database sharding algorithm type                          |
+-| database_sharding_algorithm_props | Database sharding algorithm parameter                     |
++| database_sharding_algorithm_props | Database sharding algorithm properties                     |
+ | table_strategy_type               | Table sharding strategy type                              |
+ | table_sharding_column             | Table sharding column                                     |
+ | table_sharding_algorithm_type     | Table sharding algorithm type                             |
+-| table_sharding_algorithm_props    | Table sharding algorithm parameter                         |
+-| key_generate_column               | Distributed primary key generation column                 |
+-| key_generator_type                | Distributed primary key generation type                   |
+-| key_generator_props               | Distributed primary key generation parameter              |
++| table_sharding_algorithm_props    | Table sharding algorithm properties                         |
++| key_generate_column               | Sharding key generator column                             |
++| key_generator_type                | Sharding key generator type                               |
++| key_generator_props               | Sharding key generator properties                         |
+ 
+ ### Sharding Algorithms
+ 
+@@ -63,8 +67,31 @@ SHOW SHARDING BROADCAST TABLE RULES [FROM schemaName]
+ | ------ | ----------------------------- |
+ | name   | Sharding algorithm name       |
+ | type   | Sharding algorithm type       |
+-| props  | Sharding algorithm parameters |
++| props  | Sharding algorithm properties |
++
++### Unused Sharding Algorithms
++
++| Column | Description                   |
++| ------ | ----------------------------- |
++| name   | Sharding algorithm name       |
++| type   | Sharding algorithm type       |
++| props  | Sharding algorithm properties |
++
++### Sharding key generators
+ 
++| Column | Description                       |
++| ------ | --------------------------------- |
++| name   | Sharding key generator name       |
++| type   | Sharding key generator type       |
++| props  | Sharding key generator properties |
++
++### Unused Sharding Key Generators
++
++| Column | Description                       |
++| ------ | --------------------------------- |
++| name   | Sharding key generator name       |
++| type   | Sharding key generator type       |
++| props  | Sharding key generator properties |
+ 
+ ### Default Sharding Strategy
+ 
+@@ -129,13 +156,48 @@ mysql> show sharding table rule t_order;
+ mysql> show sharding algorithms;
+ +-------------------------+--------+-----------------------------------------------------+
+ | name                    | type   | props                                               |
+-+-------------------------+--------------------------------------------------------------+
+++-------------------------+--------+-----------------------------------------------------+
+ | t_order_inline          | INLINE | algorithm-expression=t_order_${order_id % 2}        |
+ | t_order_item_inline     | INLINE | algorithm-expression=t_order_item_${order_id % 2}   |
+ +-------------------------+--------+-----------------------------------------------------+
+ 2 row in set (0.01 sec)
+ ```
+ 
++*SHOW UNUSED SHARDING ALGORITHMS*
++```sql
++mysql> show unused sharding algorithms;
+++---------------+--------+-----------------------------------------------------+
++| name          | type   | props                                               |
+++---------------+--------+-----------------------------------------------------+
++| t1_inline     | INLINE | algorithm-expression=t_order_${order_id % 2}        |
+++---------------+--------+-----------------------------------------------------+
++1 row in set (0.01 sec)
++```
++
++*SHOW SHARDING KEY GENERATORS*
++```sql
++mysql> show sharding key generators;
+++------------------------+-----------+-----------------+
++| name                   | type      | props           |
+++------------------------+-----------+-----------------+
++| t_order_snowflake      | snowflake | {worker-id=123} |
++| t_order_item_snowflake | snowflake | {worker-id=123} |
++| uuid_key_generator     | uuid      |                 |
+++------------------------+-----------+-----------------+
++3 row in set (0.01 sec)
++```
++
++*SHOW UNUSED SHARDING KEY GENERATORS*
++```sql
++mysql> show unused sharding key generators;
+++------------------------+-----------+-----------------+
++| name                   | type      | props           |
+++------------------------+-----------+-----------------+
++| uuid_key_generator     | uuid      |                 |
+++------------------------+-----------+-----------------+
++1 row in set (0.01 sec)
++```
++
+ *SHOW DEFAULT SHARDING STRATEGY*
+ ```sql
+ mysql> SHOW DEFAULT SHARDING STRATEGY ;

@@ -1,96 +1,38 @@
-commit 9295de07b2ddf41fe4364712d47aa7ce3a498625
-Author: zhaojinchao <33742097+zjcnb@users.noreply.github.com>
-Date:   Tue Feb 15 18:52:28 2022 +0800
+commit 5b840d3b0469bc01d45f91eac9372d108b76fdc0
+Author: Carter <909546589@qq.com>
+Date:   Wed Feb 16 10:45:17 2022 +0800
 
-    Adjust db discovery document. (#15421)
+    Update pagination (#15418)
+    
+    * 分页性能优化的时间复杂度描述
+    
+    * Updated EN pagination
+    
+    Co-authored-by: Carter <236375267@qq.com>
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.cn.md
-index 3a7263ae3d..3b0932b19e 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.cn.md
-@@ -32,7 +32,7 @@ PASSWORD=root
- - 创建数据库发现规则
+diff --git a/docs/document/content/features/sharding/use-norms/pagination.cn.md b/docs/document/content/features/sharding/use-norms/pagination.cn.md
+index 63657aebf3..9544162dbd 100644
+--- a/docs/document/content/features/sharding/use-norms/pagination.cn.md
++++ b/docs/document/content/features/sharding/use-norms/pagination.cn.md
+@@ -32,7 +32,7 @@ ShardingSphere 进行了 2 个方面的优化。
+ 首先，采用流式处理 + 归并排序的方式来避免内存的过量占用。由于 SQL 改写不可避免的占用了额外的带宽，但并不会导致内存暴涨。
+ 与直觉不同，大多数人认为 ShardingSphere 会将 `1,000,010 * 2` 记录全部加载至内存，进而占用大量内存而导致内存溢出。
+ 但由于每个结果集的记录是有序的，因此 ShardingSphere 每次比较仅获取各个分片的当前结果集记录，驻留在内存中的记录仅为当前路由到的分片的结果集的当前游标指向而已。
+-对于本身即有序的待排序对象，归并排序的时间复杂度仅为 `O(nlogn)`，性能损耗很小。
++按归并思想合并 m 个长度为 n 的已排序数组，时间复杂度为 `O(mn(log m))`，一般分片数量 m 都较小，可以认为时间复杂度为 `O(n)`,性能损耗很小。
  
- ```sql
--CREATE DB_DISCOVERY RULE ha_group_0 (
-+CREATE DB_DISCOVERY RULE db_discovery_group_0 (
- RESOURCES(ds_0, ds_1),
- TYPE(NAME=mgr,PROPERTIES('group-name'='92504d5b-6dec')),
- HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
-@@ -42,7 +42,7 @@ HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
- - 修改数据库发现规则
+ 其次，ShardingSphere 对仅落至单分片的查询进行进一步优化。
+ 落至单分片查询的请求并不需要改写 SQL 也可以保证记录的正确性，因此在此种情况下，ShardingSphere 并未进行 SQL 改写，从而达到节省带宽的目的。
+diff --git a/docs/document/content/features/sharding/use-norms/pagination.en.md b/docs/document/content/features/sharding/use-norms/pagination.en.md
+index 948303d559..c9aaff2202 100644
+--- a/docs/document/content/features/sharding/use-norms/pagination.en.md
++++ b/docs/document/content/features/sharding/use-norms/pagination.en.md
+@@ -28,7 +28,7 @@ It also means taking out all the records prior to the offset and only acquire th
+ ShardingSphere has optimized in two ways.
  
- ```sql
--ALTER DB_DISCOVERY RULE ha_group_0 (
-+ALTER DB_DISCOVERY RULE db_discovery_group_0 (
- RESOURCES(ds_0, ds_1, ds_2),
- TYPE(NAME=mgr,PROPERTIES('group-name'='92504d5b-6dec')),
- HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
-@@ -52,19 +52,19 @@ HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
- - 删除数据库发现规则
+ Firstly, it adopts stream process + merger ordering to avoid excessive memory occupation. SQL rewrite unavoidably occupies extra bandwidth, but it will not lead to sharp increase of memory occupation. Most people may assume that ShardingSphere would upload all the `1,000,010 * 2` records to the memory and occupy a large amount of it, which can lead to memory overflow. But each ShardingSphere comparison only acquires current result set record of each shard, since result set records have their own order.
+-The record stored in the memory is only the current position pointed by the cursor in the result set of the shard routed to. For the item to be sorted which has its own order, merger ordering only has the time complexity of `O(nlogn)`, with a very low performance consumption.
++The record stored in the memory is only the current position pointed by the cursor in the result set of the shard routed to. For the item to be sorted which has its own order, merger ordering only has the time complexity of `O(mn(log m))`, and the number of sharding m is generally small enough to be considered as `O(n)`, with a very low performance consumption.
  
- ```sql
--DROP DB_DISCOVERY RULE ha_group_0;
-+DROP DB_DISCOVERY RULE db_discovery_group_0;
- ```
+ Secondly, ShardingSphere further optimizes the query that only falls into single shards. Requests of this kind can guarantee the correctness of records without rewriting SQLs. Under this kind of situation, ShardingSphere will not do that in order to save the bandwidth.
  
- - 删除数据库发现类型
- 
- ```sql
--DROP DB_DISCOVERY TYPE ha_group_0_mgr;
-+DROP DB_DISCOVERY TYPE db_discovery_group_0_mgr;
- ```
- 
- - 删除数据库发现心跳
- 
- ```sql
--DROP DB_DISCOVERY HEARTBEAT ha_group_0_heartbeat;
-+DROP DB_DISCOVERY HEARTBEAT db_discovery_group_0_heartbeat;
- ```
- 
- - 删除数据源
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.en.md
-index a18f9f2b88..2908bc5f19 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/db-discovery.en.md
-@@ -32,7 +32,7 @@ PASSWORD=root
- - Create DB discovery rule
- 
- ```sql
--CREATE DB_DISCOVERY RULE ha_group_0 (
-+CREATE DB_DISCOVERY RULE db_discovery_group_0 (
- RESOURCES(ds_0, ds_1),
- TYPE(NAME=mgr,PROPERTIES('group-name'='92504d5b-6dec')),
- HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
-@@ -42,7 +42,7 @@ HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
- - Alter DB discovery rule
- 
- ```sql
--ALTER DB_DISCOVERY RULE ha_group_0 (
-+ALTER DB_DISCOVERY RULE db_discovery_group_0 (
- RESOURCES(ds_0, ds_1, ds_2),
- TYPE(NAME=mgr,PROPERTIES('group-name'='92504d5b-6dec')),
- HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
-@@ -52,19 +52,19 @@ HEARTBEAT(PROPERTIES('keep-alive-cron'='0/5 * * * * ?'))
- - Drop db_discovery rule
- 
- ```sql
--DROP DB_DISCOVERY RULE ha_group_0;
-+DROP DB_DISCOVERY RULE db_discovery_group_0;
- ```
- 
- - Drop db_discovery type
- 
- ```sql
--DROP DB_DISCOVERY TYPE ha_group_0_mgr;
-+DROP DB_DISCOVERY TYPE db_discovery_group_0_mgr;
- ```
- 
- - Drop db_discovery heartbeat
- 
- ```sql
--DROP DB_DISCOVERY HEARTBEAT ha_group_0_heartbeat;
-+DROP DB_DISCOVERY HEARTBEAT db_discovery_group_0_heartbeat;
- ```
- 
- - Drop resource

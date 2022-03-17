@@ -42,6 +42,8 @@ if [ ${#TAGS} -gt 0 ] ; then
     echo "generate $tag documnet"
     git checkout $tag
     if [ -d docs/document -a -f docs/build.sh ] ; then
+      # delete downloads of tag
+      rm -rf docs/document/downloads
       VALID_TAGS=(${VALID_TAGS[@]} $tag)
       if [ ! -d ../document/$tag ] ; then
         count=1

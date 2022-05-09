@@ -1,436 +1,226 @@
-commit feaf0e42ce1a8785db056a09a52289bf78a18e44
-Author: gin <jacky7boy@163.com>
-Date:   Mon May 9 11:45:19 2022 +0800
+commit fc253a93ff8f8abcb45ffbbbf2f92464e4a784cb
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Mon May 9 18:56:45 2022 +0800
 
-    Update shadow document as the same style in proxy (#17467)
+    Rename authority algorithm to ALL_PRIVILEGES_PERMITTED and SCHEMA_PRIVILEGES_PERMITTED (#17485)
+    
+    * Refactor AllPrivilegesPermittedShardingSpherePrivileges
+    
+    * Rename SchemaPermittedPrivileges
+    
+    * Rename SchemaPermittedPrivilegesProviderAlgorithm
+    
+    * Rename AllPermittedPrivilegesProviderAlgorithm
+    
+    * Move package of test cases
+    
+    * Move package of test cases
+    
+    * Rename StoragePrivilegeMergerTest
+    
+    * Rename authority algorithm to ALL_PRIVILEGES_PERMITTED and SCHEMA_PRIVILEGES_PERMITTED
 
-diff --git a/docs/document/content/reference/shadow/_index.cn.md b/docs/document/content/reference/shadow/_index.cn.md
-index 15293c8370..9acb04ea38 100644
---- a/docs/document/content/reference/shadow/_index.cn.md
-+++ b/docs/document/content/reference/shadow/_index.cn.md
-@@ -56,36 +56,61 @@ Apache ShardingSphere 通过解析 SQL，对传入的 SQL 进行影子判定，
+diff --git a/docs/blog/content/material/proxyIntroduce.cn.md b/docs/blog/content/material/proxyIntroduce.cn.md
+index 906442242a..a0d6631b03 100644
+--- a/docs/blog/content/material/proxyIntroduce.cn.md
++++ b/docs/blog/content/material/proxyIntroduce.cn.md
+@@ -117,7 +117,7 @@ rules: # 认证信息
+      - root@%:root
+      - sharding@:sharding
+    provider:
+-     type: ALL_PRIVILEGES_PERMITTED
++     type: ALL_PERMITTED
+  - !TRANSACTION
+    defaultType: XA
+    providerType: Atomikos
+diff --git a/docs/document/content/dev-manual/proxy.cn.md b/docs/document/content/dev-manual/proxy.cn.md
+index 91596acc78..6dd5a85c26 100644
+--- a/docs/document/content/dev-manual/proxy.cn.md
++++ b/docs/document/content/dev-manual/proxy.cn.md
+@@ -11,11 +11,11 @@ chapter = true
+ | ------------------------------- | ---------------------------------------------- |
+ | DatabaseProtocolFrontendEngine  | 用于 ShardingSphere-Proxy 解析与适配访问数据库的协议 |
  
- ### 影子库配置
+-| *已知实现类*              | *详细说明*                                      |
+-| ------------------------ | ---------------------------------------------- |
+-| MySQLFrontendEngine      | 基于 MySQL 的数据库协议实现                      |
+-| PostgreSQLFrontendEngine | 基于 PostgreSQL 的数据库协议实现                 |
+-| OpenGaussFrontendEngine | 基于 openGauss 的数据库协议实现                 |
++| *已知实现类*               | *详细说明*                      |
++| ------------------------ | ---------------------------- |
++| MySQLFrontendEngine      | 基于 MySQL 的数据库协议实现      |
++| PostgreSQLFrontendEngine | 基于 PostgreSQL 的数据库协议实现 |
++| OpenGaussFrontendEngine  | 基于 openGauss 的数据库协议实现   |
  
--建议配置如下（YAML 格式展示）：
-+建议 `config-shadow.yaml` 配置如下：
+ ## AuthorityProvideAlgorithm
  
- ```yaml
--data-sources:
--  shadow-data-source:
--    source-data-source-name: ds
--    shadow-data-source-name: ds-shadow
--tables:
--  t_order:
--    data-source-names: shadow-data-source
--    shadow-algorithm-names:
--      - simple-hint-algorithm
--      - user-id-value-match-algorithm
--shadow-algorithms:
--  simple-hint-algorithm:
--    type: SIMPLE_HINT
--    props:
--      foo: bar
--  user-id-value-match-algorithm:
--    type: VALUE_MATCH
--    props:
--      operation: insert
--      column: user_id
--      value: 0
-+databaseName: shadow_db
-+
-+dataSources:
-+  ds:
-+    url: jdbc:mysql://127.0.0.1:3306/ds?serverTimezone=UTC&useSSL=false
-+    username: root
-+    password:
-+    connectionTimeoutMilliseconds: 30000
-+    idleTimeoutMilliseconds: 60000
-+    maxLifetimeMilliseconds: 1800000
-+    maxPoolSize: 50
-+    minPoolSize: 1
-+  shadow_ds:
-+    url: jdbc:mysql://127.0.0.1:3306/shadow_ds?serverTimezone=UTC&useSSL=false
-+    username: root
-+    password:
-+    connectionTimeoutMilliseconds: 30000
-+    idleTimeoutMilliseconds: 60000
-+    maxLifetimeMilliseconds: 1800000
-+    maxPoolSize: 50
-+    minPoolSize: 1
-+
-+rules:
-+- !SHADOW
-+  dataSources:
-+    shadowDataSource:
-+      sourceDataSourceName: ds
-+      shadowDataSourceName: shadow_ds
-+  tables:
-+    t_order:
-+      dataSourceNames:
-+        - shadowDataSource
-+      shadowAlgorithmNames:
-+        - simple-hint-algorithm
-+        - user-id-value-match-algorithm
-+  shadowAlgorithms:
-+    simple-hint-algorithm:
-+      type: SIMPLE_HINT
-+      props:
-+        foo: bar
-+    user-id-insert-match-algorithm:
-+      type: VALUE_MATCH
-+      props:
-+        operation: insert
-+        column: user_id
-+        regex: 0
-       
--sql-parser:
--  sql-comment-parse-enabled: true
-+- !SQL_PARSER
-+  sqlCommentParseEnabled: true
+@@ -23,8 +23,8 @@ chapter = true
+ | ------------------------------- | ---------------------------- |
+ | AuthorityProvideAlgorithm       | 用户权限加载逻辑                |
+ 
+-| *已知实现类*                                          | *Type*                      | *详细说明*                                                                           |
+-|-----------------------------------------------------| --------------------------- |-------------------------------------------------------------------------------------|
+-| NativeAuthorityProviderAlgorithm（已弃用）            | NATIVE                      | 基于后端数据库存取 server.yaml 中配置的权限信息。如果用户不存在，则自动创建用户并默认赋予最高权限。|
+-| AllPrivilegesPermittedAuthorityProviderAlgorithm    | ALL_PRIVILEGES_PERMITTED    | 默认授予所有权限（不鉴权），不会与实际数据库交互。                                           |
+-| SchemaPrivilegesPermittedAuthorityProviderAlgorithm | SCHEMA_PRIVILEGES_PERMITTED | 通过属性 user-schema-mappings 配置的权限。                                              |
++| *已知实现类*                                          | *Type*           | *详细说明*                                                                          |
++|-----------------------------------------------------| ---------------- |----------------------------------------------------------------------------------- |
++| NativeAuthorityProviderAlgorithm（已弃用）            | NATIVE           | 基于后端数据库存取 server.yaml 中配置的权限信息。如果用户不存在，则自动创建用户并默认赋予最高权限  |
++| AllPrivilegesPermittedAuthorityProviderAlgorithm    | ALL_PERMITTED    | 默认授予所有权限（不鉴权），不会与实际数据库交互                                            |
++| SchemaPrivilegesPermittedAuthorityProviderAlgorithm | SCHEMA_PERMITTED | 通过属性 user-schema-mappings 配置的权限                                               |
+diff --git a/docs/document/content/dev-manual/proxy.en.md b/docs/document/content/dev-manual/proxy.en.md
+index 982dbbea98..1d8e2cb2c7 100644
+--- a/docs/document/content/dev-manual/proxy.en.md
++++ b/docs/document/content/dev-manual/proxy.en.md
+@@ -11,11 +11,11 @@ chapter = true
+ | -------------------------------- | ------------------------------------------------------------------------------- |
+ | DatabaseProtocolFrontendEngine   | Regulate parse and adapter protocol of database access for ShardingSphere-Proxy |
+ 
+-| *Implementation Class*   | *Description*                                                                   |
+-| ------------------------ | ------------------------------------------------------------------------------- |
+-| MySQLFrontendEngine      | Base on MySQL database protocol                                                 |
+-| PostgreSQLFrontendEngine | Base on PostgreSQL database protocol                                            |
+-| OpenGaussFrontendEngine | Base on openGauss database protocol                                            |
++| *Implementation Class*   | *Description*                        |
++| ------------------------ | ------------------------------------ |
++| MySQLFrontendEngine      | Base on MySQL database protocol      |
++| PostgreSQLFrontendEngine | Base on PostgreSQL database protocol |
++| OpenGaussFrontendEngine  | Base on openGauss database protocol  |
+ 
+ ## AuthorityProvideAlgorithm
+ 
+@@ -23,8 +23,8 @@ chapter = true
+ | ------------------------------- | ------------------------------ |
+ | AuthorityProvideAlgorithm       | User authority loading logic   |
+ 
+-| *Implementation Class*                              | *Type*                      | *Description*                                                                                                          |
+-|-----------------------------------------------------| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+-| NativeAuthorityProviderAlgorithm (Deprecated)       | NATIVE                      | Persist user authority defined in server.yaml into the backend database. An admin user will be created if not existed. |
+-| AllPrivilegesPermittedAuthorityProviderAlgorithm    | ALL_PRIVILEGES_PERMITTED    | All privileges granted to user by default (No authentication). Will not interact with the actual database.             |
+-| SchemaPrivilegesPermittedAuthorityProviderAlgorithm | SCHEMA_PRIVILEGES_PERMITTED | Permissions configured through the attribute user-schema-mappings.                                                     |
++| *Implementation Class*                              | *Type*           | *Description*                                                                                                         |
++|-----------------------------------------------------| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
++| NativeAuthorityProviderAlgorithm (Deprecated)       | NATIVE           | Persist user authority defined in server.yaml into the backend database. An admin user will be created if not existed |
++| AllPrivilegesPermittedAuthorityProviderAlgorithm    | ALL_PERMITTED    | All privileges granted to user by default (No authentication). Will not interact with the actual database             |
++| SchemaPrivilegesPermittedAuthorityProviderAlgorithm | SCHEMA_PERMITTED | Permissions configured through the attribute user-schema-mappings                                                     |
+diff --git a/docs/document/content/reference/management/_index.cn.md b/docs/document/content/reference/management/_index.cn.md
+index bea04fe63a..d2be165cc2 100644
+--- a/docs/document/content/reference/management/_index.cn.md
++++ b/docs/document/content/reference/management/_index.cn.md
+@@ -62,7 +62,7 @@ users:
+   - root@%:root
+   - sharding@127.0.0.1:sharding
+ provider:
+-  type: ALL_PRIVILEGES_PERMITTED
++  type: ALL_PERMITTED
  ```
  
--**注意**： 如果使用注解影子算法，需要开启解析 SQL 注释配置项 `sql-comment-parse-enabled: true`。默认关闭。 
-+**注意**： 如果使用注解影子算法，需要开启解析 SQL 注释配置项 `sqlCommentParseEnabled: true`。默认关闭。 
- 请参考 [SQL 解析配置](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/sql-parser/)
- 
- ### 影子库环境
-@@ -134,16 +159,16 @@ INSERT INTO t_order (order_id, user_id, ...) VALUES (xxx..., 0, ...)
- 
- 无需修改任何 SQL 或者代码，只需要对压力测试的数据进行控制就可以实现在线的压力测试。
- 
--算法配置如下（YAML 格式展示）：
-+算法配置如下：
- 
- ```yaml
--shadow-algorithms:
--  user-id-value-match-algorithm:
-+shadowAlgorithms:
-+  user-id-insert-match-algorithm:
-     type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
--      value: 0
-+      regex: 0
+ ### /props
+diff --git a/docs/document/content/reference/management/_index.en.md b/docs/document/content/reference/management/_index.en.md
+index 9565d6dcd5..e65c434ff4 100644
+--- a/docs/document/content/reference/management/_index.en.md
++++ b/docs/document/content/reference/management/_index.en.md
+@@ -62,7 +62,7 @@ users:
+   - root@%:root
+   - sharding@127.0.0.1:sharding
+ provider:
+-  type: ALL_PRIVILEGES_PERMITTED
++  type: ALL_PERMITTED
  ```
  
- **注意**：影子表使用列影子算法时，相同类型操作（INSERT, UPDATE, DELETE, SELECT）目前仅支持单个字段。
-@@ -158,10 +183,10 @@ SELECT * FROM t_order WHERE order_id = xxx /*foo:bar,...*/
- 
- 会执行到影子库，其他数据执行到生产库。
- 
--算法配置如下（YAML 格式展示）：
-+算法配置如下：
- 
- ```yaml
--shadow-algorithms:
-+shadowAlgorithms:
-   simple-hint-algorithm:
-     type: SIMPLE_HINT
-     props:
-@@ -180,10 +205,10 @@ SELECT * FROM t_order WHERE order_id = xxx /*foo:bar,...*/;
- 
- 都会执行到影子库，其他数据执行到生产库。
- 
--算法配置如下（YAML 格式展示）：
-+算法配置如下：
- 
- ```yaml
--shadow-algorithms:
-+shadowAlgorithms:
-   user-id-value-match-algorithm:
-     type: VALUE_MATCH
-     props:
-@@ -212,34 +237,35 @@ SELECT * FROM t_xxx_3 WHERE order_id = xxx /*foo:bar,...*/;
- 
- 都会执行到影子库，其他数据执行到生产库。
- 
--配置如下（YAML 格式展示）：
-+配置如下：
- 
- ```yaml
--data-sources:
--  shadow-data-source:
--    source-data-source-name: ds
--    shadow-data-source-name: ds-shadow
-+rules:
-+- !SHADOW
-+dataSources:
-+  shadowDataSource:
-+    sourceDataSourceName: ds
-+    shadowDataSourceName: shadow_ds
- tables:
-   t_order:
--    data-source-names: shadow-data-source
--    shadow-algorithm-names:
-+    dataSourceNames:
-+      - shadowDataSource
-+    shadowAlgorithmNames:
-       - simple-hint-algorithm
-       - user-id-value-match-algorithm
--default-shadow-algorithm-name: simple-note-algorithm
--shadow-algorithms:
-+shadowAlgorithms:
-   simple-hint-algorithm:
-     type: SIMPLE_HINT
-     props:
-       foo: bar
--  user-id-value-match-algorithm:
-+  user-id-insert-match-algorithm:
-     type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
--      value: 0
--      
--sql-parser:
--  sql-comment-parse-enabled: true
-+      regex: 0
-+- !SQL_PARSER
-+  sqlCommentParseEnabled: true
+ ### /props
+diff --git a/docs/document/content/reference/test/performance-test/sysbench-test.en.md b/docs/document/content/reference/test/performance-test/sysbench-test.en.md
+index dc0d30dbf3..f34553ff87 100644
+--- a/docs/document/content/reference/test/performance-test/sysbench-test.en.md
++++ b/docs/document/content/reference/test/performance-test/sysbench-test.en.md
+@@ -281,7 +281,7 @@ rules:
+       - root@%:root
+       - sharding@:sharding
+     provider:
+-      type: ALL_PRIVILEGES_PERMITTED
++      type: ALL_PERMITTED
+ props:
+   max-connections-size-per-query: 1
+   kernel-executor-size: 16  # Infinite by default.
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.cn.md
+index 01aafa8173..6773b971e5 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.cn.md
+@@ -13,12 +13,12 @@ rules:
+     users:
+       - # 用于登录计算节点的用户名，授权主机和密码的组合。格式：<username>@<hostname>:<password>，hostname 为 % 或空字符串表示不限制授权主机
+     provider:
+-      type: # 存储节点数据授权的权限提供者类型，缺省值为 ALL_PRIVILEGES_PERMITTED
++      type: # 存储节点数据授权的权限提供者类型，缺省值为 ALL_PERMITTED
  ```
  
- **注意**
-@@ -247,27 +273,29 @@ sql-parser:
- 使用时必须确保配置文件中 `props` 的配置项小于等于 SQL 注释中的配置项，且配置文件的具体配置要和 SQL 注释中写的配置一样，配置文件中配置项越少，匹配条件越宽松
+ ## 配置示例
  
+-### ALL_PRIVILEGES_PERMITTED
++### ALL_PERMITTED
  ```yaml
--simple-note-algorithm:
--  type: SIMPLE_HINT
--  props:
--    foo: bar
--    foo1: bar1
-+shadowAlgorithms:
-+  simple-note-algorithm:
-+    type: SIMPLE_HINT
-+    props:
-+      foo: bar
-+      foo1: bar1
+ rules:
+   - !AUTHORITY
+@@ -26,10 +26,10 @@ rules:
+       - root@localhost:root
+       - my_user@:pwd
+     provider:
+-      type: ALL_PRIVILEGES_PERMITTED
++      type: ALL_PERMITTED
  ```
  
- 如当前 `props` 项中配置了 `2` 条配置，在 SQL 中可以匹配的写法有如下：
- 
- ```sql
--SELECT * FROM t_xxx_2 WHERE order_id = xxx /*foo:bar, foo1:bar1*/
-+SELECT * FROM t_xxx_2 WHERE order_id = xxx /*foo:bar, foo1:bar1, ...*/
- ```
- ```sql
- SELECT * FROM t_xxx_2 WHERE order_id = xxx /*foo:bar, foo1:bar1, foo2:bar2, ...*/
- ```
- 
+-### SCHEMA_PRIVILEGES_PERMITTED
++### SCHEMA_PERMITTED
  ```yaml
--simple-note-algorithm:
--  type: SIMPLE_HINT
--  props:
--    foo: bar
-+shadowAlgorithms:
-+  simple-note-algorithm:
-+    type: SIMPLE_HINT
-+    props:
-+      foo: bar
+ rules:
+   - !AUTHORITY
+@@ -37,7 +37,7 @@ rules:
+       - root@:root
+       - my_user@:pwd
+     provider:
+-      type: SCHEMA_PRIVILEGES_PERMITTED
++      type: SCHEMA_PERMITTED
+       props:
+         user-schema-mappings: root@=sharding_db, root@=test_db, my_user@127.0.0.1=sharding_db
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.en.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.en.md
+index b17a25c138..8ff76a9148 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/authentication.en.md
+@@ -13,12 +13,12 @@ rules:
+     users:
+       - # Username, authorized host and password for compute node. Format: <username>@<hostname>:<password>, hostname is % or empty string means do not care about authorized host
+     provider:
+-      type: # authority provider for storage node, the default value is ALL_PRIVILEGES_PERMITTED
++      type: # authority provider for storage node, the default value is ALL_PERMITTED
  ```
  
- 如当前 props 项中配置了 1 条配置，在 SQL 中可以匹配的写法有如下：
-diff --git a/docs/document/content/reference/shadow/_index.en.md b/docs/document/content/reference/shadow/_index.en.md
-index b2b021acda..51f6028efe 100644
---- a/docs/document/content/reference/shadow/_index.en.md
-+++ b/docs/document/content/reference/shadow/_index.en.md
-@@ -76,33 +76,58 @@ the pressure testing related table `t_order` is a shadow table, the production d
+ ## Example
  
- ### Shadow DB configuration
- 
--The shadow configuration for example(YAML)：
-+The configuration example of `config-shadow.yaml`(YAML)：
- 
+-### ALL_PRIVILEGES_PERMITTED
++### ALL_PERMITTED
  ```yaml
--data-sources:
--  shadow-data-source:
--    source-data-source-name: ds
--    shadow-data-source-name: ds-shadow
--tables:
--  t_order:
--    data-source-names: shadow-data-source
--    shadow-algorithm-names:
--      - simple-hint-algorithm
--      - user-id-value-match-algorithm
--shadow-algorithms:
--  simple-hint-algorithm:
--    type: SIMPLE_HINT
--    props:
--      foo: bar
--  user-id-value-match-algorithm:
--    type: VALUE_MATCH
--    props:
--      operation: insert
--      column: user_id
--      value: 0
-+databaseName: shadow_db
-+
-+dataSources:
-+  ds:
-+    url: jdbc:mysql://127.0.0.1:3306/ds?serverTimezone=UTC&useSSL=false
-+    username: root
-+    password:
-+    connectionTimeoutMilliseconds: 30000
-+    idleTimeoutMilliseconds: 60000
-+    maxLifetimeMilliseconds: 1800000
-+    maxPoolSize: 50
-+    minPoolSize: 1
-+  shadow_ds:
-+    url: jdbc:mysql://127.0.0.1:3306/shadow_ds?serverTimezone=UTC&useSSL=false
-+    username: root
-+    password:
-+    connectionTimeoutMilliseconds: 30000
-+    idleTimeoutMilliseconds: 60000
-+    maxLifetimeMilliseconds: 1800000
-+    maxPoolSize: 50
-+    minPoolSize: 1
-+
-+rules:
-+- !SHADOW
-+  dataSources:
-+    shadowDataSource:
-+      sourceDataSourceName: ds
-+      shadowDataSourceName: shadow_ds
-+  tables:
-+    t_order:
-+      dataSourceNames:
-+        - shadowDataSource
-+      shadowAlgorithmNames:
-+        - simple-hint-algorithm
-+        - user-id-value-match-algorithm
-+  shadowAlgorithms:
-+    simple-hint-algorithm:
-+      type: SIMPLE_HINT
-+      props:
-+        foo: bar
-+    user-id-insert-match-algorithm:
-+      type: VALUE_MATCH
-+      props:
-+        operation: insert
-+        column: user_id
-+        regex: 0
-       
--sql-parser:
--  sql-comment-parse-enabled: true
-+- !SQL_PARSER
-+  sqlCommentParseEnabled: true
+ rules:
+   - !AUTHORITY
+@@ -26,10 +26,10 @@ rules:
+       - root@localhost:root
+       - my_user@:pwd
+     provider:
+-      type: ALL_PRIVILEGES_PERMITTED
++      type: ALL_PERMITTED
  ```
  
- **Note**: If you use the Hint shadow algorithm, the parse SQL comment configuration item `sql-comment-parse-enabled: true` need to be turned on. turned off by default.
-@@ -158,13 +183,13 @@ No need to modify any SQL or code, only need to control the data of the testing
- Column Shadow algorithm configuration (YAML):
- 
+-### SCHEMA_PRIVILEGES_PERMITTED
++### SCHEMA_PERMITTED
  ```yaml
--shadow-algorithms:
--  user-id-value-match-algorithm:
-+shadowAlgorithms:
-+  user-id-insert-match-algorithm:
-     type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
--      value: 0
-+      regex: 0
+ rules:
+   - !AUTHORITY
+@@ -37,7 +37,7 @@ rules:
+       - root@:root
+       - my_user@:pwd
+     provider:
+-      type: SCHEMA_PRIVILEGES_PERMITTED
++      type: SCHEMA_PERMITTED
+       props:
+         user-schema-mappings: root@=sharding_db, root@=test_db, my_user@127.0.0.1=sharding_db
  ```
- 
- **Note**: When the shadow table uses the column shadow algorithm, the same type of shadow operation (INSERT, UPDATE, DELETE, SELECT) currently only supports a single column.
-@@ -181,7 +206,7 @@ SQL executed to shadow DB, other data executed to production DB.
- Note Shadow algorithm configuration (YAML):
- 
- ```yaml
--shadow-algorithms:
-+shadowAlgorithms:
-   simple-hint-algorithm:
-     type: SIMPLE_HINT
-     props:
-@@ -203,7 +228,7 @@ Both will be executed to shadow DB, other data executed to production DB.
- 2 type of shadow algorithm example (YAML):
- 
- ```yaml
--shadow-algorithms:
-+shadowAlgorithms:
-   user-id-value-match-algorithm:
-     type: VALUE_MATCH
-     props:
-@@ -235,31 +260,32 @@ Both will be executed to shadow DB, other data executed to production DB.
- Default shadow algorithm configuration (YAML):
- 
- ```yaml
--data-sources:
--  shadow-data-source:
--    source-data-source-name: ds
--    shadow-data-source-name: ds-shadow
-+rules:
-+- !SHADOW
-+dataSources:
-+  shadowDataSource:
-+    sourceDataSourceName: ds
-+    shadowDataSourceName: shadow_ds
- tables:
-   t_order:
--    data-source-names: shadow-data-source
--    shadow-algorithm-names:
-+    dataSourceNames:
-+      - shadowDataSource
-+    shadowAlgorithmNames:
-       - simple-hint-algorithm
-       - user-id-value-match-algorithm
--default-shadow-algorithm-name: simple-note-algorithm
--shadow-algorithms:
-+shadowAlgorithms:
-   simple-hint-algorithm:
-     type: SIMPLE_HINT
-     props:
-       foo: bar
--  user-id-value-match-algorithm:
-+  user-id-insert-match-algorithm:
-     type: VALUE_MATCH
-     props:
-       operation: insert
-       column: user_id
--      value: 0
--      
--sql-parser:
--  sql-comment-parse-enabled: true
-+      regex: 0
-+- !SQL_PARSER
-+  sqlCommentParseEnabled: true
- ```
- 
- **Note**:
-@@ -268,11 +294,12 @@ When using ensure that the configuration items of `props` in the configuration f
- should same as the configuration written in the SQL comment. The fewer configuration items in the configuration file, the looser the matching conditions
- 
- ```yaml
--simple-note-algorithm:
--  type: SIMPLE_HINT
--  props:
--    foo: bar
--    foo1: bar1
-+shadowAlgorithms:
-+  simple-note-algorithm:
-+    type: SIMPLE_HINT
-+    props:
-+      foo: bar
-+      foo1: bar1
- ```
- 
- For example, the 'props' item have `2` configure, the following syntax can be used in SQL:
-@@ -285,10 +312,11 @@ SELECT * FROM t_xxx_2 WHERE order_id = xxx /*foo:bar, foo1:bar1, foo2:bar2, ...*
- ```
- 
- ```yaml
--simple-note-algorithm:
--  type: SIMPLE_HINT
--  props:
--    foo: bar
-+shadowAlgorithms:
-+  simple-note-algorithm:
-+    type: SIMPLE_HINT
-+    props:
-+      foo: bar
- ```
- 
- For example, the 'props' item have `1` configure, the following syntax can be used in SQL:

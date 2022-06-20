@@ -1,140 +1,56 @@
-commit 1565d253361f426d3f4f5f28c21f5c5524a03a4e
+commit 77d5ab3ec8f9a98945f705a24fea5618ff0de342
 Author: 吴伟杰 <wuweijie@apache.org>
-Date:   Mon Jun 20 16:48:25 2022 +0800
+Date:   Mon Jun 20 17:59:57 2022 +0800
 
-    Add procedure of releasing Helm Chart (#18453)
-    
-    * Add Helm Chart release procedure
-    
-    * Add Helm Chart release procedure in English
+    Clarify documents about generating Helm Chart index (#18457)
 
 diff --git a/docs/community/content/contribute/release.cn.md b/docs/community/content/contribute/release.cn.md
-index e604142aa74..e0eeb77b152 100644
+index e0eeb77b152..3f42622789c 100644
 --- a/docs/community/content/contribute/release.cn.md
 +++ b/docs/community/content/contribute/release.cn.md
-@@ -200,6 +200,11 @@ grep -l -r "${PREVIOUS.RELEASE.VERSION}" . | xargs sed -i -e "s/${PREVIOUS.RELEA
+@@ -639,7 +639,19 @@ svn del -m "Archiving release ${PREVIOUS.RELEASE.VERSION}" https://dist.apache.o
+ 确认下载页面中的新发布版本的链接可用后，在 GitHub 页面创建 Pull Request 将分支 `${RELEASE.VERSION}-release` 合并到 `master`。
+ 如果代码存在冲突，可以先把 master 分支合并到 `${RELEASE.VERSION}-release`。
  
- 将 `README.md` 和 `README_ZH.md` 里的 `${PREVIOUS.RELEASE.VERSION}` 修改为 `${RELEASE.VERSION}`。
- 
-+### 6. 更新 Helm Chart 版本
-+
-+Helm Chart 可以部署不同版本的 ShardingSphere-Proxy，版本号独立于 ShardingSphere 版本。
-+修改文件 `shardingsphere-charts/apache-shardingsphere-proxy/Chart.yaml` 中的 `version`。
-+
- ## 发布 Apache Maven 中央仓库
- 
- ### 1. 设置 settings.xml 文件
-@@ -270,6 +275,20 @@ mvn release:perform -Prelease -Darguments="-DskipTests -Dspotless.apply.skip=tru
- 点击 `Close` 来告诉 Nexus 这个构建已经完成，只有这样该版本才是可用的。
- 如果电子签名等出现问题，`Close` 会失败，可以通过 `Activity` 查看失败信息。
- 
-+## 构建 Helm Chart
+-### 9. 邮件通知版本发布完成
++### 9. 生成 Helm Chart 索引文件并上传
 +
 +```shell
-+cd shardingsphere-charts/apache-shardingsphere-proxy/charts/governance
-+helm dep build
-+cd ../..
-+helm dep build
-+cd ..
-+helm package apache-shardingsphere-proxy
-+mv apache-shardingsphere-proxy-${CHART.RELEASE.VERSION}.tgz apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz
-+gpg --armor --detach-sign apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz
-+shasum -b -a 512 apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz > apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz.sha512
++mkdir -p /tmp/charts
++cd /tmp/charts
++wget https://archive.apache.org/dist/shardingsphere/${RELEASE.VERSION}/apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz
++curl https://shardingsphere.apache.org/charts/index.yaml > previous_index.yaml
++helm repo index --url https://archive.apache.org/dist/shardingsphere/${RELEASE.VERSION} --merge previous_index.yaml .
 +```
 +
- ## 发布 Apache SVN 仓库
- 
- ### 1. 检出 ShardingSphere 发布目录
-@@ -312,6 +331,7 @@ cp -f ~/shardingsphere/shardingsphere-distribution/shardingsphere-src-distributi
- cp -f ~/shardingsphere/shardingsphere-distribution/shardingsphere-jdbc-distribution/target/*.tar.gz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
- cp -f ~/shardingsphere/shardingsphere-distribution/shardingsphere-proxy-distribution/target/*.tar.gz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
- cp -f ~/shardingsphere/shardingsphere-agent/shardingsphere-agent-distribution/target/*.tar.gz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
-+cp -f ~/shardingsphere/shardingsphere-charts/*.tgz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
- ```
- 
- ### 4. 提交 Apache SVN
-@@ -409,6 +429,19 @@ diff -r apache-shardingsphere-${RELEASE.VERSION}-src-release shardingsphere-${RE
-   - 依赖许可证的完整版全部在 `license` 目录；
-   - 如果依赖的是 Apache 许可证并且存在 `NOTICE` 文件，那么这些 `NOTICE` 文件也需要加入到版本的 `NOTICE` 文件中。
- 
-+**3.4 检查 Helm Chart 制品包内容**
++检查生成的 `index.yaml` 文件，确认无误后更新 <https://github.com/apache/shardingsphere-doc/blob/asf-site/charts/index.yaml>。
 +
-+解压缩 `apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz`
-+
-+进行如下检查：
-+- 存在 `LICENSE` 和 `NOTICE` 文件；
-+- `NOTICE` 文件中的年份正确；
-+- 文本文件开头都有 ASF 许可证，以下文件或目录除外：
-+  - 所有 Chart.yaml
-+  - 所有 Chart.lock
-+  - charts/governance/charts 目录
-+  - charts/common 目录
-+
- ## 发起投票
++### 10. 邮件通知版本发布完成
  
- **投票阶段**
+ 发送邮件到 `dev@shardingsphere.apache.org` 和 `announce@apache.org` 通知完成版本发布。
+ 
 diff --git a/docs/community/content/contribute/release.en.md b/docs/community/content/contribute/release.en.md
-index cb308c10083..8a143aae52a 100644
+index 8a143aae52a..012b63e7b0e 100644
 --- a/docs/community/content/contribute/release.en.md
 +++ b/docs/community/content/contribute/release.en.md
-@@ -202,6 +202,11 @@ Specifying version of xsd instead of using `sharding.xsd`, is to make legacy doc
+@@ -649,7 +649,19 @@ Refer to:
+ After confirmed that download links of new release in download pages are available, create a Pull Request on GitHub to merge `${RELEASE.VERSION}-release` into `master.
+ If code conflicted, you may merge `master` into `${RELEASE.VERSION}-release` before merging Pull Request.
  
- Update `${PREVIOUS.RELEASE.VERSION}` to `${RELEASE.VERSION}` in README.md and README_ZH.md
- 
-+### 6. Update version of Helm Chart
-+
-+Helm Chart can deploy different versions of ShardingSphere-Proxy. Its version is independent of the version of ShardingSphere.
-+Modify the `version` in `shardingsphere-charts/apache-shardingsphere-proxy/Chart.yaml`.
-+
- ## Apache Maven Central Repository Release
- 
- ### 1. Set settings.xml
-@@ -273,6 +278,20 @@ Visit [https://repository.apache.org/#stagingRepositories](https://repository.ap
- Click `Close` to tell Nexus that the construction is finished, because only in this way, this version can be usable. 
- If there is any problem in gpg signature, `Close` will fail, but you can see the failure information through `Activity`.
- 
-+## Build Helm Chart archive
+-### 9. Announce release completed by email
++### 9. Generate Helm Chart index and upload
 +
 +```shell
-+cd shardingsphere-charts/apache-shardingsphere-proxy/charts/governance
-+helm dep build
-+cd ../..
-+helm dep build
-+cd ..
-+helm package apache-shardingsphere-proxy
-+mv apache-shardingsphere-proxy-${CHART.RELEASE.VERSION}.tgz apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz
-+gpg --armor --detach-sign apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz
-+shasum -b -a 512 apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz > apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz.sha512
++mkdir -p /tmp/charts
++cd /tmp/charts
++wget https://archive.apache.org/dist/shardingsphere/${RELEASE.VERSION}/apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz
++curl https://shardingsphere.apache.org/charts/index.yaml > previous_index.yaml
++helm repo index --url https://archive.apache.org/dist/shardingsphere/${RELEASE.VERSION} --merge previous_index.yaml .
 +```
 +
- ## Apache SVN Repository Release
- 
- ### 1. Checkout ShardingSphere Release Directory
-@@ -316,6 +335,7 @@ cp -f ~/shardingsphere/shardingsphere-distribution/shardingsphere-src-distributi
- cp -f ~/shardingsphere/shardingsphere-distribution/shardingsphere-jdbc-distribution/target/*.tar.gz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
- cp -f ~/shardingsphere/shardingsphere-distribution/shardingsphere-proxy-distribution/target/*.tar.gz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
- cp -f ~/shardingsphere/shardingsphere-agent/shardingsphere-agent-distribution/target/*.tar.gz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
-+cp -f ~/shardingsphere/shardingsphere-charts/*.tgz* ~/ss_svn/dev/shardingsphere/${RELEASE.VERSION}
- ```
- 
- ### 4. Commit to Apache SVN
-@@ -413,6 +433,19 @@ And check the following items:
-     *   All the third party dependency licenses are under `licenses` folder
-     *   If it depends on Apache license and has a `NOTICE` file, that `NOTICE` file need to be added to `NOTICE` file of the release
- 
-+**3.4 Check Helm Chart archive**
++Confirm that there is no error in the generated `index.yaml`, then update <https://github.com/apache/shardingsphere-doc/blob/asf-site/charts/index.yaml>.
 +
-+Decompress `apache-shardingsphere-proxy-chart-${CHART.RELEASE.VERSION}.tgz`
-+
-+And check the following items:
-+*   `LICENSE` and `NOTICE` files exist
-+*   Correct year in `NOTICE` file
-+*   All text files have ASF headers, excepts the following files or directories:
-+    * All Chart.yaml
-+    * All Chart.lock
-+    * Directory charts/governance/charts
-+    * Directory charts/common
-+
- ## Call for a Vote
++### 10. Announce release completed by email
  
- **Vote procedure**
+ Send e-mail to `dev@shardingsphere.apache.org` and `announce@apache.org` to announce the release is finished
+ 

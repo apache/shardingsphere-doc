@@ -1,174 +1,80 @@
-commit efcc79d19bce4098ab427cce7aa81d9698ab9da7
-Author: Chuxin Chen <chuxinchen.x@qq.com>
-Date:   Fri Jun 24 10:41:17 2022 +0800
+commit 111c3bedd81966f6b4a34f112f6a7aa85eea9ee5
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Mon Jun 27 00:36:45 2022 +0800
 
-    readwrite splitting doc (#18558)
+    Remove check-duplicate-table-enabled (#18613)
+    
+    * Remove check-duplicate-table-enabled
+    
+    * Fix test cases
+    
+    * Fix test cases
 
-diff --git a/docs/document/content/features/readwrite-splitting/concept.cn.md b/docs/document/content/features/readwrite-splitting/concept.cn.md
-index 3b09a58ff52..7a81cd5bc1e 100644
---- a/docs/document/content/features/readwrite-splitting/concept.cn.md
-+++ b/docs/document/content/features/readwrite-splitting/concept.cn.md
-@@ -1,21 +1,43 @@
- +++
--title = "核心概念"
-+title = "核心特性"
- weight = 1
- +++
- 
--## 主库
-+## 定义
- 
--添加、更新以及删除数据操作所使用的数据库，目前仅支持单主库。
-+读写分离也就是将数据库拆分为主库和从库，即主库负责处理事务性的增删改操作，从库负责处理查询操作的数据库架构。
-+
-+## 相关概念
- 
--## 从库
-+### 主库
-+添加、更新以及删除数据操作所使用的数据库，目前仅支持单主库。
- 
-+### 从库
- 查询数据操作所使用的数据库，可支持多从库。
- 
--## 主从同步
-+### 主从同步
-+将主库的数据异步的同步到从库的操作。 由于主从同步的异步性，从库与主库的数据会短时间内不一致。
-+
-+### 负载均衡策略
-+通过负载均衡策略将查询请求疏导至不同从库。
-+
-+## 对系统的影响
-+用户的系统中可能存在着复杂的主从关系数据库集群，因此应用程序需要接入多个数据源，这种方式就增加了系统维护的成本和业务开发的难度。ShardingSphere 通过读写分离功能，可以让用户像使用一个数据库一样去使用数据库集群，透明化读写分离带来的影响。
-+
-+## 使用限制
-+* 不处理主库和从库的数据同步
-+* 不处理主库和从库的数据同步延迟导致的数据不一致
-+* 不支持主库多写
-+* 不处理主从库间的事务一致性。主从模型中，事务中的数据读写均用主库。
- 
--将主库的数据异步的同步到从库的操作。
--由于主从同步的异步性，从库与主库的数据会短时间内不一致。
-+## 原理介绍
-+ShardingSphere 的读写分离主要依赖内核的相关功能。包括解析引擎和路由引擎。解析引擎将用户的 SQL 转化为 ShardingSphere 可以识别的 Statement 信息，路由引擎根据 SQL 的读写类型以及事务的状态来做 SQL 的路由。
-+在从库的路由中支持多种负载均衡算法，包括轮询算法、随机访问算法、权重访问算法等，用户也可以依据 SPI 机制自行扩展所需算法。如下图所示，ShardingSphere 识别到读操作和写操作，分别会路由至不同的数据库实例。
- 
--## 负载均衡策略
-+![原理介绍](https://shardingsphere.apache.org/document/current/img/readwrite-splitting/background.png)
- 
--通过负载均衡策略将查询请求疏导至不同从库。
-\ No newline at end of file
-+## 相关参考
-+[Java API](/cn/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting)\
-+[YAML 配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting)\
-+[Spring Boot Starter](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting)\
-+[Spring 命名空间](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting)
-diff --git a/docs/document/content/features/readwrite-splitting/concept.en.md b/docs/document/content/features/readwrite-splitting/concept.en.md
-index 36e00875a5a..adb979c23f6 100644
---- a/docs/document/content/features/readwrite-splitting/concept.en.md
-+++ b/docs/document/content/features/readwrite-splitting/concept.en.md
-@@ -1,21 +1,48 @@
- +++
--title = "Core Concept"
-+title = "Core Feature"
- weight = 1
- +++
- 
--## Primary Database
-+## Definition
- 
--It refers to the database used in data insertion, update and deletion. It only supports single primary database for now.
-+Read/write splitting is to split the database into primary and secondary databases. The primary database is responsible for handling transactional operations including additions, deletions and changes. 
-+And the secondary database is responsible for the query operation of database architecture.
- 
--## Replica Database
-+## Related Concepts
- 
--It refers to the database used in data query. It supports multiple replica databases.
-+### Primary database
-+The primary database is used to add, update, and delete data operations. Currently, only single primary database is supported.
- 
--## Primary Replica Replication
-+### Secondary database
-+The secondary database is used to query data operations and multi-secondary databases are supported.
- 
--It refers to the operation to asynchronously replicate data from the primary database to the replica database. 
--Because of the asynchrony of primary-replica synchronization, there may be short-time data inconsistency between them.  
-+### Primary-Secondary synchronization
-+It refers to the operation of asynchronously synchronizing data from a primary database to a secondary database. Due to the asynchronism of primary-secondary synchronization, 
-+data from the primary and secondary databases may be inconsistent for a short time.
- 
--## Load Balance Strategy
-+### Load balancer policy
-+Channel query requests to different secondary databases through load balancer policy.
- 
--Through this strategy, queries separated to different replica databases.
-+## Impact on the System
-+There may be complex primary-secondary relational database clusters in users' systems, so applications need to access multiple data sources, which increases the cost of system maintenance and the 
-+difficulty of business development. ShardingSphere enables users to use database clusters like a database through read/write splitting function, and the impact of read/write splitting will be transparent to users.
-+
-+## Limitations
-+* Data synchronization of primary and secondary databases is not supported.
-+* Data inconsistency resulting from data synchronization delays between primary and secondary databases is not supported.
-+* Multi-write of primary database is not supported.
-+* Transactional consistency between primary and secondary databases is not supported. In the primary-secondary model, both data reads and writes in transactions use the primary database.
-+
-+## How it works
-+ShardingSphere's read/write splitting mainly relies on the related functions of its kernel, including a parsing engine and a routing engine. 
-+The parsing engine converts the user's SQL into Statement information that can be identified by ShardingSphere, and the routing engine performs SQL routing according to the read/write type of SQL and transactional status. 
-+The routing from the secondary database supports a variety of load balancing algorithms, including polling algorithm, random access algorithm, weight access algorithm, etc. 
-+Users can also expand the required algorithm according to the SPI mechanism. As shown in the figure below, ShardingSphere identifies read and write operations and routes them to different database instances respectively.
-+
-+![原理介绍](https://shardingsphere.apache.org/document/current/img/readwrite-splitting/background.png)
-+
-+## 相关参考
-+[Java API](/en/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting)\
-+[YAML Configuration](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting)\
-+[Spring Boot Starter](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting)\
-+[Spring Namespace](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting)
-diff --git a/docs/document/content/features/readwrite-splitting/use-norms.cn.md b/docs/document/content/features/readwrite-splitting/use-norms.cn.md
-deleted file mode 100644
-index 799535d7e3a..00000000000
---- a/docs/document/content/features/readwrite-splitting/use-norms.cn.md
-+++ /dev/null
-@@ -1,17 +0,0 @@
--+++
--title = "使用规范"
--weight = 2
--+++
--
--## 支持项
--
--* 提供一主多从的读写分离配置，可独立使用，也可配合数据分片使用；
--* 事务中的数据读写均用主库；
--* 基于 Hint 的强制主库路由。
--
--## 不支持项
--
--* 主库和从库的数据同步；
--* 主库和从库的数据同步延迟导致的数据不一致；
--* 主库多写；
--* 主从库间的事务一致性。主从模型中，事务中的数据读写均用主库。
-diff --git a/docs/document/content/features/readwrite-splitting/use-norms.en.md b/docs/document/content/features/readwrite-splitting/use-norms.en.md
-deleted file mode 100644
-index 63e16ef2efa..00000000000
---- a/docs/document/content/features/readwrite-splitting/use-norms.en.md
-+++ /dev/null
-@@ -1,18 +0,0 @@
--+++
--title = "Use Norms"
--weight = 2
--+++
--
--## Supported
--
--* Provide the readwrite-splitting configuration of one primary database with multiple replica databases, which can be used alone or with sharding table and database;
--* Primary nodes need to be used for both reading and writing in the transaction;
--* Forcible primary database route based on SQL Hint;
--
--## Unsupported
--
--* Data replication between the primary and the replica databases;
--* Data inconsistency caused by replication delay between databases;
--* Double or multiple primary databases to provide write operation;
--* The data for transaction across primary and replica nodes are inconsistent;
--In the readwrite-splitting model, primary nodes need to be used for both reading and writing in the transaction.
+diff --git a/docs/blog/content/material/Mar_23_DistSQL_Cluster_Governance_Capabilities.en.md b/docs/blog/content/material/Mar_23_DistSQL_Cluster_Governance_Capabilities.en.md
+index 6d86051aa33..4e54f57132e 100644
+--- a/docs/blog/content/material/Mar_23_DistSQL_Cluster_Governance_Capabilities.en.md
++++ b/docs/blog/content/material/Mar_23_DistSQL_Cluster_Governance_Capabilities.en.md
+@@ -193,7 +193,6 @@ props:
+     # Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy.
+     # The default value is -1, which means set the minimum value for different JDBC drivers.
+   proxy-backend-query-fetch-size: -1
+-  check-duplicate-table-enabled: false
+   proxy-frontend-executor-size: 0 # Proxy frontend executor size. The default value is 0, which means let Netty decide.
+     # Available options of proxy backend executor suitable: OLAP(default), OLTP. The OLTP option may reduce time cost of writing packets to client, but it may increase the latency of SQL execution
+     # and block other clients if client connections are more than `proxy-frontend-executor-size`, especially executing slow SQL.
+diff --git a/docs/blog/content/material/proxyIntroduce.cn.md b/docs/blog/content/material/proxyIntroduce.cn.md
+index 5f62f6548a8..80c8d86562a 100644
+--- a/docs/blog/content/material/proxyIntroduce.cn.md
++++ b/docs/blog/content/material/proxyIntroduce.cn.md
+@@ -142,7 +142,6 @@ props: # 公用配置
+    # Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy.
+    # The default value is -1, which means set the minimum value for different JDBC drivers.
+  proxy-backend-query-fetch-size: -1
+- check-duplicate-table-enabled: false
+  proxy-frontend-executor-size: 0 # Proxy frontend executor size. The default value is 0, which means let Netty decide.
+    # Available options of proxy backend executor suitable: OLAP(default), OLTP. The OLTP option may reduce time cost of writing packets to client, but it may increase the latency of SQL execution
+    # and block other clients if client connections are more than `proxy-frontend-executor-size`, especially executing slow SQL.
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/props.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/props.cn.md
+index 8e481b4eb1c..fee90768999 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/props.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/props.cn.md
+@@ -15,5 +15,4 @@ Apache ShardingSphere 提供属性配置的方式配置系统级配置。
+ | kernel-executor-size (?)           | int        | 用于设置任务处理线程池的大小<br />每个 ShardingSphereDataSource 使用一个独立的线程池，同一个 JVM 的不同数据源不共享线程池                                                                  | infinite |
+ | max-connections-size-per-query (?) | int        | 一次查询请求在每个数据库实例中所能使用的最大连接数                                                                                                                                   | 1        |
+ | check-table-metadata-enabled (?)   | boolean    | 在程序启动和更新时，是否检查分片元数据的结构一致性                                                                                                                                   | false    |
+-| check-duplicate-table-enabled (?)  | boolean    | 在程序启动和更新时，是否检查重复表                                                                                                                                                | false    |
+ | sql-federation-enabled (?)         | boolean    | 是否开启联邦查询                                                                                                                                                               | false    |
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/props.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/props.en.md
+index dde5084b853..26d96d3552b 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/props.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/props.en.md
+@@ -15,5 +15,4 @@ Apache ShardingSphere provides the way of property configuration to configure sy
+ | kernel-executor-size (?)           | int         | The max thread size of worker group to execute SQL. One ShardingSphereDataSource will use a independent thread pool, it does not share thread pool even different data source in same JVM                                                                   | infinite        |
+ | max-connections-size-per-query (?) | int         | Max opened connection size for each query                                                                                                                                                                                                                   | 1               |
+ | check-table-metadata-enabled (?)   | boolean     | Whether validate table meta data consistency when application startup or updated                                                                                                                                                                            | false           |
+-| check-duplicate-table-enabled (?)  | boolean     | Whether validate duplicate table when application startup or updated                                                                                                                                                                                        | false           |
+ | sql-federation-enabled (?)         | boolean     | Whether enable SQL federation                                                                                                                                                                                                                               | false           |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md
+index 3fafd94a2eb..29988ff472e 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md
+@@ -21,7 +21,6 @@ Apache ShardingSphere 提供属性配置的方式配置系统级配置。
+ | proxy-opentracing-enabled (?)       | boolean | 是否允许在 ShardingSphere-Proxy 中使用 OpenTracing。                                                                                            | false    | 是      |
+ | proxy-hint-enabled (?)              | boolean | 是否允许在 ShardingSphere-Proxy 中使用 Hint。使用 Hint 会将 Proxy 的线程处理模型由 IO 多路复用变更为每个请求一个独立的线程，会降低 Proxy 的吞吐量。                                    | false    | 是      |
+ | proxy-backend-query-fetch-size (?)  | int     | Proxy 后端与数据库交互的每次获取数据行数（使用游标的情况下）。数值增大可能会增加 ShardingSphere Proxy 的内存使用。默认值为 -1，代表设置为 JDBC 驱动的最小值。                                      | -1       | 是      |
+-| check-duplicate-table-enabled (?)   | boolean | 在程序启动和更新时，是否检查重复表。                                                                                                                     | false    | 是      |
+ | proxy-frontend-executor-size (?)    | int     | Proxy 前端 Netty 线程池线程数量，默认值 0 代表使用 Netty 默认值。                                                                                           | 0        | 否      |
+ | proxy-backend-executor-suitable (?) | String  | 可选选项：OLAP、OLTP。OLTP 选项可能会减少向客户端写入数据包的时间开销，但如果客户端连接数超过 `proxy-frontend-executor-size`，尤其是执行慢 SQL 时，它可能会增加 SQL 执行的延迟甚至阻塞其他客户端的连接。        | OLAP     | 是      |
+ | proxy-frontend-max-connections (?)  | int     | 允许连接 Proxy 的最大客户端数量，默认值 0 代表不限制。                                                                                                       | 0        | 是      |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md
+index 3cebdb6b83d..0030728c5e6 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md
+@@ -21,7 +21,6 @@ Apache ShardingSphere provides the way of property configuration to configure sy
+ | proxy-opentracing-enabled (?)       | boolean     | Whether enable opentracing for ShardingSphere-Proxy.                                                                                                                                                                                                                                                                      | false           | true             |
+ | proxy-hint-enabled (?)              | boolean     | Whether enable hint for ShardingSphere-Proxy. Using Hint will switch proxy thread mode from IO multiplexing to per connection per thread, which will reduce system throughput.                                                                                                                                            | false           | true             |
+ | proxy-backend-query-fetch-size (?)  | int         | Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy. The default value is -1, which means set the minimum value for different JDBC drivers.                                                                                                                              | -1              | true             |
+-| check-duplicate-table-enabled (?)   | boolean     | Whether validate duplicate table when application startup or updated.                                                                                                                                                                                                                                                     | false           | true             |
+ | proxy-frontend-executor-size (?)    | int         | Proxy frontend Netty executor size. The default value is 0, which means let Netty decide.                                                                                                                                                                                                                                 | 0               | false            |
+ | proxy-backend-executor-suitable (?) | String      | Available options of proxy backend executor suitable: OLAP(default), OLTP. The OLTP option may reduce time cost of writing packets to client, but it may increase the latency of SQL execution and block other clients if client connections are more than `proxy-frontend-executor-size`, especially executing slow SQL. | OLAP            | true             |
+ | proxy-frontend-max-connections (?)  | int         | The maximum permitted number of client connections to Proxy. The default value is 0 and less than or equal to 0 means no limitation.                                                                                                                                                                                      | 0               | true             |

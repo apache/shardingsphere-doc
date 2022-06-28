@@ -1,132 +1,227 @@
-commit aede9bb231787626e78ee54dd41f79ce2f923559
-Author: Liang Zhang <zhangliang@apache.org>
-Date:   Tue Jun 28 21:47:15 2022 +0800
+commit 29f01ba3c11265e1cb9b32560b8c477f9b53de64
+Author: JingShang Lu <jingshanglu1@gmail.com>
+Date:   Tue Jun 28 23:43:48 2022 +0800
 
-    Revise document format (#18667)
+    Delete support for branch transaction on proxy (#18642)
+    
+    * Delete support for branch transaction on proxy
+    
+    * keep TransactionXAHandler
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.cn.md
-index 817e3c8c13f..a3992fe0934 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.cn.md
-@@ -6,7 +6,9 @@ weight = 3
- 使用 [Helm](https://helm.sh/) 在 Kubernetes 集群中引导 ShardingSphere-Proxy 实例进行安装。
+diff --git a/docs/document/content/features/transaction/use-norms/xa.cn.md b/docs/document/content/features/transaction/use-norms/xa.cn.md
+index c1f72bf63be..766ab3e4e17 100644
+--- a/docs/document/content/features/transaction/use-norms/xa.cn.md
++++ b/docs/document/content/features/transaction/use-norms/xa.cn.md
+@@ -16,102 +16,3 @@ weight = 2
  
- ## 快速入门
-+
- 注意️：以下安装方式将使用默认的 server.yaml 配置启动 ShardingSphere-Proxy
-+
- ```shell
- helm repo add shardingsphere https://shardingsphere.apache.org/charts
- helm install shardingsphere-proxy shardingsphere/apache-shardingsphere-proxy
-@@ -17,10 +19,8 @@ helm install shardingsphere-proxy shardingsphere/apache-shardingsphere-proxy
- ### 必要条件
- 
- 1. kubernetes 1.18+
+ * 服务宕机后，在其它机器上恢复提交/回滚中的数据；
+ * MySQL 事务块内，SQL 执行出现异常，执行 `Commit`，数据保持一致。
 -
--2. kubectl
+-## 通过 XA 语句控制的分布式事务
+-* 通过 XA START 可以手动开启 XA 事务，注意该事务完全由用户管理，ShardingSphere 只负责将语句转发至后端数据库；
+-* 服务宕机后，需要通过 XA RECOVER 获取未提交或回滚的事务，也可以在 COMMIT 时使用 ONE PHASE 跳过 PERPARE。
 -
--3. helm 3.2.0+
-+1. kubectl
-+1. helm 3.2.0+
- 
- 可以动态申请 PV(Persistent Volumes) 的 StorageClass（可选）。
- 
-@@ -51,6 +51,7 @@ helm install shardingsphere-proxy apache-shardingsphere-proxy
- ```
- 
- #### 源码安装
-+
- ```shell
- cd apache-shardingsphere-proxy/charts/governance
- helm dependency build 
-@@ -81,7 +82,7 @@ helm uninstall shardingsphere-proxy
- | `governance.enabled` | 用来切换是否使用治理节点的 chart | `true` |
- 
- 
--### 治理节点--ZooKeeper 配置项
-+### 治理节点 ZooKeeper 配置项
- 
- | 配置项                                               | 描述                                                                        | 值                   |
- |--------------------------------------------------|---------------------------------------------------------------------------|---------------------|
-@@ -96,7 +97,7 @@ helm uninstall shardingsphere-proxy
- | `governance.zookeeper.resources.requests.cpu`    | ZooKeeper 容器申请的 cpu 核数                                                    | `250m`              |
- 
- 
--### 计算节点--ShardingSphere-Proxy 配置项
-+### 计算节点 ShardingSphere-Proxy 配置项
- 
- | 配置项                                | 描述                                | 值                             |
- |------------------------------------|-----------------------------------|-------------------------------|
-@@ -113,7 +114,7 @@ helm uninstall shardingsphere-proxy
- | `compute.mysqlConnector.version`   | MySQL 驱动版本                        | `5.1.49`                      |
- | `compute.startPort`                | ShardingSphere-Proxy 启动端口         | `3307`                        |
- 
--### 计算节点--ShardingSphere-Proxy Server配置 权限配置项
-+### 计算节点 ShardingSphere-Proxy Server 配置 权限配置项
- 
- | Name                                               | Description                                                               | Value                      |
- | -------------------------------------------------- |---------------------------------------------------------------------------| -------------------------- |
-@@ -122,7 +123,7 @@ helm uninstall shardingsphere-proxy
- | `compute.serverConfig.authority.users[0].user`     | 用于登录计算节点的用户名，授权主机。格式: <username>@<hostname> hostname 为 % 或空字符串表示不限制授权主机   | `root@%`                   |
- 
- 
--### 计算节点--ShardingSphere-Proxy Server配置 模式配置项
-+### 计算节点 ShardingSphere-Proxy Server 配置 模式配置项
- 
- | Name                                                                      | Description               | Value                                                                 |
- | ------------------------------------------------------------------------- |---------------------------| --------------------------------------------------------------------- |
-@@ -135,4 +136,3 @@ helm uninstall shardingsphere-proxy
- | `compute.serverConfig.mode.repository.props.timeToLiveSeconds`            | 临时数据失效的秒数                 | `60`                                                                  |
- | `compute.serverConfig.mode.repository.type`                               | 持久化仓库类型。 现阶段仅支持 ZooKeeper | `ZooKeeper`                                                           |
- | `compute.serverConfig.mode.overwrite`                                     | 是否使用本地配置覆盖持久化配置           | `true`                                                                |
+-```sql
+-MySQL [(none)]> use test1                                                                               │MySQL [(none)]> use test2
+-Reading table information for completion of table and column names                                      │Reading table information for completion of table and column names
+-You can turn off this feature to get a quicker startup with -A                                          │You can turn off this feature to get a quicker startup with -A
+-                                                                                                        │
+-Database changed                                                                                        │Database changed
+-MySQL [test1]> XA START '61c052438d3eb';                                                                │MySQL [test2]> XA START '61c0524390927';
+-Query OK, 0 rows affected (0.030 sec)                                                                   │Query OK, 0 rows affected (0.009 sec)
+-                                                                                                        │
+-MySQL [test1]> update test set val = 'xatest1' where id = 1;                                            │MySQL [test2]> update test set val = 'xatest2' where id = 1;
+-Query OK, 1 row affected (0.077 sec)                                                                    │Query OK, 1 row affected (0.010 sec)
+-                                                                                                        │
+-MySQL [test1]> XA END '61c052438d3eb';                                                                  │MySQL [test2]> XA END '61c0524390927';
+-Query OK, 0 rows affected (0.006 sec)                                                                   │Query OK, 0 rows affected (0.008 sec)
+-                                                                                                        │
+-MySQL [test1]> XA PREPARE '61c052438d3eb';                                                              │MySQL [test2]> XA PREPARE '61c0524390927';
+-Query OK, 0 rows affected (0.018 sec)                                                                   │Query OK, 0 rows affected (0.011 sec)
+-                                                                                                        │
+-MySQL [test1]> XA COMMIT '61c052438d3eb';                                                               │MySQL [test2]> XA COMMIT '61c0524390927';
+-Query OK, 0 rows affected (0.011 sec)                                                                   │Query OK, 0 rows affected (0.018 sec)
+-                                                                                                        │
+-MySQL [test1]> select * from test where id = 1;                                                         │MySQL [test2]> select * from test where id = 1;
+-+----+---------+                                                                                        │+----+---------+
+-| id | val     |                                                                                        │| id | val     |
+-+----+---------+                                                                                        │+----+---------+
+-|  1 | xatest1 |                                                                                        │|  1 | xatest2 |
+-+----+---------+                                                                                        │+----+---------+
+-1 row in set (0.016 sec)                                                                                │1 row in set (0.129 sec)
 -
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.en.md
-index ba7cef2b30d..42d2cddfc3e 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/helm.en.md
-@@ -6,7 +6,9 @@ weight = 3
- Use [Helm](https://helm.sh/) to provide guidance for the installation of ShardingSphere-Proxy instance in Kubernetes cluster.
- 
- ## Quick Start
-+
- Attention: The following installation method will start ShardingSphere-Proxy with the default server.yaml configuration
-+
- ```shell
- helm repo add shardingsphere https://shardingsphere.apache.org/charts
- helm install shardingsphere-proxy shardingsphere/apache-shardingsphere-proxy
-@@ -17,16 +19,15 @@ helm install shardingsphere-proxy shardingsphere/apache-shardingsphere-proxy
- ### Requirements
- 
- 1. Kubernetes 1.18+
+-MySQL [test1]> XA START '61c05243994c3';                                                                │MySQL [test2]> XA START '61c052439bd7b';
+-Query OK, 0 rows affected (0.047 sec)                                                                   │Query OK, 0 rows affected (0.006 sec)
+-                                                                                                        │
+-MySQL [test1]> update test set val = 'xarollback' where id = 1;                                         │MySQL [test2]> update test set val = 'xarollback' where id = 1;
+-Query OK, 1 row affected (0.175 sec)                                                                    │Query OK, 1 row affected (0.008 sec)
+-                                                                                                        │
+-MySQL [test1]> XA END '61c05243994c3';                                                                  │MySQL [test2]> XA END '61c052439bd7b';
+-Query OK, 0 rows affected (0.007 sec)                                                                   │Query OK, 0 rows affected (0.014 sec)
+-                                                                                                        │
+-MySQL [test1]> XA PREPARE '61c05243994c3';                                                              │MySQL [test2]> XA PREPARE '61c052439bd7b';
+-Query OK, 0 rows affected (0.013 sec)                                                                   │Query OK, 0 rows affected (0.019 sec)
+-                                                                                                        │
+-MySQL [test1]> XA ROLLBACK '61c05243994c3';                                                             │MySQL [test2]> XA ROLLBACK '61c052439bd7b';
+-Query OK, 0 rows affected (0.010 sec)                                                                   │Query OK, 0 rows affected (0.010 sec)
+-                                                                                                        │
+-MySQL [test1]> select * from test where id = 1;                                                         │MySQL [test2]> select * from test where id = 1;
+-+----+---------+                                                                                        │+----+---------+
+-| id | val     |                                                                                        │| id | val     |
+-+----+---------+                                                                                        │+----+---------+
+-|  1 | xatest1 |                                                                                        │|  1 | xatest2 |
+-+----+---------+                                                                                        │+----+---------+
+-1 row in set (0.009 sec)                                                                                │1 row in set (0.083 sec)
 -
--2. kubectl
+-MySQL [test1]>  XA START '61c052438d3eb';
+-Query OK, 0 rows affected (0.030 sec)
 -
--3. Helm 3.2.0+
-+1. kubectl
-+1. Helm 3.2.0+
- 
- Use StorageClass to allow dynamic provisioning of Persistent Volumes (PV) for data persistent (optional).
- 
- ### Install
- 
--#### Online installation     
-+#### Online installation    
-+
- 1. Add ShardingSphere-Proxy to the local helm repo:
- 
- ```shell
-@@ -50,6 +51,7 @@ helm install shardingsphere-proxy apache-shardingsphere-proxy
- ```
- 
- #### Source installation
-+
- ```shell
- cd apache-shardingsphere-proxy/charts/governance
- helm dependency build 
-@@ -134,6 +136,3 @@ Delete all release records by default, add `--keep-history` to keep them.
- | `compute.serverConfig.mode.repository.props.timeToLiveSeconds`            | Seconds of ephemeral data live                                      | `60`                                                                   |
- | `compute.serverConfig.mode.repository.type`                               | Type of persist repository. Now only support ZooKeeper              | `ZooKeeper`                                                            |
- | `compute.serverConfig.mode.overwrite`                                     | Whether overwrite persistent configuration with local configuration | `true`                                                                 |
+-MySQL [test1]> update test set val = 'recover' where id = 1;
+-Query OK, 1 row affected (0.072 sec)
 -
+-MySQL [test1]> select * from test where id = 1;
+-+----+---------+
+-| id | val     |
+-+----+---------+
+-|  1 | recover |
+-+----+---------+
+-1 row in set (0.039 sec)
 -
+-MySQL [test1]>  XA END '61c052438d3eb';
+-Query OK, 0 rows affected (0.005 sec)
 -
+-MySQL [test1]> XA PREPARE '61c052438d3eb';
+-Query OK, 0 rows affected (0.020 sec)
+-
+-MySQL [test1]> XA RECOVER;
+-+----------+--------------+--------------+---------------+
+-| formatID | gtrid_length | bqual_length | data          |
+-+----------+--------------+--------------+---------------+
+-|        1 |           13 |            0 | 61c052438d3eb |
+-+----------+--------------+--------------+---------------+
+-1 row in set (0.010 sec)
+-
+-MySQL [test1]> XA RECOVER CONVERT XID;
+-+----------+--------------+--------------+------------------------------+
+-| formatID | gtrid_length | bqual_length | data                         |
+-+----------+--------------+--------------+------------------------------+
+-|        1 |           13 |            0 | 0x36316330353234333864336562 |
+-+----------+--------------+--------------+------------------------------+
+-1 row in set (0.011 sec)
+-
+-MySQL [test1]> XA COMMIT 0x36316330353234333864336562;
+-Query OK, 0 rows affected (0.029 sec)
+-
+-MySQL [test1]> XA RECOVER;
+-Empty set (0.011 sec)
+-```
+\ No newline at end of file
+diff --git a/docs/document/content/features/transaction/use-norms/xa.en.md b/docs/document/content/features/transaction/use-norms/xa.en.md
+index 6f7a496bf04..250fd1f26bd 100644
+--- a/docs/document/content/features/transaction/use-norms/xa.en.md
++++ b/docs/document/content/features/transaction/use-norms/xa.en.md
+@@ -16,103 +16,3 @@ weight = 2
+ 
+ * Recover committing and rolling back in other machines after the service is down;
+ * MySQL,in the transaction block, the SQL execution is abnormal, and run `Commit`, and data remains consistent.
+-
+-## XA Transaction managed by XA Statement
+-
+-* When using XA START to open a XA Transaction, ShardingSphere will pass it to backend database directly, you have to manage this transaction by yourself;
+-* When recover from a crush, you have to call XA RECOVER to check unfinished transaction, and choose to commit or rollback using xid. Or you can use ONE PHASE commit without PREPARE.
+-
+-```sql
+-MySQL [(none)]> use test1                                                                               │MySQL [(none)]> use test2
+-Reading table information for completion of table and column names                                      │Reading table information for completion of table and column names
+-You can turn off this feature to get a quicker startup with -A                                          │You can turn off this feature to get a quicker startup with -A
+-                                                                                                        │
+-Database changed                                                                                        │Database changed
+-MySQL [test1]> XA START '61c052438d3eb';                                                                │MySQL [test2]> XA START '61c0524390927';
+-Query OK, 0 rows affected (0.030 sec)                                                                   │Query OK, 0 rows affected (0.009 sec)
+-                                                                                                        │
+-MySQL [test1]> update test set val = 'xatest1' where id = 1;                                            │MySQL [test2]> update test set val = 'xatest2' where id = 1;
+-Query OK, 1 row affected (0.077 sec)                                                                    │Query OK, 1 row affected (0.010 sec)
+-                                                                                                        │
+-MySQL [test1]> XA END '61c052438d3eb';                                                                  │MySQL [test2]> XA END '61c0524390927';
+-Query OK, 0 rows affected (0.006 sec)                                                                   │Query OK, 0 rows affected (0.008 sec)
+-                                                                                                        │
+-MySQL [test1]> XA PREPARE '61c052438d3eb';                                                              │MySQL [test2]> XA PREPARE '61c0524390927';
+-Query OK, 0 rows affected (0.018 sec)                                                                   │Query OK, 0 rows affected (0.011 sec)
+-                                                                                                        │
+-MySQL [test1]> XA COMMIT '61c052438d3eb';                                                               │MySQL [test2]> XA COMMIT '61c0524390927';
+-Query OK, 0 rows affected (0.011 sec)                                                                   │Query OK, 0 rows affected (0.018 sec)
+-                                                                                                        │
+-MySQL [test1]> select * from test where id = 1;                                                         │MySQL [test2]> select * from test where id = 1;
+-+----+---------+                                                                                        │+----+---------+
+-| id | val     |                                                                                        │| id | val     |
+-+----+---------+                                                                                        │+----+---------+
+-|  1 | xatest1 |                                                                                        │|  1 | xatest2 |
+-+----+---------+                                                                                        │+----+---------+
+-1 row in set (0.016 sec)                                                                                │1 row in set (0.129 sec)
+-
+-MySQL [test1]> XA START '61c05243994c3';                                                                │MySQL [test2]> XA START '61c052439bd7b';
+-Query OK, 0 rows affected (0.047 sec)                                                                   │Query OK, 0 rows affected (0.006 sec)
+-                                                                                                        │
+-MySQL [test1]> update test set val = 'xarollback' where id = 1;                                         │MySQL [test2]> update test set val = 'xarollback' where id = 1;
+-Query OK, 1 row affected (0.175 sec)                                                                    │Query OK, 1 row affected (0.008 sec)
+-                                                                                                        │
+-MySQL [test1]> XA END '61c05243994c3';                                                                  │MySQL [test2]> XA END '61c052439bd7b';
+-Query OK, 0 rows affected (0.007 sec)                                                                   │Query OK, 0 rows affected (0.014 sec)
+-                                                                                                        │
+-MySQL [test1]> XA PREPARE '61c05243994c3';                                                              │MySQL [test2]> XA PREPARE '61c052439bd7b';
+-Query OK, 0 rows affected (0.013 sec)                                                                   │Query OK, 0 rows affected (0.019 sec)
+-                                                                                                        │
+-MySQL [test1]> XA ROLLBACK '61c05243994c3';                                                             │MySQL [test2]> XA ROLLBACK '61c052439bd7b';
+-Query OK, 0 rows affected (0.010 sec)                                                                   │Query OK, 0 rows affected (0.010 sec)
+-                                                                                                        │
+-MySQL [test1]> select * from test where id = 1;                                                         │MySQL [test2]> select * from test where id = 1;
+-+----+---------+                                                                                        │+----+---------+
+-| id | val     |                                                                                        │| id | val     |
+-+----+---------+                                                                                        │+----+---------+
+-|  1 | xatest1 |                                                                                        │|  1 | xatest2 |
+-+----+---------+                                                                                        │+----+---------+
+-1 row in set (0.009 sec)                                                                                │1 row in set (0.083 sec)
+-
+-MySQL [test1]>  XA START '61c052438d3eb';
+-Query OK, 0 rows affected (0.030 sec)
+-
+-MySQL [test1]> update test set val = 'recover' where id = 1;
+-Query OK, 1 row affected (0.072 sec)
+-
+-MySQL [test1]> select * from test where id = 1;
+-+----+---------+
+-| id | val     |
+-+----+---------+
+-|  1 | recover |
+-+----+---------+
+-1 row in set (0.039 sec)
+-
+-MySQL [test1]>  XA END '61c052438d3eb';
+-Query OK, 0 rows affected (0.005 sec)
+-
+-MySQL [test1]> XA PREPARE '61c052438d3eb';
+-Query OK, 0 rows affected (0.020 sec)
+-
+-MySQL [test1]> XA RECOVER;
+-+----------+--------------+--------------+---------------+
+-| formatID | gtrid_length | bqual_length | data          |
+-+----------+--------------+--------------+---------------+
+-|        1 |           13 |            0 | 61c052438d3eb |
+-+----------+--------------+--------------+---------------+
+-1 row in set (0.010 sec)
+-
+-MySQL [test1]> XA RECOVER CONVERT XID;
+-+----------+--------------+--------------+------------------------------+
+-| formatID | gtrid_length | bqual_length | data                         |
+-+----------+--------------+--------------+------------------------------+
+-|        1 |           13 |            0 | 0x36316330353234333864336562 |
+-+----------+--------------+--------------+------------------------------+
+-1 row in set (0.011 sec)
+-
+-MySQL [test1]> XA COMMIT 0x36316330353234333864336562;
+-Query OK, 0 rows affected (0.029 sec)
+-
+-MySQL [test1]> XA RECOVER;
+-Empty set (0.011 sec)
+-```
+\ No newline at end of file

@@ -1,128 +1,128 @@
-commit 9463518d99c9b8e605387626040b8fc153768846
-Author: 吴伟杰 <wuweijie@apache.org>
-Date:   Thu Jun 30 17:01:04 2022 +0800
+commit 992d0bb07d745be4bdc2d4013e700be9f5c99874
+Author: azexcy <101622833+azexcy@users.noreply.github.com>
+Date:   Thu Jun 30 19:38:24 2022 +0800
 
-    Update documents about using ShardingSphere-Proxy with openGauss (#18730)
+    Upgrade scaling native mode, support auto init and cleanup. (#18709)
 
-diff --git a/docs/document/content/quick-start/shardingsphere-proxy-quick-start.cn.md b/docs/document/content/quick-start/shardingsphere-proxy-quick-start.cn.md
-index 7bea62455fa..d40d95d9b7f 100644
---- a/docs/document/content/quick-start/shardingsphere-proxy-quick-start.cn.md
-+++ b/docs/document/content/quick-start/shardingsphere-proxy-quick-start.cn.md
-@@ -40,12 +40,10 @@ ShardingSphere-Proxy 对系统库/表（如 information_schema、pg_catalog）
+diff --git a/docs/document/content/reference/test/scaling-integration-test/_index.cn.md b/docs/document/content/reference/test/scaling-integration-test/_index.cn.md
+index db2a58d3514..13c2cd9b92a 100644
+--- a/docs/document/content/reference/test/scaling-integration-test/_index.cn.md
++++ b/docs/document/content/reference/test/scaling-integration-test/_index.cn.md
+@@ -9,7 +9,7 @@ weight = 4
  
- 3. 引入依赖
+ ## 测试环境
  
--如果后端连接 PostgreSQL 数据库，不需要引入额外依赖。
-+如果后端连接 PostgreSQL 或 openGauss 数据库，不需要引入额外依赖。
+-环境准备方式分为 Native 和 Docker，不论哪种环境，本地都需要预先安装 Docker。
++环境准备方式分为 Native 和 Docker
  
- 如果后端连接 MySQL 数据库，请下载 [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar) 或者 [mysql-connector-java-8.0.11.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar)，并将其放入 `%SHARDINGSPHERE_PROXY_HOME%/ext-lib` 目录。
+ - Native 环境：用于本地调试，可以使用 IDE 的 debug 模式进行调试。
+ - Docker 环境：环境由 Maven 运行，适用于云编译环境和测试 ShardingSphere-Proxy 的场景，如：GitHub Action。
+@@ -39,25 +39,25 @@ weight = 4
+ - /common: 存放 Scaling 过程中用到的 DistSQL。
+ - /{SQL-TYPE}: 存放数据库级别的配置文件。
+ - /scenario: 存放测试的场景的配置文件，主要是 SQL，不同数据库可能写法不一样。
++- it-env.properties：存放对应的配置信息。
  
--如果后端连接 openGauss 数据库，请下载 [opengauss-jdbc-3.0.0.jar](https://repo1.maven.org/maven2/org/opengauss/opengauss-jdbc/3.0.0/opengauss-jdbc-3.0.0.jar)，并将其放入 `%SHARDINGSPHERE_PROXY_HOME%/ext-lib` 目录。
+ ### 运行测试引擎
+ 
+ 所有的属性值都可以通过 Maven 命令行 `-D` 的方式动态注入。
+ 
+ `${image-name}` 表示合法 Docker image 名称，比如：mysql:5.7， 多个的话用逗号隔开。
+-`-Dit.env.postgresql.version=${image-name}` 表示需要测试的 PostgreSQL 版本。
+-`-Dit.env.mysql.version=${image-name}` 表示需要测试的 MySQL 版本。
++`-Dscaling.it.docker.postgresql.version=${image-name}` 表示需要测试的 PostgreSQL 版本。
++`-Dscaling.it.docker.mysql.version=${image-name}` 表示需要测试的 MySQL 版本。
+ 
+ #### Native 环境启动
+ 
+-Native 环境要求本地自行启动 ShardingSphere-Proxy（以及其自身依赖的 Cluster，比如 Zookeeper），同时要求 ShardingSphere-Proxy 的端口是 3307，数据库会根据用户的配置自行启动，但是对应的端口都是数据库的默认端口（MySQL=3306, PostgreSQL=5432）。
 -
- 4. 启动服务
+-因此 Native 模式下不支持运行多个 Case，每次跑完需要自行清理 Zookeeper 中的信息，以及重启 ShardingSphere-Proxy。
++Native 环境要求本地自行启动 ShardingSphere-Proxy（以及其自身依赖的 Cluster，比如 Zookeeper）和数据库，同时要求 ShardingSphere-Proxy 的端口是 3307，修改 it-env.properties 文件中的属性 `scaling.it.env.type=native`
++数据库的端口可以在 it-env.properties 中配置，如果是默认端口可以不配置。
  
- * 使用默认配置项
-diff --git a/docs/document/content/quick-start/shardingsphere-proxy-quick-start.en.md b/docs/document/content/quick-start/shardingsphere-proxy-quick-start.en.md
-index 977f6786399..8a07fa633a5 100644
---- a/docs/document/content/quick-start/shardingsphere-proxy-quick-start.en.md
-+++ b/docs/document/content/quick-start/shardingsphere-proxy-quick-start.en.md
-@@ -40,12 +40,10 @@ Please refer to [Configuration Manual](/en/user-manual/shardingsphere-proxy/yaml
+ 启动方式如下：找到需要测试的 Case，比如 MySQLGeneralScalingIT，在启动之前配置对应的 VM Option，新增如下配置。
  
- 3. Import dependencies.
+ ```
+--Dit.cluster.env.type=native -Dit.env.mysql.version=${image-name}
++-Dscaling.it.env.type=native -Dscaling.it.docker.mysql.version=${image-name}
+ ```
  
--If the backend database is PostgreSQL, no additional dependencies are required.
-+If the backend database is PostgreSQL or openGauss, no additional dependencies are required.
+ 在 IDE 下使用 Junit 的方式启动即可。
+@@ -81,13 +81,13 @@ Native 环境要求本地自行启动 ShardingSphere-Proxy（以及其自身依
+ 和 Native 一样，只需要改一个参数。
  
- If the backend database is MySQL, please download [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar) or [mysql-connector-java-8.0.11.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar) and put it into the `%SHARDINGSPHERE_PROXY_HOME%/ext-lib` directory.
+ ```
+--Dit.cluster.env.type=docker
++-Dscaling.it.env.type=docker
+ ```
  
--If the backend database is openGauss, please download [opengauss-jdbc-3.0.0.jar](https://repo1.maven.org/maven2/org/opengauss/opengauss-jdbc/3.0.0/opengauss-jdbc-3.0.0.jar) and put it into the `%SHARDINGSPHERE_PROXY_HOME%/ext-lib` directory.
+ 可以和 Native 一样使用 IDE 的方式运行用例，或者使用 Maven 的方式运行用例。
+ 
+ ```bash
+-./mvnw -nsu -B install -f shardingsphere-test/shardingsphere-integration-test/shardingsphere-integration-test-scaling/pom.xml -Dit.cluster.env.type=DOCKER -Dit.env.mysql.version=${image-name}
++./mvnw -nsu -B install -f shardingsphere-test/shardingsphere-integration-test/shardingsphere-integration-test-scaling/pom.xml -Dscaling.it.env.type=DOCKER -Dscaling.it.docker.mysql.version=${image-name}
+ ```
+ 
+ #### 注意事项
+diff --git a/docs/document/content/reference/test/scaling-integration-test/_index.en.md b/docs/document/content/reference/test/scaling-integration-test/_index.en.md
+index c596d309cc8..e4885ee94bd 100644
+--- a/docs/document/content/reference/test/scaling-integration-test/_index.en.md
++++ b/docs/document/content/reference/test/scaling-integration-test/_index.en.md
+@@ -9,7 +9,7 @@ Verify the correctness of Scaling's own functionality and dependent modules.
+ 
+ ## Environment
+ 
+-There are two types of environment preparation: Native and Docker, either of which requires Docker to be pre-installed locally.
++There are two types of environment preparation: Native and Docker
+ 
+ - Native Environment: For local debugging, you can use the IDE's debug mode for debugging
+ - Docker Environment: Environment run by Maven for cloud compiled environments and testing ShardingSphere-Proxy scenarios, e.g. GitHub Action
+@@ -38,25 +38,25 @@ Catalog：`resources/env/`
+ - /common: The Dist SQL used in the Scaling process.
+ - /{SQL-TYPE}: database-level configuration files.
+ - /scenario: The configuration file for the test scenario, mainly SQL, may be written differently for different databases.
++- it-env.properties: Stores the corresponding configuration information.
+ 
+ ### Run Test Cases
+ 
+ All property values can be dynamically injected by means of the Maven command line `-D`.
+ 
+ `${image-name}` Indicates a legal docker image name, e.g., mysql:5.7, separated by commas if multiple.
+-`-Dit.env.postgresql.version=${image-name}` Indicates the version of PostgreSQL that needs to be tested.
+-`-Dit.env.mysql.version=${image-name}` Indicates the version of MySQL that needs to be tested.
++`-Dscaling.it.docker.postgresql.version=${image-name}` Indicates the version of PostgreSQL that needs to be tested.
++`-Dscaling.it.docker.mysql.version=${image-name}` Indicates the version of MySQL that needs to be tested.
+ 
+ #### Native Environment Startup
+ 
+-Native environments require that ShardingSphere-Proxy (and its own dependent Cluster, such as Zookeeper) be started locally, and that ShardingSphere-Proxy be started on port 3307, while the database will be started according to the user's configuration, but the corresponding ports are the default ports for the database (MySQL=3306, PostgreSQL=5432).
 -
- 4. Start server.
+-Therefore, Native mode does not support running multiple cases, and you need to clean up the information in Zookeeper and restart ShardingSphere-Proxy after each run.
++Native environments require that ShardingSphere-Proxy (and its own dependent Cluster, such as Zookeeper) and the database be started locally, and that ShardingSphere-Proxy's port be 3307, modify the properties in the it-env.properties file ` scaling.it.env.type=native`
++The database port can be configured in it-env.properties, or not if it is the default port.
  
- * Use the default configuration to start
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md
-index 7ff78b62eb7..8cadcefaf38 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md
-@@ -183,7 +183,6 @@ DATA_CONSISTENCY_CHECKER(TYPE(NAME=DATA_MATCH, PROPERTIES("chunk-size"=1000)))
- | 数据库                 | JDBC 驱动                              | 参考                 |
- | --------------------- | ------------------------------------ | -------------------- |
- | MySQL                 | [mysql-connector-java-5.1.47.jar]( https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar ) | [Connector/J Versions]( https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-versions.html ) |
--| openGauss             | [opengauss-jdbc-2.0.1-compatibility.jar]( https://repo1.maven.org/maven2/org/opengauss/opengauss-jdbc/2.0.1-compatibility/opengauss-jdbc-2.0.1-compatibility.jar ) | |
+ The startup method is as follows: Find the Case you need to test, such as MySQLGeneralScalingIT, and configure the corresponding VM Option before startup, add the following configuration.
  
- 6. 启动 ShardingSphere-Proxy：
+ ```
+--Dit.cluster.env.type=native -Dit.env.mysql.version=${image-name}
++-Dscaling.it.env.type=native -Dscaling.it.docker.mysql.version=${image-name}
+ ```
  
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md
-index 2be229745cc..742fbfdf402 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md
-@@ -182,7 +182,6 @@ If the backend database is in following table, please download JDBC driver jar a
- | RDBMS                 | JDBC driver                          | Reference            |
- | --------------------- | ------------------------------------ | -------------------- |
- | MySQL                 | [mysql-connector-java-5.1.47.jar]( https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar ) | [Connector/J Versions]( https://dev.mysql.com/doc/connector-j/5.1/en/connector-j-versions.html ) |
--| openGauss             | [opengauss-jdbc-2.0.1-compatibility.jar]( https://repo1.maven.org/maven2/org/opengauss/opengauss-jdbc/2.0.1-compatibility/opengauss-jdbc-2.0.1-compatibility.jar ) | |
+ Just start it under the IDE using the Junit.
+@@ -80,13 +80,13 @@ You can change it yourself in ShardingSphereProxyDockerContainer.
+ As with Native, only one parameter needs to be changed.
  
- 6. Start up ShardingSphere-Proxy:
+ ```
+--Dit.cluster.env.type=docker
++-Dscaling.it.env.type=docker
+ ```
  
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md
-index ce5c53c5491..81d281e38de 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md
-@@ -32,12 +32,10 @@ ShardingSphere-Proxy 支持配置多个逻辑数据源，每个以 `config-` 前
+ You can run the use case using the same IDE as Native, or you can run it using maven.
  
- 4. （可选）引入数据库驱动
+ ```shell
+-./mvnw -nsu -B install -f shardingsphere-test/shardingsphere-integration-test/shardingsphere-integration-test-scaling/pom.xml -Dit.cluster.env.type=DOCKER -Dit.env.mysql.version=${image-name}
++./mvnw -nsu -B install -f shardingsphere-test/shardingsphere-integration-test/shardingsphere-integration-test-scaling/pom.xml -Dscaling.it.env.type=DOCKER -Dscaling.it.docker.mysql.version=${image-name}
+ ```
  
--如果后端连接 PostgreSQL 数据库，不需要引入额外依赖。
-+如果后端连接 PostgreSQL 或 openGauss 数据库，不需要引入额外依赖。
- 
- 如果后端连接 MySQL 数据库，请下载 [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar) 或者 [mysql-connector-java-8.0.11.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar)，并将其放入 `ext-lib` 目录。
- 
--如果后端连接 openGauss 数据库，请下载 [opengauss-jdbc-3.0.0.jar](https://repo1.maven.org/maven2/org/opengauss/opengauss-jdbc/3.0.0/opengauss-jdbc-3.0.0.jar)，并将其放入 `ext-lib` 目录。
--
- 5. （可选）引入集群模式所需依赖
- 
- ShardingSphere-Proxy 默认集成 ZooKeeper Curator 客户端，集群模式使用 ZooKeeper 无须引入其他依赖。
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md
-index bcb374a52a3..74694099973 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md
-@@ -33,12 +33,10 @@ ShardingSphere-Proxy supports multiple logical data sources. Each YAML configura
- 
- 4. Introduce database driver (Optional)
- 
--If the backend is connected to a PostgreSQL database, no additional dependencies need to be introduced.
-+If the backend is connected to a PostgreSQL or openGauss database, no additional dependencies need to be introduced.
- 
- If the backend is connected to a MySQL database, please download [mysql-connector-java-5.1.47.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar) or [mysql-connector-java-8.0.11.jar](https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar), and put it into the `ext-lib` directory.
- 
--If the backend is connected to an openGauss database, please download [opengauss-jdbc-3.0.0.jar](https://repo1.maven.org/maven2/org/opengauss/opengauss-jdbc/3.0.0/opengauss-jdbc-3.0.0.jar) and put it into the `ext-lib` directory.
--
- 5. Introduce dependencies required by the cluster mode (Optional)
- 
- ShardingSphere-Proxy integrates the ZooKeeper Curator client by default. ZooKeeper is used in cluster mode without introducing other dependencies.
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.cn.md
-index 51ada664a48..f972f6fb7ca 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.cn.md
-@@ -51,7 +51,7 @@ docker rm tmp
- 3. （可选）引入第三方依赖或自定义算法
- 
- 如果存在以下任意需求：
--* ShardingSphere-Proxy 后端使用 MySQL / openGauss 数据库；
-+* ShardingSphere-Proxy 后端使用 MySQL 数据库；
- * 使用自定义算法；
- * 使用 Etcd 作为集群模式的注册中心。
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.en.md
-index e3a7be7adf3..991daa8189e 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/docker.en.md
-@@ -51,7 +51,7 @@ For details, please refer to [ShardingSphere-Proxy quick start manual - binary d
- 3. (Optional) Introduce third-party dependencies or customized algorithms
- 
- If you have any of the following requirements:
--* ShardingSphere-Proxy Backend use MySQL / openGauss Database;
-+* ShardingSphere-Proxy Backend use MySQL Database;
- * Implement customized algorithms;
- * Use Etcd as Registry Center in cluster mode.
- 
+ #### Attentions

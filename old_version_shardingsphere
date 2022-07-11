@@ -1,984 +1,225 @@
-commit 797ed6a30dbba218dee16f8b461b29bbb957a7f8
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Mon Jul 11 17:55:25 2022 +0800
+commit 884a1f54550a4429083666b391b309e968af6350
+Author: zhaojinchao <zhaojinchao@apache.org>
+Date:   Mon Jul 11 18:47:26 2022 +0800
 
-    Update data sharding user-manual document (#19024)
-    
-    * Update sharding java api document
-    
-    * Update data sharding yaml api document
-    
-    * Update data sharding spring boot starter document
-    
-    * Update data sharding spring namespace document
+    Refactor ha document (#19030)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.cn.md
-index c324c1328f4..a2622a89040 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.cn.md
-@@ -3,26 +3,32 @@ title = "数据分片"
- weight = 1
+diff --git a/docs/document/content/features/ha/_index.cn.md b/docs/document/content/features/ha/_index.cn.md
+index 413fcc8d1a3..1a731c9e7a4 100644
+--- a/docs/document/content/features/ha/_index.cn.md
++++ b/docs/document/content/features/ha/_index.cn.md
+@@ -5,7 +5,7 @@ weight = 7
+ chapter = true
  +++
  
--## 配置入口
-+## 背景信息
+-## 背景
++## 定义
+ 
+ 高可用是现代系统的最基本诉求，作为系统基石的数据库，对于高可用的要求也是必不可少的。
+ 
+@@ -13,17 +13,37 @@ chapter = true
+ 对于有状态的存储节点来说，需要其自身具备数据一致性同步、探活、主节点选举等能力；
+ 对于无状态的计算节点来说，需要感知存储节点的变化的同时，还需要独立架设负载均衡器，并具备服务发现和请求分发的能力。
+ 
+-Apache ShardingSphere 自身提供计算节点，并通过数据库作为存储节点。
+-因此，它采用的高可用方案是利用数据库自身的高可用方案做存储节点高可用，并自动识别其变化。
++尽可能的保证 7X24 小时不间断的数据库服务，是 Apache ShardingSphere 高可用模块的主要设计目标。
+ 
+-## 挑战
++## 核心概念
+ 
+-Apache ShardingSphere 需要自动感知多样化的存储节点高可用方案的同时，也能够动态集成对读写分离方案，是实现的主要挑战。
++### 高可用类型
+ 
+-![概述](https://shardingsphere.apache.org/document/current/img/discovery/overview.cn.png)
++Apache ShardingSphere 不提供数据库高可用的能力，它通过第三方提供的高可用方案感知数据库主从关系的切换。 确切来说，Apache ShardingSphere 提供数据库发现的能力，自动感知数据库主从关系，并修正计算节点对数据库的连接。
 +
-+数据分片 Java API 规则配置允许用户直接通过编写 Java 代码的方式，完成 ShardingSphereDataSource 对象的创建，Java API 的配置方式非常灵活，不需要依赖额外的 jar 包就能够集成各种类型的业务系统。
++### 动态读写分离
++高可用和读写分离一起使用时，读写分离无需配置具体的主库和从库。 高可用的数据源会动态的修正读写分离的主从关系，并正确地疏导读写流量。
 +
-+## 参数解释
++## 使用限制
 +
-+### 配置入口
++### 支持项
++* MySQL MGR 单主模式。
++* MySQL 主从复制模式。
++* openGauss 主从复制模式。
  
- 类名称：org.apache.shardingsphere.sharding.api.config.ShardingRuleConfiguration
- 
- 可配置属性：
- 
--| *名称*                               | *数据类型*                                          | *说明*                | *默认值* |
--| ----------------------------------- | --------------------------------------------------- | -------------------- | ------- |
--| tables (+)                          | Collection\<ShardingTableRuleConfiguration\>        | 分片表规则列表         | -       |
--| autoTables (+)                      | Collection\<ShardingAutoTableRuleConfiguration\>    | 自动化分片表规则列表    | -       |
--| bindingTableGroups (*)              | Collection\<String\>                                | 绑定表规则列表         | 无       |
--| broadcastTables (*)                 | Collection\<String\>                                | 广播表规则列表         | 无       |
--| defaultDatabaseShardingStrategy (?) | ShardingStrategyConfiguration                       | 默认分库策略           | 不分片   |
--| defaultTableShardingStrategy (?)    | ShardingStrategyConfiguration                       | 默认分表策略           | 不分片   |
--| defaultKeyGenerateStrategy (?)      | KeyGeneratorConfiguration                           | 默认自增列生成器配置    | 雪花算法 |
--| defaultShardingColumn (?)           | String                                              | 默认分片列名称         | 无      |
--| shardingAlgorithms (+)              | Map\<String, ShardingSphereAlgorithmConfiguration\> | 分片算法名称和配置      | 无      |
-+| *名称*                               | *数据类型*                                          | *说明*               | *默认值* |
-+| ----------------------------------- | --------------------------------------------------- | ------------------- | ------- |
-+| tables (+)                          | Collection\<ShardingTableRuleConfiguration\>        | 分片表规则列表        | -       |
-+| autoTables (+)                      | Collection\<ShardingAutoTableRuleConfiguration\>    | 自动分片表规则列表    | -       |
-+| bindingTableGroups (*)              | Collection\<String\>                                | 绑定表规则列表        | 无       |
-+| broadcastTables (*)                 | Collection\<String\>                                | 广播表规则列表        | 无       |
-+| defaultDatabaseShardingStrategy (?) | ShardingStrategyConfiguration                       | 默认分库策略          | 不分片   |
-+| defaultTableShardingStrategy (?)    | ShardingStrategyConfiguration                       | 默认分表策略          | 不分片   |
-+| defaultKeyGenerateStrategy (?)      | KeyGeneratorConfiguration                           | 默认自增列生成器配置   | 雪花算法 |
-+| defaultShardingColumn (?)           | String                                              | 默认分片列名称        | 无      |
-+| shardingAlgorithms (+)              | Map\<String, ShardingSphereAlgorithmConfiguration\> | 分片算法名称和配置     | 无      |
- | keyGenerators (?)                   | Map\<String, ShardingSphereAlgorithmConfiguration\> | 自增列生成算法名称和配置 | 无      |
- 
--## 分片表配置
-+### 分片表配置
- 
- 类名称：org.apache.shardingsphere.sharding.api.config.ShardingTableRuleConfiguration
- 
-@@ -36,7 +42,7 @@ weight = 1
- | tableShardingStrategy (?)    | ShardingStrategyConfiguration | 分表策略                                                           | 使用默认分表策略                                                                     |
- | keyGenerateStrategy (?)      | KeyGeneratorConfiguration     | 自增列生成器                                                        | 使用默认自增主键生成器                                                               |
- 
--## 自动分片表配置
-+### 自动分片表配置
- 
- 类名称：org.apache.shardingsphere.sharding.api.config.ShardingAutoTableRuleConfiguration
- 
-@@ -49,9 +55,9 @@ weight = 1
- | shardingStrategy (?)    | ShardingStrategyConfiguration | 分片策略                      | 使用默认分片策略      |
- | keyGenerateStrategy (?) | KeyGeneratorConfiguration     | 自增列生成器                   | 使用默认自增主键生成器 |
- 
--## 分片策略配置
-+### 分片策略配置
- 
--### 标准分片策略配置
-+#### 标准分片策略配置
- 
- 类名称：org.apache.shardingsphere.sharding.api.config.strategy.sharding.StandardShardingStrategyConfiguration
- 
-@@ -62,7 +68,7 @@ weight = 1
- | shardingColumn        | String     | 分片列名称   |
- | shardingAlgorithmName | String     | 分片算法名称 |
- 
--### 复合分片策略配置
-+#### 复合分片策略配置
- 
- 类名称：org.apache.shardingsphere.sharding.api.config.strategy.sharding.ComplexShardingStrategyConfiguration
- 
-@@ -73,7 +79,7 @@ weight = 1
- | shardingColumns       | String     | 分片列名称，多个列以逗号分隔 |
- | shardingAlgorithmName | String     | 分片算法名称               |
- 
--### Hint 分片策略配置
-+#### Hint 分片策略配置
- 
- 类名称：org.apache.shardingsphere.sharding.api.config.strategy.sharding.HintShardingStrategyConfiguration
- 
-@@ -83,7 +89,7 @@ weight = 1
- | --------------------- | ---------- | ----------- |
- | shardingAlgorithmName | String     | 分片算法名称  |
- 
--### 不分片策略配置
-+#### 不分片策略配置
- 
- 类名称：org.apache.shardingsphere.sharding.api.config.strategy.sharding.NoneShardingStrategyConfiguration
- 
-@@ -91,7 +97,7 @@ weight = 1
- 
- 算法类型的详情，请参见[内置分片算法列表](/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding)。
- 
--## 分布式序列策略配置
-+### 分布式序列策略配置
- 
- 类名称：org.apache.shardingsphere.sharding.api.config.strategy.keygen.KeyGenerateStrategyConfiguration
- 
-@@ -103,3 +109,61 @@ weight = 1
- | keyGeneratorName | String   | 分布式序列算法名称 |
- 
- 算法类型的详情，请参见[内置分布式序列算法列表](/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/keygen)。
+-## 目标
++### 不支持项
++* MySQL MGR 多主模式。
 +
-+## 操作步骤
++## 原理介绍
 +
-+1. 创建真实数据源映射关系，key 为数据源逻辑名称，value 为 DataSource 对象；
-+2. 创建分片规则对象 ShardingRuleConfiguration，并初始化对象中的分片表对象 ShardingTableRuleConfiguration、绑定表集合、广播表集合，以及数据分片所依赖的分库策略和分表策略等参数；
-+3. 调用 ShardingSphereDataSourceFactory 对象的 createDataSource 方法，创建 ShardingSphereDataSource。
++Apache ShardingSphere 提供的高可用方案，允许用户进行二次定制开发及实现扩展，主要分为四个步骤 : 前置检查、动态发现主库、动态发现从库、同步配置。
 +
-+## 配置示例
-+
-+```java
-+public final class ShardingDatabasesAndTablesConfigurationPrecise implements ExampleConfiguration {
-+    
-+    @Override
-+    public DataSource getDataSource() throws SQLException {
-+        return ShardingSphereDataSourceFactory.createDataSource(createDataSourceMap(), Collections.singleton(createShardingRuleConfiguration()), new Properties());
-+    }
-+    
-+    private ShardingRuleConfiguration createShardingRuleConfiguration() {
-+        ShardingRuleConfiguration result = new ShardingRuleConfiguration();
-+        result.getTables().add(getOrderTableRuleConfiguration());
-+        result.getTables().add(getOrderItemTableRuleConfiguration());
-+        result.getBindingTableGroups().add("t_order, t_order_item");
-+        result.getBroadcastTables().add("t_address");
-+        result.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "inline"));
-+        result.setDefaultTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "standard_test_tbl"));
-+        Properties props = new Properties();
-+        props.setProperty("algorithm-expression", "demo_ds_${user_id % 2}");
-+        result.getShardingAlgorithms().put("inline", new ShardingSphereAlgorithmConfiguration("INLINE", props));
-+        result.getShardingAlgorithms().put("standard_test_tbl", new ShardingSphereAlgorithmConfiguration("STANDARD_TEST_TBL", new Properties()));
-+        result.getKeyGenerators().put("snowflake", new ShardingSphereAlgorithmConfiguration("SNOWFLAKE", new Properties()));
-+        return result;
-+    }
-+    
-+    private ShardingTableRuleConfiguration getOrderTableRuleConfiguration() {
-+        ShardingTableRuleConfiguration result = new ShardingTableRuleConfiguration("t_order", "demo_ds_${0..1}.t_order_${[0, 1]}");
-+        result.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
-+        return result;
-+    }
-+    
-+    private ShardingTableRuleConfiguration getOrderItemTableRuleConfiguration() {
-+        ShardingTableRuleConfiguration result = new ShardingTableRuleConfiguration("t_order_item", "demo_ds_${0..1}.t_order_item_${[0, 1]}");
-+        result.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_item_id", "snowflake"));
-+        return result;
-+    }
-+    
-+    private Map<String, DataSource> createDataSourceMap() {
-+        Map<String, DataSource> result = new HashMap<>();
-+        result.put("demo_ds_0", DataSourceUtil.createDataSource("demo_ds_0"));
-+        result.put("demo_ds_1", DataSourceUtil.createDataSource("demo_ds_1"));
-+        return result;
-+    }
-+}
-+```
-+
++![概述](https://shardingsphere.apache.org/document/current/img/discovery/overview.cn.png)
+ 
+-**尽可能的保证 7*24 小时不间断的数据库服务，是 Apache ShardingSphere 高可用模块的主要设计目标。**
 +## 相关参考
-+
-+- [数据分片核心特性](/cn/features/sharding/)
-+- [数据分片开发者指南](/cn/dev-manual/sharding/)
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.en.md
-index 580b048e124..3680afd473b 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/sharding.en.md
-@@ -3,26 +3,32 @@ title = "Sharding"
- weight = 1
++[Java API](/cn/user-manual/shardingsphere-jdbc/java-api/rules/ha)\
++[YAML 配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/ha)\
++[Spring Boot Starter](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha)\
++[Spring 命名空间](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha)
+ 
+-**源码：https://github.com/apache/shardingsphere/tree/master/shardingsphere-features/shardingsphere-db-discovery**
++[源码](https://github.com/apache/shardingsphere/tree/master/shardingsphere-features/shardingsphere-db-discovery)
+diff --git a/docs/document/content/features/ha/_index.en.md b/docs/document/content/features/ha/_index.en.md
+index 17d491730bc..c008b0c46f8 100644
+--- a/docs/document/content/features/ha/_index.en.md
++++ b/docs/document/content/features/ha/_index.en.md
+@@ -5,27 +5,50 @@ weight = 7
+ chapter = true
  +++
  
--## Root Configuration
-+## Background
+-## Background
++## Definition
+ 
+-High availability is the most basic requirement of modern systems.
+-As the cornerstone of the system, the database is also essential for high availability.
++High availability is the most basic requirement for modern systems. It is also an essential element of the database, which in turn is the cornerstone of any system.
++In a distributed database system, storage nodes and compute nodes are different in terms of their high availability schemes.
++Stateful storage nodes are required to have capabilities such as data consistency and synchronization, liveness probe, and primary-node election.
++Stateless compute nodes need to sense storage nodes' changes, setup load balancers independently, and enable service discovery and request distribution.
++Apache ShardingSphere' high availability module (HA) is mainly designed to ensure a 24/7 database service as much as possible.
+ 
+-In the distributed database system with storage-compute splitting, the high availability solution of storage node and compute node are different.
+-The stateful storage nodes need to pay attention to data consistency, health detection, primary node election and so on;
+-The stateless compute nodes need to detect the changes of storage nodes, they also need to set up an independent load balancer and have the ability of service discovery and request distribution.
++## Related Concepts
+ 
+-Apache ShardingSphere provides compute nodes and reuse database as storage nodes.
+-Therefore, the high availability solution it adopts is to use the high availability solution of the database itself as the high availability of the storage node, and detect the changes automatically.
++### High Availability Type
+ 
+-## Challenges
++Apache ShardingSphere does not provide database high availability capability. It senses the change of databases' primary-secondary relationship through a third-party provided high availability solution.
++Specifically, ShardingSphere is capable of finding databases, automatically sensing the primary/secondary database relationship, and correcting compute nodes' connections to databases.
+ 
+-Apache ShardingSphere needs to detect high availability solution of diversified storage nodes automatically,
+-and can also integrate the readwrite splitting dynamically, which is the main challenge of implementation.
++### Dynamic Read/Write Splitting
 +
-+The Java API rule configuration for data sharding, which allows users to create ShardingSphereDataSource objects directly by writing Java code, is flexible enough to integrate various types of business systems without relying on additional jar packages.
++When high availability and read/write splitting are adopted together, it is not necessary to configure specific primary and secondary databases for read/write splitting. 
++Highly available data sources dynamically correct the primary/secondary relationship of read/write splitting and properly channel read/write traffic.
 +
-+## Parameters
++## Limitations
 +
-+### Root Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.ShardingRuleConfiguration
- 
- Attributes:
- 
--| *Name*                              | *DataType*                                          | *Description*                                  | *Default Value* |
--| ----------------------------------- | --------------------------------------------------- | ---------------------------------------------- | --------------- |
--| tables (+)                          | Collection\<ShardingTableRuleConfiguration\>        | Sharding table rules                           | -               |
--| autoTables (+)                      | Collection\<ShardingAutoTableRuleConfiguration\>    | Sharding automatic table rules                 | -               |
--| bindingTableGroups (*)              | Collection\<String\>                                | Binding table rules                            | Empty           |
--| broadcastTables (*)                 | Collection\<String\>                                | Broadcast table rules                          | Empty           |
--| defaultDatabaseShardingStrategy (?) | ShardingStrategyConfiguration                       | Default database sharding strategy             | Not sharding    |
--| defaultTableShardingStrategy (?)    | ShardingStrategyConfiguration                       | Default table sharding strategy                | Not sharding    |
--| defaultKeyGenerateStrategy (?)      | KeyGeneratorConfiguration                           | Default key generator                          | Snowflake       |
--| defaultShardingColumn (?)           | String                                              | Default sharding column name                   | None            |
--| shardingAlgorithms (+)              | Map\<String, ShardingSphereAlgorithmConfiguration\> | Sharding algorithm name and configurations     | None            |
-+| *Name*                              | *DataType*                                          | *Description*                             | *Default Value* |
-+| ----------------------------------- | --------------------------------------------------- | ----------------------------------------- | --------------- |
-+| tables (+)                          | Collection\<ShardingTableRuleConfiguration\>        | Sharding table rules                      | -               |
-+| autoTables (+)                      | Collection\<ShardingAutoTableRuleConfiguration\>    | Sharding auto table rules                 | -               |
-+| bindingTableGroups (*)              | Collection\<String\>                                | Binding table rules                       | Empty           |
-+| broadcastTables (*)                 | Collection\<String\>                                | Broadcast table rules                     | Empty           |
-+| defaultDatabaseShardingStrategy (?) | ShardingStrategyConfiguration                       | Default database sharding strategy        | Not sharding    |
-+| defaultTableShardingStrategy (?)    | ShardingStrategyConfiguration                       | Default table sharding strategy           | Not sharding    |
-+| defaultKeyGenerateStrategy (?)      | KeyGeneratorConfiguration                           | Default key generator                     | Snowflake       |
-+| defaultShardingColumn (?)           | String                                              | Default sharding column name              | None            |
-+| shardingAlgorithms (+)              | Map\<String, ShardingSphereAlgorithmConfiguration\> | Sharding algorithm name and configurations | None            |
- | keyGenerators (?)                   | Map\<String, ShardingSphereAlgorithmConfiguration\> | Key generate algorithm name and configurations | None            |
- 
--## Sharding Table Configuration
-+### Sharding Table Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.ShardingTableRuleConfiguration
- 
-@@ -36,7 +42,7 @@ Attributes:
- | tableShardingStrategy (?)    | ShardingStrategyConfiguration | Tables sharding strategy                                                                                                              | Use default tables sharding strategy       |
- | keyGenerateStrategy (?)      | KeyGeneratorConfiguration     | Key generator configuration                                                                                                           | Use default key generator                  |
- 
--## Sharding Automatic Table Configuration
-+### Sharding Auto Table Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.ShardingAutoTableRuleConfiguration
- 
-@@ -49,9 +55,9 @@ Attributes:
- | shardingStrategy (?)    | ShardingStrategyConfiguration | Sharding strategy                                           | Use default sharding strategy   |
- | keyGenerateStrategy (?) | KeyGeneratorConfiguration     | Key generator configuration                                 | Use default key generator       |
- 
--## Sharding Strategy Configuration
-+### Sharding Strategy Configuration
- 
--### Standard Sharding Strategy Configuration
-+#### Standard Sharding Strategy Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.strategy.sharding.StandardShardingStrategyConfiguration
- 
-@@ -62,7 +68,7 @@ Attributes:
- | shardingColumn        | String     | Sharding column name    |
- | shardingAlgorithmName | String     | Sharding algorithm name |
- 
--### Complex Sharding Strategy Configuration
-+#### Complex Sharding Strategy Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.strategy.sharding.ComplexShardingStrategyConfiguration
- 
-@@ -73,7 +79,7 @@ Attributes:
- | shardingColumns       | String     | Sharding column name, separated by commas |
- | shardingAlgorithmName | String     | Sharding algorithm name                   |
- 
--### Hint Sharding Strategy Configuration
-+#### Hint Sharding Strategy Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.strategy.sharding.HintShardingStrategyConfiguration
- 
-@@ -83,7 +89,7 @@ Attributes:
- | --------------------- | ---------- | ----------------------- |
- | shardingAlgorithmName | String     | Sharding algorithm name |
- 
--### None Sharding Strategy Configuration
-+#### None Sharding Strategy Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.strategy.sharding.NoneShardingStrategyConfiguration
- 
-@@ -91,7 +97,7 @@ Attributes: None
- 
- Please refer to [Built-in Sharding Algorithm List](/en/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding) for more details about type of algorithm.
- 
--## Key Generate Strategy Configuration
-+### Distributed Key Strategy Configuration
- 
- Class name: org.apache.shardingsphere.sharding.api.config.strategy.keygen.KeyGenerateStrategyConfiguration
- 
-@@ -103,3 +109,61 @@ Attributes:
- | keyGeneratorName | String     | key generate algorithm name |
- 
- Please refer to [Built-in Key Generate Algorithm List](/en/user-manual/shardingsphere-jdbc/builtin-algorithm/keygen) for more details about type of algorithm.
++### Supported
++* MySQL MGR single-primary mode
++* MySQL Primary/secondary replication mode
++* openGauss Primary/secondary replication mode
 +
-+## Procedure
++### Not supported
++* MySQL MGR Multi-primary mode
 +
-+1. Create an authentic data source mapping relationship, with key as the logical name of the data source and value as the DataSource object.
-+2. Create the sharding rule object ShardingRuleConfiguration, and initialize the sharding table objects—ShardingTableRuleConfiguration, the set of bound tables, the set of broadcast tables, and parameters like library sharding strategy and the database sharding strategy, on which the data sharding depends.
-+3. Using the ShardingSphereDataSource method of calling the ShardingSphereDataSourceFactory subject to create the ShardingSphereDataSource.
++## How it works
 +
-+## Sample
-+
-+```java
-+public final class ShardingDatabasesAndTablesConfigurationPrecise implements ExampleConfiguration {
-+    
-+    @Override
-+    public DataSource getDataSource() throws SQLException {
-+        return ShardingSphereDataSourceFactory.createDataSource(createDataSourceMap(), Collections.singleton(createShardingRuleConfiguration()), new Properties());
-+    }
-+    
-+    private ShardingRuleConfiguration createShardingRuleConfiguration() {
-+        ShardingRuleConfiguration result = new ShardingRuleConfiguration();
-+        result.getTables().add(getOrderTableRuleConfiguration());
-+        result.getTables().add(getOrderItemTableRuleConfiguration());
-+        result.getBindingTableGroups().add("t_order, t_order_item");
-+        result.getBroadcastTables().add("t_address");
-+        result.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "inline"));
-+        result.setDefaultTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "standard_test_tbl"));
-+        Properties props = new Properties();
-+        props.setProperty("algorithm-expression", "demo_ds_${user_id % 2}");
-+        result.getShardingAlgorithms().put("inline", new ShardingSphereAlgorithmConfiguration("INLINE", props));
-+        result.getShardingAlgorithms().put("standard_test_tbl", new ShardingSphereAlgorithmConfiguration("STANDARD_TEST_TBL", new Properties()));
-+        result.getKeyGenerators().put("snowflake", new ShardingSphereAlgorithmConfiguration("SNOWFLAKE", new Properties()));
-+        return result;
-+    }
-+    
-+    private ShardingTableRuleConfiguration getOrderTableRuleConfiguration() {
-+        ShardingTableRuleConfiguration result = new ShardingTableRuleConfiguration("t_order", "demo_ds_${0..1}.t_order_${[0, 1]}");
-+        result.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
-+        return result;
-+    }
-+    
-+    private ShardingTableRuleConfiguration getOrderItemTableRuleConfiguration() {
-+        ShardingTableRuleConfiguration result = new ShardingTableRuleConfiguration("t_order_item", "demo_ds_${0..1}.t_order_item_${[0, 1]}");
-+        result.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_item_id", "snowflake"));
-+        return result;
-+    }
-+    
-+    private Map<String, DataSource> createDataSourceMap() {
-+        Map<String, DataSource> result = new HashMap<>();
-+        result.put("demo_ds_0", DataSourceUtil.createDataSource("demo_ds_0"));
-+        result.put("demo_ds_1", DataSourceUtil.createDataSource("demo_ds_1"));
-+        return result;
-+    }
-+}
-+```
-+
++The high availability solution provided by Apache ShardingSphere allows you to carry out secondary custom development and achieve expansion, 
++which is mainly divided into four steps: pre-check, primary database dynamic discovery, secondary database dynamic discovery and configuration synchronization.
+ 
+ ![Overview](https://shardingsphere.apache.org/document/current/img/discovery/overview.en.png)
+ 
+-## Goal
 +## Related References
++[Java API](/en/user-manual/shardingsphere-jdbc/java-api/rules/ha)\
++[YAML Configuration](/en/user-manual/shardingsphere-jdbc/yaml-config/rules/ha)\
++[Spring Boot Starter](/en/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha)\
++[Spring Namespace](/en/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha)
 +
-+- [Core Features of Data Sharding](/en/features/sharding/)
-+- [Developer Guide of Data Sharding](/en/dev-manual/sharding/)
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.cn.md
-index 41a318c4b3f..19149bd2d6d 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.cn.md
-@@ -3,7 +3,11 @@ title = "数据分片"
- weight = 1
- +++
++[Source Code](https://github.com/apache/shardingsphere/tree/master/shardingsphere-features/shardingsphere-db-discovery)
++
  
--## 配置项说明
-+## 背景信息
-+
-+数据分片 Spring Boot Starter 配置方式适用于使用 SpringBoot 的业务场景，能够最大程度地利用 SringBoot 配置初始化及 Bean 管理的能力，完成 ShardingSphereDataSource 对象的创建，减少不必要的编码工作。
-+
-+## 参数解释
+-**The main goal of Apache ShardingSphere high availability module which is ensuring 7 * 24-hour uninterrupted database service as much as possible.**
  
- ```properties
- spring.shardingsphere.datasource.names= # 省略数据源配置，请参考使用手册
-@@ -61,6 +65,64 @@ spring.shardingsphere.rules.sharding.key-generators.<key-generate-algorithm-name
- 
- 算法类型的详情，请参见[内置分片算法列表](/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding)和[内置分布式序列算法列表](/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/keygen)。
- 
--## 注意事项
-+> 注意事项：行表达式标识符可以使用 `${...}` 或 `$->{...}`，但前者与 Spring 本身的属性文件占位符冲突，因此在 Spring 环境中使用行表达式标识符建议使用 `$->{...}`。
-+
-+## 操作步骤
-+
-+1. 在 SpringBoot 文件中配置数据分片规则，包含数据源、分片规则、全局属性等配置项；
-+2. 启动 SpringBoot 程序，会自动加载配置，并初始化 ShardingSphereDataSource。
-+
-+## 配置示例
-+
-+```properties
-+spring.shardingsphere.mode.type=Standalone
-+spring.shardingsphere.mode.repository.type=File
-+spring.shardingsphere.mode.overwrite=true
-+
-+spring.shardingsphere.datasource.names=ds-0,ds-1
-+
-+spring.shardingsphere.datasource.ds-0.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+spring.shardingsphere.datasource.ds-0.type=com.zaxxer.hikari.HikariDataSource
-+spring.shardingsphere.datasource.ds-0.driver-class-name=com.mysql.jdbc.Driver
-+spring.shardingsphere.datasource.ds-0.username=root
-+spring.shardingsphere.datasource.ds-0.password=
-+
-+spring.shardingsphere.datasource.ds-1.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+spring.shardingsphere.datasource.ds-1.type=com.zaxxer.hikari.HikariDataSource
-+spring.shardingsphere.datasource.ds-1.driver-class-name=com.mysql.jdbc.Driver
-+spring.shardingsphere.datasource.ds-1.username=root
-+spring.shardingsphere.datasource.ds-1.password=
-+
-+spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-column=user_id
-+spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-algorithm-name=database-inline
-+spring.shardingsphere.rules.sharding.binding-tables[0]=t_order,t_order_item
-+spring.shardingsphere.rules.sharding.broadcast-tables=t_address
-+
-+spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=ds-$->{0..1}.t_order_$->{0..1}
-+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-column=order_id
-+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-algorithm-name=t-order-inline
-+
-+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.column=order_id
-+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.key-generator-name=snowflake
-+
-+spring.shardingsphere.rules.sharding.tables.t_order_item.actual-data-nodes=ds-$->{0..1}.t_order_item_$->{0..1}
-+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-column=order_id
-+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-algorithm-name=t-order-item-inline
-+
-+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.column=order_item_id
-+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.key-generator-name=snowflake
-+
-+spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.type=INLINE
-+spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.props.algorithm-expression=ds-$->{user_id % 2}
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.type=INLINE
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.props.algorithm-expression=t_order_$->{order_id % 2}
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-item-inline.type=INLINE
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-item-inline.props.algorithm-expression=t_order_item_$->{order_id % 2}
-+
-+spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
-+```
-+
-+## 相关参考
- 
--行表达式标识符可以使用 `${...}` 或 `$->{...}`，但前者与 Spring 本身的属性文件占位符冲突，因此在 Spring 环境中使用行表达式标识符建议使用 `$->{...}`。
-+- [数据分片核心特性](/cn/features/sharding/)
-+- [数据分片开发者指南](/cn/dev-manual/sharding/)
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.en.md
-index 21c2b7cc439..3a8655ad275 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/sharding.en.md
-@@ -3,7 +3,11 @@ title = "Sharding"
- weight = 1
- +++
- 
--## Configuration Item Explanation
-+## Background
-+
-+SpringBoot Starter's data sharding configuration applies to business scenarios that use SpringBoot, which can maximize SpringBoot's capabilities, such as configuration initialization and Bean management. It can complete the creation of the ShardingSphereDataSource object and reduce unnecessary coding.
-+
-+## Parameters
- 
- ```properties
- spring.shardingsphere.datasource.names= # Omit the data source configuration, please refer to the usage
-@@ -61,6 +65,64 @@ spring.shardingsphere.rules.sharding.key-generators.<key-generate-algorithm-name
- 
- Please refer to [Built-in Sharding Algorithm List](/en/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding) and [Built-in Key Generate Algorithm List](/en/user-manual/shardingsphere-jdbc/builtin-algorithm/keygen) for more details about type of algorithm.
- 
--## Attention
-+> Attention: Inline expression identifier can use `${...}` or `$->{...}`, but `${...}` is conflict with spring placeholder of properties, so use `$->{...}` on spring environment is better.
-+
-+## Procedure
-+
-+1. Configure data sharding rules in the SpringBoot file, including data sources, sharding rules, and global attributes.
-+2. Start the SpringBoot program. The configuration is automatically loaded and the ShardingSphereDataSource is initialized.
-+
-+## Sample
-+
-+```properties
-+spring.shardingsphere.mode.type=Standalone
-+spring.shardingsphere.mode.repository.type=File
-+spring.shardingsphere.mode.overwrite=true
-+
-+spring.shardingsphere.datasource.names=ds-0,ds-1
-+
-+spring.shardingsphere.datasource.ds-0.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+spring.shardingsphere.datasource.ds-0.type=com.zaxxer.hikari.HikariDataSource
-+spring.shardingsphere.datasource.ds-0.driver-class-name=com.mysql.jdbc.Driver
-+spring.shardingsphere.datasource.ds-0.username=root
-+spring.shardingsphere.datasource.ds-0.password=
-+
-+spring.shardingsphere.datasource.ds-1.jdbc-url=jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+spring.shardingsphere.datasource.ds-1.type=com.zaxxer.hikari.HikariDataSource
-+spring.shardingsphere.datasource.ds-1.driver-class-name=com.mysql.jdbc.Driver
-+spring.shardingsphere.datasource.ds-1.username=root
-+spring.shardingsphere.datasource.ds-1.password=
-+
-+spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-column=user_id
-+spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-algorithm-name=database-inline
-+spring.shardingsphere.rules.sharding.binding-tables[0]=t_order,t_order_item
-+spring.shardingsphere.rules.sharding.broadcast-tables=t_address
-+
-+spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=ds-$->{0..1}.t_order_$->{0..1}
-+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-column=order_id
-+spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-algorithm-name=t-order-inline
-+
-+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.column=order_id
-+spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.key-generator-name=snowflake
-+
-+spring.shardingsphere.rules.sharding.tables.t_order_item.actual-data-nodes=ds-$->{0..1}.t_order_item_$->{0..1}
-+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-column=order_id
-+spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-algorithm-name=t-order-item-inline
-+
-+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.column=order_item_id
-+spring.shardingsphere.rules.sharding.tables.t_order_item.key-generate-strategy.key-generator-name=snowflake
-+
-+spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.type=INLINE
-+spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.props.algorithm-expression=ds-$->{user_id % 2}
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.type=INLINE
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.props.algorithm-expression=t_order_$->{order_id % 2}
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-item-inline.type=INLINE
-+spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-item-inline.props.algorithm-expression=t_order_item_$->{order_id % 2}
-+
-+spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
-+```
-+
-+## Related References
- 
--Inline expression identifier can use `${...}` or `$->{...}`, but `${...}` is conflict with spring placeholder of properties, so use `$->{...}` on spring environment is better.
-+- [Core Features of Data Sharding](/en/features/sharding/)
-+- [Developer Guide of Data Sharding](/en/dev-manual/sharding/)
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.cn.md
-index 97d0760deab..57b79265154 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.cn.md
-@@ -3,23 +3,27 @@ title = "数据分片"
- weight = 1
- +++
- 
--## 配置项说明
-+## 背景信息
-+
-+数据分片 Spring 命名空间的配置方式，适用于传统的 Spring 项目，通过命名空间 xml 配置文件的方式配置分片规则和属性，由 Spring 完成 ShardingSphereDataSource 对象的创建和管理，避免额外的编码工作。
-+
-+## 参数解释
- 
- 命名空间：[http://shardingsphere.apache.org/schema/shardingsphere/sharding/sharding-5.1.2.xsd](http://shardingsphere.apache.org/schema/shardingsphere/sharding/sharding-5.1.2.xsd)
- 
- \<sharding:rule />
- 
--| *名称*                                | *类型* | *说明*              |
--| ------------------------------------- | ------ | ------------------ |
--| id                                    | 属性   | Spring Bean Id     |
--| table-rules (?)                       | 标签   | 分片表规则配置       |
--| auto-table-rules (?)                  | 标签   | 自动化分片表规则配置  |
--| binding-table-rules (?)               | 标签   | 绑定表规则配置        |
--| broadcast-table-rules (?)             | 标签   | 广播表规则配置        |
--| default-database-strategy-ref (?)     | 属性   | 默认分库策略名称      |
--| default-table-strategy-ref (?)        | 属性   | 默认分表策略名称      |
-+| *名称*                                | *类型* | *说明*             |
-+| ------------------------------------- | ------ | ----------------- |
-+| id                                    | 属性   | Spring Bean Id    |
-+| table-rules (?)                       | 标签   | 分片表规则配置      |
-+| auto-table-rules (?)                  | 标签   | 自动分片表规则配置  |
-+| binding-table-rules (?)               | 标签   | 绑定表规则配置       |
-+| broadcast-table-rules (?)             | 标签   | 广播表规则配置       |
-+| default-database-strategy-ref (?)     | 属性   | 默认分库策略名称     |
-+| default-table-strategy-ref (?)        | 属性   | 默认分表策略名称     |
- | default-key-generate-strategy-ref (?) | 属性   | 默认分布式序列策略名称 |
--| default-sharding-column (?)           | 属性   | 默认分片列名称       |
-+| default-sharding-column (?)           | 属性   | 默认分片列名称      |
- 
- \<sharding:table-rule />
- 
-@@ -112,6 +116,76 @@ weight = 1
- 
- 算法类型的详情，请参见[内置分片算法列表](/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding)和[内置分布式序列算法列表](/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/keygen)。
- 
--## 注意事项
+-**Source Codes: https://github.com/apache/shardingsphere/tree/master/shardingsphere-features/shardingsphere-db-discovery**
+diff --git a/docs/document/content/features/ha/concept.cn.md b/docs/document/content/features/ha/concept.cn.md
+deleted file mode 100644
+index 9a11aaaf4cf..00000000000
+--- a/docs/document/content/features/ha/concept.cn.md
++++ /dev/null
+@@ -1,14 +0,0 @@
+-+++
+-title = "核心概念"
+-weight = 1
+-+++
 -
--行表达式标识符可以使用 `${...}` 或 `$->{...}`，但前者与 Spring 本身的属性文件占位符冲突，因此在 Spring 环境中使用行表达式标识符建议使用 `$->{...}`。
-+> 注意事项：行表达式标识符可以使用 `${...}` 或 `$->{...}`，但前者与 Spring 本身的属性文件占位符冲突，因此在 Spring 环境中使用行表达式标识符建议使用 `$->{...}`。
-+
-+## 操作步骤
-+
-+1. 在 Spring 命名空间配置文件中配置数据分片规则，包含数据源、分片规则、全局属性等配置项；
-+2. 启动 Spring 程序，会自动加载配置，并初始化 ShardingSphereDataSource。
-+
-+## 配置示例
-+
-+```xml
-+<beans xmlns="http://www.springframework.org/schema/beans"
-+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-+       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
-+       xmlns:context="http://www.springframework.org/schema/context"
-+       xmlns:tx="http://www.springframework.org/schema/tx"
-+       xmlns:encrypt="http://shardingsphere.apache.org/schema/shardingsphere/encrypt"
-+       xsi:schemaLocation="http://www.springframework.org/schema/beans
-+                           http://www.springframework.org/schema/beans/spring-beans.xsd 
-+                           http://www.springframework.org/schema/tx 
-+                           http://www.springframework.org/schema/tx/spring-tx.xsd
-+                           http://www.springframework.org/schema/context 
-+                           http://www.springframework.org/schema/context/spring-context.xsd
-+                           http://shardingsphere.apache.org/schema/shardingsphere/datasource
-+                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd
-+                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt
-+                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encrypt.xsd 
-+                           ">
-+    <context:component-scan base-package="org.apache.shardingsphere.example.core.mybatis" />
-+    
-+    <bean id="ds" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
-+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
-+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/demo_ds?serverTimezone=UTC&amp;useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8"/>
-+        <property name="username" value="root"/>
-+        <property name="password" value=""/>
-+    </bean>
-+    
-+    <encrypt:encrypt-algorithm id="name_encryptor" type="AES">
-+        <props>
-+            <prop key="aes-key-value">123456</prop>
-+        </props>
-+    </encrypt:encrypt-algorithm>
-+    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
-+    
-+    <encrypt:rule id="encryptRule">
-+        <encrypt:table name="t_user">
-+            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
-+            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
-+        </encrypt:table>
-+    </encrypt:rule>
-+    
-+    <shardingsphere:data-source id="encryptDataSource" data-source-names="ds" rule-refs="encryptRule" />
-+    
-+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
-+        <property name="dataSource" ref="encryptDataSource" />
-+    </bean>
-+    <tx:annotation-driven />
-+    
-+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
-+        <property name="dataSource" ref="encryptDataSource"/>
-+        <property name="mapperLocations" value="classpath*:META-INF/mappers/*.xml"/>
-+    </bean>
-+    
-+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
-+        <property name="basePackage" value="org.apache.shardingsphere.example.core.mybatis.repository"/>
-+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
-+    </bean>
-+</beans>
-+```
-+
-+## 相关参考
-+
-+- [数据分片核心特性](/cn/features/sharding/)
-+- [数据分片开发者指南](/cn/dev-manual/sharding/)
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.en.md
-index 099b35e8e6b..d87d6eb62e3 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/sharding.en.md
-@@ -3,7 +3,11 @@ title = "Sharding"
- weight = 1
- +++
+-## 高可用类型
+-
+-Apache ShardingSphere 不提供数据库高可用的能力，它通过第三方提供的高可用方案感知数据库主从关系的切换。
+-确切来说，Apache ShardingSphere 提供数据库发现的能力，自动感知数据库主从关系，并修正计算节点对数据库的连接。
+-
+-## 动态读写分离
+-
+-高可用和读写分离一起使用时，读写分离无需配置具体的主库和从库。
+-高可用的数据源会动态的修正读写分离的主从关系，并正确的疏导读写流量。
+diff --git a/docs/document/content/features/ha/concept.en.md b/docs/document/content/features/ha/concept.en.md
+deleted file mode 100644
+index a9e54061ee4..00000000000
+--- a/docs/document/content/features/ha/concept.en.md
++++ /dev/null
+@@ -1,14 +0,0 @@
+-+++
+-title = "Core Concept"
+-weight = 1
+-+++
+-
+-## high Availability Type
+-
+-Apache ShardingSphere does not provide high availability solution of database, it reuses 3rd party high availability solution and auto-detect switch of primary and replica databases.
+-Specifically, the ability of Apache ShardingSphere provided is database discovery, detect the primary and replica databases automatically, and updates the connection of compute nodes to the databases.
+-
+-## Dynamic Readwrite-Splitting
+-
+-When high availability and readwrite-splitting are used together, there is unnecessary to configure specific primary and replica databases for readwrite-splitting.
+-Highly available data sources will update the primary and replica databases of readwrite-splitting dynamically, and route the query and update SQL correctly.
+diff --git a/docs/document/content/features/ha/use-norms.cn.md b/docs/document/content/features/ha/use-norms.cn.md
+deleted file mode 100644
+index c06b3728ebd..00000000000
+--- a/docs/document/content/features/ha/use-norms.cn.md
++++ /dev/null
+@@ -1,13 +0,0 @@
+-+++
+-title = "使用规范"
+-weight = 2
+-+++
+-
+-## 支持项
+-
+-* MySQL MGR 单主模式。
+-
+-
+-## 不支持项
+-
+-* MySQL MGR 多主模式。
+diff --git a/docs/document/content/features/ha/use-norms.en.md b/docs/document/content/features/ha/use-norms.en.md
+deleted file mode 100644
+index 12d787dc309..00000000000
+--- a/docs/document/content/features/ha/use-norms.en.md
++++ /dev/null
+@@ -1,12 +0,0 @@
+-+++
+-title = "Use Norms"
+-weight = 2
+-+++
+-
+-## Supported
+-
+-* MySQL MGR single-primary mode.
+-
+-## Unsupported
+-
+-* MySQL MGR multi-primary mode.
+diff --git a/docs/document/content/features/readwrite-splitting/_index.en.md b/docs/document/content/features/readwrite-splitting/_index.en.md
+index 44f91f6e000..db05660554b 100644
+--- a/docs/document/content/features/readwrite-splitting/_index.en.md
++++ b/docs/document/content/features/readwrite-splitting/_index.en.md
+@@ -45,6 +45,6 @@ Users can also expand the required algorithm according to the SPI mechanism. As
  
--## Configuration Item Explanation
-+## Background
-+
-+The configuration method of data sharding Spring Namespace is applicable to traditional Spring projects. The sharding rules and attributes are configured through the namespace xml configuration file. Spring completes the creation and management of ShardingSphereDataSource objects to avoid additional coding work.
-+
-+## Parameters
- 
- Namespace: [http://shardingsphere.apache.org/schema/shardingsphere/sharding/sharding-5.1.2.xsd](http://shardingsphere.apache.org/schema/shardingsphere/sharding/sharding-5.1.2.xsd)
- 
-@@ -112,6 +116,77 @@ Namespace: [http://shardingsphere.apache.org/schema/shardingsphere/sharding/shar
- 
- Please refer to [Built-in Sharding Algorithm List](/en/user-manual/shardingsphere-jdbc/builtin-algorithm/sharding) and [Built-in Key Generate Algorithm List](/en/user-manual/shardingsphere-jdbc/builtin-algorithm/keygen) for more details about type of algorithm.
- 
--## Attention
-+> Attention: Inline expression identifier can use `${...}` or `$->{...}`, but `${...}` is conflict with spring placeholder of properties, so use `$->{...}` on spring environment is better.
-+
-+## Procedure
-+
-+1. Configure data sharding rules in the Spring Namespace configuration file, including data source, sharding rules, global attributes and other configuration items.
-+2. Start the Spring program, the configuration will be loaded automatically, and the ShardingSphereDataSource will be initialized.
-+
-+## Sample
-+
-+```xml
-+<beans xmlns="http://www.springframework.org/schema/beans"
-+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-+       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
-+       xmlns:context="http://www.springframework.org/schema/context"
-+       xmlns:tx="http://www.springframework.org/schema/tx"
-+       xmlns:encrypt="http://shardingsphere.apache.org/schema/shardingsphere/encrypt"
-+       xsi:schemaLocation="http://www.springframework.org/schema/beans
-+                           http://www.springframework.org/schema/beans/spring-beans.xsd 
-+                           http://www.springframework.org/schema/tx 
-+                           http://www.springframework.org/schema/tx/spring-tx.xsd
-+                           http://www.springframework.org/schema/context 
-+                           http://www.springframework.org/schema/context/spring-context.xsd
-+                           http://shardingsphere.apache.org/schema/shardingsphere/datasource
-+                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd
-+                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt
-+                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encrypt.xsd 
-+                           ">
-+    <context:component-scan base-package="org.apache.shardingsphere.example.core.mybatis" />
-+    
-+    <bean id="ds" class="com.zaxxer.hikari.HikariDataSource" destroy-method="close">
-+        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
-+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/demo_ds?serverTimezone=UTC&amp;useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8"/>
-+        <property name="username" value="root"/>
-+        <property name="password" value=""/>
-+    </bean>
-+    
-+    <encrypt:encrypt-algorithm id="name_encryptor" type="AES">
-+        <props>
-+            <prop key="aes-key-value">123456</prop>
-+        </props>
-+    </encrypt:encrypt-algorithm>
-+    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
-+    
-+    <encrypt:rule id="encryptRule">
-+        <encrypt:table name="t_user">
-+            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
-+            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
-+        </encrypt:table>
-+    </encrypt:rule>
-+    
-+    <shardingsphere:data-source id="encryptDataSource" data-source-names="ds" rule-refs="encryptRule" />
-+    
-+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
-+        <property name="dataSource" ref="encryptDataSource" />
-+    </bean>
-+    <tx:annotation-driven />
-+    
-+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
-+        <property name="dataSource" ref="encryptDataSource"/>
-+        <property name="mapperLocations" value="classpath*:META-INF/mappers/*.xml"/>
-+    </bean>
-+    
-+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
-+        <property name="basePackage" value="org.apache.shardingsphere.example.core.mybatis.repository"/>
-+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"/>
-+    </bean>
-+</beans>
-+```
-+
-+## Related References
-+
-+- [Core Features of Data Sharding](/en/features/sharding/)
-+- [Developer Guide of Data Sharding](/en/dev-manual/sharding/)
- 
--Inline expression identifier can use `${...}` or `$->{...}`, but `${...}` is conflict with spring placeholder of properties, so use `$->{...}` on spring environment is better.
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.cn.md
-index 5aec0c1a708..694f360f483 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.cn.md
-@@ -3,7 +3,11 @@ title = "数据分片"
- weight = 1
- +++
- 
--## 配置项说明
-+## 背景信息
-+
-+数据分片 YAML 配置方式具有非凡的可读性，通过 YAML 格式，能够快速地理解分片规则之间的依赖关系，ShardingSphere 会根据 YAML 配置，自动完成 ShardingSphereDataSource 对象的创建，减少用户不必要的编码工作。
-+
-+## 参数解释
- 
- ```yaml
- rules:
-@@ -57,3 +61,104 @@ rules:
-       props: # 分布式序列算法属性配置
-       # ...
- ```
-+
-+## 操作步骤
-+
-+1. 在 YAML 文件中配置数据分片规则，包含数据源、分片规则、全局属性等配置项；
-+2. 调用 YamlShardingSphereDataSourceFactory 对象的 createDataSource 方法，根据 YAML 文件中的配置信息创建 ShardingSphereDataSource。
-+
-+## 配置示例
-+
-+数据分片 YAML 配置示例如下：
-+
-+```yaml
-+dataSources:
-+  ds_0:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: com.mysql.jdbc.Driver
-+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+    username: root
-+    password:
-+  ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: com.mysql.jdbc.Driver
-+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+    username: root
-+    password:
-+
-+rules:
-+- !SHARDING
-+  tables:
-+    t_order: 
-+      actualDataNodes: ds_${0..1}.t_order_${0..1}
-+      tableStrategy: 
-+        standard:
-+          shardingColumn: order_id
-+          shardingAlgorithmName: t-order-inline
-+      keyGenerateStrategy:
-+        column: order_id
-+        keyGeneratorName: snowflake
-+    t_order_item:
-+      actualDataNodes: ds_${0..1}.t_order_item_${0..1}
-+      tableStrategy:
-+        standard:
-+          shardingColumn: order_id
-+          shardingAlgorithmName: t_order-item-inline
-+      keyGenerateStrategy:
-+        column: order_item_id
-+        keyGeneratorName: snowflake
-+    t_account:
-+      actualDataNodes: ds_${0..1}.t_account_${0..1}
-+      tableStrategy:
-+        standard:
-+          shardingAlgorithmName: t-account-inline
-+      keyGenerateStrategy:
-+        column: account_id
-+        keyGeneratorName: snowflake
-+  defaultShardingColumn: account_id
-+  bindingTables:
-+    - t_order,t_order_item
-+  broadcastTables:
-+    - t_address
-+  defaultDatabaseStrategy:
-+    standard:
-+      shardingColumn: user_id
-+      shardingAlgorithmName: database-inline
-+  defaultTableStrategy:
-+    none:
-+  
-+  shardingAlgorithms:
-+    database-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: ds_${user_id % 2}
-+    t-order-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: t_order_${order_id % 2}
-+    t_order-item-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: t_order_item_${order_id % 2}
-+    t-account-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: t_account_${account_id % 2}
-+  keyGenerators:
-+    snowflake:
-+      type: SNOWFLAKE
-+
-+props:
-+  sql-show: false
-+```
-+
-+通过 YamlShardingSphereDataSourceFactory 的 createDataSource 方法，读取 YAML 配置完成数据源的创建。
-+
-+```java
-+YamlShardingSphereDataSourceFactory.createDataSource(getFile("/META-INF/sharding-databases-tables.yaml"));
-+```
-+
-+## 相关参考
-+
-+- [数据分片核心特性](/cn/features/sharding/)
-+- [数据分片开发者指南](/cn/dev-manual/sharding/)
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.en.md
-index 16bb3243eb5..3c01519e6ce 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding.en.md
-@@ -3,7 +3,11 @@ title = "Sharding"
- weight = 1
- +++
- 
--## Configuration Item Explanation
-+## Background
-+
-+Data sharding YAML configuration is highly readable. The dependencies between sharding rules can be quickly understood through the YAML format. ShardingSphere automatically creates the ShardingSphereDataSource object according to YAML configuration, which can reduce unnecessary coding for users.
-+
-+## Parameters
- 
- ```yaml
- rules:
-@@ -57,3 +61,104 @@ rules:
-       props: # Key generate algorithm properties
-       # ...
- ```
-+
-+## Procedure
-+
-+1. Configure data sharding rules in YAML files, including data source, sharding rules, and global attributes and other configuration items.
-+2. Call createDataSource method of the object YamlShardingSphereDataSourceFactory. Create ShardingSphereDataSource according to the configuration information in YAML files.
-+
-+## Sample
-+
-+The YAML configuration sample of data sharding is as follows:
-+
-+```yaml
-+dataSources:
-+  ds_0:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: com.mysql.jdbc.Driver
-+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+    username: root
-+    password:
-+  ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: com.mysql.jdbc.Driver
-+    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds_1?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
-+    username: root
-+    password:
-+
-+rules:
-+- !SHARDING
-+  tables:
-+    t_order: 
-+      actualDataNodes: ds_${0..1}.t_order_${0..1}
-+      tableStrategy: 
-+        standard:
-+          shardingColumn: order_id
-+          shardingAlgorithmName: t-order-inline
-+      keyGenerateStrategy:
-+        column: order_id
-+        keyGeneratorName: snowflake
-+    t_order_item:
-+      actualDataNodes: ds_${0..1}.t_order_item_${0..1}
-+      tableStrategy:
-+        standard:
-+          shardingColumn: order_id
-+          shardingAlgorithmName: t_order-item-inline
-+      keyGenerateStrategy:
-+        column: order_item_id
-+        keyGeneratorName: snowflake
-+    t_account:
-+      actualDataNodes: ds_${0..1}.t_account_${0..1}
-+      tableStrategy:
-+        standard:
-+          shardingAlgorithmName: t-account-inline
-+      keyGenerateStrategy:
-+        column: account_id
-+        keyGeneratorName: snowflake
-+  defaultShardingColumn: account_id
-+  bindingTables:
-+    - t_order,t_order_item
-+  broadcastTables:
-+    - t_address
-+  defaultDatabaseStrategy:
-+    standard:
-+      shardingColumn: user_id
-+      shardingAlgorithmName: database-inline
-+  defaultTableStrategy:
-+    none:
-+  
-+  shardingAlgorithms:
-+    database-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: ds_${user_id % 2}
-+    t-order-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: t_order_${order_id % 2}
-+    t_order-item-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: t_order_item_${order_id % 2}
-+    t-account-inline:
-+      type: INLINE
-+      props:
-+        algorithm-expression: t_account_${account_id % 2}
-+  keyGenerators:
-+    snowflake:
-+      type: SNOWFLAKE
-+
-+props:
-+  sql-show: false
-+```
-+
-+Read the YAML configuration to create a data source according to the createDataSource method of YamlShardingSphereDataSourceFactory.
-+
-+```java
-+YamlShardingSphereDataSourceFactory.createDataSource(getFile("/META-INF/sharding-databases-tables.yaml"));
-+```
-+
-+## Related References
-+
-+- [Core Features of Data Sharding](/en/features/sharding/)
-+- [Developer Guide of Data Sharding](/en/dev-manual/sharding/)
+ ## 相关参考
+ [Java API](/en/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting)\
+-[YAML Configuration](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting)\
+-[Spring Boot Starter](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting)\
+-[Spring Namespace](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting)
++[YAML Configuration](/en/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting)\
++[Spring Boot Starter](/en/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting)\
++[Spring Namespace](/en/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting)

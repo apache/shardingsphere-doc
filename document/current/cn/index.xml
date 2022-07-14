@@ -184,6 +184,18 @@ rules: - !SHARDING tables: t_order: actualDataNodes: demo_ds_${0..1}.t_order_${0
     
     <item>
       <title>数据分片</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/best-practices/sharding/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/best-practices/sharding/</guid>
+      <description>适用场景 适用于将单一节点的数据水平拆分存储至多个数据节点，并且期望业务 SQL 不做改造，依然可以针对单一存储节点书写的场景。
+前提条件 假设用户期望对 t_order 表进行水平拆分至两个数据库实例共 4 张表，并且要求拆分后 SQL 依然针对 t_order 表书写。
+数据规划 我们计划按照 user_id % 2 进行分库， order_id % 2 进行分表。
+操作步骤  下载 ShardingSphere-proxy 按照配置示例所示，配置 proxy 的分片功能，然后启动 proxy。 连接 proxy 后，创建 t_order 表  ## 可以通过 PREVIEW 语法查看真实创建表语法 sharding_db=&amp;gt; PREVIEW CREATE TABLE t_order (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)); data_source_name | actual_sql ------------------+-----------------------------------------------------------------------------------------------------------------------  ds_1 | CREATE TABLE t_order_0 (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)) ds_1 | CREATE TABLE t_order_1 (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)) ds_0 | CREATE TABLE t_order_0 (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)) ds_0 | CREATE TABLE t_order_1 (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)) (4 rows) CREATE TABLE t_order (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)); 向 t_order 表中插入数据  sharding_db=&amp;gt; PREVIEW INSERT INTO t_order values (1, 1,&amp;#39;OK&amp;#39;),(2, 2, &amp;#39;OK&amp;#39;); data_source_name | actual_sql ------------------+-------------------------------------------  ds_1 | INSERT INTO t_order_1 values (1, 1, &amp;#39;OK&amp;#39;) ds_0 | INSERT INTO t_order_0 values (2, 2, &amp;#39;OK&amp;#39;) (2 rows) INSERT INTO t_order values (1, 1,&amp;#39;OK&amp;#39;),(2, 2, &amp;#39;OK&amp;#39;); 查询 t_order 表  sharding_db=&amp;gt; PREVIEW SELECT * FROM t_order; data_source_name | actual_sql ------------------+-----------------------------------------------------------  ds_0 | SELECT * FROM t_order_0 UNION ALL SELECT * FROM t_order_1 ds_1 | SELECT * FROM t_order_0 UNION ALL SELECT * FROM t_order_1 (2 rows) sharding_db=&amp;gt; PREVIEW SELECT * FROM t_order WHERE user_id = 1 and order_id = 1; data_source_name | actual_sql ------------------+------------------------------------------------------------  ds_1 | SELECT * FROM t_order_1 WHERE user_id = 1 and order_id = 1 (1 row) 配置示例 config-sharding.</description>
+    </item>
+    
+    <item>
+      <title>数据分片</title>
       <link>https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/java-api/rules/sharding/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
@@ -1048,6 +1060,18 @@ SELECT order_id FROM t_order_1 WHERE order_id=1 AND remarks=&amp;#39; t_order xx
     
     <item>
       <title>读写分离</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/best-practices/readwrite-splitting/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/best-practices/readwrite-splitting/</guid>
+      <description>适用场景 适用于一主多从的数据库架构，主库负责数据的写入、修改、删除等事务性操作，从库负责查询操作。 另外 Apache ShardingSphere 的读写分离功能提供了多种负载均衡策略。
+前提条件 假设用户有一主二从的数据库架构，另外用户期望两个从库能够承担不同比重的负载。
+数据规划 我们将采用读写分离配置，并且针对两个从库采用 WEIGHT 的负载均衡策略，让两个从库承担不同的负载。
+操作步骤  下载 ShardingSphere-proxy 采用如配置示例所示的读写分离配置 连接 proxy 后，创建 t_order 表  ## 可以通过 PREVIEW 语法查看真实创建表语法，可以看到路由结果都是指向了 write_ds readwrite_splitting_db=&amp;gt; PREVIEW CREATE TABLE t_order (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)); data_source_name | actual_sql ------------------+---------------------------------------------------------------------------------------------------------------------  write_ds | CREATE TABLE t_order (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)) (1 row) CREATE TABLE t_order (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHAR(45) NULL, PRIMARY KEY (order_id)); 向 t_order 表中插入数据  readwrite_splitting_db=&amp;gt; PREVIEW INSERT INTO t_order values (1, 1,&amp;#39;OK&amp;#39;); data_source_name | actual_sql ------------------+----------------------------------------  write_ds | INSERT INTO t_order values (1, 1,&amp;#39;OK&amp;#39;) (1 row) INSERT INTO t_order values (1, 1,&amp;#39;OK&amp;#39;) 查询 t_order 表  ## 多次查询路由到不同从库 readwrite_splitting_db=&amp;gt; PREVIEW SELECT * FROM t_order; data_source_name | actual_sql ------------------+-----------------------  read_ds_1 | SELECT * FROM t_order (1 row) readwrite_splitting_db=&amp;gt; PREVIEW SELECT * FROM t_order; data_source_name | actual_sql ------------------+-----------------------  read_ds_0 | SELECT * FROM t_order (1 row) 配置示例 config-encrypt.</description>
+    </item>
+    
+    <item>
+      <title>读写分离</title>
       <link>https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
@@ -1433,6 +1457,18 @@ ShardingSphere 在对排序的查询进行归并时，将每个结果集的当�
     
     <item>
       <title>数据加密</title>
+      <link>https://shardingsphere.apache.org/document/current/cn/best-practices/encrypt/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>https://shardingsphere.apache.org/document/current/cn/best-practices/encrypt/</guid>
+      <description>适用场景 不论是新业务需要使用数据加密的功能，还是需要对已有业务进行改造满足加密需求，Apache ShardingSphere 都提供了一套完整的数据加密解决方案。用户可以通过如下实践进行学习了解。
+前提条件 假设新业务上线，现在期望对用户的密码字段进行加密存储于数据库中，但同时系统要能够获取明文数据。
+数据规划 由于用户期望对密码字段进行加密存储，但是系统又要能够获取明文字段，那么我们可以采用可逆算法 AES 对数据进行加密。因此我们可以采用如配置示例中所示的配置，对t_user 表进行加密，逻辑列名称为 pwd，也就是业务 SQL 中采用的字段名称，该字段映射到数据库中为 pwd_cipher 字段，对应的加密算法采用 AES。
+操作步骤  下载 ShardingSphere-proxy 采用如配置示例所示的加密配置 连接 proxy 后，创建 t_user 表  ## 可以通过 PREVIEW 语法查看真实创建表语法 encrypt_db=&amp;gt; PREVIEW CREATE TABLE t_user (user_id INT NOT NULL, username VARCHAR(200), pwd VARCHAR(200) NOT NULL, PRIMARY KEY (user_id)); data_source_name | actual_sql ------------------+----------------------------------------------------------------------------------------------------------------------------  ds_0 | CREATE TABLE t_user (user_id INT NOT NULL, username VARCHAR(200), pwd_cipher VARCHAR(200) NOT NULL, PRIMARY KEY (user_id)) (1 row) CREATE TABLE t_user (user_id INT NOT NULL, username VARCHAR(200), pwd VARCHAR(200) NOT NULL, PRIMARY KEY (user_id)); 向 t_user 表中插入数据  encrypt_db=&amp;gt; PREVIEW INSERT INTO t_user values (1,&amp;#39;ZHANGSAN&amp;#39;,&amp;#39;123456&amp;#39;); data_source_name | actual_sql ------------------+------------------------------------------------------------------------------------------------------  ds_0 | INSERT INTO t_user(user_id, username, pwd_cipher) values (1, &amp;#39;ZHANGSAN&amp;#39;, &amp;#39;MyOShk4kjRnds7CZfU5NCw==&amp;#39;) (1 row) INSERT INTO t_user values (1,&amp;#39;ZHANGSAN&amp;#39;,&amp;#39;123456&amp;#39;); 查询 t_user 表  encrypt_db=&amp;gt; PREVIEW SELECT * FROM t_user WHERE pwd = &amp;#39;123456&amp;#39;; data_source_name | actual_sql ------------------+------------------------------------------------------------------------------------------------------------------------------------------  ds_0 | SELECT &amp;#34;t_user&amp;#34;.</description>
+    </item>
+    
+    <item>
+      <title>数据加密</title>
       <link>https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/java-api/rules/encrypt/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
@@ -1731,7 +1767,7 @@ CREATE TABLE IF NOT EXISTS `undo_log` ( `id` BIGINT(20) NOT NULL AUTO_INCREMENT 
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/document/current/cn/dev-manual/readwrite-splitting/</guid>
-      <description>SPI 接口 ReadQueryLoadBalanceAlgorithm    SPI 名称 详细说明     ReadQueryLoadBalanceAlgorithm 读库负载均衡算法    示例 ReadQueryLoadBalanceAlgorithm    已知实现类 详细说明     RoundRobinReplicaLoadBalanceAlgorithm 基于轮询的读库负载均衡算法   RandomReplicaLoadBalanceAlgorithm 基于随机的读库负载均衡算法   WeightReplicaLoadBalanceAlgorithm 基于权重的读库负载均衡算法    </description>
+      <description>SPI 接口 ReadQueryLoadBalanceAlgorithm    SPI 名称 详细说明     ReadQueryLoadBalanceAlgorithm 读库负载均衡算法    示例 ReadQueryLoadBalanceAlgorithm    已知实现类 详细说明     RoundRobinReplicaLoadBalanceAlgorithm 基于轮询的读库负载均衡算法   RandomReplicaLoadBalanceAlgorithm 基于随机的读库负载均衡算法   WeightReplicaLoadBalanceAlgorithm 基于权重的读库负载均衡算法   TransactionRandomReplicaLoadBalanceAlgorithm 无论是否在事务中，读请求采用随机策略路由到多个读库   TransactionRoundRobinReplicaLoadBalanceAlgorithm 无论是否在事务中，读请求采用轮询策略路由到多个读库   TransactionWeightReplicaLoadBalanceAlgorithm 无论是否在事务中，读请求采用权重策略路由到多个读库   FixedReplicaRandomLoadBalanceAlgorithm 显示开启事务，读请求采用随机策略路由到一个固定读库；不开事务，每次读流量使用指定算法路由到不同的读库   FixedReplicaRoundRobinLoadBalanceAlgorithm 显示开启事务，读请求采用轮询策略路由到一个固定读库；不开事务，每次读流量使用指定算法路由到不同的读库   FixedReplicaWeightLoadBalanceAlgorithm 显示开启事务，读请求采用权重策略路由到多个读库；不开事务，每次读流量使用指定算法路由到不同的读库   FixedPrimaryLoadBalanceAlgorithm 读请求全部路由到主库    </description>
     </item>
     
     <item>

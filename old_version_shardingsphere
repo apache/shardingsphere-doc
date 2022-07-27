@@ -1,30 +1,182 @@
-commit 26621555bc8d1401ae616dd8bde7afa21e1f35e6
-Author: 孙念君 Nianjun Sun <sunnianjun@sphere-ex.com>
-Date:   Wed Jul 27 15:04:40 2022 +0800
+commit 5d154dbd421ab32bf669eb172b1e1ecadb83867f
+Author: Mike0601 <40025573+Mike0601@users.noreply.github.com>
+Date:   Wed Jul 27 15:38:31 2022 +0800
 
-    Format : format the it doc and other Java file (#19596)
+    update according new module (#19598)
+    
+    * Refactor document
+    
+    Remove concepts document
+    
+    * refactor
+    
+    * update feature sharding
+    
+    * update according new module
 
-diff --git a/docs/document/content/test-manual/integration-test/_index.cn.md b/docs/document/content/test-manual/integration-test/_index.cn.md
-index 35246036c8e..1ebd2303685 100644
---- a/docs/document/content/test-manual/integration-test/_index.cn.md
-+++ b/docs/document/content/test-manual/integration-test/_index.cn.md
-@@ -158,6 +158,7 @@ it.cluster.databases=H2,MySQL,Oracle,SQLServer,PostgreSQL
- ```bash
- ./mvnw -B clean install -f shardingsphere-test/shardingsphere-integration-test/pom.xml -Pit.env.docker -Dit.cluster.adapters=proxy,jdbc -Dit.scenarios=${scenario_name_1,scenario_name_1,scenario_name_n} -Dit.cluster.databases=MySQL
- ```
-+
- 运行以上命令会构建出一个用于集成测试的 Docker 镜像 `apache/shardingsphere-proxy-test:latest`。
- 如果仅修改了测试代码，可以复用已有的测试镜像，无须重新构建。使用以下命令可以跳过镜像构建，直接运行集成测试：
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
+index 419a9aa8e0b..2ec7f83b376 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
+@@ -3,7 +3,13 @@ title = "数据加密"
+ weight = 5
+ +++
  
-diff --git a/docs/document/content/test-manual/integration-test/_index.en.md b/docs/document/content/test-manual/integration-test/_index.en.md
-index fb15ad064ea..9496f6a5448 100644
---- a/docs/document/content/test-manual/integration-test/_index.en.md
-+++ b/docs/document/content/test-manual/integration-test/_index.en.md
-@@ -135,6 +135,7 @@ This will reduce the difficulty for ShardingSphere testing.
- ```bash
- ./mvnw -B clean install -f shardingsphere-test/shardingsphere-integration-test/pom.xml -Pit.env.docker -Dit.cluster.adapters=proxy,jdbc -Dit.scenarios=${scenario_name_1,scenario_name_1,scenario_name_n} -Dit.cluster.databases=MySQL
- ```
+-## 配置入口
++## 背景信息
 +
- Running the above command will build a Docker image `apache/shardingsphere-proxy-test:latest` for integration testing.
- The existing test Docker image can be reused without rebuilding if only the test code is modified.
- Use the following command to skip the image building and run the integration tests directly:
++数据加密 Java API 规则配置允许用户直接通过编写 Java 代码的方式，完成 ShardingSphereDataSource 对象的创建，Java API 的配置方式非常灵活，不需要依赖额外的 jar 包 就能够集成各种类型的业务系统。
++
++## 参数解释
++
++### 配置入口
+ 
+ 类名称：org.apache.shardingsphere.encrypt.api.config.EncryptRuleConfiguration
+ 
+@@ -15,7 +21,7 @@ weight = 5
+ | encryptors (+)            | Map\<String, ShardingSphereAlgorithmConfiguration\> | 加解密算法名称和配置                                      |        |
+ | queryWithCipherColumn (?) | boolean                                             | 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询 | true   |
+ 
+-## 加密表规则配置
++### 加密表规则配置
+ 
+ 类名称：org.apache.shardingsphere.encrypt.api.config.rule.EncryptTableRuleConfiguration
+ 
+@@ -27,7 +33,7 @@ weight = 5
+ | columns (+) | Collection\<EncryptColumnRuleConfiguration\> | 加密列规则配置列表 |
+ | queryWithCipherColumn (?) | boolean                                             | 该表是否使用加密列进行查询 |
+ 
+-## 加密列规则配置
++### 加密列规则配置
+ 
+ 类名称：org.apache.shardingsphere.encrypt.api.config.rule.EncryptColumnRuleConfiguration
+ 
+@@ -43,7 +49,7 @@ weight = 5
+ | assistedQueryEncryptorName| String   | 查询辅助列加密算法名称   |
+ | queryWithCipherColumn (?) | boolean                                             | 该列是否使用加密列进行查询 |
+ 
+-## 加解密算法配置
++### 加解密算法配置
+ 
+ 类名称：org.apache.shardingsphere.infra.config.algorithm.ShardingSphereAlgorithmConfiguration
+ 
+@@ -56,3 +62,40 @@ weight = 5
+ | properties | Properties | 加解密算法属性配置 |
+ 
+ 算法类型的详情，请参见[内置加密算法列表](/cn/user-manual/shardingsphere-jdbc/builtin-algorithm/encrypt)。
++
++## 操作步骤
++
++1. 创建真实数据源映射关系，key 为数据源逻辑名称，value 为 DataSource 对象；
++1. 创建加密规则对象 EncryptRuleConfiguration，并初始化对象中的加密表对象 EncryptTableRuleConfiguration、加密算法等参数；
++1. 调用 ShardingSphereDataSourceFactory 对象的 createDataSource 方法，创建 ShardingSphereDataSource。
++
++## 配置示例
++
++```java
++public final class EncryptDatabasesConfiguration implements ExampleConfiguration {
++    
++    @Override
++    public DataSource getDataSource() {
++        Properties props = new Properties();
++        props.setProperty("aes-key-value", "123456");
++        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
++        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
++        EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
++        Map<String, ShardingSphereAlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
++        encryptAlgorithmConfigs.put("name_encryptor", new ShardingSphereAlgorithmConfiguration("AES", props));
++        encryptAlgorithmConfigs.put("pwd_encryptor", new ShardingSphereAlgorithmConfiguration("assistedTest", props));
++        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
++        try {
++            return ShardingSphereDataSourceFactory.createDataSource(DataSourceUtil.createDataSource("demo_ds"), Collections.singleton(encryptRuleConfig), props);
++        } catch (final SQLException ex) {
++            ex.printStackTrace();
++            return null;
++        }
++    }
++}
++```
++
++## 相关参考
++
++- [数据加密的核心特性](/cn/features/sharding/ )
++- [数据加密的开发者指南](/cn/dev-manual/encryption/)
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
+index 2155b60cecc..68d4cdb93ae 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
+@@ -3,7 +3,13 @@ title = "Encryption"
+ weight = 5
+ +++
+ 
+-## Root Configuration
++## Background
++
++The data encryption Java API rule configuration allows users to directly create ShardingSphereDataSource objects by writing java code. The Java API configuration method is very flexible and can integrate various types of business systems without relying on additional jar packages.
++
++## Parameters
++
++### Root Configuration
+ 
+ Class name: org.apache.shardingsphere.encrypt.api.config.EncryptRuleConfiguration
+ 
+@@ -15,7 +21,7 @@ Attributes:
+ | encryptors (+)            | Map\<String, ShardingSphereAlgorithmConfiguration\> | Encrypt algorithm name and configurations                                                      |                 |
+ | queryWithCipherColumn (?) | boolean                                             | Whether query with cipher column for data encrypt. User you can use plaintext to query if have | true            |
+ 
+-## Encrypt Table Rule Configuration
++### Encrypt Table Rule Configuration
+ 
+ Class name: org.apache.shardingsphere.encrypt.api.config.rule.EncryptTableRuleConfiguration
+ 
+@@ -43,7 +49,7 @@ Attributes:
+ | assistedQueryEncryptorName           | String     | Assisted query encrypt algorithm name     |
+ | queryWithCipherColumn (?) | boolean                                             | The current column whether query with cipher column for data encrypt.  |
+ 
+-## Encrypt Algorithm Configuration
++### Encrypt Algorithm Configuration
+ 
+ Class name: org.apache.shardingsphere.infra.config.algorithm.ShardingSphereAlgorithmConfiguration
+ 
+@@ -56,3 +62,40 @@ Attributes:
+ | properties | Properties | Encrypt algorithm properties |
+ 
+ Please refer to [Built-in Encrypt Algorithm List](/en/user-manual/shardingsphere-jdbc/builtin-algorithm/encrypt) for more details about type of algorithm.
++
++## Procedure
++
++1. Create a real data source mapping relationship, where key is the logical name of the data source and value is the datasource object.
++1. Create the encryption rule object EncryptRuleConfiguration, and initialize the encryption table object EncryptTableRuleConfiguration, encryption algorithm and other parameters in the object.
++1. Call createDataSource of ShardingSphereDataSourceFactory to create  ShardingSphereDataSource.
++
++## Sample
++
++```java
++public final class EncryptDatabasesConfiguration implements ExampleConfiguration {
++    
++    @Override
++    public DataSource getDataSource() {
++        Properties props = new Properties();
++        props.setProperty("aes-key-value", "123456");
++        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
++        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
++        EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
++        Map<String, ShardingSphereAlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
++        encryptAlgorithmConfigs.put("name_encryptor", new ShardingSphereAlgorithmConfiguration("AES", props));
++        encryptAlgorithmConfigs.put("pwd_encryptor", new ShardingSphereAlgorithmConfiguration("assistedTest", props));
++        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
++        try {
++            return ShardingSphereDataSourceFactory.createDataSource(DataSourceUtil.createDataSource("demo_ds"), Collections.singleton(encryptRuleConfig), props);
++        } catch (final SQLException ex) {
++            ex.printStackTrace();
++            return null;
++        }
++    }
++}
++```
++
++## Related References
++
++- [The feature description of Data Encryption](/en/features/encrypt/ )
++- [Dev Guide of Data Encryption](/en/dev-manual/encryption/)

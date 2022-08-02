@@ -1,473 +1,98 @@
-commit d5f0e4315a3579ee2d732d82a744e2d3f66a0548
-Author: Yumeiya <107550813+Yumeiya@users.noreply.github.com>
-Date:   Tue Aug 2 15:32:34 2022 +0800
+commit f7a26788809bb37074af92ebc2d8f6eae44f49d0
+Author: shining-stars-lk <1031900093@qq.com>
+Date:   Tue Aug 2 17:09:26 2022 +0800
 
-    feat(blog): update two articles in blogs (#19784)
-    
-    * articles and images
-    
-    * images
-    
-    * Revise MarkDown
-    
-    * Update docs/blog/content/material/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere.en.md
-    
-    Co-authored-by: 吴伟杰 <wuweijie@apache.org>
+    Fixed English paragraphs in official website
 
-diff --git a/docs/blog/content/material/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere.en.md b/docs/blog/content/material/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere.en.md
-new file mode 100644
-index 00000000000..812086c3670
---- /dev/null
-+++ b/docs/blog/content/material/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere.en.md	
-@@ -0,0 +1,284 @@
-++++ 
-+title = "SQL Parse Format Function — A Technical Deep Dive by Apache ShardingSphere"
-+weight = 40
-+chapter = true 
-++++
-+
-+Complicted SQL statements are some of the most common problems that data scientists and engineers encounter. For example, can you comprehend at first glance the complex SQL statement below?
-+
-+```sql
-+select a.order_id,a.status,sum(b.money) as money from t_order a inner join (select c.order_id as order_id, c.number * d.price as money from t_order_detail c inner join t_order_price d on c.s_id = d.s_id) b on a.order_id = b.order_id where b.money > 100 group by a.order_id
-+```
-+
-+How about formatting it? Is it easier to understand the formatted formatted version below?
-+
-+```sql
-+SELECT a . order_id , a . status , SUM(b . money) AS money
-+FROM t_order a INNER JOIN
-+(
-+SELECT c . order_id AS order_id, c . number * d . price AS money
-+FROM t_order_detail c INNER JOIN t_order_price d ON c . s_id = d . s_id
-+) b ON a . order_id = b . order_id
-+WHERE
-+b . money > 100
-+GROUP BY a . order_id;
-+```
-+
-+The first step to parse such a complex SQL is always formatting, and then its SQL semantics can be parsed based on the formatted content. SQL Formatter is, therefore, one of the essential functions of for any database software.
-+
-+Accordingly, [Apache ShardingSphere](https://shardingsphere.apache.org/) now offers a SQL formatting tool called SQL Parse Format that depends on ShardingSphere’s SQL dialect parser.
-+
-+**SQL Parse Format is an important function of the ShardingSphere Parser Engine, and also lays the foundation for ShardingSphere’s SQL Audit (TODO).** This article offers a deep dive into the SQL Parse Format function:
-+
-+- What’s its core concept?
-+- How you can use it?
-+- How can you develop SQL Parse Format?
-+
-+## Parser Engine
-+
-+To begin, we need to introduce more about Apache ShardingSphere’s Parser Engine because SQL Parse Format is a unique and relatively independent function of the parser engine.
-+
-+Apache ShardingSphere developed the parser engine to extract key information in SQL, such as fields of data shards and rewritten columns for data encryption. So far, Apache ShardingSphere’s parser engine has undergone three iterations.
-+
-+The initial parser engine leveraged [Druid](https://druid.apache.org/) as its SQL parser and performed quite well before ShardingSphere Version 1.4.x.
-+
-+Later the ShardingSphere community decided to develop its second-generation parser engine on its own. Since the use purpose was changed, ShardingSphere adopted another approach to comprehend SQL: only the contextual information that data sharding needs was extracted, without generating a parse tree or a secondary traversal, to improve performance and compatibility.
-+
-+Currently, the third generation of ShardingSphere Parser Engine uses [ANTLR](https://www.antlr.org/) as the parse tree generator and then extracts the contextual information by doing a secondary tree traversal. It is substantially compatible with more SQL dialects, which further accelerates developing other functions in Apache ShardingSphere.
-+
-+In version 5.0.x, ShardingSphere developers further enhanced the performance of the newest parser engine by changing its tree traversal method from Listener to Visitor and adding parsing results cache for pre-compiled SQL statements.
-+
-+The implementation of SQL Parse Format is attributable to the new parser engine. Next, let’s take a look at SQL Parse Format function.
-+
-+## SQL Parser Format
-+SQL Parse Format is used to format SQL statements. Additionally, SQL Parse Format function will be used in SQL Audit in the future to provide users with viewing SQL history, displaying formatted SQL with reports, or further analyzing or processing SQL.
-+
-+For instance, each part of the following SQL formatted by SQL Parse Format becomes clearer with wrapping and keywords in all caps:
-+
-+```sql
-+select age as b, name as n from table1 join table2 where id = 1 and name = 'lu';
-+-- After Formatting
-+SELECT age AS b, name AS n
-+FROM table1 JOIN table2
-+WHERE 
-+        id = 1
-+        and name = 'lu';
-+```
-+
-+So far, we have covered the basics of the SQL Parse Format.
-+
-+> Next, let’s answer the question: what is the concept of SQL Parse Format?
-+
-+How a SQL statement is formatted in Apache ShardingSphere? Take the following SQL as an example:
-+
-+```sql
-+select order_id from t_order where status = 'OK'
-+```
-+
-+1. Apache ShardingSphere uses ANTLR4 as its parser engine generator. First, we need to follow the ANTLR4 method to define the syntax of select in the .g4 file (take MySQL as an example).
-+
-+```
-+simpleSelect
-+    : SELECT ALL? targetList? intoClause? fromClause? whereClause? groupClause? havingClause? windowClause?
-+    | SELECT distinctClause targetList intoClause? fromClause? whereClause? groupClause? havingClause? windowClause?
-+    | valuesClause
-+    | TABLE relationExpr
-+    ;
-+ ```
-+ 
-+2. We can use IDEA’s ANTLR4 plugin to easily view the syntax tree of the SQL statement.
-+
-+For more information of ANTLR4 , please refer to: [https://plugins.jetbrains.com/plugin/7358-antlr-v4](https://plugins.jetbrains.com/plugin/7358-antlr-v4.).
-+![Image description](https://miro.medium.com/max/700/1*EiWkP_kYN3sLOH4qsPonDA.jpeg)
-+
-+ANTLR4 can compile the syntax file we define: it first performs lexical analysis on the SQL statement, splits it into indivisible parts, namely tokens, and divides these tokens into keywords, expressions, according to the dictionary values of different databases.
-+
-+For example, in the image above, we get the keywords `SELECT`, `FROM`, `WHERE`, = and the variables `order_id`, `t_order`, `status`, `OK`.
-+
-+3. Then ANTLR4 converts the output of the parser engine into the syntax tree as shown in the image above.
-+
-+Based on the source code of Apache ShardingSphere, the above-mentioned process is reproduced as follows.
-+```java
-+String sql = "select order_id from t_order where status = 'OK'";
-+CacheOption cacheOption = new CacheOption(128, 1024L, 4);
-+SQLParserEngine parserEngine = new SQLParserEngine("MySQL", cacheOption, false);
-+ParseContext parseContext = parserEngine.parse(sql, false);
-+```
-+
-+4. The SQL Parser Engine of Apache ShardingSphere encapsulates and abstracts the ANTLR4 parser: it loads the SQL dialect parser through an SPI. Users can also extend data dialects through extension points of SPI. In addition, ShardingSphere adds a cache mechanism internally to improve performance. Take a look at the relevant code for parsing as follows:
-+```java
-+public ParseContext parse(final String sql) {
-+    ParseASTNode result = twoPhaseParse(sql);
-+    if (result.getRootNode() instanceof ErrorNode) {
-+        throw new SQLParsingException("Unsupported SQL of `%s`", sql);
-+    }
-+    return new ParseContext(result.getRootNode(), result.getHiddenTokens());
-+}
-+
-+private ParseASTNode twoPhaseParse(final String sql) {
-+    DatabaseTypedSQLParserFacade sqlParserFacade = DatabaseTypedSQLParserFacadeRegistry.getFacade(databaseType);
-+    SQLParser sqlParser = SQLParserFactory.newInstance(sql, sqlParserFacade.getLexerClass(), sqlParserFacade.getParserClass(), sqlCommentParseEnabled);
-+    try {
-+        ((Parser) sqlParser).getInterpreter().setPredictionMode(PredictionMode.SLL);
-+        return (ParseASTNode) sqlParser.parse();
-+    } catch (final ParseCancellationException ex) {
-+        ((Parser) sqlParser).reset();
-+        ((Parser) sqlParser).getInterpreter().setPredictionMode(PredictionMode.LL);
-+        try {
-+            return (ParseASTNode) sqlParser.parse();
-+        } catch (final ParseCancellationException e) {
-+            throw new SQLParsingException("You have an error in your SQL syntax");
-+        }
-+    }
-+}
-+```
-+
-+`twoPhaseParse` is the core of the parser. First, it will be loaded into the correct parser class according to the database type, and then a parser instance of ANTLR4 will be generated due to the reflection mechanism. Then, ANTLR4 provides two parsing methods: fast parsing is performed first, and if it fails, regular parsing will be performed. Users can obtain parsing results of most SQL statements via quick parsing, improving parsing performance as well. After parsing, we get the parse tree.
-+
-+So how does Apache ShardingSphere get the formatted SQL statement from the parse tree?
-+
-+In fact, ShardingSphere uses the `Visitor` method. ANTLR4 provides two ways to access syntax trees: Listener and `Visitor`. ShardingSphere chooses the latter to access syntax trees. The code below shows how to get formatted SQL from the syntax tree:
-+```java
-+SQLVisitorEngine visitorEngine = new SQLVisitorEngine("MySQL", "FORMAT", new Properties());
-+String result = visitorEngine.visit(parseContext);
-+```
-+Apache ShardingSphere’s `SQLVisitorEngine` also abstracts and encapsulates various dialect visitors. The core method is shown below:
-+
-+```java
-+public <T> T visit(final ParseContext parseContext) {
-+    ParseTreeVisitor<T> visitor = SQLVisitorFactory.newInstance(databaseType, visitorType, SQLVisitorRule.valueOf(parseContext.getParseTree().getClass()), props);
-+    T result = parseContext.getParseTree().accept(visitor);
-+    appendSQLComments(parseContext, result);
-+    return result;
-+}
-+```
-+At first, in terms of the above-mentioned `Visitor` method, the visitor to be used is decided according to the database type and the type of the visitor, and the visitor is also internally instantiated by the reflection mechanism. Currently, `visitorType` supports two methods: `FORMAT` and `STATEMENT`. The latter is commonly used by Apache ShardingSphere and can convert SQL into `Statement` information, extract relevant context information, and serve the features such as data sharding. In fact, this is the only difference between SQL Parse Format and other ordinary parser engine functions.
-+
-+Next, let’s still take the SQL statement as an example and provide specific code to show how `Visitor` formats it.
-+
-+`MySQLFormatSQLVisitor` is used to visit SQL. Based on the `DEBUG` code, we can clearly see the execution path of this visit as shown in the figure below. Visitor traverses all parts of the syntax tree, and ANTLR4 generates default methods for visiting each node according to the defined grammar rules. Apache ShardingSphere leverages key methods and successfully develops complete the SQL formatting function.
-+![Image description](https://miro.medium.com/max/700/1*xjjACczbInC-K4t8EX-pEw.jpeg)
-+
-+The following code can help us better understand how `Visitor` can format SQL.
-+
-+When the `Visitor` traverses to `select`, the `Visitor` will format it first, and then visit `projection`. The internal formatting of `projection` will be further implemented through the `visitProjections` method.
-+
-+Empty lines are handled before accessing `from`. The object instantiated by the `Visitor` maintains a `StringBuilder` to store the formatted result. Since the parser and visitor of each SQL are newly-created instantiated objects, there are no thread issues. After the final traversal, Apache ShardingSphere outputs the result in `StringBuilder`, and then we get formatted SQL.
-+
-+```java
-+public String visitQuerySpecification(final QuerySpecificationContext ctx) {
-+    formatPrint("SELECT ");
-+    int selectSpecCount = ctx.selectSpecification().size();
-+    for (int i = 0; i < selectSpecCount; i++) {
-+        visit(ctx.selectSpecification(i));
-+        formatPrint(" ");
-+    }
-+    visit(ctx.projections());
-+    if (null != ctx.fromClause()) {
-+        formatPrintln();
-+        visit(ctx.fromClause());
-+    }
-+    if (null != ctx.whereClause()) {
-+        formatPrintln();
-+        visit(ctx.whereClause());
-+    }
-+    if (null != ctx.groupByClause()) {
-+        formatPrintln();
-+        visit(ctx.groupByClause());
-+    }
-+    if (null != ctx.havingClause()) {
-+        formatPrintln();
-+        visit(ctx.havingClause());
-+    }
-+    if (null != ctx.windowClause()) {
-+        formatPrintln();
-+        visit(ctx.windowClause());
-+    }
-+    return result.toString();
-+}
-+```
-+
-+Now, based on the process analysis and code snippets above, you can understand the principle of SQL Parse Format.
-+
-+## User Guide for SQL Parse Format
-+You may find it’s easy to use the SQL Parse Format function in Apache ShardingSphere as long as you know its principle.
-+
-+As for Java applications, users only need to add dependencies and call the API.
-+
-+- Add the Dependency
-+
-+```xml
-+<dependency>
-+    <groupId>org.apache.shardingsphere</groupId>
-+    <artifactId>shardingsphere-sql-parser-engine</artifactId>
-+    <version>${project.version}</version>
-+</dependency>
-+
-+<dependency>
-+    <groupId>org.apache.shardingsphere</groupId>
-+    <artifactId>shardingsphere-sql-parser-mysql</artifactId>
-+    <version>${project.version}</version>
-+</dependency>
-+```
-+
-+- Call the API
-+```java
-+public static void main(String[] args) {
-+    String sql = "select order_id from t_order where status = 'OK'";
-+    CacheOption cacheOption = new CacheOption(128, 1024L, 4);
-+    SQLParserEngine parserEngine = new SQLParserEngine("MySQL", cacheOption, false);
-+    ParseContext parseContext = parserEngine.parse(sql, false);
-+    SQLVisitorEngine visitorEngine = new SQLVisitorEngine("MySQL", "FORMAT", new Properties());
-+    String result = visitorEngine.visit(parseContext);
-+    System.out.println(result);
-+}
-+```
-+
-+- Parameters Supported by Properties
-+![Image description](https://miro.medium.com/max/550/1*1Ft7G0EKkayVy5vrbcsDBg.png)
-+
-+You can also use DistSQL in ShardingSphere-Proxy to perform operations on the SQL Parse Format function:
-+```
-+mysql> FORMAT select order_id from t_user where status = 'OK';
-++-----------------------------------------------------+
-+| formatted_result                                    |
-++-----------------------------------------------------+
-+| SELECT order_id
-+FROM t_user
-+WHERE
-+        status = 'OK'; |
-++-----------------------------------------------------+
-+```
-+
-+In terms of the above-mentioned `Statement` mode, it can also enable users to easily view the results of `SQLStatement` converted from the SQL.
-+```
-+mysql> parse SELECT id, name FROM t_user WHERE status = 'ACTIVE' AND age > 18;
-++----------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+| parsed_statement     | parsed_statement_detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-++----------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+| MySQLSelectStatement | {"projections":{"startIndex":7,"stopIndex":14,"distinctRow":false,"projections":[{"column":{"startIndex":7,"stopIndex":8,"identifier":{"value":"id","quoteCharacter":"NONE"}}},{"column":{"startIndex":11,"stopIndex":14,"identifier":{"value":"name","quoteCharacter":"NONE"}}}]},"from":{"tableName":{"startIndex":21,"stopIndex":26,"identifier":{"value":"t_user","quoteCharacter":"NONE"}}},"where":{"startIndex":28,"stopIndex":63,"expr":{"startIndex":34,"stopIndex":63,"left":{"startIndex":34,"stopIndex":50,"left":{"startIndex":34,"stopIndex":39,"identifier":{"value":"status","quoteCharacter":"NONE"}},"right":{"startIndex":43,"stopIndex":50,"literals":"ACTIVE"},"operator":"\u003d","text":"status \u003d \u0027ACTIVE\u0027"},"right":{"startIndex":56,"stopIndex":63,"left":{"startIndex":56,"stopIndex":58,"identifier":{"value":"age","quoteCharacter":"NONE"}},"right":{"startIndex":62,"stopIndex":63,"literals":18},"operator":"\u003e","text":"age \u003e 18"},"operator":"AND","text":"status \u003d \u0027ACTIVE\u0027 AND age \u003e 18"}},"unionSegments":[],"parameterCount":0,"commentSegments":[]} |
-++----------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+```
-+
-+For more [DistSQL](https://opensource.com/article/21/9/distsql) functions, please refer to the documentation: [https://shardingsphere.apache.org/document/current/cn/concepts/distsql/](https://shardingsphere.apache.org/document/current/cn/concepts/distsql/)
-+
-+## Conclusion
-+Currently, Apache ShardingSphere’s Format function only supports [MySQL](https://www.mysql.com/). After understanding its concept and how to use it, if you’re interested, you are welcome to contribute to developing the SQL Parse Format function.
-+
-+### Apache ShardingSphere Open Source Project Links:
-+[ShardingSphere Github
-+](https://github.com/apache/shardingsphere/issues?page=1&q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22)
-+[ShardingSphere Twitter](https://twitter.com/ShardingSphere)
-+
-+[ShardingSphere Slack](https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg)
-+
-+[Contributor Guide](https://shardingsphere.apache.org/community/cn/contribute/)
-+
-+## Author
-+**Chen Chuxin**
-+![Image description](https://miro.medium.com/max/634/1*smrIU5STVJsJRais0_Tghg.png)
-+
-+> SphereEx Middleware Engineer & Apache ShardingSphere Committer
-+
-+> Currently, he devotes himself to developing the kernel module of Apache ShardingSphere.
-+
-diff --git "a/docs/blog/content/material/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere.en.md" "b/docs/blog/content/material/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere.en.md"
-new file mode 100644
-index 00000000000..26e835d0b1c
---- /dev/null
-+++ "b/docs/blog/content/material/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere.en.md"
-@@ -0,0 +1,132 @@
-++++ 
-+title = "Asia’s E-Commerce Giant Dangdang Increases Order Processing Speed by 30% — Saves Over Ten Million in Technology Budget with Apache ShardingSphere"
-+weight = 41
-+chapter = true 
-++++
-+
-+> Apache ShardingSphere is an easy-to-use and stable product, making Dangdang’s warehouse management system (WMS) even more powerful. Integrated with WMS, ShardingSphere plays a vital role in reforming the supply chain system.
-+
-+> - Li Yong, Head of WMS Technology, Dangdang
-+
-+Ffollowing [Apache ShardingSphere 5.0.0 GA](https://medium.com/codex/apache-shardingsphere-5-0-0-new-features-middleware-to-ecosystem-evolution-e69de00bfb1b) release in November 2021, the [5.1.0 version](https://shardingsphere.medium.com/apache-shardingsphere-5-1-0-now-avaliable-4244ac470e77) was released last month. Having gone through over two years of polishing, ShardingSphere’s plugin-oriented ecosystem is beginning to take shape, and the project embarks on the evolution from a simple data sharding middleware to a mature distributed database ecosystem driven by the concept of [Database Plus](https://www.infoq.com/articles/next-evolution-of-database-sharding-architecture/).
-+
-+Dangdang, established at the end of 1999, has become a leading e-commerce platform selling books of any kind, and by integrating new Internet technologies with the traditional book industry. Dangdang was founded during the surge in China’s Internet industry in the early 2000s.
-+
-+Later, the e-commerce industry became exremely competitive in the country, and the market saturated. Facing fierce market competition, e-commerce platforms had to adapt to remain competitive.
-+
-+In response, Dangdang not only adjusted its business strategies and management approaches, but also upgraded its technology architecture. Dangdang didn’t have its warehouse management and transportation system at that time. However, with growing business volume and technological capabilities, Dangdang needed to rebuild its warehouse management system and transportation management system (TMS) to better satisfy its business needs. For instance, in terms of hardware, it replaced mini-computer with x86, while its old centralized system was transformed to a distributed system with more flexibility.
-+
-+One of the biggest challenges was massive warehousing data storage. The engineers wanted to adopt the data sharding technology that was often chosen by other big Internet companies. Disappointingly, they failed to find a mature and versatile open source database middleware in the marketplace, and therefore,started to develop a new data sharding product. That’s the origin of Sharding-JDBC. The product was created to bring more possibilities to data services.
-+
-+Dangdang released its new WMS five years ago, which meant that it completed its intelligent warehousing transformation. Since then, with Apache ShardingSphere, the WMS has enabled Dangdang to hold large online shopping events every year such as Dangdang’s April Reading Festival, Double-Eleven Online Shopping Festival (aka Singles Day), and Mid-Year Shopping Festival, and to manage over a dozen of smart warehouses.
-+
-+## Business Challenges
-+When Dangdang adopted a third-party WMS, the database in use was [Oracle](https://www.oracle.com/index.html) based on [IBM](https://www.ibm.com/docs/en/informix-servers/14.10?topic=strategies-what-is-fragmentation) minicomputers.
-+
-+However, considering the increasing business volume and warehouse order requests, especially during the online shopping festivals, the traditional centralized database architecture of the old WMS became inadequate because the computing and storage capabilities were limited. Additionally, the scale-up solution couldn’t support the system during online shopping festivals, and therefore the developers must do scale-up and adjust the business layer several times to alleviate the storage and computing limits and avoid production risks.
-+
-+- **Limited computing and storage capabilities**
-+
-+A centralized architecture is less scalable, making database computing and storage capabilities become the bottleneck.
-+
-+- **Expensive development and maintenance cost**
-+
-+Because of poor scalability, developers have to make concessions and scale-up, which increases system development and maintenance costs.
-+
-+- **Exclusiveness**
-+
-+If the architecture is not open enough, the system is less flexible, with fewer functions, and difficult to be transformed. The current architecture makes it difficult to quickly adopt new business services such as cloud native ones, SQL audit, data encryption, and distributed governance.
-+
-+## The Solution
-+Based on the situation described above, Dangdang’s tech team proposed a warehouse management system solution: in terms of hardware, IBM minicomputer would be replaced with all-purpose x86, and [MySQL](https://www.mysql.com/) would replace Oracle.
-+
-+However, at that time, there wasn’t a versatile and mature enough open source database middleware living up to Dangdang’s expectations, so they created one and named it Sharding-JDBC.
-+
-+[ShardingSphere-JDBC](https://shardingsphere.apache.org/document/current/en/concepts/adaptor/#shardingsphere-jdbc) is positioned as a lightweight Java framework that provides additional services at the Java Database Connectivity (JDBC) layer. It is lightweight, efficient, easy to use, and compatible.
-+
-+With ShardingSphere providing services in the form of the `.jar` files package, users can connect the client directly to the database without additional deployment and dependencies. It can be seen as an enhanced JDBC driver, fully compatible with JDBC and all ORM frameworks.
-+
-+- Compatible with JDBC and any JDBC-based ORM framework such as JPA, Hibernate, Mybatis, Spring JDBC Template.
-+- Supports all third-party database connection pools such as DBCP, C3P0, BoneCP, HikariCP, etc.
-+- Supports all databases implementing JDBC standards. Currently, ShardingSphere-JDBC supports MySQL, PostgreSQL, Oracle, SQL Server, and any database that can be accessed via JDBC.
-+
-+![The ShardingSphere-JDBC Topography](https://miro.medium.com/max/1400/1*oBhJ6mIXPV4Zo2jjvWVmQQ.jpeg)
-+
-+Currently, Apache ShardingSphere consists of three products, i.e. JDBC, Proxy, and Sidecar (TODO). ShardingSphere-JDBC and ShardingSphere-Proxy can be deployed independently or together.
-+
-+It is ShardingSphere-JDBC that is used in Dangdang’s warehouse management system.
-+
-+> **So how is ShardingSphere-JDBC exactly utilized?**
-+
-+In the warehouse management system, each warehouse positioned in a physical city is referred to as a unit with its corresponding business system and databases. Each warehouse has three sets of MySQL primary-secondary clusters to load the warehousing data of the designated city. So far, Dangdang has more than ten self-built warehouses all over China, mostly in cities where customers place a large number of orders. This self-built warehouse model is flexible for warehouse management and helps reduce storage costs in the long run.
-+
-+In terms of architecture, the WMS uses ShardingSphere-JDBC to do database sharding according to their business types, and each cluster stores specified business data. The three MySQL clusters of a single warehouse are divided into three types as follows:
-+
-+- **Basic:** stores user, area, and menu data.
-+- **Business:** stores order and package data.
-+- **Inventory:** stores stock and working data.
-+
-+Before the release, the system was initialized based on the basic data of a warehouse, such as storage locations.
-+
-+Next, by deploying the distributed database middleware, Dangdang successfully solved a series of problems such as limited storage and computing capabilities, high costs, and lack of flexibility.
-+![Topography of Dangdang’s Warehouse Management System (of a Single Warehouse)](https://miro.medium.com/max/1400/1*3P9-I57pExHo8DcMBxs-DQ.jpeg)
-+
-+
-+## User Advantages
-+Apache ShardingSphere played a significant role in helping Dangdang develop its WMS. There are five main benefits:
-+
-+- **Extraordinary performance**
-+
-+The ShardingSphere-JDBC lightweight framework makes its performance close to a native JDBC. Apart from its great database sharding capability, it helps database performance be taken to the extreme, which allows the WMS to work at full capacity.
-+
-+- **Keep the system stable**
-+
-+WMS has been functioning well since its release in 2016.
-+
-+- **Low risk & zero invasion**
-+
-+The underlying system of Dangdang has been evolving since 2000. Thanks to its zero-intrusion nature, Apache ShardingSphere can be compatible with others with small modifications to meet Dangdang’s business requirements.
-+
-+- **Allow developers to focus on the business side** 
-+
-+The developer team does not need to worry about sharding any more and can concentrate on developing the system to meet business needs.
-+
-+- **Cost effective and efficient**
-+
-+Since ShardingSphere is known for its high compatibility, to satisfy increasing business needs, developers don’t have to reconstruct or upgrade the system, minimizing the migration cost.
-+
-+Warehousing order processing speed is increased by 30% and accordingly, tens of millions of manpower costs are reduced due to the smart warehouses and the auto storage location matching technology.
-+
-+## Apache ShardingSphere’s Roadmap
-+
-+Some said that ShardingSphere is a product created by Dangdang. To be precise, ShardingSphere was derived from the company and it also donated ShardingSphere to the Apache Software Foundation (ASF) on November 10, 2018.
-+
-+After 17-months in the ASF incubator, Apache ShardingSphere successfully graduated on April 15, 2020, as a Top-Level Apache Project.
-+
-+Recently, to celebrate the third anniversary of ShardingSphere entering Apache Software Foundation(ASF), the community released ShardingSphere 5.0.0. Below is a brief review of Apache ShardingSphere.
-+
-+- In 2014, Dangdang introduced a centralized development framework targeting at its e-commerce platform called dd-frame. It was created to unify the development framework, standardize its technical components, and achieve efficient cross-team communication by separating business code from technical code. In this way, engineers can devote all their efforts to the business side. The relational database module named dd-rdb in the framework was developed to handle data access and implement the data sharding function. It was the precursor of Sharding-JDBC, as well as a major part of dd-frame 2.x.
-+- In 2015, Dangdang decided to rebuild its WMS and TMS. As it needed a data sharding plan, the team launched the project in September. In December, 2015, Sharding-JDBC 1.0.0 was released and used within Dangdang.
-+- In early 2016, Sharding-JDBC was separated from dd-rdb and became open source. The product is an enhanced JDBC driver providing service in .jar files.
-+- At the end of 2017, Version 2.0.0 was released with the new data governance function.
-+- In 2018, ShardingSphere was enrolled into Apache Incubator. The release of Version 3.0.0 was a notable turnaround: Sharding-Proxy was released as an independent service. It supported heterogeneous languages, and the project was renamed from Sharding-JDBC to ShardingSphere. It’s in 2018 that the community decided to build the criteria and ecosystem above databases.
-+- In 2019, Version 4.0.0 was released capable of supporting more database products.
-+- In 2020, ShardingSphere graduated as a Top-Level Project of the ASF.
-+- On November 10, 2021, Version 5.0.0 GA was released as a third-anniversity celebration with the whole Apache ShardingSphere community, and the distributed database industry.
-+![Apache ShardingSphere—Roadmap](https://miro.medium.com/max/1400/0*ejOCiszgebnrZ2kx)
-+
-+Since Version 5.0.0, Apache ShardingSphere has embarked on its new journey: with the plugin oriented architect at its core, it evloved from a data sharding application to a comprehensive and enhanced data governance tool applicable to various complex application scenarios. Concurrently, Apache ShardingSphere also has more features, and big data solutions.
-+
-+## Conclusion
-+Digitization motivated Dangdang to achieve high-quality development and fulfill its mission. ShardingSphere is glad to support Dangdang’s WMS with its cutting-edging data services.
-+
-+Having gone through two years‘ development, Apache ShardingSphere 5.0.0 GA has been released. The pluggable ecosystem marks an evolution from a data sharding middleware tool to a pioneer in the industry following the “Database Plus” concept.
-+
-+## Apache ShardingSphere Project Links:
-+[ShardingSphere Github](https://github.com/apache/shardingsphere/issues?page=1&q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22)
-+
-+[ShardingSphere Twitter](https://twitter.com/ShardingSphere)
-+
-+[ShardingSphere Slack](https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg)
-+
-+[Contributor Guide](https://shardingsphere.apache.org/community/cn/contribute/)
+diff --git a/docs/document/content/features/transaction/_index.cn.md b/docs/document/content/features/transaction/_index.cn.md
+index 6bc32b919d0..06d09de697b 100644
+--- a/docs/document/content/features/transaction/_index.cn.md
++++ b/docs/document/content/features/transaction/_index.cn.md
+@@ -124,4 +124,4 @@ Apache ShardingSphere 集成了 SEATA 作为柔性事务的使用方案。
+ | 适合场景  | 业务方处理不一致 | 短事务 & 低并发   | 长事务 & 高并发 |
+ 
+ ## 相关参考
+-- [分布式事务的YAML配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/transaction/)
++- [分布式事务的 YAML 配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/transaction/)
+diff --git a/docs/document/content/overview/glossary.cn.md b/docs/document/content/overview/glossary.cn.md
+index 6093e05c7dc..0a09c84012e 100644
+--- a/docs/document/content/overview/glossary.cn.md
++++ b/docs/document/content/overview/glossary.cn.md
+@@ -9,7 +9,7 @@ chapter = true
+ 
+ Database Plus 是 Apache ShardingSphere 的产品定位，旨在构建异构数据库上层的标准和生态。 它关注如何充分合理地利用数据库的计算和存储能力，而并非实现一个全新的数据库。ShardingSphere 站在数据库的上层视角，关注他们之间的协作多于数据库自身。 
+ 
+-连接、增量 和 可插拔是 Database Plus的核心概念：
++连接、增量 和 可插拔是 Database Plus 的核心概念：
+ 
+ ### 连接
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/ha.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/ha.cn.md
+index 94952c3cfac..c22f6718653 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/ha.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/ha.cn.md
+@@ -106,6 +106,6 @@ private static Map<String, DatabaseDiscoveryHeartBeatConfiguration> createDiscov
+ ## 相关参考
+ 
+ - [高可用核心特性](/cn/features/ha/)
+-- [YAML配置：高可用配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/ha/)
++- [YAML 配置：高可用配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/ha/)
+ - [Spring Boot Starter：高可用配置](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha/)
+ - [Spring 命名空间：高可用配置](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md
+index 354df434f0c..c100c75be6e 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md
+@@ -88,6 +88,6 @@ public DataSource getDataSource() throws SQLException {
+ ## 相关参考
+ 
+ - [核心特性：读写分离](/cn/features/readwrite-splitting/)
+-- [YAML配置：读写分离](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/)
++- [YAML 配置：读写分离](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/)
+ - [Spring Boot Starter：读写分离](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting/)
+ - [Spring 命名空间：读写分离](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md
+index 9052e33d9d3..5e94062145a 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha.cn.md
+@@ -70,5 +70,5 @@ spring.shardingsphere.rules.database-discovery.discovery-types.mgr.props.groupNa
+ 
+ - [高可用核心特性](cn/features/ha/)
+ - [JAVA API：高可用配置](/cn/user-manual/shardingsphere-jdbc/java-api/rules/ha/)
+-- [YAML配置：高可用配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/ha/)
++- [YAML 配置：高可用配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/ha/)
+ - [Spring 命名空间：高可用配置](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting.cn.md
+index c9ba50299ad..34f7df8af84 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting.cn.md
+@@ -55,5 +55,5 @@ spring.shardingsphere.rules.readwrite-splitting.load-balancers.round_robin.type=
+ ## 相关参考
+ - [核心特性：读写分离](/cn/features/readwrite-splitting/)
+ - [Java API：读写分离](/cn/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting/)
+-- [YAML配置：读写分离](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/)
++- [YAML 配置：读写分离](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/)
+ - [Spring 命名空间：读写分离](/cn/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha.cn.md
+index 210bc572d03..bd69c3e2938 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/ha.cn.md
+@@ -127,5 +127,5 @@ weight = 3
+ 
+ - [高可用核心特性](cn/features/ha/)
+ - [JAVA API：高可用配置](/cn/user-manual/shardingsphere-jdbc/java-api/rules/ha/)
+-- [YAML配置：高可用配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/ha/)
++- [YAML 配置：高可用配置](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/ha/)
+ - [Spring Boot Starter：高可用配置](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/ha/)
 \ No newline at end of file
-diff --git a/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere1.jpeg b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere1.jpeg
-new file mode 100644
-index 00000000000..414a569b355
-Binary files /dev/null and b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere1.jpeg differ
-diff --git a/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere2.jpeg b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere2.jpeg
-new file mode 100644
-index 00000000000..87c462c5d55
-Binary files /dev/null and b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere2.jpeg differ
-diff --git a/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere3.png b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere3.png
-new file mode 100644
-index 00000000000..26b70243291
-Binary files /dev/null and b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere3.png differ
-diff --git a/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere4.png b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere4.png
-new file mode 100644
-index 00000000000..1fd92615227
-Binary files /dev/null and b/docs/blog/static/img/2022_03_09_SQL_Parse_Format_Function_A _Technical_Deep_Dive_by_Apache_ShardingSphere4.png differ
-diff --git "a/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere1.jpeg" "b/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere1.jpeg"
-new file mode 100644
-index 00000000000..0db5497791c
-Binary files /dev/null and "b/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere1.jpeg" differ
-diff --git "a/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere2.jpeg" "b/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere2.jpeg"
-new file mode 100644
-index 00000000000..ce7397dc822
-Binary files /dev/null and "b/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere2.jpeg" differ
-diff --git "a/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere3.jpg" "b/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere3.jpg"
-new file mode 100644
-index 00000000000..441ec6a26f0
-Binary files /dev/null and "b/docs/blog/static/img/2022_03_11_Asia\342\200\231s_E-Commerce_Giant_Dangdang_Increases_Order_Processing_Speed_by_30%_Saves_Over_Ten_Million_in_Technology_Budget_with_Apache_ShardingSphere3.jpg" differ
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting.cn.md
+index 40136053fb9..8d01a6b23db 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/readwrite-splitting.cn.md
+@@ -77,5 +77,5 @@ weight = 2
+ ## 相关参考
+ - [核心特性：读写分离](/cn/features/readwrite-splitting/)
+ - [Java API：读写分离](/cn/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting/)
+-- [YAML配置：读写分离](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/)
++- [YAML 配置：读写分离](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/)
+ - [Spring Boot Starter：读写分离](/cn/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/readwrite-splitting/)

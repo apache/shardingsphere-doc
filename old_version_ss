@@ -1,19 +1,191 @@
-commit 64306159aa55a628e8e628b7c18fdb76b0d9ad9a
-Author: Liang Zhang <zhangliang@apache.org>
-Date:   Wed Aug 17 14:09:20 2022 +0800
+commit 298accf83d3979672caf574a266b4c961aaec72e
+Author: Xinze Guo <101622833+azexcy@users.noreply.github.com>
+Date:   Wed Aug 17 18:41:05 2022 +0800
 
-    Rename shardingsphere-error module to shardingsphere-dialect-exception (#20230)
-    
-    * Rename shardingsphere-error module to shardingsphere-dialect-exception
-    
-    * Rename shardingsphere-error module to shardingsphere-dialect-exception
+    Enable rateLimiter config by default in scaling. (#20236)
 
-diff --git a/docs/document/content/reference/sharding/parse.cn.md b/docs/document/content/reference/sharding/parse.cn.md
-index 4a4bec0ce75..7e82c6fb670 100644
---- a/docs/document/content/reference/sharding/parse.cn.md
-+++ b/docs/document/content/reference/sharding/parse.cn.md
-@@ -1,3 +1,4 @@
-+
- +++
- title = "解析引擎"
- weight = 1
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
+index 983d42da275..37867624df9 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
+@@ -293,11 +293,13 @@ DROP SHARDING BROADCAST TABLE RULES t_b;
+ CREATE SHARDING SCALING RULE sharding_scaling(
+ INPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=QPS, PROPERTIES("qps"=50)))
+ ),
+ OUTPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=TPS, PROPERTIES("tps"=2000)))
+ ),
+ STREAM_CHANNEL(TYPE(NAME="MEMORY", PROPERTIES("block-queue-size"="10000"))),
+ COMPLETION_DETECTOR(TYPE(NAME="IDLE", PROPERTIES("incremental-task-idle-seconds-threshold"="1800"))),
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
+index 12cb100bcff..2b74f2cb9c7 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
+@@ -291,11 +291,13 @@ DROP SHARDING BROADCAST TABLE RULES;
+ CREATE SHARDING SCALING RULE sharding_scaling(
+ INPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=QPS, PROPERTIES("qps"=50)))
+ ),
+ OUTPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=TPS, PROPERTIES("tps"=2000)))
+ ),
+ STREAM_CHANNEL(TYPE(NAME="MEMORY", PROPERTIES("block-queue-size"="10000"))),
+ COMPLETION_DETECTOR(TYPE(NAME="IDLE", PROPERTIES("incremental-task-idle-seconds-threshold"="1800"))),
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
+index 76fbfe4fcfd..597a67a90aa 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
+@@ -320,7 +320,7 @@ mysql> SHOW SHARDING SCALING RULES;
+ +------------------+----------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+--------------------------------------------------------+-------------------------------------------------------------------------+-----------------------------------------------------+
+ | name             | input                                                                                  | output                                                                                   | stream_channel                                         | completion_detector                                                     | data_consistency_checker                            |
+ +------------------+----------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+--------------------------------------------------------+-------------------------------------------------------------------------+-----------------------------------------------------+
+-| sharding_scaling | {"workerThread":40,"batchSize":1000} | {"workerThread":40,"batchSize":1000} | {"type":"MEMORY","props":{"block-queue-size":"10000"}} | {"type":"IDLE","props":{"incremental-task-idle-seconds-threshold":"1800"}} | {"type":"DATA_MATCH","props":{"chunk-size":"1000"}} |
++| sharding_scaling | {"workerThread":40,"batchSize":1000,"rateLimiter":{"type":"QPS","props":{"qps":"50"}}} | {"workerThread":40,"batchSize":1000,"rateLimiter":{"type":"TPS","props":{"tps":"2000"}}} | {"type":"MEMORY","props":{"block-queue-size":"10000"}} | {"type":"IDLE","props":{"incremental-task-idle-seconds-threshold":"1800"}} | {"type":"DATA_MATCH","props":{"chunk-size":"1000"}} |
+ +------------------+----------------------------------------------------------------------------------------+------------------------------------------------------------------------------------------+--------------------------------------------------------+-------------------------------------------------------------------------+-----------------------------------------------------+
+ 1 row in set (0.00 sec)
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md
+index 13467b07da7..78baf4dada0 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.cn.md
+@@ -59,14 +59,16 @@ rules:
+         workerThread: # 从源端摄取全量数据的线程池大小。如果不配置则使用默认值。
+         batchSize: # 一次查询操作返回的最大记录数。如果不配置则使用默认值。
+         rateLimiter: # 限流算法。如果不配置则不限流。
+-          type: # 算法类型。可选项：
++          type: # 算法类型。可选项：QPS
+           props: # 算法属性
++            qps: # qps属性。适用算法类型：QPS
+       output: # 数据写入配置。如果不配置则部分参数默认生效。
+         workerThread: # 数据写入到目标端的线程池大小。如果不配置则使用默认值。
+         batchSize: # 一次批量写入操作的最大记录数。如果不配置则使用默认值。
+         rateLimiter: # 限流算法。如果不配置则不限流。
+-          type: # 算法类型。可选项：
++          type: # 算法类型。可选项：TPS
+           props: # 算法属性
++            tps: # tps属性。适用算法类型：TPS
+       streamChannel: # 数据通道，连接生产者和消费者，用于 input 和 output 环节。如果不配置则默认使用 MEMORY 类型
+         type: # 算法类型。可选项：MEMORY
+         props: # 算法属性
+@@ -97,9 +99,17 @@ rules:
+       input:
+         workerThread: 40
+         batchSize: 1000
++        rateLimiter:
++          type: QPS
++          props:
++            qps: 50
+       output:
+         workerThread: 40
+         batchSize: 1000
++        rateLimiter:
++          type: TPS
++          props:
++            tps: 2000
+       streamChannel:
+         type: MEMORY
+         props:
+@@ -146,11 +156,13 @@ rules:
+ CREATE SHARDING SCALING RULE scaling_auto (
+ INPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=QPS, PROPERTIES("qps"=50)))
+ ),
+ OUTPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=TPS, PROPERTIES("tps"=2000)))
+ ),
+ STREAM_CHANNEL(TYPE(NAME="MEMORY", PROPERTIES("block-queue-size"="10000"))),
+ COMPLETION_DETECTOR(TYPE(NAME="IDLE", PROPERTIES("incremental-task-idle-seconds-threshold"="1800"))),
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md
+index f1415802544..594f87bdedd 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/scaling/build.en.md
+@@ -58,14 +58,16 @@ rules:
+         workerThread: # Worker thread pool size for inventory data ingestion from source. If it's not configured, then use system default value.
+         batchSize: # Maximum records count of a DML select operation. If it's not configured, then use system default value.
+         rateLimiter: # Rate limit algorithm. If it's not configured, then system will skip rate limit.
+-          type: # Algorithm type. Options:
++          type: # Algorithm type. Options: QPS
+           props: # Algorithm properties
++            qps: # QPS property. Available for types: QPS
+       output: # Data write configuration. If it's not configured, then part of its configuration will take effect.
+         workerThread: # Worker thread pool size for data importing to target. If it's not configured, then use system default value.
+         batchSize: # Maximum records count of a DML insert/delete/update operation. If it's not configured, then use system default value.
+         rateLimiter: # Rate limit algorithm. If it's not configured, then system will skip rate limit.
+-          type: # Algorithm type. Options:
++          type: # Algorithm type. Options: TPS
+           props: # Algorithm properties
++            tps: # TPS property. Available for types: TPS
+       streamChannel: # Algorithm of channel that connect producer and consumer, used for input and output. If it's not configured, then system will use MEMORY type
+         type: # Algorithm type. Options: MEMORY
+         props: # Algorithm properties
+@@ -96,9 +98,17 @@ rules:
+       input:
+         workerThread: 40
+         batchSize: 1000
++        rateLimiter:
++          type: QPS
++          props:
++            qps: 50
+       output:
+         workerThread: 40
+         batchSize: 1000
++        rateLimiter:
++          type: TPS
++          props:
++            tps: 2000
+       streamChannel:
+         type: MEMORY
+         props:
+@@ -125,9 +135,17 @@ rules:
+       input:
+         workerThread: 40
+         batchSize: 1000
++        rateLimiter:
++          type: QPS
++          props:
++            qps: 50
+       output:
+         workerThread: 40
+         batchSize: 1000
++        rateLimiter:
++          type: TPS
++          props:
++            tps: 2000
+       streamChannel:
+         type: MEMORY
+         props:
+@@ -145,11 +163,13 @@ Auto Mode Configuration Example:
+ CREATE SHARDING SCALING RULE scaling_auto (
+ INPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=QPS, PROPERTIES("qps"=50)))
+ ),
+ OUTPUT(
+   WORKER_THREAD=40,
+-  BATCH_SIZE=1000
++  BATCH_SIZE=1000,
++  RATE_LIMITER(TYPE(NAME=TPS, PROPERTIES("tps"=2000)))
+ ),
+ STREAM_CHANNEL(TYPE(NAME="MEMORY", PROPERTIES("block-queue-size"="10000"))),
+ COMPLETION_DETECTOR(TYPE(NAME="IDLE", PROPERTIES("incremental-task-idle-seconds-threshold"="1800"))),

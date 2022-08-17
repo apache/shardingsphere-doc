@@ -1,244 +1,1587 @@
-commit 1ef2f19a190bd0053e7509b0fafab063ef2f5df3
-Author: Jieker <jieker_mail@163.com>
-Date:   Tue Aug 16 22:05:14 2022 +0800
+commit 6458ab0b35f3654d5bff86dc2c46c1b046aee937
+Author: Mike0601 <40025573+Mike0601@users.noreply.github.com>
+Date:   Wed Aug 17 11:41:29 2022 +0800
 
-    Add `CREATE DEFAULT SINGLE TABLE RULE` docs. (#20211)
-    
-    * Add `CREATE DEFAULT SINGLE TABLE RULE` docs.
-    
-    * Change docs about loadBanlancerType.
+    update mix rules content (#20226)
 
-diff --git a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/_index.cn.md b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/_index.cn.md
-new file mode 100644
-index 00000000000..8cc7952ea84
---- /dev/null
-+++ b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/_index.cn.md
-@@ -0,0 +1,7 @@
-++++
-+title = "读写分离"
-+weight = 1
-+chapter = true
-++++
+diff --git a/docs/document/content/features/transaction/_index.cn.md b/docs/document/content/features/transaction/_index.cn.md
+index a9b9356e65b..232623e60b1 100644
+--- a/docs/document/content/features/transaction/_index.cn.md
++++ b/docs/document/content/features/transaction/_index.cn.md
+@@ -96,7 +96,7 @@ ShardingSphere 分布式事务，为用户屏蔽了分布式事务处理的复
+ 
+ 对于 BASE 事务，提供了分布式环境下，对数据最终一致性的保证。由于在整个事务过程中，不会像 XA 事务那样全程锁定资源，所以性能较好。适用于对并发性能要求很高并且允许出现短暂数据不一致的业务场景。
+ 
+-### ShardingSphere LOCAL事务使用场景
++### ShardingSphere LOCAL 事务使用场景
+ 
+ 对于 LOCAL 事务，在分布式环境下，不保证各个数据库节点之间数据的一致性和隔离性，需要业务方自行处理可能出现的不一致问题。适用于用户希望自行处理分布式环境下数据一致性问题的业务场景。
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
+index 3e15b2fca08..e5ae584d5bf 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
+@@ -3,108 +3,85 @@ title = "混合规则"
+ weight = 9
+ +++
+ 
+-混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++## 背景信息
+ 
+-如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
+-同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
++ShardingSphere 涵盖了很多功能，例如，分库分片、读写分离、高可用、数据脱敏等。这些功能用户可以单独进行使用，也可以配合一起使用，下面是基于 JAVA API 的配置示例。
+ 
+-## 配置项说明
++## 配置示例
+ 
+ ```java
+-/* 数据源配置 */
+-HikariDataSource writeDataSource0 = new HikariDataSource();
+-writeDataSource0.setDriverClassName("com.mysql.jdbc.Driver");
+-writeDataSource0.setJdbcUrl("jdbc:mysql://localhost:3306/db0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8");
+-writeDataSource0.setUsername("root");
+-writeDataSource0.setPassword("");
+-
+-HikariDataSource writeDataSource1 = new HikariDataSource();
+-// ...忽略其他数据库配置项
+-
+-HikariDataSource read0OfwriteDataSource0 = new HikariDataSource();
+-// ...忽略其他数据库配置项
+-
+-HikariDataSource read1OfwriteDataSource0 = new HikariDataSource();
+-// ...忽略其他数据库配置项
+-
+-HikariDataSource read0OfwriteDataSource1 = new HikariDataSource();
+-// ...忽略其他数据库配置项
+-
+-HikariDataSource read1OfwriteDataSource1 = new HikariDataSource();
+-// ...忽略其他数据库配置项
+-
+-Map<String, DataSource> datasourceMaps = new HashMap<>(6);
+-
+-datasourceMaps.put("write_ds0", writeDataSource0);
+-datasourceMaps.put("write_ds0_read0", read0OfwriteDataSource0);
+-datasourceMaps.put("write_ds0_read1", read1OfwriteDataSource0);
+-
+-datasourceMaps.put("write_ds1", writeDataSource1);
+-datasourceMaps.put("write_ds1_read0", read0OfwriteDataSource1);
+-datasourceMaps.put("write_ds1_read1", read1OfwriteDataSource1);
+-
+-/* 分片规则配置 */
+-// 表达式 ds_${0..1} 枚举值表示的是主从配置的逻辑数据源名称列表
+-ShardingTableRuleConfiguration tOrderRuleConfiguration = new ShardingTableRuleConfiguration("t_order", "ds_${0..1}.t_order_${[0, 1]}");
+-tOrderRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
+-tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "tOrderInlineShardingAlgorithm"));
+-Properties tOrderShardingInlineProps = new Properties();
+-tOrderShardingInlineProps.setProperty("algorithm-expression", "t_order_${order_id % 2}");
+-tOrderRuleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderInlineShardingAlgorithm", new AlgorithmConfiguration("INLINE",tOrderShardingInlineProps));
+-
+-ShardingTableRuleConfiguration tOrderItemRuleConfiguration = new ShardingTableRuleConfiguration("t_order_item", "ds_${0..1}.t_order_item_${[0, 1]}");
+-tOrderItemRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_item_id", "snowflake"));
+-tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_item_id", "tOrderItemInlineShardingAlgorithm"));
+-Properties tOrderItemShardingInlineProps = new Properties();
+-tOrderItemShardingInlineProps.setProperty("algorithm-expression", "t_order_item_${order_item_id % 2}");
+-tOrderRuleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderItemInlineShardingAlgorithm", new AlgorithmConfiguration("INLINE",tOrderItemShardingInlineProps));
+-
+-ShardingRuleConfiguration shardingRuleConfiguration = new ShardingRuleConfiguration();
+-shardingRuleConfiguration.getTables().add(tOrderRuleConfiguration);
+-shardingRuleConfiguration.getTables().add(tOrderItemRuleConfiguration);
+-shardingRuleConfiguration.getBindingTableGroups().add("t_order, t_order_item");
+-shardingRuleConfiguration.getBroadcastTables().add("t_bank");
+-// 默认分库策略
+-shardingRuleConfiguration.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "default_db_strategy_inline"));
+-Properties defaultDatabaseStrategyInlineProps = new Properties();
+-defaultDatabaseStrategyInlineProps.setProperty("algorithm-expression", "ds_${user_id % 2}");
+-shardingRuleConfiguration.getShardingAlgorithms().put("default_db_strategy_inline", new AlgorithmConfiguration("INLINE", defaultDatabaseStrategyInlineProps));
+-// 分布式序列算法配置
+-Properties snowflakeProperties = new Properties();
+-shardingRuleConfiguration.getKeyGenerators().put("snowflake", new AlgorithmConfiguration("SNOWFLAKE", snowflakeProperties));
+-
+-/* 数据加密规则配置 */
+-Properties encryptProperties = new Properties();
+-encryptProperties.setProperty("aes-key-value", "123456");
+-EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor");
+-EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor");
+-EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
+-
+-Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
+-encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", encryptProperties));
+-encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", encryptProperties));
+-EncryptRuleConfiguration encryptRuleConfiguration = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
+-
+-/* 读写分离规则配置 */
+-Properties readwriteProps1 = new Properties();
+-readwriteProps1.setProperty("write-data-source-name", "write_ds0");
+-readwriteProps1.setProperty("read-data-source-names", "write_ds0_read0, write_ds0_read1");
+-ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("ds_0", "Static", readwriteProps1, "roundRobin");
+-Properties readwriteProps2 = new Properties();
+-readwriteProps2.setProperty("write-data-source-name", "write_ds0");
+-readwriteProps2.setProperty("read-data-source-names", "write_ds1_read0, write_ds1_read1");
+-ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("ds_1", "Static", readwriteProps2, "roundRobin");
+-
+-// 负载均衡算法
+-Map<String, AlgorithmConfiguration> loadBalanceMaps = new HashMap<>();
+-loadBalanceMaps.put("roundRobin", new AlgorithmConfiguration("ROUND_ROBIN", new Properties()));
+-
+-ReadwriteSplittingRuleConfiguration readWriteSplittingyRuleConfiguration = new ReadwriteSplittingRuleConfiguration(Arrays.asList(dataSourceConfiguration1, dataSourceConfiguration2), loadBalanceMaps);
+-
+-/* 其他配置 */
+-Properties otherProperties = new Properties();
+-otherProperties.setProperty("sql-show", "true");
+-
+-/* shardingDataSource 就是最终被 ORM 框架或其他 jdbc 框架引用的数据源名称 */
+-DataSource shardingDataSource = ShardingSphereDataSourceFactory.createDataSource(datasourceMaps, Arrays.asList(shardingRuleConfiguration, readWriteSplittingyRuleConfiguration, encryptRuleConfiguration), otherProperties);
++// 分片配置
++private ShardingRuleConfiguration createShardingRuleConfiguration() {
++    ShardingRuleConfiguration result = new ShardingRuleConfiguration();
++    result.getTables().add(getOrderTableRuleConfiguration());
++    result.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "inline"));
++    result.setDefaultTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "standard_test_tbl"));
++    Properties props = new Properties();
++    props.setProperty("algorithm-expression", "demo_ds_${user_id % 2}");
++    result.getShardingAlgorithms().put("inline", new AlgorithmConfiguration("INLINE", props));
++    result.getShardingAlgorithms().put("standard_test_tbl", new AlgorithmConfiguration("STANDARD_TEST_TBL", new Properties()));
++    result.getKeyGenerators().put("snowflake", new AlgorithmConfiguration("SNOWFLAKE", new Properties()));
++    return result;
++}
 +
-+本章节将对读写分离特性的语法进行详细说明。
-diff --git a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/_index.en.md b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/_index.en.md
-new file mode 100644
-index 00000000000..687895005d3
---- /dev/null
-+++ b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/_index.en.md
-@@ -0,0 +1,7 @@
-++++
-+title = "Readwrite-Splitting"
-+weight = 1
-+chapter = true
-++++
++private ShardingTableRuleConfiguration getOrderTableRuleConfiguration() {
++    ShardingTableRuleConfiguration result = new ShardingTableRuleConfiguration("t_order", "demo_ds_${0..1}.t_order_${[0, 1]}");
++    result.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
++    return result;
++}
 +
-+This chapter describes the syntax of readwrite splitting.
-diff --git a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-new file mode 100644
-index 00000000000..35c77d312f0
---- /dev/null
-+++ b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-@@ -0,0 +1,74 @@
-++++
-+title = "CREATE READWRITE_SPLITTING RULE"
-+weight = 2
-++++
++// 动态读写分离配置
++private static ReadwriteSplittingRuleConfiguration createReadwriteSplittingConfiguration() {
++    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_0", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_0", true), "");
++    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_1", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_1", true), "");
++    Collection<ReadwriteSplittingDataSourceRuleConfiguration> dataSources = new LinkedList<>();
++    dataSources.add(dataSourceRuleConfiguration1);
++    dataSources.add(dataSourceRuleConfiguration2);
++    return new ReadwriteSplittingRuleConfiguration(dataSources, Collections.emptyMap());
++}
 +
-+## 描述
++// 数据库发现配置
++private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
++    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration1 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_0", Arrays.asList("ds_0, ds_1, ds_2"), "mgr-heartbeat", "mgr");
++    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration2 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
++    Collection<DatabaseDiscoveryDataSourceRuleConfiguration> dataSources = new LinkedList<>();    
++    dataSources.add(dataSourceRuleConfiguration1);
++    dataSources.add(dataSourceRuleConfiguration2);
++    return new DatabaseDiscoveryRuleConfiguration(configs, createDiscoveryHeartbeats(), createDiscoveryTypes());
++}
 +
-+`CREATE DEFAULT SINGLE TABLE RULE` 语法用于创建读写分离规则
++private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
++    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
++    return new DatabaseDiscoveryRuleConfiguration(Collections.singleton(dataSourceRuleConfiguration), createDiscoveryHeartbeats(), createDiscoveryTypes());
++}
 +
-+### 语法定义
++private static Map<String, AlgorithmConfiguration> createDiscoveryTypes() {
++    Map<String, AlgorithmConfiguration> result = new HashMap<>(1， 1);
++    Properties props = new Properties();
++    props.put("group-name", "558edd3c-02ec-11ea-9bb3-080027e39bd2");
++    discoveryTypes.put("mgr", new AlgorithmConfiguration("MGR", props));
++    return result;
++}
 +
-+```sql
-+CreateReadwriteSplittingRule ::=
-+  'CREATE' 'READWRITE_SPLITTING' 'RULE' readwriteSplittingDefinition ( ',' readwriteSplittingDefinition )*
++private static Map<String, DatabaseDiscoveryHeartBeatConfiguration> createDiscoveryHeartbeats() {
++    Map<String, DatabaseDiscoveryHeartBeatConfiguration> result = new HashMap<>(1， 1);
++    Properties props = new Properties();
++    props.put("keep-alive-cron", "0/5 * * * * ?");
++    discoveryHeartBeatConfiguration.put("mgr-heartbeat", new DatabaseDiscoveryHeartBeatConfiguration(props));
++    return result;
++}
 +
-+readwriteSplittingDefinition ::=
-+  ruleName '(' ( staticReadwriteSplittingDefinition | dynamicReadwriteSplittingDefinition ) ( ',' loadBanlancerDefinition )? ')'
++// 数据脱敏配置
++public EncryptRuleConfiguration createEncryptRuleConfiguration() {
++    Properties props = new Properties();
++    props.setProperty("aes-key-value", "123456");
++    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
++    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
++    EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
++    Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
++    encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
++    encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
++    EncryptRuleConfiguration result = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
++    return result;
++}
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
+index a307fc02663..9a76bb3db02 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
+@@ -3,104 +3,86 @@ title = "Mixed Rules"
+ weight = 9
+ +++
+ 
+-## Configuration Item Explanation
++## Background
+ 
+-```java
+-/* Data source configuration */
+-HikariDataSource writeDataSource0 = new HikariDataSource();
+-writeDataSource0.setDriverClassName("com.mysql.jdbc.Driver");
+-writeDataSource0.setJdbcUrl("jdbc:mysql://localhost:3306/db0?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8");
+-writeDataSource0.setUsername("root");
+-writeDataSource0.setPassword("");
+-
+-HikariDataSource writeDataSource1 = new HikariDataSource();
+-// ...Omit specific configuration.
+-
+-HikariDataSource read0OfwriteDataSource0 = new HikariDataSource();
+-// ...Omit specific configuration.
+-
+-HikariDataSource read1OfwriteDataSource0 = new HikariDataSource();
+-// ...Omit specific configuration.
+-
+-HikariDataSource read0OfwriteDataSource1 = new HikariDataSource();
+-// ...Omit specific configuration.
+-
+-HikariDataSource read1OfwriteDataSource1 = new HikariDataSource();
+-// ...Omit specific configuration.
+-
+-Map<String, DataSource> datasourceMaps = new HashMap<>(6);
+-
+-datasourceMaps.put("write_ds0", writeDataSource0);
+-datasourceMaps.put("write_ds0_read0", read0OfwriteDataSource0);
+-datasourceMaps.put("write_ds0_read1", read1OfwriteDataSource0);
+-
+-datasourceMaps.put("write_ds1", writeDataSource1);
+-datasourceMaps.put("write_ds1_read0", read0OfwriteDataSource1);
+-datasourceMaps.put("write_ds1_read1", read1OfwriteDataSource1);
++ShardingSphere provides a variety of features, such as data sharding, read/write splitting, high availability, and data decryption. These features can be used independently or in combination. 
++Below, you will find the configuration samples based on JAVA API.
+ 
+-/* Sharding rule configuration */
+-// The enumeration value of `ds_$->{0..1}` is the name of the logical data source configured with read-query
+-ShardingTableRuleConfiguration tOrderRuleConfiguration = new ShardingTableRuleConfiguration("t_order", "ds_${0..1}.t_order_${[0, 1]}");
+-tOrderRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
+-tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "tOrderInlineShardingAlgorithm"));
+-Properties tOrderShardingInlineProps = new Properties();
+-tOrderShardingInlineProps.setProperty("algorithm-expression", "t_order_${order_id % 2}");
+-tOrderRuleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderInlineShardingAlgorithm", new AlgorithmConfiguration("INLINE",tOrderShardingInlineProps));
++## Samples
+ 
+-ShardingTableRuleConfiguration tOrderItemRuleConfiguration = new ShardingTableRuleConfiguration("t_order_item", "ds_${0..1}.t_order_item_${[0, 1]}");
+-tOrderItemRuleConfiguration.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_item_id", "snowflake"));
+-tOrderRuleConfiguration.setTableShardingStrategy(new StandardShardingStrategyConfiguration("order_item_id", "tOrderItemInlineShardingAlgorithm"));
+-Properties tOrderItemShardingInlineProps = new Properties();
+-tOrderItemShardingInlineProps.setProperty("algorithm-expression", "t_order_item_${order_item_id % 2}");
+-tOrderRuleConfiguration.getShardingAlgorithms().putIfAbsent("tOrderItemInlineShardingAlgorithm", new AlgorithmConfiguration("INLINE",tOrderItemShardingInlineProps));
+-
+-ShardingRuleConfiguration shardingRuleConfiguration = new ShardingRuleConfiguration();
+-shardingRuleConfiguration.getTables().add(tOrderRuleConfiguration);
+-shardingRuleConfiguration.getTables().add(tOrderItemRuleConfiguration);
+-shardingRuleConfiguration.getBindingTableGroups().add("t_order, t_order_item");
+-shardingRuleConfiguration.getBroadcastTables().add("t_bank");
+-// Default database strategy configuration
+-shardingRuleConfiguration.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "default_db_strategy_inline"));
+-Properties defaultDatabaseStrategyInlineProps = new Properties();
+-defaultDatabaseStrategyInlineProps.setProperty("algorithm-expression", "ds_${user_id % 2}");
+-shardingRuleConfiguration.getShardingAlgorithms().put("default_db_strategy_inline", new AlgorithmConfiguration("INLINE", defaultDatabaseStrategyInlineProps));
+-
+-// Key generate algorithm configuration
+-Properties snowflakeProperties = new Properties();
+-shardingRuleConfiguration.getKeyGenerators().put("snowflake", new AlgorithmConfiguration("SNOWFLAKE", snowflakeProperties));
+-
+-/* Data encrypt rule configuration */
+-Properties encryptProperties = new Properties();
+-encryptProperties.setProperty("aes-key-value", "123456");
+-EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor");
+-EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor");
+-EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
+-// Data encrypt algorithm configuration
+-Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
+-encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", encryptProperties));
+-encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", encryptProperties));
+-EncryptRuleConfiguration encryptRuleConfiguration = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
+-
+-/* Readwrite-splitting rule configuration */
+-Properties readwriteProps1 = new Properties();
+-readwriteProps1.setProperty("write-data-source-name", "write_ds0");
+-readwriteProps1.setProperty("read-data-source-names", "write_ds0_read0, write_ds0_read1");
+-ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("ds_0", "Static", readwriteProps1, "roundRobin");
+-Properties readwriteProps2 = new Properties();
+-readwriteProps2.setProperty("write-data-source-name", "write_ds0");
+-readwriteProps2.setProperty("read-data-source-names", "write_ds1_read0, write_ds1_read1");
+-ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("ds_1", "Static", readwriteProps2, "roundRobin");
+-
+-// Load balance algorithm configuration
+-Map<String, AlgorithmConfiguration> loadBalanceMaps = new HashMap<>();
+-loadBalanceMaps.put("roundRobin", new AlgorithmConfiguration("ROUND_ROBIN", new Properties()));
+-
+-ReadwriteSplittingRuleConfiguration readWriteSplittingRuleConfiguration = new ReadwriteSplittingRuleConfiguration(Arrays.asList(dataSourceConfiguration1, dataSourceConfiguration2), loadBalanceMaps);
+-
+-/* Other Properties configuration */
+-Properties otherProperties = new Properties();
+-otherProperties.setProperty("sql-show", "true");
+-
+-/* The variable `shardingDataSource` is the logic data source referenced by other frameworks(such as ORM, JPA, etc.) */
+-DataSource shardingDataSource = ShardingSphereDataSourceFactory.createDataSource(datasourceMaps, Arrays.asList(shardingRuleConfiguration, readWriteSplittingRuleConfiguration, encryptRuleConfiguration), otherProperties);
++```java
++// Sharding configuration
++private ShardingRuleConfiguration createShardingRuleConfiguration() {
++    ShardingRuleConfiguration result = new ShardingRuleConfiguration();
++    result.getTables().add(getOrderTableRuleConfiguration());
++    result.setDefaultDatabaseShardingStrategy(new StandardShardingStrategyConfiguration("user_id", "inline"));
++    result.setDefaultTableShardingStrategy(new StandardShardingStrategyConfiguration("order_id", "standard_test_tbl"));
++    Properties props = new Properties();
++    props.setProperty("algorithm-expression", "demo_ds_${user_id % 2}");
++    result.getShardingAlgorithms().put("inline", new AlgorithmConfiguration("INLINE", props));
++    result.getShardingAlgorithms().put("standard_test_tbl", new AlgorithmConfiguration("STANDARD_TEST_TBL", new Properties()));
++    result.getKeyGenerators().put("snowflake", new AlgorithmConfiguration("SNOWFLAKE", new Properties()));
++    return result;
++}
 +
-+staticReadwriteSplittingDefinition ::=
-+    'WRITE_RESOURCE' '=' writeResourceName ',' 'READ_RESOURCES' '(' ruleName (',' ruleName)* ')'
++private ShardingTableRuleConfiguration getOrderTableRuleConfiguration() {
++    ShardingTableRuleConfiguration result = new ShardingTableRuleConfiguration("t_order", "demo_ds_${0..1}.t_order_${[0, 1]}");
++    result.setKeyGenerateStrategy(new KeyGenerateStrategyConfiguration("order_id", "snowflake"));
++    return result;
++}
 +
-+dynamicReadwriteSplittingDefinition ::=
-+    'AUTO_AWARE_RESOURCE' '=' resourceName ( ',' 'WRITE_DATA_SOURCE_QUERY_ENABLED' '=' ('TRUE' | 'FALSE') )?
++// Dynamic read/write splitting configuration
++private static ReadwriteSplittingRuleConfiguration createReadwriteSplittingConfiguration() {
++    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_0", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_0", true), "");
++    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_1", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_1", true), "");
++    Collection<ReadwriteSplittingDataSourceRuleConfiguration> dataSources = new LinkedList<>();
++    dataSources.add(dataSourceRuleConfiguration1);
++    dataSources.add(dataSourceRuleConfiguration2);
++    return new ReadwriteSplittingRuleConfiguration(dataSources, Collections.emptyMap());
++}
 +
-+loadBanlancerDefinition ::=
-+    'TYPE' '(' 'NAME' '=' loadBanlancerType ( ',' 'PROPERTIES' '(' 'key' '=' 'value' ( ',' 'key' '=' 'value' )* ')' )? ')'
++// Database discovery configuration
++private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
++    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration1 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_0", Arrays.asList("ds_0, ds_1, ds_2"), "mgr-heartbeat", "mgr");
++    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration2 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
++    Collection<DatabaseDiscoveryDataSourceRuleConfiguration> dataSources = new LinkedList<>();    
++    dataSources.add(dataSourceRuleConfiguration1);
++    dataSources.add(dataSourceRuleConfiguration2);
++    return new DatabaseDiscoveryRuleConfiguration(configs, createDiscoveryHeartbeats(), createDiscoveryTypes());
++}
 +
-+ruleName ::=
-+  identifier
++private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
++    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
++    return new DatabaseDiscoveryRuleConfiguration(Collections.singleton(dataSourceRuleConfiguration), createDiscoveryHeartbeats(), createDiscoveryTypes());
++}
 +
-+writeResourceName ::=
-+  identifier
++private static Map<String, AlgorithmConfiguration> createDiscoveryTypes() {
++    Map<String, AlgorithmConfiguration> result = new HashMap<>(1， 1);
++    Properties props = new Properties();
++    props.put("group-name", "558edd3c-02ec-11ea-9bb3-080027e39bd2");
++    discoveryTypes.put("mgr", new AlgorithmConfiguration("MGR", props));
++    return result;
++}
 +
-+resourceName ::=
-+  identifier
++private static Map<String, DatabaseDiscoveryHeartBeatConfiguration> createDiscoveryHeartbeats() {
++    Map<String, DatabaseDiscoveryHeartBeatConfiguration> result = new HashMap<>(1， 1);
++    Properties props = new Properties();
++    props.put("keep-alive-cron", "0/5 * * * * ?");
++    discoveryHeartBeatConfiguration.put("mgr-heartbeat", new DatabaseDiscoveryHeartBeatConfiguration(props));
++    return result;
++}
++
++// Data decryption configuration
++public EncryptRuleConfiguration createEncryptRuleConfiguration() {
++    Properties props = new Properties();
++    props.setProperty("aes-key-value", "123456");
++    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
++    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
++    EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
++    Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
++    encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
++    encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
++    EncryptRuleConfiguration result = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
++    return result;
++}
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.cn.md
+index ab17993eef9..5bcde158677 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.cn.md
+@@ -3,95 +3,91 @@ title = "混合规则"
+ weight = 8
+ +++
+ 
+-混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++## 背景信息
+ 
+-如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
+-同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
++ShardingSphere 涵盖了很多功能，例如，分库分片、读写分离、高可用、数据脱敏等。这些功能用户可以单独进行使用，也可以配合一起使用，下面是基于 SpringBoot Starter 的参数解释和配置示例。
+ 
+-## 配置项说明
+-```properties
+-# 数据源配置
+-# 数据源名称，多数据源以逗号分隔
+-spring.shardingsphere.datasource.names= write-ds0,write-ds1,write-ds0-read0,write-ds1-read0
+-
+-spring.shardingsphere.datasource.write-ds0.jdbc-url= # 数据库 URL 连接
+-spring.shardingsphere.datasource.write-ds0.type=  # 数据库连接池类名称
+-spring.shardingsphere.datasource.write-ds0.driver-class-name= # 数据库驱动类名
+-spring.shardingsphere.datasource.write-ds0.username= # 数据库用户名
+-spring.shardingsphere.datasource.write-ds0.password= # 数据库密码
+-spring.shardingsphere.datasource.write-ds0.xxx=  # 数据库连接池的其它属性
+-
+-spring.shardingsphere.datasource.write-ds1.jdbc-url= # 数据库 URL 连接
+-# 忽略其他数据库配置项
+-
+-spring.shardingsphere.datasource.write-ds0-read0.jdbc-url= # 数据库 URL 连接
+-# 忽略其他数据库配置项
++## 参数解释
+ 
+-spring.shardingsphere.datasource.write-ds1-read0.jdbc-url= # 数据库 URL 连接
+-# 忽略其他数据库配置项
+-
+-# 分片规则配置
+-# 分库策略
+-spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-column=user_id
+-spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-algorithm-name=default-database-strategy-inline
+-# 绑定表规则，多组绑定规则使用数组形式配置
+-spring.shardingsphere.rules.sharding.binding-tables[0]=t_user,t_user_detail # 绑定表名称，多个表之间以逗号分隔
+-spring.shardingsphere.rules.sharding.binding-tables[1]= # 绑定表名称，多个表之间以逗号分隔
+-spring.shardingsphere.rules.sharding.binding-tables[x]= # 绑定表名称，多个表之间以逗号分隔
+-# 广播表规则配置
+-spring.shardingsphere.rules.sharding.broadcast-tables= # 广播表名称，多个表之间以逗号分隔
+-
+-# 分表策略
+-# 表达式 `ds_$->{0..1}`枚举的数据源为读写分离配置的逻辑数据源名称
+-spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=ds_$->{0..1}.t_user_$->{0..1}
+-spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-column=user_id
+-spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-algorithm-name=user-table-strategy-inline
+-
+-spring.shardingsphere.rules.sharding.tables.t_user_detail.actual-data-nodes=ds_$->{0..1}.t_user_detail_$->{0..1}
+-spring.shardingsphere.rules.sharding.tables.t_user_detail.table-strategy.standard.sharding-column=user_id
+-spring.shardingsphere.rules.sharding.tables.t_user_detail.table-strategy.standard.sharding-algorithm-name=user-detail-table-strategy-inline
++```properties
++spring.shardingsphere.datasource.names= # 省略数据源配置，请参考使用手册
++# 标准分片表配置
++spring.shardingsphere.rules.sharding.tables.<table-name>.actual-data-nodes= # 由数据源名 + 表名组成，以小数点分隔。多个表以逗号分隔，支持 inline 表达式。缺省表示使用已知数据源与逻辑表名称生成数据节点，用于广播表（即每个库中都需要一个同样的表用于关联查询，多为字典表）或只分库不分表且所有库的表结构完全一致的情况
++# 用于单分片键的标准分片场景
++spring.shardingsphere.rules.sharding.tables.<table-name>.database-strategy.standard.sharding-column= # 分片列名称
++spring.shardingsphere.rules.sharding.tables.<table-name>.database-strategy.standard.sharding-algorithm-name= # 分片算法名称
++# 分表策略，同分库策略
++spring.shardingsphere.rules.sharding.tables.<table-name>.table-strategy.xxx= # 省略
++# 分布式序列策略配置
++spring.shardingsphere.rules.sharding.tables.<table-name>.key-generate-strategy.column= # 分布式序列列名称
++spring.shardingsphere.rules.sharding.tables.<table-name>.key-generate-strategy.key-generator-name= # 分布式序列算法名称
++# 分片算法配置
++spring.shardingsphere.rules.sharding.sharding-algorithms.<sharding-algorithm-name>.type= # 分片算法类型
++spring.shardingsphere.rules.sharding.sharding-algorithms.<sharding-algorithm-name>.props.xxx= # 分片算法属性配置
++# 分布式序列算法配置
++spring.shardingsphere.rules.sharding.key-generators.<key-generate-algorithm-name>.type= # 分布式序列算法类型
++spring.shardingsphere.rules.sharding.key-generators.<key-generate-algorithm-name>.props.xxx= # 分布式序列算法属性配置
++# 动态读写分离配置
++spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.dynamic-strategy.auto-aware-data-source-name= # 数据库发现逻辑数据源名称
++spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.dynamic-strategy.write-data-source-query-enabled= # 读库全部下线，主库是否承担读流量
++spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.load-balancer-name= # 负载均衡算法名称
++# 数据库发现配置
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.data-source-names= # 数据源名称，多个数据源用逗号分隔 如：ds_0, ds_1
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-heartbeat-name= # 检测心跳名称
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-type-name= # 数据库发现类型名称
++spring.shardingsphere.rules.database-discovery.discovery-heartbeats.<discovery-heartbeat-name>.props.keep-alive-cron= # cron 表达式，如：'0/5 * * * * ?'
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.type= # 数据库发现类型，如：MySQL.MGR
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.props.group-name= # 数据库发现类型必要参数，如 MGR 的 group-name
++# 数据脱敏配置
++spring.shardingsphere.rules.encrypt.tables.<table-name>.query-with-cipher-column= # 该表是否使用加密列进行查询
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.cipher-column= # 加密列名称
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.assisted-query-column= # 查询列名称
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.plain-column= # 原文列名称
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.encryptor-name= # 加密算法名称
++# 加密算法配置
++spring.shardingsphere.rules.encrypt.encryptors.<encrypt-algorithm-name>.type= # 加密算法类型
++spring.shardingsphere.rules.encrypt.encryptors.<encrypt-algorithm-name>.props.xxx= # 加密算法属性配置
++spring.shardingsphere.rules.encrypt.queryWithCipherColumn= # 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询
 +```
-+
-+### 补充说明
-+
-+- 支持创建静态读写分离规则和动态读写分离规则；
-+- 动态读写分离规则依赖于数据库发现规则；
-+- `loadBanlancerType` 指定负载均衡算法类型，请参考负载均衡算法；
-+- 重复的 `ruleName` 将无法被创建。
-+
-+### 示例
-+
-+#### 创建静态读写分离规则
-+
-+```sql
-+CREATE READWRITE_SPLITTING RULE ms_group_0 (
-+    WRITE_RESOURCE=write_ds,
-+    READ_RESOURCES(read_ds_0,read_ds_1),
-+    TYPE(NAME=random)
-+);
+ 
+-# 数据加密配置
+-# `t_user` 使用分片规则配置的逻辑表名称
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.cipher-column=username
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.encryptor-name=name-encryptor
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.cipher-column=pwd
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.encryptor-name=pwd-encryptor
++## 配置示例
+ 
+-# 数据加密算法配置
++```properties
++# 分片配置
++spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=replica-ds-$->{0..1}.t_order_$->{0..1}
++spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-column=order_id
++spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-algorithm-name=t-order-inline
++spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.column=order_id
++spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.key-generator-name=snowflake
++spring.shardingsphere.rules.sharding.tables.t_order_item.actual-data-nodes=replica-ds-$->{0..1}.t_order_item_$->{0..1}
++spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-column=order_id
++spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.type=INLINE
++spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.props.algorithm-expression=replica_ds-$->{user_id % 2}
++spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.type=INLINE
++spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.props.algorithm-expression=t_order_$->{order_id % 2}
++spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
++# 动态读写分离配置
++spring.shardingsphere.rules.readwrite-splitting.data-sources.replica-ds-0.dynamic-strategy.auto-aware-data-source-name=readwrite-ds-0
++spring.shardingsphere.rules.readwrite-splitting.data-sources.replica-ds-1.dynamic-strategy.auto-aware-data-source-name=readwrite-ds-1
++# 数据库发现配置
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-0.data-source-names=ds-0, ds-1, ds-2
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-0.discovery-heartbeat-name=mgr-heartbeat
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-0.discovery-type-name=mgr
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-1.data-source-names=ds-3, ds-4, ds-5
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-1.discovery-heartbeat-name=mgr-heartbeat
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-1.discovery-type-name=mgr
++spring.shardingsphere.rules.database-discovery.discovery-heartbeats.mgr-heartbeat.props.keep-alive-cron=0/5 * * * * ?
++spring.shardingsphere.rules.database-discovery.discovery-types.mgr.type=MGR
++spring.shardingsphere.rules.database-discovery.discovery-types.mgr.props.groupName=b13df29e-90b6-11e8-8d1b-525400fc3996
++# 数据脱敏配置
+ spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.type=AES
+ spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.props.aes-key-value=123456abc
+ spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.type=AES
+ spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.props.aes-key-value=123456abc
+-
+-# 分布式序列策略配置
+-spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.column=user_id
+-spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.key-generator-name=snowflake
+-
+-# 分片算法配置
+-spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.type=INLINE
+-# 表达式 `ds_$->{user_id % 2}` 枚举的数据源为读写分离配置的逻辑数据源名称
+-spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.algorithm-expression=ds_$->{user_id % 2}
+-spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.type=INLINE
+-spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.algorithm-expression=t_user_$->{user_id % 2}
+-
+-spring.shardingsphere.rules.sharding.sharding-algorithms.user-detail-table-strategy-inline.type=INLINE
+-spring.shardingsphere.rules.sharding.sharding-algorithms.user-detail-table-strategy-inline.algorithm-expression=t_user_detail_$->{user_id % 2}
+-
+-# 分布式序列算法配置
+-spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
+-
+-# 读写分离策略配置
+-# ds_0,ds_1 为读写分离配置的逻辑数据源名称
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.type=Static
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.props.write-data-source-name=write-ds0
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.props.read-data-source-names=write-ds0-read0
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.load-balancer-name=read-random
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.type=Static
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.props.write-data-source-name=write-ds1
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.props.read-data-source-names=write-ds1-read0
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.load-balancer-name=read-random
+-
+-# 负载均衡算法配置
+-spring.shardingsphere.rules.readwrite-splitting.load-balancers.read-random.type=RANDOM
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.cipher-column=username
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.encryptor-name=name-encryptor
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.cipher-column=pwd
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.encryptor-name=pwd-encryptor
++spring.shardingsphere.props.query-with-cipher-column=true
++spring.shardingsphere.props.sql-show=true
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.en.md
+index 11d2530fd3c..2f9a8e28add 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-boot-starter/rules/mix.en.md
+@@ -3,82 +3,93 @@ title = "Mixed Rules"
+ weight = 8
+ +++
+ 
+-## Configuration Item Explanation
+-```properties
+-# data source configuration
+-spring.shardingsphere.datasource.names= write-ds0,write-ds1,write-ds0-read0,write-ds1-read0
+-
+-spring.shardingsphere.datasource.write-ds0.jdbc-url= # Database URL connection
+-spring.shardingsphere.datasource.write-ds0.type=  # Database connection pool type name
+-spring.shardingsphere.datasource.write-ds0.driver-class-name= # Database driver class name
+-spring.shardingsphere.datasource.write-ds0.username= # Database username
+-spring.shardingsphere.datasource.write-ds0.password= # Database password
+-spring.shardingsphere.datasource.write-ds0.xxx=  # Other properties of database connection pool
+-
+-spring.shardingsphere.datasource.write-ds1.url= # Database URL connection
+-# ...Omit specific configuration.
++## Background
+ 
+-spring.shardingsphere.datasource.write-ds0-read0.url= # Database URL connection
+-# ...Omit specific configuration.
++ShardingSphere provides a variety of features, such as data sharding, read/write splitting, high availability, and data decryption. These features can be used independently or in combination. 
+ 
+-spring.shardingsphere.datasource.write-ds1-read0.url= # Database URL connection
+-# ...Omit specific configuration.
++Below, you will find the parameters' explanation and configuration samples based on SpringBoot Starter.
+ 
+-# Sharding rules configuration
+-# Databases sharding strategy
+-spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-column=user_id
+-spring.shardingsphere.rules.sharding.default-database-strategy.standard.sharding-algorithm-name=default-database-strategy-inline
+-# Binding table rules configuration ,and multiple groups of binding-tables configured with arrays
+-spring.shardingsphere.rules.sharding.binding-tables[0]=t_user,t_user_detail
+-spring.shardingsphere.rules.sharding.binding-tables[1]= # Binding table names,multiple table name are separated by commas
+-spring.shardingsphere.rules.sharding.binding-tables[x]= # Binding table names,multiple table name are separated by commas
+-# Broadcast table rules configuration
+-spring.shardingsphere.rules.sharding.broadcast-tables= # Broadcast table names,multiple table name are separated by commas
++## Parameters
+ 
+-# Table sharding strategy
+-# The enumeration value of `ds_$->{0..1}` is the name of the logical data source configured with readwrite-splitting
+-spring.shardingsphere.rules.sharding.tables.t_user.actual-data-nodes=ds_$->{0..1}.t_user_$->{0..1}
+-spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-column=user_id
+-spring.shardingsphere.rules.sharding.tables.t_user.table-strategy.standard.sharding-algorithm-name=user-table-strategy-inline
++```properties
++spring.shardingsphere.datasource.names= # Please refer to the user manual for the data source configuration
++# Standard sharding table configuration
++spring.shardingsphere.rules.sharding.tables.<table-name>.actual-data-nodes= # It consists of data source name plus table name, separated by decimal points. Multiple tables are separated by commas, and inline expression is supported. By default, a data node is generated with a known data source and logical table name, used for broadcast tables (that is, each database needs the same table for associated queries, mostly the dictionary table) or the situation when only database sharding is needed and all databases have the same table structure.
++# Standard sharding scenarios used for a single shard key
++spring.shardingsphere.rules.sharding.tables.<table-name>.database-strategy.standard.sharding-column= # Sharding column name
++spring.shardingsphere.rules.sharding.tables.<table-name>.database-strategy.standard.sharding-algorithm-name= # sharding algorithm name
++# Table shards strategy. The same as database shards strategy
++spring.shardingsphere.rules.sharding.tables.<table-name>.table-strategy.xxx= # Omit
++# Distributed sequence strategy configuration
++spring.shardingsphere.rules.sharding.tables.<table-name>.key-generate-strategy.column= # Distributed sequence column name
++spring.shardingsphere.rules.sharding.tables.<table-name>.key-generate-strategy.key-generator-name= # Distributed sequence algorithm name
++# Sharding algorithm configuration
++spring.shardingsphere.rules.sharding.sharding-algorithms.<sharding-algorithm-name>.type= # Sharding algorithm type
++spring.shardingsphere.rules.sharding.sharding-algorithms.<sharding-algorithm-name>.props.xxx= # Sharidng algorithm property configuration
++# Distributed sequence algorithm configuration
++spring.shardingsphere.rules.sharding.key-generators.<key-generate-algorithm-name>.type= # Distributed sequence algorithm type
++spring.shardingsphere.rules.sharding.key-generators.<key-generate-algorithm-name>.props.xxx= # Property configuration of distributed sequence algorithm 
++# Dynamic read/write splitting configuration
++spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.dynamic-strategy.auto-aware-data-source-name= # logical data source name of database discovery
++spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.dynamic-strategy.write-data-source-query-enabled= # All the read databases went offline. Whether the primary database bears the read traffic.
++spring.shardingsphere.rules.readwrite-splitting.data-sources.<readwrite-splitting-data-source-name>.load-balancer-name= # Load balancer algorithm name
++# Database discovery configuration
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.data-source-names= # Data source name. Multiple data sources are separated by commas, such as ds_0, ds_1.
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-heartbeat-name= # Detect heartbeat name
++spring.shardingsphere.rules.database-discovery.data-sources.<database-discovery-data-source-name>.discovery-type-name= # Database discovery type name
++spring.shardingsphere.rules.database-discovery.discovery-heartbeats.<discovery-heartbeat-name>.props.keep-alive-cron= # cron expression, such as '0/5 * * * * ?'.
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.type= # Database discovery type, such as MySQL.MGR.
++spring.shardingsphere.rules.database-discovery.discovery-types.<discovery-type-name>.props.group-name= # Required parameter of database discovery type, such as MGR's group-name.
++# Data desensitization configuration
++spring.shardingsphere.rules.encrypt.tables.<table-name>.query-with-cipher-column= # Whether the table uses ciphercolumn for queries.
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.cipher-column= # Ciphercolumn name
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.assisted-query-column= # Query column name
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.plain-column= # Plaincolumn name
++spring.shardingsphere.rules.encrypt.tables.<table-name>.columns.<column-name>.encryptor-name= # Encryption algorithm name
++# Encryption algorithm configuration
++spring.shardingsphere.rules.encrypt.encryptors.<encrypt-algorithm-name>.type= # Encryption algorithm type
++spring.shardingsphere.rules.encrypt.encryptors.<encrypt-algorithm-name>.props.xxx= # Encryption algorithm property configuration
++spring.shardingsphere.rules.encrypt.queryWithCipherColumn= # Whether use ciphercolumn for queries. You can use the plaincolumn for queries if it's available.
 +```
+ 
+-# Data encrypt configuration
+-# Table `t_user` is the name of the logical table that uses for data sharding configuration.
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.cipher-column=username
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.encryptor-name=name-encryptor
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.cipher-column=pwd
+-spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.encryptor-name=pwd-encryptor
++## Samples
+ 
+-# Data encrypt algorithm configuration
++```properties
++# Sharding configuration
++spring.shardingsphere.rules.sharding.tables.t_order.actual-data-nodes=replica-ds-$->{0..1}.t_order_$->{0..1}
++spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-column=order_id
++spring.shardingsphere.rules.sharding.tables.t_order.table-strategy.standard.sharding-algorithm-name=t-order-inline
++spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.column=order_id
++spring.shardingsphere.rules.sharding.tables.t_order.key-generate-strategy.key-generator-name=snowflake
++spring.shardingsphere.rules.sharding.tables.t_order_item.actual-data-nodes=replica-ds-$->{0..1}.t_order_item_$->{0..1}
++spring.shardingsphere.rules.sharding.tables.t_order_item.table-strategy.standard.sharding-column=order_id
++spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.type=INLINE
++spring.shardingsphere.rules.sharding.sharding-algorithms.database-inline.props.algorithm-expression=replica_ds-$->{user_id % 2}
++spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.type=INLINE
++spring.shardingsphere.rules.sharding.sharding-algorithms.t-order-inline.props.algorithm-expression=t_order_$->{order_id % 2}
++spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
++# Dynamic read/write splitting configuration
++spring.shardingsphere.rules.readwrite-splitting.data-sources.replica-ds-0.dynamic-strategy.auto-aware-data-source-name=readwrite-ds-0
++spring.shardingsphere.rules.readwrite-splitting.data-sources.replica-ds-1.dynamic-strategy.auto-aware-data-source-name=readwrite-ds-1
++# Database discovery configuration
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-0.data-source-names=ds-0, ds-1, ds-2
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-0.discovery-heartbeat-name=mgr-heartbeat
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-0.discovery-type-name=mgr
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-1.data-source-names=ds-3, ds-4, ds-5
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-1.discovery-heartbeat-name=mgr-heartbeat
++spring.shardingsphere.rules.database-discovery.data-sources.readwrite-ds-1.discovery-type-name=mgr
++spring.shardingsphere.rules.database-discovery.discovery-heartbeats.mgr-heartbeat.props.keep-alive-cron=0/5 * * * * ?
++spring.shardingsphere.rules.database-discovery.discovery-types.mgr.type=MGR
++spring.shardingsphere.rules.database-discovery.discovery-types.mgr.props.groupName=b13df29e-90b6-11e8-8d1b-525400fc3996
++# Data decryption
+ spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.type=AES
+ spring.shardingsphere.rules.encrypt.encryptors.name-encryptor.props.aes-key-value=123456abc
+ spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.type=AES
+ spring.shardingsphere.rules.encrypt.encryptors.pwd-encryptor.props.aes-key-value=123456abc
+-
+-# Key generate strategy configuration
+-spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.column=user_id
+-spring.shardingsphere.rules.sharding.tables.t_user.key-generate-strategy.key-generator-name=snowflake
+-
+-# Sharding algorithm configuration
+-spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.type=INLINE
+-# The enumeration value of `ds_$->{user_id % 2}` is the name of the logical data source configured with readwrite-splitting
+-spring.shardingsphere.rules.sharding.sharding-algorithms.default-database-strategy-inline.algorithm-expression=ds$->{user_id % 2}
+-spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.type=INLINE
+-spring.shardingsphere.rules.sharding.sharding-algorithms.user-table-strategy-inline.algorithm-expression=t_user_$->{user_id % 2}
+-
+-# Key generate algorithm configuration
+-spring.shardingsphere.rules.sharding.key-generators.snowflake.type=SNOWFLAKE
+-
+-# read query configuration
+-# ds_0,ds_1 is the logical data source name of the readwrite-splitting
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.type=Static
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.props.write-data-source-name=write-ds0
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.props.read-data-source-names=write-ds0-read0
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_0.load-balancer-name=read-random
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.type=Static
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.props.write-data-source-name=write-ds1
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.props.read-data-source-names=write-ds1-read0
+-spring.shardingsphere.rules.readwrite-splitting.data-sources.ds_1.load-balancer-name=read-random
+-
+-# Load balance algorithm configuration
+-spring.shardingsphere.rules.readwrite-splitting.load-balancers.read-random.type=RANDOM
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.cipher-column=username
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.username.encryptor-name=name-encryptor
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.cipher-column=pwd
++spring.shardingsphere.rules.encrypt.tables.t_user.columns.pwd.encryptor-name=pwd-encryptor
++spring.shardingsphere.props.query-with-cipher-column=true
++spring.shardingsphere.props.sql-show=true
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md
+index da8b435b739..3f16539c0d3 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md
+@@ -3,132 +3,67 @@ title = "混合规则"
+ weight = 8
+ +++
+ 
+-混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++## 背景信息
+ 
+-如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
+-同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
++ShardingSphere 涵盖了很多功能，例如，分库分片、读写分离、高可用、数据脱敏等。这些功能用户可以单独进行使用，也可以配合一起使用，下面是基于 Spring 命名空间 配置示例。
 +
-+#### 创建动态读写分离规则
++## 配置示例
+ 
+-## 配置项说明
+ ```xml
+-<beans xmlns="http://www.springframework.org/schema/beans"
+-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
+-       xmlns:readwrite-splitting="http://shardingsphere.apache.org/schema/shardingsphere/readwrite-splitting"
+-       xmlns:encrypt="http://shardingsphere.apache.org/schema/shardingsphere/encrypt"
+-       xsi:schemaLocation="http://www.springframework.org/schema/beans 
+-                           http://www.springframework.org/schema/beans/spring-beans.xsd 
+-                           http://shardingsphere.apache.org/schema/shardingsphere/datasource
+-                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd
+-                           http://shardingsphere.apache.org/schema/shardingsphere/readwrite-splitting
+-                           http://shardingsphere.apache.org/schema/shardingsphere/readwrite-splitting/readwrite-splitting.xsd
+-                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt
+-                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encrypt.xsd
+-                           ">
+-    <bean id="write_ds0" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+-        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/write_ds?useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8" />
+-        <property name="username" value="root" />
+-        <property name="password" value="" />
+-    </bean>
+-    
+-    <bean id="read_ds0_0" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- 省略详细数据源配置详情 -->
+-    </bean>
+-    
+-    <bean id="read_ds0_1" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- 省略详细数据源配置详情 -->
+-    </bean>
+-    
+-    <bean id="write_ds1" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- 省略详细数据源配置详情 -->
+-    </bean>
+-    
+-    <bean id="read_ds1_0" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- 省略详细数据源配置详情 -->
+-    </bean>
+-    
+-    <bean id="read_ds1_1" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- 省略详细数据源配置详情 -->
+-    </bean>
+-    
+-    <!-- 主从配置负载均衡策略 -->
+-    <readwrite-splitting:load-balance-algorithm id="randomStrategy" type="RANDOM" />
+-    
+-    <!-- 主从规则配置 -->
+-    <readwrite-splitting:rule id="readWriteSplittingRule">
+-        <readwrite-splitting:data-source-rule id="ds_0" type="Static" load-balance-algorithm-ref="randomStrategy">
+-            <props>
+-                <prop key="write-data-source-name">write_ds0</prop>
+-                <prop key="read-data-source-names">read_ds0_0, read_ds0_1</prop>
+-            </props>
+-        </readwrite-splitting:data-source-rule>
+-        <readwrite-splitting:data-source-rule id="ds_1" type="Static" load-balance-algorithm-ref="randomStrategy">
+-            <props>
+-                <prop key="write-data-source-name">write_ds1</prop>
+-                <prop key="read-data-source-names">read_ds1_0, read_ds1_1</prop>
+-            </props>
+-        </readwrite-splitting:data-source-rule>
+-    </readwrite-splitting:rule>
+-    
+-    <!-- 分片策略配置 -->
+-    <sharding:standard-strategy id="databaseStrategy" sharding-column="user_id" algorithm-ref="inlineDatabaseStrategyAlgorithm" />
+-    <sharding:standard-strategy id="orderTableStrategy" sharding-column="order_id" algorithm-ref="inlineOrderTableStrategyAlgorithm" />
+-    <sharding:standard-strategy id="orderItemTableStrategy" sharding-column="order_item_id" algorithm-ref="inlineOrderItemTableStrategyAlgorithm" />
++<!-- 分片配置 -->
++<sharding:standard-strategy id="databaseStrategy" sharding-column="user_id" algorithm-ref="inlineStrategyShardingAlgorithm" />
++<sharding:sharding-algorithm id="inlineStrategyShardingAlgorithm" type="INLINE">
++    <props>
++        <prop key="algorithm-expression">replica_ds_${user_id % 2}</prop>
++    </props>
++</sharding:sharding-algorithm>
++<sharding:key-generate-algorithm id="snowflakeAlgorithm" type="SNOWFLAKE">
++</sharding:key-generate-algorithm>
++<sharding:key-generate-strategy id="orderKeyGenerator" column="order_id" algorithm-ref="snowflakeAlgorithm" />
++<sharding:rule id="shardingRule">
++    <sharding:table-rules>
++        <sharding:table-rule logic-table="t_order" database-strategy-ref="databaseStrategy" key-generate-strategy-ref="orderKeyGenerator" />
++    </sharding:table-rules>
++</sharding:rule>
+ 
+-    <sharding:sharding-algorithm id="inlineDatabaseStrategyAlgorithm" type="INLINE">
+-        <props>
+-            <!-- 表达式枚举的数据源名称为主从配置的逻辑数据源名称  -->
+-            <prop key="algorithm-expression">ds_${user_id % 2}</prop>
+-        </props>
+-    </sharding:sharding-algorithm>
+-    <sharding:sharding-algorithm id="inlineOrderTableStrategyAlgorithm" type="INLINE">
+-        <props>
+-            <prop key="algorithm-expression">t_order_${order_id % 2}</prop>
+-        </props>
+-    </sharding:sharding-algorithm>
+-    <sharding:sharding-algorithm id="inlineOrderItemTableStrategyAlgorithm" type="INLINE">
+-        <props>
+-            <prop key="algorithm-expression">t_order_item_${order_item_id % 2}</prop>
+-        </props>
+-    </sharding:sharding-algorithm>
+-    
+-    <!-- 分片规则配置 -->	
+-    <sharding:rule id="shardingRule">
+-        <sharding:table-rules>
+-            <!-- 表达式 ds_${0..1} 枚举的数据源名称为主从配置的逻辑数据源名称  -->
+-            <sharding:table-rule logic-table="t_order" actual-data-nodes="ds_${0..1}.t_order_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderTableStrategy" key-generate-strategy-ref="orderKeyGenerator"/>
+-            <sharding:table-rule logic-table="t_order_item" actual-data-nodes="ds_${0..1}.t_order_item_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderItemTableStrategy" key-generate-strategy-ref="itemKeyGenerator"/>
+-        </sharding:table-rules>
+-        <sharding:binding-table-rules>
+-            <sharding:binding-table-rule logic-tables="t_order, t_order_item"/>
+-        </sharding:binding-table-rules>
+-        <sharding:broadcast-table-rules>
+-            <sharding:broadcast-table-rule table="t_address"/>
+-        </sharding:broadcast-table-rules>
+-    </sharding:rule>
+-    
+-    <!-- 数据加密规则配置 -->
+-    <encrypt:encrypt-algorithm id="name_encryptor" type="AES">
+-        <props>
+-            <prop key="aes-key-value">123456</prop>
+-        </props>
+-    </encrypt:encrypt-algorithm>
+-    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
+-    
+-    <encrypt:rule id="encryptRule">
+-        <encrypt:table name="t_user">
+-            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
+-            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
+-        </encrypt:table>
+-    </encrypt:rule>
+-    
+-    <!-- 数据源配置 -->
+-    <!-- data-source-names 数据源名称为所有的数据源节点名称 -->
+-    <shardingsphere:data-source id="readQueryDataSource" data-source-names="write_ds0, read_ds0_0, read_ds0_1, write_ds1, read_ds1_0, read_ds1_1" 
+-        rule-refs="readWriteSplittingRule, shardingRule, encryptRule" >
++<!-- 动态读写分离配置 -->
++<readwrite-splitting:rule id="readWriteSplittingRule">
++    <readwrite-splitting:data-source-rule id="replica_ds_0">
++        <readwrite-splitting:dynamic-strategy id="dynamicStrategy" auto-aware-data-source-name="readwrite_ds_0" />
++    </readwrite-splitting:data-source-rule>
++    <readwrite-splitting:data-source-rule id="replica_ds_1">
++        <readwrite-splitting:dynamic-strategy id="dynamicStrategy" auto-aware-data-source-name="readwrite_ds_1" />
++    </readwrite-splitting:data-source-rule>
++</readwrite-splitting:rule>
 +
-+```sql
-+CREATE READWRITE_SPLITTING RULE ms_group_1 (
-+    AUTO_AWARE_RESOURCE=group_0,
-+    WRITE_DATA_SOURCE_QUERY_ENABLED=false,
-+    TYPE(NAME=random,PROPERTIES(read_weight='2:1'))
-+);
-+```
-+
-+### 保留字
-+
-+`CREATE`、`READWRITE_SPLITTING`、`WRITE_RESOURCE`、`READ_RESOURCES`、`AUTO_AWARE_RESOURCE`、`WRITE_DATA_SOURCE_QUERY_ENABLED`
-+、`TYPE`、`NAME`、`PROPERTIES`、`TRUE`、`FALSE`
-+
-+### 相关链接
-+
-+- [保留字](/cn/reference/distsql/syntax/reserved-word/)
++<!-- 数据库发现配置 -->
++<database-discovery:rule id="mgrDatabaseDiscoveryRule">
++    <database-discovery:data-source-rule id="readwrite_ds_0" data-source-names="ds_0,ds_1,ds_2" discovery-heartbeat-name="mgr-heartbeat" discovery-type-name="mgr" />
++    <database-discovery:data-source-rule id="readwrite_ds_1" data-source-names="ds_3,ds_4,ds_5" discovery-heartbeat-name="mgr-heartbeat" discovery-type-name="mgr" />
++    <database-discovery:discovery-heartbeat id="mgr-heartbeat">
+         <props>
+-            <prop key="sql-show">true</prop>
++            <prop key="keep-alive-cron" >0/5 * * * * ?</prop>
+         </props>
+-    </shardingsphere:data-source>
+-</beans>
+-```
 \ No newline at end of file
-diff --git a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-new file mode 100644
-index 00000000000..c9768303978
---- /dev/null
-+++ b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-@@ -0,0 +1,74 @@
-++++
-+title = "CREATE READWRITE_SPLITTING RULE"
-+weight = 2
-++++
++    </database-discovery:discovery-heartbeat>
++</database-discovery:rule>
++<database-discovery:discovery-type id="mgr" type="MySQL.MGR">
++    <props>
++        <prop key="group-name">558edd3c-02ec-11ea-9bb3-080027e39bd2</prop>
++    </props>
++</database-discovery:discovery-type>
 +
-+## Description
++<!-- 数据脱敏配置 -->
++<encrypt:encrypt-algorithm id="name_encryptor" type="AES">
++    <props>
++        <prop key="aes-key-value">123456</prop>
++    </props>
++</encrypt:encrypt-algorithm>
++<encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
 +
-+The `CREATE READWRITE_SPLITTING RULE` syntax is used to create a readwrite splitting rule.
++<encrypt:rule id="encryptRule">
++    <encrypt:table name="t_user">
++        <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
++        <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
++    </encrypt:table>
++</encrypt:rule>
++```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md
+index 57f5660c8f9..537b3d17c78 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md
+@@ -3,127 +3,69 @@ title = "Mixed Rules"
+ weight = 8
+ +++
+ 
+-## Configuration Item Explanation
++## Background
 +
-+### Syntax
++ShardingSphere provides a variety of features, such as data sharding, read/write splitting, high availability, and data decryption. These features can be used independently or in combination. 
 +
-+```sql
-+CreateReadwriteSplittingRule ::=
-+  'CREATE' 'READWRITE_SPLITTING' 'RULE' readwriteSplittingDefinition ( ',' readwriteSplittingDefinition )*
++Below, you will find the configuration samples based on Spring Namespace.
 +
-+readwriteSplittingDefinition ::=
-+  ruleName '(' ( staticReadwriteSplittingDefinition | dynamicReadwriteSplittingDefinition ) ( ',' loadBanlancerDefinition )? ')'
++## Samples
 +
-+staticReadwriteSplittingDefinition ::=
-+    'WRITE_RESOURCE' '=' writeResourceName ',' 'READ_RESOURCES' '(' ruleName (',' ruleName)* ')'
+ ```xml
+-<beans xmlns="http://www.springframework.org/schema/beans"
+-       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+-       xmlns:shardingsphere="http://shardingsphere.apache.org/schema/shardingsphere/datasource"
+-       xmlns:readwrite-splitting="http://shardingsphere.apache.org/schema/shardingsphere/readwrite-splitting"
+-       xmlns:encrypt="http://shardingsphere.apache.org/schema/shardingsphere/encrypt"
+-       xsi:schemaLocation="http://www.springframework.org/schema/beans 
+-                           http://www.springframework.org/schema/beans/spring-beans.xsd 
+-                           http://shardingsphere.apache.org/schema/shardingsphere/datasource
+-                           http://shardingsphere.apache.org/schema/shardingsphere/datasource/datasource.xsd
+-                           http://shardingsphere.apache.org/schema/shardingsphere/readwrite-splitting
+-                           http://shardingsphere.apache.org/schema/shardingsphere/readwrite-splitting/readwrite-splitting.xsd
+-                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt
+-                           http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encrypt.xsd
+-                           ">
+-    <bean id="write_ds0" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+-        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/write_ds?useSSL=false&amp;useUnicode=true&amp;characterEncoding=UTF-8" />
+-        <property name="username" value="root" />
+-        <property name="password" value="" />
+-    </bean>
+-    
+-    <bean id="read_ds0_0" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- ...Omit specific configuration. -->
+-    </bean>
+-    
+-    <bean id="read_ds0_1" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- ...Omit specific configuration. -->
+-    </bean>
+-    
+-    <bean id="write_ds1" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- ...Omit specific configuration. -->
+-    </bean>
+-    
+-    <bean id="read_ds1_0" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- ...Omit specific configuration. -->
+-    </bean>
+-    
+-    <bean id="read_ds1_1" class="  com.zaxxer.hikari.HikariDataSource" init-method="init" destroy-method="close">
+-        <!-- ...Omit specific configuration. -->
+-    </bean>
+-    
+-    <!-- load balance algorithm configuration for readwrite-splitting -->
+-    <readwrite-splitting:load-balance-algorithm id="randomStrategy" type="RANDOM" />
+-    
+-    <!-- readwrite-splitting rule configuration -->
+-    <readwrite-splitting:rule id="readWriteSplittingRule">
+-        <readwrite-splitting:data-source-rule id="ds_0" type="Static" load-balance-algorithm-ref="randomStrategy">
+-            <props>
+-                <prop key="write-data-source-name">write_ds0</prop>
+-                <prop key="read-data-source-names">read_ds0_0, read_ds0_1</prop>
+-            </props>
+-        </readwrite-splitting:data-source-rule>
+-        <readwrite-splitting:data-source-rule id="ds_1" type="Static" load-balance-algorithm-ref="randomStrategy">
+-            <props>
+-                <prop key="write-data-source-name">write_ds1</prop>
+-                <prop key="read-data-source-names">read_ds1_0, read_ds1_1</prop>
+-            </props>
+-        </readwrite-splitting:data-source-rule>
+-    </readwrite-splitting:rule>
+-    
+-    <!-- sharding strategy configuration -->
+-    <sharding:standard-strategy id="databaseStrategy" sharding-column="user_id" algorithm-ref="inlineDatabaseStrategyAlgorithm" />
+-    <sharding:standard-strategy id="orderTableStrategy" sharding-column="order_id" algorithm-ref="inlineOrderTableStrategyAlgorithm" />
+-    <sharding:standard-strategy id="orderItemTableStrategy" sharding-column="order_item_id" algorithm-ref="inlineOrderItemTableStrategyAlgorithm" />
++<!-- Sharding configuration -->
++<sharding:standard-strategy id="databaseStrategy" sharding-column="user_id" algorithm-ref="inlineStrategyShardingAlgorithm" />
++<sharding:sharding-algorithm id="inlineStrategyShardingAlgorithm" type="INLINE">
++    <props>
++        <prop key="algorithm-expression">replica_ds_${user_id % 2}</prop>
++    </props>
++</sharding:sharding-algorithm>
++<sharding:key-generate-algorithm id="snowflakeAlgorithm" type="SNOWFLAKE">
++</sharding:key-generate-algorithm>
++<sharding:key-generate-strategy id="orderKeyGenerator" column="order_id" algorithm-ref="snowflakeAlgorithm" />
++<sharding:rule id="shardingRule">
++    <sharding:table-rules>
++        <sharding:table-rule logic-table="t_order" database-strategy-ref="databaseStrategy" key-generate-strategy-ref="orderKeyGenerator" />
++    </sharding:table-rules>
++</sharding:rule>
+ 
+-    <sharding:sharding-algorithm id="inlineDatabaseStrategyAlgorithm" type="INLINE">
+-        <props>
+-            <!-- the expression enumeration is the logical data source name of the readwrite-splitting configuration -->
+-            <prop key="algorithm-expression">ds_${user_id % 2}</prop>
+-        </props>
+-    </sharding:sharding-algorithm>
+-    <sharding:sharding-algorithm id="inlineOrderTableStrategyAlgorithm" type="INLINE">
+-        <props>
+-            <prop key="algorithm-expression">t_order_${order_id % 2}</prop>
+-        </props>
+-    </sharding:sharding-algorithm>
+-    <sharding:sharding-algorithm id="inlineOrderItemTableStrategyAlgorithm" type="INLINE">
+-        <props>
+-            <prop key="algorithm-expression">t_order_item_${order_item_id % 2}</prop>
+-        </props>
+-    </sharding:sharding-algorithm>
+-	
+-	<!-- sharding rule configuration -->	
+-	<sharding:rule id="shardingRule">
+-        <sharding:table-rules>
+-            <!-- the expression 'ds_${0..1}' enumeration is the logical data source name of the readwrite-splitting configuration  -->
+-            <sharding:table-rule logic-table="t_order" actual-data-nodes="ds_${0..1}.t_order_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderTableStrategy" key-generate-strategy-ref="orderKeyGenerator"/>
+-            <sharding:table-rule logic-table="t_order_item" actual-data-nodes="ds_${0..1}.t_order_item_${0..1}" database-strategy-ref="databaseStrategy" table-strategy-ref="orderItemTableStrategy" key-generate-strategy-ref="itemKeyGenerator"/>
+-        </sharding:table-rules>
+-        <sharding:binding-table-rules>
+-            <sharding:binding-table-rule logic-tables="t_order, t_order_item"/>
+-        </sharding:binding-table-rules>
+-        <sharding:broadcast-table-rules>
+-            <sharding:broadcast-table-rule table="t_address"/>
+-        </sharding:broadcast-table-rules>
+-    </sharding:rule>
+-    
+-    <!-- data encrypt configuration -->
+-    <encrypt:encrypt-algorithm id="name_encryptor" type="AES">
+-        <props>
+-            <prop key="aes-key-value">123456</prop>
+-        </props>
+-    </encrypt:encrypt-algorithm>
+-    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
+-    
+-    <encrypt:rule id="encryptRule">
+-        <encrypt:table name="t_user">
+-            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
+-            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
+-        </encrypt:table>
+-    </encrypt:rule>
+-    
+-    <!-- datasource configuration -->
+-    <!-- the element data-source-names's value is all of the datasource name -->
+-    <shardingsphere:data-source id="readQueryDataSource" data-source-names="write_ds0, read_ds0_0, read_ds0_1, write_ds1, read_ds1_0, read_ds1_1" 
+-        rule-refs="readWriteSplittingRule, shardingRule, encryptRule" >
++<!-- Dynamic read/write splitting configuration -->
++<readwrite-splitting:rule id="readWriteSplittingRule">
++    <readwrite-splitting:data-source-rule id="replica_ds_0">
++        <readwrite-splitting:dynamic-strategy id="dynamicStrategy" auto-aware-data-source-name="readwrite_ds_0" />
++    </readwrite-splitting:data-source-rule>
++    <readwrite-splitting:data-source-rule id="replica_ds_1">
++        <readwrite-splitting:dynamic-strategy id="dynamicStrategy" auto-aware-data-source-name="readwrite_ds_1" />
++    </readwrite-splitting:data-source-rule>
++</readwrite-splitting:rule>
 +
-+dynamicReadwriteSplittingDefinition ::=
-+    'AUTO_AWARE_RESOURCE' '=' resourceName ( ',' 'WRITE_DATA_SOURCE_QUERY_ENABLED' '=' ('TRUE' | 'FALSE') )?
++<!-- Database discovery configuration -->
++<database-discovery:rule id="mgrDatabaseDiscoveryRule">
++    <database-discovery:data-source-rule id="readwrite_ds_0" data-source-names="ds_0,ds_1,ds_2" discovery-heartbeat-name="mgr-heartbeat" discovery-type-name="mgr" />
++    <database-discovery:data-source-rule id="readwrite_ds_1" data-source-names="ds_3,ds_4,ds_5" discovery-heartbeat-name="mgr-heartbeat" discovery-type-name="mgr" />
++    <database-discovery:discovery-heartbeat id="mgr-heartbeat">
+         <props>
+-            <prop key="sql-show">true</prop>
++            <prop key="keep-alive-cron" >0/5 * * * * ?</prop>
+         </props>
+-    </shardingsphere:data-source>
+-</beans>
++    </database-discovery:discovery-heartbeat>
++</database-discovery:rule>
++<database-discovery:discovery-type id="mgr" type="MySQL.MGR">
++    <props>
++        <prop key="group-name">558edd3c-02ec-11ea-9bb3-080027e39bd2</prop>
++    </props>
++</database-discovery:discovery-type>
 +
-+loadBanlancerDefinition ::=
-+    'TYPE' '(' 'NAME' '=' loadBanlancerType ( ',' 'PROPERTIES' '(' 'key' '=' 'value' ( ',' 'key' '=' 'value' )* ')' )? ')'
++<!-- Data decryption configuration -->
++<encrypt:encrypt-algorithm id="name_encryptor" type="AES">
++    <props>
++        <prop key="aes-key-value">123456</prop>
++    </props>
++</encrypt:encrypt-algorithm>
++<encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
 +
-+ruleName ::=
-+  identifier
-+
-+writeResourceName ::=
-+  identifier
-+
-+resourceName ::=
-+  identifier
++<encrypt:rule id="encryptRule">
++    <encrypt:table name="t_user">
++        <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
++        <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
++    </encrypt:table>
++</encrypt:rule>
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
+index 7eecaaeb766..e1e9ac9b539 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
+@@ -3,63 +3,178 @@ title = "混合规则"
+ weight = 9
+ +++
+ 
+-混合配置的规则项之间的叠加使用是通过数据源名称和表名称关联的。
++## 背景信息
+ 
+-如果前一个规则是面向数据源聚合的，下一个规则在配置数据源时，则需要使用前一个规则配置的聚合后的逻辑数据源名称；
+-同理，如果前一个规则是面向表聚合的，下一个规则在配置表时，则需要使用前一个规则配置的聚合后的逻辑表名称。
++ShardingSphere 涵盖了很多功能，例如，分库分片、读写分离、高可用、数据脱敏等。这些功能用户可以单独进行使用，也可以配合一起使用，下面是基于 YAML 的参数解释和配置示例。
+ 
+-## 配置项说明
+-
+-```yml
+-dataSources: # 配置真实存在的数据源作为名称
+-  write_ds:
+-    # ...省略具体配置
+-  read_ds_0:
+-    # ...省略具体配置
+-  read_ds_1:
+-    # ...省略具体配置
++## 参数解释
+ 
++```yaml
+ rules:
+-  - !SHARDING # 配置数据分片规则
++  - !SHARDING
+     tables:
+-      t_user:
+-        actualDataNodes: ds.t_user_${0..1} # 数据源名称 `ds` 使用读写分离配置的逻辑数据源名称
+-        tableStrategy:
++      <logic-table-name>: # 逻辑表名称:
++        actualDataNodes: # 由逻辑数据源名 + 表名组成（参考 Inline 语法规则）
++        tableStrategy: # 分表策略，同分库策略
+           standard:
+-            shardingColumn: user_id
+-            shardingAlgorithmName: t_user_inline
++            shardingColumn: # 分片列名称
++            shardingAlgorithmName: # 分片算法名称
++        keyGenerateStrategy:
++          column: # 自增列名称，缺省表示不使用自增主键生成器
++          keyGeneratorName: # 分布式序列算法名称
++    defaultDatabaseStrategy:
++      standard:
++        shardingColumn: # 分片列名称
++        shardingAlgorithmName: # 分片算法名称
+     shardingAlgorithms:
+-      t_user_inline:
++      <sharding-algorithm-name>: # 分片算法名称
++        type: INLINE
++        props:
++          algorithm-expression: # INLINE 表达式
++      t_order_inline:
+         type: INLINE
+         props:
+-          algorithm-expression: t_user_${user_id % 2}
+-  
+-  - !ENCRYPT # 配置数据加密规则
++          algorithm-expression: # INLINE 表达式
++    keyGenerators:
++      <key-generate-algorithm-name> (+): # 分布式序列算法名称
++        type: # 分布式序列算法类型
++        props: # 分布式序列算法属性配置
++  - !READWRITE_SPLITTING
++    dataSources:
++      <data-source-name>: # 读写分离逻辑数据源名称
++        dynamicStrategy: # 读写分离类型
++          autoAwareDataSourceName: # 数据库发现逻辑数据源名称
++      <data-source-name>: # 读写分离逻辑数据源名称
++        dynamicStrategy: # 读写分离类型
++          autoAwareDataSourceName: # 数据库发现逻辑数据源名称
++  - !DB_DISCOVERY
++    dataSources:
++      <data-source-name>:
++        dataSourceNames: # 数据源名称列表
++          - ds_0
++          - ds_1
++          - ds_2
++        discoveryHeartbeatName: # 检测心跳名称
++        discoveryTypeName: # 数据库发现类型名称
++      <data-source-name>:
++        dataSourceNames: # 数据源名称列表
++          - ds_3
++          - ds_4
++          - ds_5
++        discoveryHeartbeatName: # 检测心跳名称
++        discoveryTypeName: # 数据库发现类型名称
++    discoveryHeartbeats:
++      <discovery-heartbeat-name>: # 心跳名称
++        props:
++          keep-alive-cron: # cron 表达式，如：'0/5 * * * * ?'
++    discoveryTypes:
++      <discovery-type-name>: # 数据库发现类型名称
++        type: # 数据库发现类型，如：MySQL.MGR 
++        props:
++          group-name:  # 数据库发现类型必要参数，如 MGR 的 group-name
++  - !ENCRYPT
++    encryptors:
++      <encrypt-algorithm-name> (+): # 加解密算法名称
++        type: # 加解密算法类型
++        props: # 加解密算法属性配置
++      <encrypt-algorithm-name> (+): # 加解密算法名称
++        type: # 加解密算法类型
+     tables:
+-      t_user: # 表名称 `t_user` 使用数据分片配置的逻辑表名称
++      <table-name>: # 加密表名称
+         columns:
+-          pwd:
+-            plainColumn: plain_pwd
+-            cipherColumn: cipher_pwd
+-            encryptorName: encryptor_aes
+-    encryptors:
+-      encryptor_aes:
+-        type: aes
++          <column-name>: # 加密列名称
++            plainColumn: # 原文列名称
++            cipherColumn: # 密文列名称
++            encryptorName: # 加密算法名称
++          <column-name>: # 加密列名称
++            cipherColumn: # 密文列名称
++            encryptorName:  # 加密算法名称
 +```
 +
-+### Supplement
++## 配置示例
 +
-+- Support the creation of static readwrite-splitting rules and dynamic readwrite-splitting rules
-+- Dynamic readwrite-splitting rules rely on database discovery rules
-+- `loadBanlancerType` specifies the load balancing algorithm type, please refer to Load Balance Algorithm
-+- Duplicate `ruleName` will not be created
-+
-+### Example
-+
-+#### Create a statics readwrite splitting rule
-+
-+```sql
-+CREATE READWRITE_SPLITTING RULE ms_group_0 (
-+    WRITE_RESOURCE=write_ds,
-+    READ_RESOURCES(read_ds_0,read_ds_1),
-+    TYPE(NAME=random)
-+);
++```yaml
++rules:
++  - !SHARDING
++    tables:
++      t_order:
++        actualDataNodes: replica_ds_${0..1}.t_order_${0..1}
++        tableStrategy:
++          standard:
++            shardingColumn: order_id
++            shardingAlgorithmName: t_order_inline
++        keyGenerateStrategy:
++          column: order_id
++          keyGeneratorName: snowflake
++    defaultDatabaseStrategy:
++      standard:
++        shardingColumn: user_id
++        shardingAlgorithmName: database_inline
++    shardingAlgorithms:
++      database_inline:
++        type: INLINE
+         props:
+-          aes-key-value: 123456abc
+-  
+-  - !READWRITE_SPLITTING # 配置读写分离规则
++          algorithm-expression: replica_ds_${user_id % 2}
++      t_order_inline:
++        type: INLINE
++        props:
++          algorithm-expression: t_order_${order_id % 2}
++      t_order_item_inline:
++        type: INLINE
++        props:
++          algorithm-expression: t_order_item_${order_id % 2}
++    keyGenerators:
++      snowflake:
++        type: SNOWFLAKE
++  - !READWRITE_SPLITTING
+     dataSources:
+-      ds: # 读写分离的逻辑数据源名称 `ds` 用于在数据分片中使用
+-        type: Static
++      replica_ds_0:
++        dynamicStrategy:
++          autoAwareDataSourceName: readwrite_ds_0
++      replica_ds_1:
++        dynamicStrategy:
++          autoAwareDataSourceName: readwrite_ds_1
++  - !DB_DISCOVERY
++    dataSources:
++      readwrite_ds_0:
++        dataSourceNames:
++          - ds_0
++          - ds_1
++          - ds_2
++        discoveryHeartbeatName: mgr-heartbeat
++        discoveryTypeName: mgr
++      readwrite_ds_1:
++        dataSourceNames:
++          - ds_3
++          - ds_4
++          - ds_5
++        discoveryHeartbeatName: mgr-heartbeat
++        discoveryTypeName: mgr
++    discoveryHeartbeats:
++      mgr-heartbeat:
+         props:
+-          write-data-source-name: write_ds  # 使用真实存在的数据源名称 `write_ds`
+-          read-data-source-names: read_ds_0, read_ds_1 # 使用真实存在的数据源名称 `read_ds_0` `read_ds_1`
+-        loadBalancerName: roundRobin
+-    loadBalancers:
+-      roundRobin:
+-        type: ROUND_ROBIN
+-
+-props:
+-  sql-show: true
++          keep-alive-cron: '0/5 * * * * ?'
++    discoveryTypes:
++      mgr:
++        type: MySQL.MGR
++        props:
++          group-name: 558edd3c-02ec-11ea-9bb3-080027e39bd2
++  - !ENCRYPT
++    encryptors:
++      aes_encryptor:
++        type: AES
++        props:
++          aes-key-value: 123456abc
++      md5_encryptor:
++        type: MD5
++    tables:
++      t_encrypt:
++        columns:
++          user_id:
++            plainColumn: user_plain
++            cipherColumn: user_cipher
++            encryptorName: aes_encryptor
++          order_id:
++            cipherColumn: order_cipher
++            encryptorName: md5_encryptor
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
+index ea98d6100e0..3efcb911121 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
+@@ -3,64 +3,179 @@ title = "Mixed Rules"
+ weight = 9
+ +++
+ 
++## Background
+ 
+-The overlay between rule items in a mixed configuration is associated by the data source name and the table name.
++ShardingSphere provides a variety of features, such as data sharding, read/write splitting, high availability, and data decryption. These features can be used independently or in combination. 
++Below, you will find the parameters' explanation and configuration samples based on YAML.
+ 
+-If the previous rule is aggregation-oriented, the next rule needs to use the aggregated logical data source name configured by the previous rule when configuring the data source.
+-Similarly, if the previous rule is table aggregation-oriented, the next rule needs to use the aggregated logical table name configured by the previous rule when configuring the table.
++## Parameters
+ 
+-## Configuration Item Explanation
++```yaml
++rules:
++  - !SHARDING
++    tables:
++      <logic-table-name>: # Logical table name:
++        actualDataNodes: # consists of logical data source name plus table name (refer to Inline syntax rules)
++        tableStrategy: # Table shards strategy. The same as database shards strategy
++          standard:
++            shardingColumn: # Sharding column name
++            shardingAlgorithmName: # Sharding algorithm name
++        keyGenerateStrategy:
++          column: # Auto-increment column name. By default, the auto-increment primary key generator is not used.
++          keyGeneratorName: # Distributed sequence algorithm name
++    defaultDatabaseStrategy:
++      standard:
++        shardingColumn: # Sharding column name
++        shardingAlgorithmName: # Sharding algorithm name
++    shardingAlgorithms:
++      <sharding-algorithm-name>: # Sharding algorithm name
++        type: INLINE
++        props:
++          algorithm-expression: # INLINE expression
++      t_order_inline:
++        type: INLINE
++        props:
++          algorithm-expression: # INLINE expression
++    keyGenerators:
++      <key-generate-algorithm-name> (+): # Distributed sequence algorithm name
++        type: # Distributed sequence algorithm type
++        props: # Property configuration of distributed sequence algorithm
++  - !READWRITE_SPLITTING
++    dataSources:
++      <data-source-name>: # Read/write splitting logical data source name
++        dynamicStrategy: # Read/write splitting type
++          autoAwareDataSourceName: # Database discovery logical data source name
++      <data-source-name>: # Read/write splitting logical data source name
++        dynamicStrategy: # Read/write splitting type
++          autoAwareDataSourceName: # Database discovery logical data source name
++  - !DB_DISCOVERY
++    dataSources:
++      <data-source-name>:
++        dataSourceNames: # Data source name list
++          - ds_0
++          - ds_1
++          - ds_2
++        discoveryHeartbeatName: # Detect heartbeat name
++        discoveryTypeName: # Database discovery type name
++      <data-source-name>:
++        dataSourceNames: # Data source name list
++          - ds_3
++          - ds_4
++          - ds_5
++        discoveryHeartbeatName: # Detect heartbeat name
++        discoveryTypeName: # Database discovery type name
++    discoveryHeartbeats:
++      <discovery-heartbeat-name>: # Heartbeat name
++        props:
++          keep-alive-cron: # cron expression, such as '0/5 * * * * ?'
++    discoveryTypes:
++      <discovery-type-name>: # Database discovery type name
++        type: # Database discovery type, such as MySQL.MGR. 
++        props:
++          group-name:  # Required parameter of database discovery type, such as MGR's group-name.
++  - !ENCRYPT
++    encryptors:
++      <encrypt-algorithm-name> (+): # Encryption and decryption algorithm name
++        type: # Encryption and decryption algorithm type
++        props: # Encryption and decryption algorithm property configuration
++      <encrypt-algorithm-name> (+): # Encryption and decryption algorithm name
++        type: # Encryption and decryption algorithm type
++    tables:
++      <table-name>: # Encryption table name
++        columns:
++          <column-name>: # Encryption name
++            plainColumn: # Plaincolumn name
++            cipherColumn: # Ciphercolumn name
++            encryptorName: # Encryption algorithm name
++          <column-name>: # Encryption column name
++            cipherColumn: # Ciphercolumn name
++            encryptorName:  # Encryption algorithm name
 +```
-+
-+#### Create a dynamic readwrite splitting rule
-+
-+```sql
-+CREATE READWRITE_SPLITTING RULE ms_group_1 (
-+    AUTO_AWARE_RESOURCE=group_0,
-+    WRITE_DATA_SOURCE_QUERY_ENABLED=false,
-+    TYPE(NAME=random,PROPERTIES(read_weight='2:1'))
-+);
-+```
-+
-+### Reserved word
-+
-+`CREATE`, `READWRITE_SPLITTING`, `WRITE_RESOURCE`, `READ_RESOURCES`, `AUTO_AWARE_RESOURCE`
-+, `WRITE_DATA_SOURCE_QUERY_ENABLED`, `TYPE`, `NAME`, `PROPERTIES`, `TRUE`, `FALSE`
-+
-+### Related links
-+
-+- [Reserved word](/en/reference/distsql/syntax/reserved-word/)
-diff --git a/docs/document/content/reference/distsql/syntax/reserved-word.cn.md b/docs/document/content/reference/distsql/syntax/reserved-word.cn.md
-index 9df06802188..03e7b8a86b4 100644
---- a/docs/document/content/reference/distsql/syntax/reserved-word.cn.md
-+++ b/docs/document/content/reference/distsql/syntax/reserved-word.cn.md
-@@ -12,9 +12,18 @@ weight = 3
  
- #### SHARDING
+-```yml
+-dataSources: # Configure the real data source name.
+-  write_ds:
+-    # ...Omit specific configuration.
+-  read_ds_0:
+-    # ...Omit specific configuration.
+-  read_ds_1:
+-    # ...Omit specific configuration.
++## Samples
  
--`CREATE`、`ALTER`、`DEFAULT`、`SHARDING`、`BROADCAST`、`BINDING`、`DATABASE`、`TABLE`、`STRATEGY`、`RULE`、`RULES`、`ALGORITHM`、`DATANODES`
--、`DATABASE_STRATEGY`、`TABLE_STRATEGY`、`KEY_GENERATE_STRATEGY`、`RESOURCES`、`SHARDING_COLUMN`、`KEY`、`GENERATOR`、`TYPE`
--、`SHARDING_COLUMNS`、`KEY_GENERATOR`、`SHARDING_ALGORITHM`、`COLUMN`、`NAME`、`PROPERTIES`
-+`CREATE`、`ALTER`、`DEFAULT`、`SHARDING`、`BROADCAST`、`BINDING`、`DATABASE`、`TABLE`、`STRATEGY`、`RULE`、`RULES`、`ALGORITHM`
-+、`DATANODES`、`DATABASE_STRATEGY`、`TABLE_STRATEGY`、`KEY_GENERATE_STRATEGY`、`RESOURCES`、`SHARDING_COLUMN`、`KEY`
-+、`GENERATOR`、`TYPE`、`SHARDING_COLUMNS`、`KEY_GENERATOR`、`SHARDING_ALGORITHM`、`COLUMN`、`NAME`、`PROPERTIES`
-+
-+#### Single Table
-+
-+`CREATE`、`SHARDING`、`SINGLE`、`TABLE`、`RULE`、`RESOURCE`
-+
-+#### Readwrite Splitting
-+
-+`CREATE`、`READWRITE_SPLITTING`、`WRITE_RESOURCE`、`READ_RESOURCES`、`AUTO_AWARE_RESOURCE`、`WRITE_DATA_SOURCE_QUERY_ENABLED`
-+、`TYPE`、`NAME`、`PROPERTIES`、`TRUE`、`FALSE`
- 
- ### 补充说明
- 
-diff --git a/docs/document/content/reference/distsql/syntax/reserved-word.en.md b/docs/document/content/reference/distsql/syntax/reserved-word.en.md
-index 33aa803f6c7..88edd374116 100644
---- a/docs/document/content/reference/distsql/syntax/reserved-word.en.md
-+++ b/docs/document/content/reference/distsql/syntax/reserved-word.en.md
-@@ -16,6 +16,15 @@ weight = 3
- , `DATANODES`, `DATABASE_STRATEGY`, `TABLE_STRATEGY`, `KEY_GENERATE_STRATEGY`, `RESOURCES`, `SHARDING_COLUMN`, `KEY`
- , `GENERATOR`, `TYPE`, `SHARDING_COLUMNS`, `KEY_GENERATOR`, `SHARDING_ALGORITHM`, `COLUMN`, `NAME`, `PROPERTIES`
- 
-+#### Single Table
-+
-+`CREATE`, `SHARDING`, `SINGLE`, `TABLE`, `RULE`, `RESOURCE`
-+
-+#### Readwrite Splitting
-+
-+`CREATE`, `READWRITE_SPLITTING`, `WRITE_RESOURCE`, `READ_RESOURCES`, `AUTO_AWARE_RESOURCE`
-+, `WRITE_DATA_SOURCE_QUERY_ENABLED`, `TYPE`, `NAME`, `PROPERTIES`, `TRUE`, `FALSE`
-+
- ### Supplement
- 
- - The above reserved words are not case-sensitive
-\ No newline at end of file
++```yaml
+ rules:
+-  - !SHARDING # Configure data sharding rules.
++  - !SHARDING
+     tables:
+-      t_user:
+-        actualDataNodes: ds.t_user_${0..1} # Data source name 'ds' uses the logical data source name of the readwrite-splitting configuration.
++      t_order:
++        actualDataNodes: replica_ds_${0..1}.t_order_${0..1}
+         tableStrategy:
+           standard:
+-            shardingColumn: user_id
+-            shardingAlgorithmName: t_user_inline
++            shardingColumn: order_id
++            shardingAlgorithmName: t_order_inline
++        keyGenerateStrategy:
++          column: order_id
++          keyGeneratorName: snowflake
++    defaultDatabaseStrategy:
++      standard:
++        shardingColumn: user_id
++        shardingAlgorithmName: database_inline
+     shardingAlgorithms:
+-      t_user_inline:
++      database_inline:
+         type: INLINE
+         props:
+-          algorithm-expression: t_user_${user_id % 2}
+-  
+-  - !ENCRYPT # Configure data encryption rules.
+-    tables:
+-      t_user: # Table `t_user` is the name of the logical table that uses the data sharding configuration.
+-        columns:
+-          pwd:
+-            plainColumn: plain_pwd
+-            cipherColumn: cipher_pwd
+-            encryptorName: encryptor_aes
+-    encryptors:
+-      encryptor_aes:
+-        type: aes
++          algorithm-expression: replica_ds_${user_id % 2}
++      t_order_inline:
++        type: INLINE
+         props:
+-          aes-key-value: 123456abc
+-  
+-  - !READWRITE_SPLITTING # Configure readwrite-splitting rules.
++          algorithm-expression: t_order_${order_id % 2}
++      t_order_item_inline:
++        type: INLINE
++        props:
++          algorithm-expression: t_order_item_${order_id % 2}
++    keyGenerators:
++      snowflake:
++        type: SNOWFLAKE
++  - !READWRITE_SPLITTING
++    dataSources:
++      replica_ds_0:
++        dynamicStrategy:
++          autoAwareDataSourceName: readwrite_ds_0
++      replica_ds_1:
++        dynamicStrategy:
++          autoAwareDataSourceName: readwrite_ds_1
++  - !DB_DISCOVERY
+     dataSources:
+-      ds: # The logical data source name 'ds' for readwrite-splitting is used in data sharding.
+-        type: Static
++      readwrite_ds_0:
++        dataSourceNames:
++          - ds_0
++          - ds_1
++          - ds_2
++        discoveryHeartbeatName: mgr-heartbeat
++        discoveryTypeName: mgr
++      readwrite_ds_1:
++        dataSourceNames:
++          - ds_3
++          - ds_4
++          - ds_5
++        discoveryHeartbeatName: mgr-heartbeat
++        discoveryTypeName: mgr
++    discoveryHeartbeats:
++      mgr-heartbeat:
+         props:
+-          write-data-source-name: write_ds # Use the real data source name 'write_ds'.
+-          read-data-source-names: read_ds_0, read_ds_1 # Use the real data source name 'read_ds_0', 'read_ds_1'.
+-        loadBalancerName: roundRobin
+-    loadBalancers:
+-      roundRobin:
+-        type: ROUND_ROBIN
+-
+-props:
+-  sql-show: true
++          keep-alive-cron: '0/5 * * * * ?'
++    discoveryTypes:
++      mgr:
++        type: MySQL.MGR
++        props:
++          group-name: 558edd3c-02ec-11ea-9bb3-080027e39bd2
++  - !ENCRYPT
++    encryptors:
++      aes_encryptor:
++        type: AES
++        props:
++          aes-key-value: 123456abc
++      md5_encryptor:
++        type: MD5
++    tables:
++      t_encrypt:
++        columns:
++          user_id:
++            plainColumn: user_plain
++            cipherColumn: user_cipher
++            encryptorName: aes_encryptor
++          order_id:
++            cipherColumn: order_cipher
++            encryptorName: md5_encryptor
+ ```

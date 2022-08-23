@@ -1,221 +1,30 @@
-commit f999658de119ae45a3ddb243274aafd160c38b95
-Author: skai <sunkai.cai@gmail.com>
-Date:   Tue Aug 23 14:39:58 2022 +0800
+commit ebed244fed11b0f1ef2ef4277cc50e81f3e0716c
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Tue Aug 23 15:22:29 2022 +0800
 
-    Refactor parameter definition of DistSQL for feature readwrite-splitting (#20427)
-    
-    * Create ReadwriteSplittingDistSQLTest.java
-    
-    * Refactor parameter definition of DistSQL for feature readwrite-splitting
-    
-    * fix IT t
-    
-    * update doc
-    
-    * fix bug
-    
-    Co-authored-by: skai <skcai@topode.com>
+    Add FileIOException (#20447)
 
-diff --git a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-index eba796e967a..24834801507 100644
---- a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-+++ b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-@@ -50,7 +50,7 @@ resourceName ::=
- CREATE READWRITE_SPLITTING RULE ms_group_0 (
-     WRITE_RESOURCE=write_ds,
-     READ_RESOURCES(read_ds_0,read_ds_1),
--    TYPE(NAME=random)
-+    TYPE(NAME="random")
- );
- ```
- 
-@@ -60,7 +60,7 @@ CREATE READWRITE_SPLITTING RULE ms_group_0 (
- CREATE READWRITE_SPLITTING RULE ms_group_1 (
-     AUTO_AWARE_RESOURCE=group_0,
-     WRITE_DATA_SOURCE_QUERY_ENABLED=false,
--    TYPE(NAME=random,PROPERTIES(read_weight='2:1'))
-+    TYPE(NAME="random",PROPERTIES("read_weight"="2:1"))
- );
- ```
- 
-diff --git a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-index 71e31d32ee2..85f8096954f 100644
---- a/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-+++ b/docs/document/content/reference/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-@@ -50,7 +50,7 @@ resourceName ::=
- CREATE READWRITE_SPLITTING RULE ms_group_0 (
-     WRITE_RESOURCE=write_ds,
-     READ_RESOURCES(read_ds_0,read_ds_1),
--    TYPE(NAME=random)
-+    TYPE(NAME="random")
- );
- ```
- 
-@@ -60,7 +60,7 @@ CREATE READWRITE_SPLITTING RULE ms_group_0 (
- CREATE READWRITE_SPLITTING RULE ms_group_1 (
-     AUTO_AWARE_RESOURCE=group_0,
-     WRITE_DATA_SOURCE_QUERY_ENABLED=false,
--    TYPE(NAME=random,PROPERTIES(read_weight='2:1'))
-+    TYPE(NAME="random",PROPERTIES("read_weight"="2:1"))
- );
- ```
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.cn.md
-index 72a147eebdb..0240f31cd58 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.cn.md
-@@ -17,13 +17,13 @@ readwriteSplittingRuleDefinition:
-               [, loadBanlancerDefinition])
- 
- staticReadwriteSplittingRuleDefinition:
--    WRITE_RESOURCE=writeResourceName, READ_RESOURCES(resourceName [, resourceName] ... )
-+    WRITE_RESOURCE=writeResourceName, READ_RESOURCES(readResourceName [, readResourceName] ... )
- 
- dynamicReadwriteSplittingRuleDefinition:
--    AUTO_AWARE_RESOURCE=resourceName [, WRITE_DATA_SOURCE_QUERY_ENABLED=writeDataSourceQueryEnabled]
-+    AUTO_AWARE_RESOURCE=autoAwareResourceName [, WRITE_DATA_SOURCE_QUERY_ENABLED=writeDataSourceQueryEnabled]
- 
- loadBanlancerDefinition:
--    TYPE(NAME=loadBanlancerType [, PROPERTIES([algorithmProperties] )] )
-+    TYPE(NAME=loadBalancerType [, PROPERTIES([algorithmProperties] )] )
- 
- algorithmProperties:
-     algorithmProperty [, algorithmProperty] ...
-@@ -35,9 +35,21 @@ writeDataSourceQueryEnabled:
-     TRUE | FALSE
- ```
- 
-+### 参数解释
-+| 名称                          | 数据类型       | 说明               |
-+|:----------------------------|:-----------|:-----------------|
-+| ruleName                    | IDENTIFIER | 规则名称             |
-+| writeResourceName           | IDENTIFIER | 写库数据源名称          |
-+| readResourceName            | IDENTIFIER | 读库数据源名称          |
-+| autoAwareResourceName       | IDENTIFIER | 数据库发现的逻辑数据源名称    |
-+| writeDataSourceQueryEnabled | BOOLEAN    | 读库全部下线，主库是否承担读流量 |
-+| loadBalancerType            | STRING     | 负载均衡算法类型         |
-+
-+### 注意事项
-+
- - 支持创建静态读写分离规则和动态读写分离规则；
- - 动态读写分离规则依赖于数据库发现规则；
--- `loadBanlancerType` 指定负载均衡算法类型，请参考 [负载均衡算法](/cn/user-manual/common-config/builtin-algorithm/load-balance/)；
-+- `loadBalancerType` 指定负载均衡算法类型，请参考 [负载均衡算法](/cn/user-manual/common-config/builtin-algorithm/load-balance/)；
- - 重复的 `ruleName` 将无法被创建。
- 
- ## 示例
-@@ -47,20 +59,20 @@ writeDataSourceQueryEnabled:
- CREATE READWRITE_SPLITTING RULE ms_group_0 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds_0,read_ds_1),
--TYPE(NAME=random)
-+TYPE(NAME="random")
- );
- 
- // Dynamic
- CREATE READWRITE_SPLITTING RULE ms_group_1 (
- AUTO_AWARE_RESOURCE=group_0,
- WRITE_DATA_SOURCE_QUERY_ENABLED=false,
--TYPE(NAME=random,PROPERTIES(read_weight='2:1'))
-+TYPE(NAME="random",PROPERTIES("read_weight"="2:1"))
- );
- 
- ALTER READWRITE_SPLITTING RULE ms_group_1 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds_0,read_ds_1,read_ds_2),
--TYPE(NAME=random,PROPERTIES(read_weight='2:0'))
-+TYPE(NAME="random",PROPERTIES("read_weight"="2:0"))
- );
- 
- DROP READWRITE_SPLITTING RULE ms_group_1;
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.en.md
-index bcb96163272..3077512ca40 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting.en.md
-@@ -35,6 +35,18 @@ writeDataSourceQueryEnabled:
-     TRUE | FALSE
- ```
- 
-+### Parameters Explained
-+| name                        | DateType   | Description                                                                                                 |
-+|:----------------------------|:-----------|:------------------------------------------------------------------------------------------------------------|
-+| ruleName                    | IDENTIFIER | Rule name                                                                                                   |
-+| writeResourceName           | IDENTIFIER | Write data source name                                                                                      |
-+| readResourceName            | IDENTIFIER | Read data source name                                                                                       |
-+| autoAwareResourceName       | IDENTIFIER | Database discovery logic data source name                                                                   |
-+| writeDataSourceQueryEnabled | BOOLEAN    | All read data source are offline, write data source whether the data source is responsible for read traffic |
-+| loadBalancerType            | STRING     | Load balancing algorithm type                                                                               |
-+
-+### Notes
-+
- - Support the creation of static readwrite-splitting rules and dynamic readwrite-splitting rules
- - Dynamic readwrite-splitting rules rely on database discovery rules
- - `loadBanlancerType` specifies the load balancing algorithm type, please refer to [Load Balance Algorithm](/en/user-manual/common-config/builtin-algorithm/load-balance/)
-@@ -47,20 +59,20 @@ writeDataSourceQueryEnabled:
- CREATE READWRITE_SPLITTING RULE ms_group_0 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds_0,read_ds_1),
--TYPE(NAME=random)
-+TYPE(NAME="random")
- );
- 
- // Dynamic
- CREATE READWRITE_SPLITTING RULE ms_group_1 (
- AUTO_AWARE_RESOURCE=group_0,
- WRITE_DATA_SOURCE_QUERY_ENABLED=false,
--TYPE(NAME=random,PROPERTIES(read_weight='2:1'))
-+TYPE(NAME="random",PROPERTIES("read_weight"="2:1"))
- );
- 
- ALTER READWRITE_SPLITTING RULE ms_group_1 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds_0,read_ds_1,read_ds_2),
--TYPE(NAME=random,PROPERTIES(read_weight='2:0'))
-+TYPE(NAME="random",PROPERTIES("read_weight"="2:0"))
- );
- 
- DROP READWRITE_SPLITTING RULE ms_group_1;
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.cn.md
-index 735cd224353..e692983df1a 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.cn.md
-@@ -29,7 +29,7 @@ ADD RESOURCE write_ds (
- CREATE READWRITE_SPLITTING RULE group_0 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds),
--TYPE(NAME=random)
-+TYPE(NAME="random")
- );
- ```
- 
-@@ -39,7 +39,7 @@ TYPE(NAME=random)
- ALTER READWRITE_SPLITTING RULE group_0 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds),
--TYPE(NAME=random,PROPERTIES(read_weight='2:0'))
-+TYPE(NAME="random",PROPERTIES("read_weight"="2:0"))
- );
- ```
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.en.md
-index 0bc951f5392..833322dbcdb 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/readwirte-splitting-rule.en.md
-@@ -29,7 +29,7 @@ ADD RESOURCE write_ds (
- CREATE READWRITE_SPLITTING RULE group_0 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds),
--TYPE(NAME=random)
-+TYPE(NAME="random")
- );
- ```
- 
-@@ -39,7 +39,7 @@ TYPE(NAME=random)
- ALTER READWRITE_SPLITTING RULE group_0 (
- WRITE_RESOURCE=write_ds,
- READ_RESOURCES(read_ds),
--TYPE(NAME=random,PROPERTIES(read_weight='2:0'))
-+TYPE(NAME="random",PROPERTIES("read_weight"="2:0"))
- );
- ```
- 
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+index 771e277141b..e7798bebcfb 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+@@ -17,6 +17,7 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 42000     | 11001       | configuration error |
+ | 42000     | 11002       | Resource does not exist |
+ | 42000     | 11003       | Rule does not exist |
++| HY000     | 11004       | File access failed, reason is: %s |
+ | 42000     | 11200       | Can not support database \`%s\` in SQL translation |
+ | 42000     | 11201       | Translation error, SQL is: %s |
+ | 42000     | 12000       | Unsupported command: %s |
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+index a0b35218dae..7502eef883b 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+@@ -17,6 +17,7 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 42000     | 11001       | configuration error |
+ | 42000     | 11002       | Resource does not exist |
+ | 42000     | 11003       | Rule does not exist |
++| HY000     | 11004       | File access failed, reason is: %s |
+ | 42000     | 11200       | Can not support database \`%s\` in SQL translation |
+ | 42000     | 11201       | Translation error, SQL is: %s |
+ | 42000     | 12000       | Unsupported command: %s |

@@ -1,212 +1,40 @@
-commit 4d9c791edc1b9982ef299e126825e68edbc436e6
-Author: Hongsheng Zhong <sandynz@126.com>
-Date:   Fri Aug 26 16:09:59 2022 +0800
+commit 6dbedfae61ca1a2ac7d0c3dd2f4109564595261b
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Fri Aug 26 17:27:08 2022 +0800
 
-    Improve migration build and usage doc (#20557)
+    Add ShardingRouteException (#20561)
     
-    * Fix typo in build doc
+    * Reuse UnsupportedShardingOperationException
     
-    * Add DROP MIGRATION PROCESS CONFIGURATION sample in build doc
+    * Reuse UnsupportedShardingOperationException
     
-    * Improve DATA CONSISTENCY CHECK and MIGRATE TABLE in usage doc
+    * Reuse UnsupportedShardingOperationException
+    
+    * Add ShardingRouteException
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md
-index cd64cc4609a..bc930a9e4d7 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md
-@@ -88,7 +88,7 @@ SHOW MIGRATION PROCESS CONFIGURATION;
- +--------------------------------------------------------------+--------------------------------------+------------------------------------------------------+
- | {"workerThread":40,"batchSize":1000,"shardingSize":10000000} | {"workerThread":40,"batchSize":1000} | {"type":"MEMORY","props":{"block-queue-size":10000}} |
- +--------------------------------------------------------------+--------------------------------------+------------------------------------------------------+
--
-+```
- 
- 7.2. 新建配置（可选）。
- 
-@@ -96,7 +96,7 @@ SHOW MIGRATION PROCESS CONFIGURATION;
- 
- 完整配置 DistSQL 示例：
- 
--```DistSQL
-+```sql
- CREATE MIGRATION PROCESS CONFIGURATION (
- READ(
-   WORKER_THREAD=40,
-@@ -176,9 +176,21 @@ ALTER MIGRATION PROCESS CONFIGURATION (
- READ(
-   RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
- ), WRITE(
--  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
-+  RATE_LIMITER (TYPE(NAME='TPS',PROPERTIES('tps'='1000')))
- )
- );
- ```
- 
-+7.4. 清除配置。
-+
- DistSQL 示例：清空 `READ` 配置、恢复为默认值。
-+
-+```sql
-+DROP MIGRATION PROCESS CONFIGURATION '/READ';
-+```
-+
-+DistSQL 示例：清空 `READ/RATE_LIMITER` 配置。
-+
-+```sql
-+DROP MIGRATION PROCESS CONFIGURATION '/READ/RATE_LIMITER';
-+```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md
-index 64ed6bc14b4..1158aab2f36 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md
-@@ -176,9 +176,21 @@ ALTER MIGRATION PROCESS CONFIGURATION (
- READ(
-   RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
- ), WRITE(
--  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
-+  RATE_LIMITER (TYPE(NAME='TPS',PROPERTIES('tps'='1000')))
- )
- );
- ```
- 
-+7.4. Clear configuration.
-+
- DistSQL sample: clear the configuration of `READ` and restore it to the default value.
-+
-+```sql
-+DROP MIGRATION PROCESS CONFIGURATION '/READ';
-+```
-+
-+DistSQL sample: clear the configuration of `READ/RATE_LIMITER`.
-+
-+```sql
-+DROP MIGRATION PROCESS CONFIGURATION '/READ/RATE_LIMITER';
-+```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-index edd981fb441..8643e315864 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-@@ -193,6 +193,19 @@ CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8' BY TYPE (NAME='CRC32_MATCH
- +------------+----------------------+----------------------+-----------------------+-------------------------+
- ```
- 
-+数据一致性校验算法类型来自：
-+```sql
-+SHOW MIGRATION CHECK ALGORITHMS;
-++-------------+--------------------------------------------------------------+----------------------------+
-+| type        | supported_database_types                                     | description                |
-++-------------+--------------------------------------------------------------+----------------------------+
-+| CRC32_MATCH | MySQL                                                        | Match CRC32 of records.    |
-+| DATA_MATCH  | SQL92,MySQL,MariaDB,PostgreSQL,openGauss,Oracle,SQLServer,H2 | Match raw data of records. |
-++-------------+--------------------------------------------------------------+----------------------------+
-+```
-+
-+目标端开启数据加密的情况下，不能使用`CRC32_MATCH`。
-+
- 7. 停止作业。
- 
- ```sql
-@@ -329,6 +342,12 @@ MIGRATE TABLE ds_0.t_order INTO t_order;
- MIGRATE TABLE ds_0.t_order INTO sharding_db.t_order;
- ```
- 
-+也可以指定源端schema：
-+
-+```sql
-+MIGRATE TABLE ds_0.public.t_order INTO sharding_db.t_order;
-+```
-+
- 4. 查看数据迁移作业列表。
- 
- ```sql
-@@ -359,7 +378,7 @@ SHOW MIGRATION STATUS 'j015d4ee1b8a5e7f95df19babb2794395e8';
- 6. 执行数据一致性校验。
- 
- ```sql
--CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8' BY TYPE (NAME='DATA_MATCH');
-+CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8';
- +------------+----------------------+----------------------+-----------------------+-------------------------+
- | table_name | source_records_count | target_records_count | records_count_matched | records_content_matched |
- +------------+----------------------+----------------------+-----------------------+-------------------------+
-@@ -502,6 +521,12 @@ MIGRATE TABLE ds_0.t_order INTO t_order;
- MIGRATE TABLE ds_0.t_order INTO sharding_db.t_order;
- ```
- 
-+也可以指定源端schema：
-+
-+```sql
-+MIGRATE TABLE ds_0.public.t_order INTO sharding_db.t_order;
-+```
-+
- 4. 查看数据迁移作业列表。
- 
- ```sql
-@@ -532,7 +557,7 @@ SHOW MIGRATION STATUS 'j015d4ee1b8a5e7f95df19babb2794395e8';
- 6. 执行数据一致性校验。
- 
- ```sql
--CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8' BY TYPE (NAME='DATA_MATCH');
-+CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8';
- +------------+----------------------+----------------------+-----------------------+-------------------------+
- | table_name | source_records_count | target_records_count | records_count_matched | records_content_matched |
- +------------+----------------------+----------------------+-----------------------+-------------------------+
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-index ed0cc134d99..6581d6f9501 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-@@ -181,7 +181,7 @@ SHOW MIGRATION STATUS 'j015d4ee1b8a5e7f95df19babb2794395e8';
- 6. Verify data consistency.
- 
- ```sql
--CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8' BY TYPE (NAME='DATA_MATCH');
-+CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8' BY TYPE (NAME='CRC32_MATCH');
- +------------+----------------------+----------------------+-----------------------+-------------------------+
- | table_name | source_records_count | target_records_count | records_count_matched | records_content_matched |
- +------------+----------------------+----------------------+-----------------------+-------------------------+
-@@ -189,6 +189,20 @@ CHECK MIGRATION 'j015d4ee1b8a5e7f95df19babb2794395e8' BY TYPE (NAME='DATA_MATCH'
- +------------+----------------------+----------------------+-----------------------+-------------------------+
- ```
- 
-+Data consistency check algorithm list:
-+
-+```sql
-+SHOW MIGRATION CHECK ALGORITHMS;
-++-------------+--------------------------------------------------------------+----------------------------+
-+| type        | supported_database_types                                     | description                |
-++-------------+--------------------------------------------------------------+----------------------------+
-+| CRC32_MATCH | MySQL                                                        | Match CRC32 of records.    |
-+| DATA_MATCH  | SQL92,MySQL,MariaDB,PostgreSQL,openGauss,Oracle,SQLServer,H2 | Match raw data of records. |
-++-------------+--------------------------------------------------------------+----------------------------+
-+```
-+
-+If encrypt rule is configured in target proxy, then `CRC32_MATCH` could be not used.
-+
- 7. Stop the job.
- 
- ```sql
-@@ -322,6 +336,12 @@ Or you can specify a target logical database.
- MIGRATE TABLE ds_0.t_order INTO sharding_db.t_order;
- ```
- 
-+Or you can specify a source schema name.
-+
-+```sql
-+MIGRATE TABLE ds_0.public.t_order INTO sharding_db.t_order;
-+```
-+
- 4. Check the data migration job list.
- 
- ```sql
-@@ -492,6 +512,12 @@ Or you can specify a target logical database.
- MIGRATE TABLE ds_0.t_order INTO sharding_db.t_order;
- ```
- 
-+Or you can specify a source schema name.
-+
-+```sql
-+MIGRATE TABLE ds_0.public.t_order INTO sharding_db.t_order;
-+```
-+
- 4. Check the data migration job list.
- 
- ```sql
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+index 10d814f0089..827f88c5b37 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+@@ -40,6 +40,9 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 44000     | 20002       | Can not get uniformed table structure for logic table \`%s\`, it has different meta data of actual tables are as follows: %s |
+ | 44000     | 20003       | Can not find table rule with logic tables \`%s\` |
+ | 0A000     | 20004       | Can not support operation \`%s\` with sharding table \`%s\` |
++| 42S01     | 20005       | Index \`%s\` already exists |
++| 42S02     | 20006       | Index \`%s\` does not exist |
++| HY000     | 20007       | \`%s %s\` can not route correctly for %s \`%s\` |
+ | 44000     | 20012       | Inline sharding algorithms expression \`%s\` and sharding column \`%s\` are not match |
+ | HY004     | 20013       | Found different types for sharding value \`%s\` |
+ | HY004     | 24000       | Encrypt algorithm \`%s\` initialize failed, reason is: %s |
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+index 62bd587f3d3..31586d98911 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+@@ -42,6 +42,7 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 0A000     | 20004       | Can not support operation \`%s\` with sharding table \`%s\` |
+ | 42S01     | 20005       | Index \`%s\` already exists |
+ | 42S02     | 20006       | Index \`%s\` does not exist |
++| HY000     | 20007       | \`%s %s\` can not route correctly for %s \`%s\` |
+ | 44000     | 20012       | Inline sharding algorithms expression \`%s\` and sharding column \`%s\` are not match |
+ | HY004     | 20013       | Found different types for sharding value \`%s\` |
+ | HY004     | 24000       | Encrypt algorithm \`%s\` initialize failed, reason is: %s |

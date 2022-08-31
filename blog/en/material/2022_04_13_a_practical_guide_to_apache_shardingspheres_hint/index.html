@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>A Practical Guide to Apache ShardingSphere’s HINT &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">A Practical Guide to Apache ShardingSphere’s HINT</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h2 id="background">Background</h2>
+<p><a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a> has gradually introduced various features based on practical user requirements, such as data sharding and read/write splitting.</p>
+<p>The data sharding feature contains many practical sharding strategies such as Standard Sharding Strategy and Complex Sharding Strategy, and users can easily configure the corresponding sharding algorithms.</p>
+<p>When it comes to Read/Write Splitting, Apache ShardingSphere provides users with two types called Static and Dynamic, and abundant load balancing algorithms.</p>
+<p>Sharding and Read/Write Splitting functions of ShardingSphere are already very useful, but scenarios are ever-changing.</p>
+<p>Take a multi-tenant case as an example: a user expects to shard data according to the tenant to which the login account belongs, but the tenant information does not exist in every business SQL. In this case, the algorithm for extracting sharding fields from SQL is not feasible.</p>
+<p>Additionally, in most read/write splitting scenarios, users want to route queries to the secondary database for execution, but in some scenarios with a requirement for real-time operations, users want to route SQL to the primary database for execution. Currently, read/write splitting cannot meet business requirements.</p>
+<p>Considering the above-mentioned pain points, Apache ShardingSphere created the <code>Hint</code> function to allow users to utilize different logic rather than SQL to implement forced routing or sharding.</p>
+<p>Currently, ShardingSphere provides users with two <code>Hint</code> methods. One is a manual programming method with Java API and uses <code>HintManager</code> for forced routing and sharding. This method is very friendly to applications programmed with JDBC because developers don’t need to write too much code and can easily implement SQL-independent sharding or forced routing functions.</p>
+<p>Based on distributed SQL (<a href="https://opensource.com/article/21/9/distsql">DistSQL</a>, ShardingSphere designed <code>SQL HINT</code> and <code>DistSQL HINT</code> to provide users with sharding and forced routing functions that can be implemented without coding. The method is more friendly to database administrators (DBAs).</p>
+<p>Next, let’s take a close look at the two methods.</p>
+<h2 id="manual-programming-based-on-hintmanager">Manual Programming Based on HintManager</h2>
+<p>ShardingSphere can implement the functions of forced route and sharding via the <code>HintManager</code> objects. With <code>HintManager</code>, users can complete data sharding without SQL. It also allows users to shard data or force routing more flexibly, greatly expanding user scenarios.</p>
+<p>At the moment, with the help of <code>HintManager</code>, users can utilize ShardingSphere’s built-in or custom <code>Hint</code> algorithms to implement the sharding function, and can set specified data source or force primary database to do read/write splitting to implement the forced routing function.</p>
+<p>I’d like to explain its basic implementation principle first to help you gain a better understanding of <code>HintManager</code>.</p>
+<ul>
+<li><strong>The Implementation of HintManager</strong>
+The code snippet below can help you quickly understand the principle of <code>HintManager</code>.</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@NoArgsConstructor</span><span style="color:#f92672">(</span>access <span style="color:#f92672">=</span> AccessLevel<span style="color:#f92672">.</span><span style="color:#a6e22e">PRIVATE</span><span style="color:#f92672">)</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">HintManager</span> <span style="color:#66d9ef">implements</span> AutoCloseable <span style="color:#f92672">{</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> ThreadLocal<span style="color:#f92672">&lt;</span>HintManager<span style="color:#f92672">&gt;</span> HINT_MANAGER_HOLDER <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ThreadLocal<span style="color:#f92672">&lt;&gt;();</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>As shown above, ShardingSphere implements the function of <code>HintManager</code> with <code>ThreadLocal</code>: as long as they are in the same thread, user’s sharding settings are preserved. Therefore, the user only needs to call relevant <code>HintManager</code> functions before executing SQL statements, and then ShardingSphere can obtain the sharding or mandatory routing conditions set by the user in the current thread so as to perform sharding or routing operations.</p>
+<p>Next, let’s learn how to use it.</p>
+<ul>
+<li><strong>How to Use HitManager</strong></li>
+</ul>
+<ol>
+<li>Use <code>HINT</code> for Sharding
+To use the <code>Hint Sharding Algorithm</code>, users are required to implement the interface <code>org.apache.shardingsphere.sharding.api.sharding.hint.HintShardingAlgorithm</code>. When Apache ShardingSphere performs routing, it will obtain shard values from <code>HintManager</code> for routing operations.</li>
+</ol>
+<blockquote>
+<p><strong>The configuration is as follows:</strong></p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">rules</span>:
+- !SHARDING
+  <span style="color:#66d9ef">tables</span>:
+    <span style="color:#66d9ef">t_order</span>:
+      <span style="color:#66d9ef">actualDataNodes</span>: demo_ds_${<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span>}.t_order_${<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span>}
+      <span style="color:#66d9ef">databaseStrategy</span>:
+        <span style="color:#66d9ef">hint</span>:
+          <span style="color:#66d9ef">algorithmClassName</span>: xxx.xxx.xxx.HintXXXAlgorithm
+      <span style="color:#66d9ef">tableStrategy</span>:
+        <span style="color:#66d9ef">hint</span>:
+          <span style="color:#66d9ef">algorithmClassName</span>: xxx.xxx.xxx.HintXXXAlgorithm
+  <span style="color:#66d9ef">defaultTableStrategy</span>:
+    <span style="color:#66d9ef">none</span>:
+  <span style="color:#66d9ef">defaultKeyGenerateStrategy</span>:
+    <span style="color:#66d9ef">type</span>: SNOWFLAKE
+    <span style="color:#66d9ef">column</span>: order_id
+
+<span style="color:#66d9ef">props</span>:
+    <span style="color:#66d9ef">sql-show</span>: <span style="color:#66d9ef">true</span>
+</code></pre></div><blockquote>
+<p><strong>Get the HintManager instance:</strong></p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">HintManager hintManager <span style="color:#f92672">=</span> HintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">();</span>
+</code></pre></div><blockquote>
+<p><strong>Add shard key:</strong></p>
+</blockquote>
+<ul>
+<li>Use <code>hintManager.addDatabaseShardingValue</code> to add data source shard key</li>
+<li><code>hintManager.addTableShardingValue</code> is used to add table shard key</li>
+</ul>
+<p>Note: In the case of database sharding without table sharding, when using HINT to force routing to a database shard, you can use <code>hintManager.setDatabaseShardingValue</code> to add <code>Shard</code>.</p>
+<blockquote>
+<p><strong>Delete shard key:</strong></p>
+</blockquote>
+<p><code>Shard Key</code> is stored in <code>ThreadLocal</code> so you need to call <code>hintManager.close()</code> at the end of the operation to clear the content in <code>ThreadLocal</code></p>
+<blockquote>
+<p><strong>The complete code snippet example is as follows:</strong></p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;SELECT * FROM t_order&#34;</span><span style="color:#f92672">;</span>
+<span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>HintManager hintManager <span style="color:#f92672">=</span> HintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">();</span>
+     Connection conn <span style="color:#f92672">=</span> dataSource<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">();</span>
+     PreparedStatement preparedStatement <span style="color:#f92672">=</span> conn<span style="color:#f92672">.</span><span style="color:#a6e22e">prepareStatement</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+    hintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">addDatabaseShardingValue</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;t_order&#34;</span><span style="color:#f92672">,</span> 1<span style="color:#f92672">);</span>
+    hintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">addTableShardingValue</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;t_order&#34;</span><span style="color:#f92672">,</span> 2<span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>ResultSet rs <span style="color:#f92672">=</span> preparedStatement<span style="color:#f92672">.</span><span style="color:#a6e22e">executeQuery</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">while</span> <span style="color:#f92672">(</span>rs<span style="color:#f92672">.</span><span style="color:#a6e22e">next</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#75715e">// ...
+</span><span style="color:#75715e"></span>        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+
+String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;SELECT * FROM t_order&#34;</span><span style="color:#f92672">;</span>
+<span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>HintManager hintManager <span style="color:#f92672">=</span> HintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">();</span>
+     Connection conn <span style="color:#f92672">=</span> dataSource<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">();</span>
+     PreparedStatement preparedStatement <span style="color:#f92672">=</span> conn<span style="color:#f92672">.</span><span style="color:#a6e22e">prepareStatement</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+    hintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">setDatabaseShardingValue</span><span style="color:#f92672">(</span>3<span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>ResultSet rs <span style="color:#f92672">=</span> preparedStatement<span style="color:#f92672">.</span><span style="color:#a6e22e">executeQuery</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">while</span> <span style="color:#f92672">(</span>rs<span style="color:#f92672">.</span><span style="color:#a6e22e">next</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#75715e">// ...
+</span><span style="color:#75715e"></span>        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><ol start="2">
+<li>Use <code>HINT</code> to <code>Force Primary Database Route</code></li>
+</ol>
+<blockquote>
+<p>Obtain HintManager</p>
+</blockquote>
+<p>It is the same as HINT-based Data Sharding described above.</p>
+<blockquote>
+<p>Set Primary Database Route</p>
+</blockquote>
+<p>Use hintManager.setWriteRouteOnly to complete setting.</p>
+<blockquote>
+<p>Clear Shard Key Value</p>
+</blockquote>
+<p>It is the same as HINT-based Data Sharding described above.</p>
+<blockquote>
+<p>The complete code snippet example is as follows:</p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;SELECT * FROM t_order&#34;</span><span style="color:#f92672">;</span>
+<span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>HintManager hintManager <span style="color:#f92672">=</span> HintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">();</span>
+     Connection conn <span style="color:#f92672">=</span> dataSource<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">();</span>
+     PreparedStatement preparedStatement <span style="color:#f92672">=</span> conn<span style="color:#f92672">.</span><span style="color:#a6e22e">prepareStatement</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+    hintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">setWriteRouteOnly</span><span style="color:#f92672">();</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>ResultSet rs <span style="color:#f92672">=</span> preparedStatement<span style="color:#f92672">.</span><span style="color:#a6e22e">executeQuery</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">while</span> <span style="color:#f92672">(</span>rs<span style="color:#f92672">.</span><span style="color:#a6e22e">next</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#75715e">// ...
+</span><span style="color:#75715e"></span>        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><ol start="3">
+<li>Use <code>HINT</code> to Implement Route to Specified Database</li>
+</ol>
+<blockquote>
+<p>Obtain HintManager</p>
+</blockquote>
+<p>It is the same as HINT-based Data Sharding described above.</p>
+<blockquote>
+<p>Set Route to Specified Database</p>
+</blockquote>
+<p>Use <code>hintManager.setWriteRouteOnly</code> to set database name.</p>
+<blockquote>
+<p>The complete code snippet example is as follows:</p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;SELECT * FROM t_order&#34;</span><span style="color:#f92672">;</span>
+<span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>HintManager hintManager <span style="color:#f92672">=</span> HintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">();</span>
+     Connection conn <span style="color:#f92672">=</span> dataSource<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">();</span>
+     PreparedStatement preparedStatement <span style="color:#f92672">=</span> conn<span style="color:#f92672">.</span><span style="color:#a6e22e">prepareStatement</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+    hintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">setDataSourceName</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;ds_0&#34;</span><span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>ResultSet rs <span style="color:#f92672">=</span> preparedStatement<span style="color:#f92672">.</span><span style="color:#a6e22e">executeQuery</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">while</span> <span style="color:#f92672">(</span>rs<span style="color:#f92672">.</span><span style="color:#a6e22e">next</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#75715e">// ...
+</span><span style="color:#75715e"></span>        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><blockquote>
+<p>Delete Forced Route Value</p>
+</blockquote>
+<p>It is the same as HINT-based Data Sharding described above.</p>
+<p>After understanding the manual programming method based on <code>HintManager</code>, let’s take a look at another HINT solution provided by ShardingSphere based on distributed SQL.</p>
+<h2 id="distsql-based-hint">DistSQL Based HINT</h2>
+<p>DistSQL HINT provided by Apache ShardingSphere is composed of two functions: one is called <code>SQL HINT</code> that is based on SQL annotations, and the other is the function that acts on <code>HintManager</code> through DistSQL implementation.</p>
+<h2 id="sql-hint">SQL HINT</h2>
+<p><code>SQL HINT</code> is a HINT method to implement forced routing by adding annotations to SQL statements, reducing the cost of code modification for users. This means that it is not subjected to the limitations of Java API, and is available in both ShardingSphere-JDBC and ShardingSphere-Proxy.</p>
+<p>Take the following SQL statement as an example. Even if the user configures the relevant sharding algorithm for t_order, the SQL statement will be directly executed on the database ds_0 and the execution result will be returned.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#75715e">/* ShardingSphere hint: dataSourceName=ds_0 */</span>
+<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order;
+</code></pre></div><p>By means of annotations, we can easily send the SQL statement directly to the specified database for execution with no need for considering other sharding logic.</p>
+<p>Taking the multi-tenant scenario as an example. Users do not need to configure complex database sharding logic or modify business logic any more, but only need to add the specified database to the annotation.</p>
+<p>Next, I’d like to explain the implementation principle of <code>SQL HINT</code>.</p>
+<ul>
+<li><strong>The Implementation of SQL HINT</strong></li>
+</ul>
+<p>If you’ve heard of Apache ShardingSphere before, you must be familiar with its SQL Parser engine. The first step to implementing SQL HINT is to extract SQL annotations.</p>
+<p>With Access Channel in ANTLR4, SQL annotation can be sent to a specific hidden channel separately. ShardingSphere also uses this function to extract annotations in the hidden channel while generating the parsing result.</p>
+<p>The specific implementation is shown in the following code snippet:</p>
+<ul>
+<li>Feed SQL comments into the hidden channel:</li>
+</ul>
+<pre><code>lexer grammar Comments;
+
+import Symbol;
+
+BLOCK_COMMENT:  '/*' .*? '*/' -&gt; channel(HIDDEN);
+INLINE_COMMENT: (('-- ' | '#') ~[\r\n]* ('\r'? '\n' | EOF) | '--' ('\r'? '\n' | EOF)) -&gt; channel(HIDDEN);
+</code></pre><ul>
+<li>Access the syntax tree and add the extraction of the annotation</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> T <span style="color:#a6e22e">visit</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ParseContext parseContext<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    ParseTreeVisitor<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> visitor <span style="color:#f92672">=</span> SQLVisitorFactory<span style="color:#f92672">.</span><span style="color:#a6e22e">newInstance</span><span style="color:#f92672">(</span>databaseType<span style="color:#f92672">,</span> visitorType<span style="color:#f92672">,</span> SQLVisitorRule<span style="color:#f92672">.</span><span style="color:#a6e22e">valueOf</span><span style="color:#f92672">(</span>parseContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getParseTree</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getClass</span><span style="color:#f92672">()),</span> props<span style="color:#f92672">);</span>
+    T result <span style="color:#f92672">=</span> parseContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getParseTree</span><span style="color:#f92672">().</span><span style="color:#a6e22e">accept</span><span style="color:#f92672">(</span>visitor<span style="color:#f92672">);</span>
+    appendSQLComments<span style="color:#f92672">(</span>parseContext<span style="color:#f92672">,</span> result<span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+<span style="color:#f92672">}</span>
+
+<span style="color:#66d9ef">private</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">appendSQLComments</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ParseContext parseContext<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> T visitResult<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>parseContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getHiddenTokens</span><span style="color:#f92672">().</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">()</span> <span style="color:#f92672">&amp;&amp;</span> visitResult <span style="color:#66d9ef">instanceof</span> AbstractSQLStatement<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        Collection<span style="color:#f92672">&lt;</span>CommentSegment<span style="color:#f92672">&gt;</span> commentSegments <span style="color:#f92672">=</span> parseContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getHiddenTokens</span><span style="color:#f92672">().</span><span style="color:#a6e22e">stream</span><span style="color:#f92672">().</span><span style="color:#a6e22e">map</span><span style="color:#f92672">(</span>each <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">new</span> CommentSegment<span style="color:#f92672">(</span>each<span style="color:#f92672">.</span><span style="color:#a6e22e">getText</span><span style="color:#f92672">(),</span> each<span style="color:#f92672">.</span><span style="color:#a6e22e">getStartIndex</span><span style="color:#f92672">(),</span> each<span style="color:#f92672">.</span><span style="color:#a6e22e">getStopIndex</span><span style="color:#f92672">()))</span>
+                <span style="color:#f92672">.</span><span style="color:#a6e22e">collect</span><span style="color:#f92672">(</span>Collectors<span style="color:#f92672">.</span><span style="color:#a6e22e">toList</span><span style="color:#f92672">());</span>
+        <span style="color:#f92672">((</span>AbstractSQLStatement<span style="color:#f92672">)</span> visitResult<span style="color:#f92672">).</span><span style="color:#a6e22e">getCommentSegments</span><span style="color:#f92672">().</span><span style="color:#a6e22e">addAll</span><span style="color:#f92672">(</span>commentSegments<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>After extracting the SQL annotation information, we need to perform related mandatory routing based on the information. For routing, it is normal to use Apache ShardingSphere’s Router engine.</p>
+<p>We have made some modifications for HINT on the Router engine.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> RouteContext <span style="color:#a6e22e">route</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> LogicSQL logicSQL<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> ShardingSphereMetaData metaData<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    RouteContext result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> RouteContext<span style="color:#f92672">();</span>
+    Optional<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> dataSourceName <span style="color:#f92672">=</span> findDataSourceByHint<span style="color:#f92672">(</span>logicSQL<span style="color:#f92672">.</span><span style="color:#a6e22e">getSqlStatementContext</span><span style="color:#f92672">(),</span> metaData<span style="color:#f92672">.</span><span style="color:#a6e22e">getResource</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getDataSources</span><span style="color:#f92672">());</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>dataSourceName<span style="color:#f92672">.</span><span style="color:#a6e22e">isPresent</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        result<span style="color:#f92672">.</span><span style="color:#a6e22e">getRouteUnits</span><span style="color:#f92672">().</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> RouteUnit<span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> RouteMapper<span style="color:#f92672">(</span>dataSourceName<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(),</span> dataSourceName<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">()),</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">()));</span>
+        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Entry<span style="color:#f92672">&lt;</span>ShardingSphereRule<span style="color:#f92672">,</span> SQLRouter<span style="color:#f92672">&gt;</span> entry <span style="color:#f92672">:</span> routers<span style="color:#f92672">.</span><span style="color:#a6e22e">entrySet</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>result<span style="color:#f92672">.</span><span style="color:#a6e22e">getRouteUnits</span><span style="color:#f92672">().</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            result <span style="color:#f92672">=</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">createRouteContext</span><span style="color:#f92672">(</span>logicSQL<span style="color:#f92672">,</span> metaData<span style="color:#f92672">,</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getKey</span><span style="color:#f92672">(),</span> props<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span> <span style="color:#66d9ef">else</span> <span style="color:#f92672">{</span>
+            entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">decorateRouteContext</span><span style="color:#f92672">(</span>result<span style="color:#f92672">,</span> logicSQL<span style="color:#f92672">,</span> metaData<span style="color:#f92672">,</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getKey</span><span style="color:#f92672">(),</span> props<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>result<span style="color:#f92672">.</span><span style="color:#a6e22e">getRouteUnits</span><span style="color:#f92672">().</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">()</span> <span style="color:#f92672">&amp;&amp;</span> 1 <span style="color:#f92672">==</span> metaData<span style="color:#f92672">.</span><span style="color:#a6e22e">getResource</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getDataSources</span><span style="color:#f92672">().</span><span style="color:#a6e22e">size</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        String singleDataSourceName <span style="color:#f92672">=</span> metaData<span style="color:#f92672">.</span><span style="color:#a6e22e">getResource</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getDataSources</span><span style="color:#f92672">().</span><span style="color:#a6e22e">keySet</span><span style="color:#f92672">().</span><span style="color:#a6e22e">iterator</span><span style="color:#f92672">().</span><span style="color:#a6e22e">next</span><span style="color:#f92672">();</span>
+        result<span style="color:#f92672">.</span><span style="color:#a6e22e">getRouteUnits</span><span style="color:#f92672">().</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> RouteUnit<span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> RouteMapper<span style="color:#f92672">(</span>singleDataSourceName<span style="color:#f92672">,</span> singleDataSourceName<span style="color:#f92672">),</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">()));</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>ShardingSphere first finds SQL annotations that meet the definition, and after verification, it will directly return the routing result specified by the user, thus implementing the forced routing function.</p>
+<p>Next, I’d like to showcase how to use <code>SQL HINT</code>.</p>
+<ul>
+<li><strong>How to Use SQL HINT</strong>
+<code>SQL HINT</code> is easy to use with ShardingSphere-JDBC and ShardingSphere-Proxy.</li>
+</ul>
+<p>Step 1: Turn on the annotation parser and set <code>sqlCommentParseEnabled</code> to true.</p>
+<p>Step 2: Add SQL comments. Currently <code>SQL HINT</code> supports specifying data source routing and primary database routing.</p>
+<ul>
+<li>Data source-specified Routing: currently only supports routing to one data source. The comment format only supports <code>/* */</code> for the time being and starts with <code>ShardingSphere hint</code>: with the attribute name <code>dataSourceName</code>.</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#75715e">/* ShardingSphere hint: dataSourceName=ds_0 */</span>
+<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order;
+</code></pre></div><ul>
+<li>Primary Database Routing: The comment format only supports /* */ for the time being. The content needs to start <code>ShardingSphere hint</code>: and the attribute name is <code>writeRouteOnly</code>.</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#75715e">/* ShardingSphere hint: writeRouteOnly=true */</span>
+<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_order;
+</code></pre></div><h2 id="distsql-hint">DistSQL HINT</h2>
+<p>DistSQL also provides HINT functions, enabling users to implement sharding and forced routing through ShardingSphere-Proxy.</p>
+<ul>
+<li><strong>The Implementation Principle of DistSQL HINT</strong></li>
+</ul>
+<p>Let’s take a look at the implementation principle of DistSQL Hint first.</p>
+<p>The implementation principle of DistSQL HINT is very simple: it is the HINT function implemented by operating <code>HintManager</code>.</p>
+<p>Taking the read/write splitting HINT as an example. When a user executes the following SQL with ShardingSphere-Proxy, ShardingSphere actually performs the operations (as shown below) to the SQL statement:</p>
+<ul>
+<li>Forced Primary Database Read-write</li>
+</ul>
+<pre><code>set readwrite_splitting hint source = write
+</code></pre><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@RequiredArgsConstructor</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SetReadwriteSplittingHintExecutor</span> <span style="color:#66d9ef">extends</span> AbstractHintUpdateExecutor<span style="color:#f92672">&lt;</span>SetReadwriteSplittingHintStatement<span style="color:#f92672">&gt;</span> <span style="color:#f92672">{</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> SetReadwriteSplittingHintStatement sqlStatement<span style="color:#f92672">;</span>
+
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> ResponseHeader <span style="color:#a6e22e">execute</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        HintSourceType sourceType <span style="color:#f92672">=</span> HintSourceType<span style="color:#f92672">.</span><span style="color:#a6e22e">typeOf</span><span style="color:#f92672">(</span>sqlStatement<span style="color:#f92672">.</span><span style="color:#a6e22e">getSource</span><span style="color:#f92672">());</span>
+        <span style="color:#66d9ef">switch</span> <span style="color:#f92672">(</span>sourceType<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">case</span> AUTO<span style="color:#f92672">:</span>
+                HintManagerHolder<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">().</span><span style="color:#a6e22e">setReadwriteSplittingAuto</span><span style="color:#f92672">();</span>
+                <span style="color:#66d9ef">break</span><span style="color:#f92672">;</span>
+            <span style="color:#66d9ef">case</span> WRITE<span style="color:#f92672">:</span>
+                HintManagerHolder<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">().</span><span style="color:#a6e22e">setWriteRouteOnly</span><span style="color:#f92672">();</span>
+                <span style="color:#66d9ef">break</span><span style="color:#f92672">;</span>
+            <span style="color:#66d9ef">default</span><span style="color:#f92672">:</span>
+                <span style="color:#66d9ef">break</span><span style="color:#f92672">;</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> UpdateResponseHeader<span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> EmptyStatement<span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@NoArgsConstructor</span><span style="color:#f92672">(</span>access <span style="color:#f92672">=</span> AccessLevel<span style="color:#f92672">.</span><span style="color:#a6e22e">PRIVATE</span><span style="color:#f92672">)</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">HintManagerHolder</span> <span style="color:#f92672">{</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> ThreadLocal<span style="color:#f92672">&lt;</span>HintManager<span style="color:#f92672">&gt;</span> HINT_MANAGER_HOLDER <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ThreadLocal<span style="color:#f92672">&lt;&gt;();</span>
+
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Get an instance for {@code HintManager} from {@code ThreadLocal},if not exist,then create new one.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * @return hint manager
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> HintManager <span style="color:#a6e22e">get</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>HINT_MANAGER_HOLDER<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">()</span> <span style="color:#f92672">==</span> <span style="color:#66d9ef">null</span><span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            HINT_MANAGER_HOLDER<span style="color:#f92672">.</span><span style="color:#a6e22e">set</span><span style="color:#f92672">(</span>HintManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">());</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> HINT_MANAGER_HOLDER<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">();</span>
+    <span style="color:#f92672">}</span>
+
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * remove {@code HintManager} from {@code ThreadLocal}.
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">remove</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        HINT_MANAGER_HOLDER<span style="color:#f92672">.</span><span style="color:#a6e22e">remove</span><span style="color:#f92672">();</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>After the user executes the SQL statement, the DistSQL parser engine will first identify that the SQL statement is with read/write splitting Hint, and will extract the fields that the user wants to automatically route or force to the write database.</p>
+<p>After that, it will use <code>SetReadwriteSplittingHintExecutor</code> to execute the SQL statement, so as to set the correct operation in HintManager, implementing the function of forced primary database routing.</p>
+<ul>
+<li><strong>How to Use DistSQL HINT</strong></li>
+<li></li>
+</ul>
+<p>Below are the relevant statements of DistSQL HINT.
+<img src="https://miro.medium.com/max/1400/1*A_ELq07oPAKFGFghSdSXMA.png" alt=""></p>
+<p>This blog introduced the two methods and basic principles of HINT in detail. Once you develop a basic understanding of HINT, you’ll be able to better select the most appropriate method.</p>
+<h2 id="apache-shardingsphere-project-links">Apache ShardingSphere Project Links:</h2>
+<p><a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/contribute/">Contributor Guide</a></p>
+<h2 id="author">Author</h2>
+<p><strong>Chuxin CHEN</strong></p>
+<p>SphereEx Middleware Engineer &amp; Apache ShardingSphere Committer</p>
+<p>Currently, Chen mainly develops the kernel module of Apache ShardingSphere.</p>
+<p><img src="https://miro.medium.com/max/1400/0*dfusm7MZkUm_DKcY" alt=""></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_04_18_apache_shardingsphere_5.1.1_is_available/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_04_06_a_holistic_pluggable_platform_for_data_sharding_icde_2022_understanding_apache_shardingsphere/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

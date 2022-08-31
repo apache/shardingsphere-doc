@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>How to Use ShardingSphere-Proxy in Real Production Scenarios—Your Quick Start Guide &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">How to Use ShardingSphere-Proxy in Real Production Scenarios—Your Quick Start Guide</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>This post analyzes ops &amp; maintenance solutions with experiences taken from real production scenarios for data sharding and other functions provided by ShardingSphere-Proxy Version 5.1.0.</p>
+<blockquote>
+<p>Unless otherwise specified, in the following examples, when we say “database” we refer to <a href="https://www.mysql.com/">MySQL</a>.</p>
+</blockquote>
+<h2 id="what-does-shardingsphere-proxy-do">What does ShardingSphere-Proxy do?</h2>
+<p>ShardingSphere-Proxy allows users to use Apache ShardingSphere just as if it were a native database.</p>
+<p>To gain a better understanding of what’s ShardingSphere-proxy, let’s take a look at its definition provided, by <a href="https://shardingsphere.apache.org/">Apache ShardingSphere’s official website</a>:</p>
+<blockquote>
+<p>ShardingSphere-Proxy is a transparent database proxy that provide a database server containing database binary protocols designed to support heterogeneous languages.
+Currently, it supports MySQL and <a href="https://www.postgresql.org/">PostgreSQL</a> (and PostgreSQL-based databases, such as <a href="https://shardingsphere.medium.com/apache-shardingsphere-opengauss-breaking-the-distributed-database-performance-record-with-10-b8ced05daa37">openGauss</a>) and any related terminals (such as MySQL Command Client, <a href="https://blog.devart.com/mysql-command-line-client.html">https://blog.devart.com/mysql-command-line-client.html</a> Workbench, etc.) that are compatible with MySQL or PostgreSQL protocols to operate data. It’s a DBA-friendly tool.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/sg8ghvpviaiw2susvnue.png" alt="Image description"></p>
+</blockquote>
+<p>It’s worth noting that ShardingSphere-Proxy is a service process. In terms of client-side program connections, it is similar to a MySQL database.</p>
+<h2 id="why-you-need-shardingsphere-proxy">Why you need ShardingSphere-Proxy</h2>
+<p>ShardingSphere-Proxy is a good choice when:</p>
+<ul>
+<li>sharding rules or other rules are used; because data will be distributed across multiple database instances, inevitably making management inconvenient.</li>
+<li>non-Java developers need to leverage ShardingSphere capabilities.</li>
+</ul>
+<h2 id="1-application-scenarios">1. Application scenarios</h2>
+<p>There are many scenarios where ShardingSphere-JDBC is used for data sharding. If you have a user table and need to perform horizontal scaling with Hash for the User ID property, the way the client connects to the database is like this:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/k5dn7agg5qthn1486q5h.png" alt="Image description"></p>
+<p>Below are three real production scenarios:</p>
+<ol>
+<li>A testing engineer wants to see the information of user ID 123456 in databases &amp; tables, and you need to tell the engineer which subtable the user is in.</li>
+<li>You need to find out the total user growth in 2022 and overall user information for drafting a yearly report.</li>
+<li>Your company is going to hold its 8th-anniversary event and you are required to provide a list of active users who have been registered for over 8 years.
+Since the data is distributed across database shards and table shards, it is not easy to complete the above-mentioned tasks. If you develop code every time to satisfy these temporary requirements, it’ll be inefficient to say the least. ShardingSphere-Proxy is perfect for these scenarios.</li>
+</ol>
+<p>ShardingSphere-Proxy hides the actual backend databases, so the user operates the client side the same way as a database.</p>
+<p>For example, <code>t_user</code> is split into several real tables at the database level, that is from <code>t_user_0</code> to <code>t_user_9</code> . While operating ShardingSphere-Proxy on the client side, the user only needs to know one logical table <code>t_user</code>,and routing to the real tables is executed inside ShardingSphere-Proxy.</p>
+<p><strong>1. Logical table:</strong> The logical name of the horizontally-scaled databases/tables with the same structure. A logical table is the logical identifier of tables in SQL. For example, user data is sharded into 10 tables according to the significant digits of the primary key, that is, <code>t_user_0</code> to <code>t_user_9</code> , and their common logical table is named <code>t_user</code>.</p>
+<p><strong>2. Actual table:</strong> The physical table actually exists in databases after scale-out, that is, the above-mentioned <code>t_user_0</code> to <code>t_user_9</code> .
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/e6a21633x6ph20liulvx.png" alt="Image description"></p>
+<h2 id="2-the-differences-between-shardingsphere-jdbc-and-shardingsphere-proxy">2. The differences between ShardingSphere-JDBC and ShardingSphere-Proxy</h2>
+<p>After reading the above description, you probably feel that ShardingSphere-Proxy and ShardingSphere-JDBC are so similar. So what are the differences between the two?</p>
+<p><img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/48fpc2zrhyxygj7rfjis.png" alt="Image description">
+Check out more on the differences between the two below:</p>
+<ol>
+<li>
+<p>ShardingSphere-JDBC is a <code>.jar</code> package. Its bottom layer completes SQL parsing, routing, rewriting, execution, and other processes by rewriting JDBC components. You should add the configuration files to implement the corresponding functions in the project, making it intrusive to applications.</p>
+</li>
+<li>
+<p>ShardingSphere-Proxy is a process service. In most cases, it is positioned as a productivity tool to assist operations. It disguises itself as a database, making itself non-intrusive to applications. The SQL execution logic in ShardingSphere-Proxy is the same as in ShardingSphere-JDBC because they share the same kernel.</p>
+</li>
+</ol>
+<p><strong>Since ShardingSphere-Proxy is non-intrusive to applications, and it shares the same kernel with ShardingSphere-JDBC — so why do we still need ShardingSphere-JDBC?</strong></p>
+<ol>
+<li>
+<p>When an application directly operates databases through ShardingSphere-JDBC, there is only one network I/O. However, when the application connects to ShardingSphere-Proxy, one network I/O, and then ShardingSphere-Proxy operates databases, and another network I/O occurs, in total two network I/O requests.</p>
+</li>
+<li>
+<p>There is one more layer of application called link, which is more likely to cause a data traffic bottleneck and potential risks to the application. In general, it’s suggested that an application should be used together with ShardingSphere-JDBC.</p>
+</li>
+</ol>
+<p>Of course, ShardingSphere-JDBC and ShardingSphere-Proxy can be deployed simultaneously with a hybrid architecture. ShardingSphere-JDBC is suitable for high-performance lightweight Online Transaction Processing (OLTP) applications developed in Java, while ShardingSphere-Proxy is perfect for Online Analytical Processing (OLAP) applications and scenarios for managing and operating sharding databases.</p>
+<p><img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/begtgtodq40eg9plj81c.png" alt="Image description"></p>
+<h2 id="quick-start-guide">Quick Start Guide</h2>
+<p>There are three setup methods to install ShardingSphere-Proxy: binary package, Docker, and Helm. Stand-alone deployment and clustered deployment are also provided. Here, we take the standalone binary package as an example:</p>
+<ol>
+<li>
+<p>Get the ShardingSphere-Proxy binary installation package <a href="https://shardingsphere.apache.org/document/current/en/downloads/">at this link</a>;</p>
+</li>
+<li>
+<p>Decompress it and then modify <code>conf/server.yaml</code> and files starting with the <code>config-</code> prefix to configure sharding, read/write splitting and other functions;</p>
+</li>
+<li>
+<p>If you use Linux as operating system, please run <code>bin/start.sh.</code> For Windows operating systems, please run <code>bin/start.bat</code> to bootup ShardingSphere-Proxy.</p>
+</li>
+</ol>
+<p>The file directory looks like this:</p>
+<pre><code>├── LICENSE
+├── NOTICE
+├── README.txt
+├── bin #Start/stop script
+├── conf #service configuration, data sharding, read/write splitting, data encryption, and other function configuration files
+├── lib # Jar package
+└── licenses
+</code></pre><p><strong>1. Copy MySQL Java connector to the ext-lib package</strong>
+Download the <code>driver mysql-connector-java-5.1.47.jar</code> (<a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar">Click the link to download</a>) or <code>mysql-connector-java-8.0.11.jar</code> (<a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar">https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar</a>) into the <code>ext-lib</code> package. Note：there is no <code>ext-lib</code> package in the initial directory, so you need to create one yourself.</p>
+<p><strong>2. Modify the <code>conf/server.yaml</code> configuration file</strong>
+For <code>server.yaml</code> the default operation mode is <code>Cluster Mode</code>. Below is how to configure the standalone operation mode.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">mode</span>:
+ <span style="color:#66d9ef">type</span>: Standalone <span style="color:#75715e">#Standalone mode</span>
+ <span style="color:#66d9ef">repository</span>:
+   <span style="color:#66d9ef">type</span>: File
+   <span style="color:#66d9ef">props</span>:
+     <span style="color:#66d9ef">path</span>: /Users/xxx/software/apache-shardingsphere<span style="color:#ae81ff">-5.1.0</span>-shardingsphere-proxy/file <span style="color:#75715e">#persistent file paths such as metadata configuration</span>
+ <span style="color:#66d9ef">overwrite</span>: <span style="color:#66d9ef">false</span> <span style="color:#75715e">#Overwrite the existing metadata？</span>
+
+<span style="color:#66d9ef">rules</span>: <span style="color:#75715e">#Verification Info</span>
+ - !AUTHORITY
+   <span style="color:#66d9ef">users</span>: <span style="color:#75715e">#Init user</span>
+     - root@%:root
+     - sharding@:sharding
+   <span style="color:#66d9ef">provider</span>:
+     <span style="color:#66d9ef">type</span>: ALL_PRIVILEGES_PERMITTED
+ - !TRANSACTION
+   <span style="color:#66d9ef">defaultType</span>: XA
+   <span style="color:#66d9ef">providerType</span>: Atomikos
+ - !SQL_PARSER
+   <span style="color:#66d9ef">sqlCommentParseEnabled</span>: <span style="color:#66d9ef">true</span>
+   <span style="color:#66d9ef">sqlStatementCache</span>:
+     <span style="color:#66d9ef">initialCapacity</span>: <span style="color:#ae81ff">2000</span>
+     <span style="color:#66d9ef">maximumSize</span>: <span style="color:#ae81ff">65535</span>
+     <span style="color:#66d9ef">concurrencyLevel</span>: <span style="color:#ae81ff">4</span>
+   <span style="color:#66d9ef">parseTreeCache</span>:
+     <span style="color:#66d9ef">initialCapacity</span>: <span style="color:#ae81ff">128</span>
+     <span style="color:#66d9ef">maximumSize</span>: <span style="color:#ae81ff">1024</span>
+     <span style="color:#66d9ef">concurrencyLevel</span>: <span style="color:#ae81ff">4</span>
+
+<span style="color:#66d9ef">props</span>: <span style="color:#75715e">#public configuration</span>
+ <span style="color:#66d9ef">max-connections-size-per-query</span>: <span style="color:#ae81ff">1</span>
+ <span style="color:#66d9ef">kernel-executor-size</span>: <span style="color:#ae81ff">16</span>  <span style="color:#75715e"># Infinite by default.</span>
+ <span style="color:#66d9ef">proxy-frontend-flush-threshold</span>: <span style="color:#ae81ff">128</span>  <span style="color:#75715e"># The default value is 128.</span>
+ <span style="color:#66d9ef">proxy-opentracing-enabled</span>: <span style="color:#66d9ef">false</span>
+ <span style="color:#66d9ef">proxy-hint-enabled</span>: <span style="color:#66d9ef">false</span>
+ <span style="color:#66d9ef">sql-show</span>: <span style="color:#66d9ef">false</span>
+ <span style="color:#66d9ef">check-table-metadata-enabled</span>: <span style="color:#66d9ef">false</span>
+ <span style="color:#66d9ef">show-process-list-enabled</span>: <span style="color:#66d9ef">false</span>
+   <span style="color:#75715e"># Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy.</span>
+   <span style="color:#75715e"># The default value is -1, which means set the minimum value for different JDBC drivers.</span>
+ <span style="color:#66d9ef">proxy-backend-query-fetch-size</span>: -<span style="color:#ae81ff">1</span>
+ <span style="color:#66d9ef">check-duplicate-table-enabled</span>: <span style="color:#66d9ef">false</span>
+ <span style="color:#66d9ef">proxy-frontend-executor-size</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Proxy frontend executor size. The default value is 0, which means let Netty decide.</span>
+   <span style="color:#75715e"># Available options of proxy backend executor suitable: OLAP(default), OLTP. The OLTP option may reduce time cost of writing packets to client, but it may increase the latency of SQL execution</span>
+   <span style="color:#75715e"># and block other clients if client connections are more than `proxy-frontend-executor-size`, especially executing slow SQL.</span>
+ <span style="color:#66d9ef">proxy-backend-executor-suitable</span>: OLAP
+ <span style="color:#66d9ef">proxy-frontend-max-connections</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Less than or equal to 0 means no limitation.</span>
+ <span style="color:#66d9ef">sql-federation-enabled</span>: <span style="color:#66d9ef">false</span>
+   <span style="color:#75715e"># Available proxy backend driver type: JDBC (default), ExperimentalVertx</span>
+ <span style="color:#66d9ef">proxy-backend-driver-type</span>: JDBC
+
+</code></pre></div><blockquote>
+<p>Note: if you start a standalone ShardingSphere-Proxy and later need to change Proxy configurations, you need to set <code>mode.overwrite</code> to <code>true</code>. By doing so, ShardingSphere-Proxy will reload the metadata after startup.</p>
+</blockquote>
+<p><strong>3. Start ShardingSphere-Proxy</strong>
+Execute the bootup command: <code>sh bin/start.sh</code>. The default port <code>is 3307</code>, and the port can be replaced by adding parameters to the start script command: <code>sh bin/start.sh 3308</code> .</p>
+<p>To check whether ShardingSphere-Proxy started successfully, execute the check log command: <code>tail -100f logs/stdout.log</code> .</p>
+<p>The following information placed on the last line means that the startup is successful:</p>
+<pre><code>[INFO ] xxx-xx-xx xx:xx:xx.xxx [main] o.a.s.p.frontend.ShardingSphereProxy - ShardingSphere-Proxy Standalone mode started successfully
+</code></pre><h2 id="scenarios-and-applications">Scenarios and applications</h2>
+<p>Based on actual prouction scenarios, we’d like to show you how you can utilize ShardingSphere-Proxy to meet your expectations.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/kap8lz58cadf332wpqti.png" alt="Image description"></p>
+<p><strong>1. Initialize the database &amp; table</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#f92672">#</span> <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span>
+<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> user_sharding_0;
+
+<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> user_sharding_1;
+
+<span style="color:#f92672">#</span> <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span>
+use user_sharding_0;
+
+<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_0<span style="color:#f92672">`</span> (
+ <span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+
+<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_1<span style="color:#f92672">`</span> (
+ <span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+
+
+use user_sharding_1;
+
+<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_0<span style="color:#f92672">`</span> (
+ <span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+
+
+<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_1<span style="color:#f92672">`</span> (
+ <span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+ <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+</code></pre></div><p><strong>2. Initialize sharding configuration in Proxy</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">schemaName</span>: sharding_db
+
+<span style="color:#66d9ef">dataSources</span>:
+  <span style="color:#66d9ef">ds_0</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3306</span>/user_sharding_0?serverTimezone=UTC<span style="color:#75715e">&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: root
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+  <span style="color:#66d9ef">ds_1</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3306</span>/user_sharding_1?serverTimezone=UTC<span style="color:#75715e">&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: root
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+
+<span style="color:#66d9ef">rules</span>:
+- !SHARDING
+  <span style="color:#66d9ef">tables</span>:
+    <span style="color:#66d9ef">t_user</span>:
+      <span style="color:#66d9ef">actualDataNodes</span>: ds_${<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span>}.t_user_${<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span>}
+      <span style="color:#66d9ef">tableStrategy</span>:
+        <span style="color:#66d9ef">standard</span>:
+          <span style="color:#66d9ef">shardingColumn</span>: user_id
+          <span style="color:#66d9ef">shardingAlgorithmName</span>: t_user_inline
+      <span style="color:#66d9ef">keyGenerateStrategy</span>:
+        <span style="color:#66d9ef">column</span>: user_id
+        <span style="color:#66d9ef">keyGeneratorName</span>: snowflake
+  <span style="color:#66d9ef">bindingTables</span>:
+    - t_user
+  <span style="color:#66d9ef">defaultDatabaseStrategy</span>:
+    <span style="color:#66d9ef">standard</span>:
+      <span style="color:#66d9ef">shardingColumn</span>: user_id
+      <span style="color:#66d9ef">shardingAlgorithmName</span>: database_inline
+  <span style="color:#66d9ef">defaultTableStrategy</span>:
+    <span style="color:#66d9ef">none</span>:
+
+  <span style="color:#66d9ef">shardingAlgorithms</span>:
+    <span style="color:#66d9ef">database_inline</span>:
+      <span style="color:#66d9ef">type</span>: INLINE
+      <span style="color:#66d9ef">props</span>:
+        <span style="color:#66d9ef">algorithm-expression</span>: ds_${user_id % <span style="color:#ae81ff">2</span>}
+    <span style="color:#66d9ef">t_user_inline</span>:
+      <span style="color:#66d9ef">type</span>: INLINE
+      <span style="color:#66d9ef">props</span>:
+        <span style="color:#66d9ef">algorithm-expression</span>: t_user_${user_id % <span style="color:#ae81ff">2</span>}
+
+  <span style="color:#66d9ef">keyGenerators</span>:
+    <span style="color:#66d9ef">snowflake</span>:
+      <span style="color:#66d9ef">type</span>: SNOWFLAKE
+</code></pre></div><p><strong>3. Test sharding configuration</strong></p>
+<p>Use the MySQL terminal command to connect to the ShardingSphere-Proxy server.</p>
+<p>If you deploy databases in Docker containers, you need to add <code>-h</code> native <code>ip</code>. Because accessing 127.0.0.1 in the container is blocked.</p>
+<pre><code>#replace {xx} with actual parameter
+mysql -h {ip} -u {username} -p{password} -P 3307
+#example command
+mysql -h 127.0.0.1 -u root -proot -P 3307
+</code></pre><blockquote>
+<p>ShardingSphere-Proxy supports <a href="https://www.navicat.com/en/products/navicat-for-mysql">Navicat MySQL</a>, <a href="https://www.jetbrains.com/datagrip/">DataGrip</a>, <a href="https://www.mysql.com/products/workbench/">WorkBench</a>, <a href="https://tableplus.com/">TablePlus</a>, and other database management connectors.</p>
+</blockquote>
+<p>After confirming the connection is successful, query the databases and make sure they are consistent with those in the configuration file.</p>
+<pre><code>mysql&gt; show databases;
++-------------+
+| schema_name |
++-------------+
+| sharding_db |
++-------------+
+1 row in set (0.02 sec)
+</code></pre><p>Execute the new <code>t_user</code> statement, insert 6 pieces of user data (3 pieces for 2021, and 3 pieces for 2022).</p>
+<pre><code>mysql&gt; use sharding_db;
+mysql&gt; INSERT INTO t_user (id, user_id, create_date) values(1, 1, '2021-01-01 00:00:00'), (2, 2, '2021-01-01 00:00:00'), (3, 3, '2021-01-01 00:00:00'), (4, 4, '2022-01-01 00:00:00'), (5, 5, '2022-02-01 00:00:00'), (6, 6, '2022-03-01 00:00:00');
+Query OK, 6 rows affected (0.16 sec)
+
+mysql&gt; select * from t_user;
++----+---------+---------------------+
+| id | user_id | create_date         |
++----+---------+---------------------+
+|  2 |       2 | 2021-01-01 00:00:00 |
+|  4 |       4 | 2022-01-01 00:00:00 |
+|  6 |       6 | 2022-03-01 00:00:00 |
+|  1 |       1 | 2021-01-01 00:00:00 |
+|  3 |       3 | 2021-01-01 00:00:00 |
+|  5 |       5 | 2022-02-01 00:00:00 |
++----+---------+---------------------+
+</code></pre><p>At this time, the data is in the <code>user_sharding_0</code> and
+<code>user_sharding_1</code> databases respectively.</p>
+<h2 id="scenario-1-how-to-locate-data-information">Scenario 1: How to locate data information?</h2>
+<p>Since ShardingSphere-Proxy has logically aggregated the tables, you can query them directly.</p>
+<pre><code>mysql&gt; select * from t_user where user_id = 1;
++----+---------+---------------------+
+| id | user_id | create_date         |
++----+---------+---------------------+
+|  1 |       1 | 2021-01-01 00:00:00 |
++----+---------+---------------------+
+1 row in set (0.01 sec)
+</code></pre><h2 id="scenario-2-how-to-check-user-growth-in-2022-and-user-information">Scenario 2: How to check user growth in 2022 and user information?</h2>
+<pre><code>mysql&gt; select count(*) from t_user where create_date &gt; '2022-00-00 00:00:00';
++----------+
+| count(*) |
++----------+
+|        3 |
++----------+
+1 row in set (0.10 sec)
+
+mysql&gt; select * from t_user where create_date &gt; '2022-00-00 00:00:00';
++----+---------+---------------------+
+| id | user_id | create_date         |
++----+---------+---------------------+
+|  4 |       4 | 2022-01-01 00:00:00 |
+|  6 |       6 | 2022-01-01 00:00:00 |
+|  5 |       5 | 2022-01-01 00:00:00 |
++----+---------+---------------------+
+3 rows in set (0.02 sec)
+</code></pre><h2 id="scenario-3-how-to-get-a-list-of-active-users-who-have-been-registered-for-over-8-years">Scenario 3: How to get a list of active users who have been registered for over 8 years?</h2>
+<p>Refer to the above code and you will know how to cope with it.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>This post summarizes the basic concepts of ShardingSphere-Proxy based on the actual data sharding production scenarios, and demonstrates how ShardingSphere-Proxy faces these scenarios.</p>
+<p>After reading this article, you should be able to:</p>
+<p>Understand why ShardingSphere-Proxy is an excellent product to assist developers in DevOps.
+Know the differences between ShardingSphere-JDBC and ShardingSphere-Proxy, their advantages and disadvantages, and how they are implemented.
+Since you now have a better understanding of ShardingSphere-Proxy, we believe, it will be easier for you to study its source code. To know more about ShardingSphere, please visit <a href="https://shardingsphere.apache.org/">Apache ShardingSphere&rsquo;s official website</a> or our community’s previous blogs such as Create a Distributed Database Solution Based on PostgreSQL/openGauss.</p>
+<p><strong>Apache ShardingSphere Project Links:</strong>
+<a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/contribute/">Contributor Guide</a></p>
+<h2 id="references">References</h2>
+<p>[1]Apache ShardingSphere Download Page:
+<a href="https://shardingsphere.apache.org/document/current/en/downloads/">https://shardingsphere.apache.org/document/current/en/downloads/</a></p>
+<p>[2] mysql-connector-java-5.1.47.jar: <a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar">https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.47/mysql-connector-java-5.1.47.jar</a></p>
+<p>[3] mysql-connector-java-8.0.11.jar: <a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar">https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar</a></p>
+<p>[4] Apache ShardingSphere official website: <a href="https://shardingsphere.apache.org/">https://shardingsphere.apache.org/</a></p>
+<p>[5] Build a Distributed Database Solution based on PostgreSQL/openGauss: <a href="https://shardingsphere.apache.org/blog/en/material/jan_28_blog_pg_create_a_distributed_database_solution_based_on_postgresql__opengauss/">https://shardingsphere.apache.org/blog/en/material/jan_28_blog_pg_create_a_distributed_database_solution_based_on_postgresql__opengauss/</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_04_29_apache_shardingsphere_enterprise_applications_zhuanzhuans_transaction_system_with_100s_of_millions_of_records/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_04_21_apache_shardingsphere_opengauss_breaking_the-distributed_database_performance_record_with_10_million_tpmc/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

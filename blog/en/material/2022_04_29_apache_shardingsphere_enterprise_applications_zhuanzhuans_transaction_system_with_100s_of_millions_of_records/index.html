@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Apache ShardingSphere Enterprise Applications: Zhuanzhuan’s Transaction System with 100s of Millions of Records &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Apache ShardingSphere Enterprise Applications: Zhuanzhuan’s Transaction System with 100s of Millions of Records</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h2 id="background-and-challenges">Background and Challenges</h2>
+<p><a href="https://www.zhuanzhuan.com/index.html">Zhuanzhuan</a> is an internet platform that allows it users to sell their second-hand stuff — sort of an eBay of the East. Its business had been booming, and with it the ordering system started to face increasing performances challenges. The order database is the cornerstone of the system, and its performance should not be underestimated.</p>
+<p><strong>Challenges:</strong></p>
+<ul>
+<li>During promotions and special discount periods the burden on databases is heaby with tens of thousands of single database queries per second (qps) taking up huge database resources, and causing a significant reduction in write performance.</li>
+<li>Increased data pressure, with a single database containing several large tables with hundreds of millions of data, which challenges the capacity limit of the server.</li>
+<li>Overwhelming data volume, and data backup and recovery take a long time, posing high risks of data loss in extreme cases.</li>
+</ul>
+<h2 id="why-shardingsphere">Why ShardingSphere?</h2>
+<p>In the beginning, ZhuanZhuan’s team took adjustment measures to ease the database pressure. Exmaples include:</p>
+<p><strong>- Optimized major transactions, reduced transactions, and even eliminated transactions</strong>
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/jgvh0xy3l3xvjkbn7c4j.png" alt="Image description"></p>
+<p>We adjusted the original transaction order by putting table generation, the core step at the end, and keeping the transaction only in the order primary database. When the operation of the main table was abnormal, dirty reads were allowed on other order-related tables.</p>
+<p><strong>- Order data cache</strong>
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/8ueib5czc3uni28w0yk5.png" alt="Image description"></p>
+<p>Data consistency was the trickiest part of the cache. As order data involved account settlements and commission, non-real-time and inconsistent data would cause serious accidents.</p>
+<p>Strictly keeping cache data consistency would complex coding and reduce system concurrency. Therefore, we made some compromises on cache plans:</p>
+<ol>
+<li>Allowing direct query when cache failed.</li>
+<li>Adding version serial number, and querying the latest version’s data to ensure real-time data.</li>
+<li>Complex queries were conducted by <a href="https://www.elastic.co/">Elasticsearch (ES)</a> and primary and secondary separation, and for some large tables, we adopted hot and cold data separation.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/k92mmvjo5y2ldbkskqc6.png" alt="Image description"></li>
+</ol>
+<p>Through these optimizations, database pressure was eased. However, it still seemed overwhelming under high concurrency scenarios, such as discount season.</p>
+<p>To fundamentally solve the performance problem of order database, ZhuanZhuan decided to adopt data sharding (database and table splitting) on the <code>order</code> database so that we wouldn’t have to worry about order capacity in the future 3–5 years.</p>
+<p>Zhuangzhuang chose <a href="https://shardingsphere.apache.org/">ShardingSphere</a> after comparing the efficiency, stability, learning cost and etc. of different data sharding components.</p>
+<p>Advantages of ShardingSphere:</p>
+<ul>
+<li>It provides standardized data sharding, distributed transactions and database governance, and it’s applicable in a variety of situations such as Java isomorphism, heterogeneous language and cloud native.</li>
+<li>It has flexible sharding strategies, supporting multiple sharding methods.</li>
+<li>It’s easy to integrate with other components and has a low level of transaction intrusions.</li>
+<li>It has extensive documentation and an active community.</li>
+</ul>
+<p>ShardingSphere initiated the Database Plus concept and adopts a plugin oriented architecture where all modules are independent of each other, allowing each to be used individually or flexibly combined.</p>
+<p>It consists of three products, namely <a href="https://shardingsphere.apache.org/">JDBC</a>, <a href="https://shardingsphere.apache.org/document/current/en/overview/#shardingsphere-proxy">Proxy</a> and <a href="https://shardingsphere.apache.org/document/current/en/overview/#shardingsphere-sidecartodo">Sidecar </a>(Planning), which supports both independent and hybrid deployment.</p>
+<p>Below is a feature comparison of the three products:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7517wpdgk6gmgb0s8202.png" alt="Image description"></p>
+<p>By comparison, and considering the high order concurrency, we chose ShardingSphere-JDBC as our data sharding middleware.</p>
+<p>ShardingSphere-JDBC is a lightweight Java framework, proving extra service at the JDBC layer. It directly connects to the database by the client-side, provides services by Jar package, and requires no extra deployment and reliance. It can be seen as an enhanced JDBC driver, fully compatible with JDBC and other Object-Relational Mapping(ORM) frameworks.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/luou74i1f1gpgowequk9.png" alt="Image description"></p>
+<h2 id="key-points-in-project-implementation">Key Points in Project Implementation</h2>
+<p><strong>- Sharding Key</strong>
+The current order ID is generated by <code>timestamp+user identification code+machine code+incremental sequence</code>. The user identification code is taken from bits 9 to 16 of the buyer ID, a true random number when the user ID is generated, and is thus suitable as a sharding key.</p>
+<p>Choosing user identification code as the sharding key has some advantages:</p>
+<ul>
+<li>The data can be distributed as evenly as possible to each database and table.</li>
+<li>Specific sharding locations can be quickly located either by order ID or user ID.</li>
+<li>Data of the same buyer can be distributed to the same databases and tables, facilitating the integrated query of the buyer information.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/jkilhtbnnwk9gcdn7l5x.png" alt="Image description"></li>
+</ul>
+<p>The sharding strategy: we adopt 16 databases and 16 tables. User identification codes are used to split databases, and higher 4 bits are used to split tables.</p>
+<p><strong>- Data Migration between Old and New Databases</strong>
+The migration must be online, and downtime migration cannot be accepted, as there will be new data writes during the migration process.</p>
+<p>The data should be intact, and the migration process should be insensible to the client-side. After the migration, data in the new database should be consistent with the ones in the old databases.</p>
+<p>The migration should allow rollback, so that when a problem occurs during the migration process, it should be able to roll back to the source database without impacting system availability.</p>
+<p>Data migration steps are as follows: dual writes-&gt; migrate historical data-&gt; verify-&gt; old database offline.</p>
+<h2 id="effects-and-benefits">Effects and Benefits</h2>
+<ul>
+<li>It solves the problem of single database capacity limit.</li>
+<li>The data volume of a single database and table is greatly reduced after sharding. The data volume of a single table is reduced from nearly a hundred million level to several millions level, which greatly improves the overall performance.</li>
+<li>It reduces the risk of data losses due to oversized single databases and tables in extreme cases and eases the pressure of operation and maintenance.
+The following is a comparison of the number of interface calls of the order placement service and the time consumed by the interface during two promotion and discount periods:</li>
+</ul>
+<p><strong>Promotion before adopting ShardingSphere</strong>
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/l8d6f5tchgq7uipwbip0.png" alt="Image description"></p>
+<p><strong>Promotion after adopting ShardingSphere</strong>
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/3s9mtqhr0kpkecyz94kl.png" alt="Image description"></p>
+<h2 id="summary">Summary</h2>
+<p>ShardingSphere simplifies the development of data sharding with its well-designed architecture, highly flexible, pluggable and scalable capabilities, allowing R&amp;D teams to focus only on the business itself, thus enabling flexible scaling of the data architecture.</p>
+<p><strong>Apache ShardingSphere Project Links:</strong></p>
+<p><a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/contribute/">Contributor Guide</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_04_26_how_to_use_shardingsphere-proxy_in_real_production_scenarios_your_quick_start_guide/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

@@ -48,7 +48,7 @@ $(document).ready(function () {
       } else if (windowWidth > 740) {
         rightEndIndex = 5
       }
-
+      console.log(nextSlide)
       if (nextSlide > rightEndIndex) {
         $('.slick-next.slick-arrow').hide()
         $('.shadow.right').hide()

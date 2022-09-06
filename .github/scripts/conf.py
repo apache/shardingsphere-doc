@@ -18,6 +18,7 @@
 project = 'Apache ShardingSphere document'
 copyright = '2020, Apache ShardingSphere'
 author = 'Apache ShardingSphere'
+release = '5.1.2'
 
 
 # -- General configuration ---------------------------------------------------
@@ -71,6 +72,7 @@ latex_elements = {
     #'pointsize': '10pt',
     'figure_align': 'htbp',
     'classoptions': ',oneside',
+    'releasename': r' ',  # set release name null
     'passoptionstopackages': r'\PassOptionsToPackage{svgnames}{xcolor}',
     'fontpkg': r'''
 \setmainfont{Source Serif Pro}

@@ -18,7 +18,6 @@
 project = 'Apache ShardingSphere document'
 copyright = '2020, Apache ShardingSphere'
 author = 'Apache ShardingSphere'
-release = '5.1.2'
 
 
 # -- General configuration ---------------------------------------------------

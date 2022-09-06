@@ -62,7 +62,7 @@ function generate_pdf {
             sed -i "s/language = 'en_US'/language = 'zh_CN'/" conf.py
             echo "printing Chinese version PDF"
         fi
-        sed -i 's/##[ ][0-9]*./##/g' faq/*
+        sed -i 's/##[ ][0-9]*\./##/g' faq/*
         echo -e ".. toctree::\n   :maxdepth: 1\n   :titlesonly:\n" >> index.rst
         for f in `find . -type f -name "*${lang}.md"`
         do
@@ -86,6 +86,18 @@ function generate_pdf {
             fi
         done
 
+        if [[ "$1" == "shardingsphere" ]] ;then
+            test="test"
+            testweight=0
+            mkdir $test
+            echo "test" >> "${test}/_index.md.rst"
+            echo -e "${testweight}\t${test}/index" >> "${lastpath}/filelist.txt"
+            echo "============================" >> "${test}/index.rst"
+            echo "test" >> "${test}/index.rst"
+            echo "============================" >> "${test}/index.rst"
+            echo -e ".. toctree::\n   :hidden: \n\n   _index.md" >> "${path}/index.rst"
+        fi
+
         for f in `find . -type f -name "*list.txt"`
         do
             path=${f%/*}
@@ -106,7 +118,7 @@ function generate_pdf {
                 sed -i /branch=master/d $f
             fi
             sed -i /http.*codacy/d $f
-            pandoc $f -o "${f}.rst"
+            pandoc $f -fmarkdown-implicit_figures -o "${f}.rst"
             rm $f
         done
 

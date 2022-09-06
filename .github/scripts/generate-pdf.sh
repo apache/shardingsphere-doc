@@ -124,6 +124,7 @@ function generate_pdf {
 
         cd ..
         make latexpdf
+        mkdir -p pdf
         cp _build/latex/*.pdf pdf/$1_docs_${lang}.pdf
         echo "shardingsphere_docs_${lang}.pdf"
         make clean

@@ -1,38 +1,66 @@
-commit 170d49f33635001dd46465ca9d7fe8f4e899caeb
+commit a20b8d246f3ff97ac62657abf89ce656298bf1cc
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Sun Sep 18 00:57:35 2022 +0800
+Date:   Sun Sep 18 06:13:02 2022 +0800
 
-    Add PrepareJobWithGetBinlogPositionException (#21040)
+    Refactor SplitPipelineJobByUniqueKeyException (#21041)
+    
+    * Refactor SplitPipelineJobByUniqueKeyException
+    
+    * Refactor SplitPipelineJobByUniqueKeyException
 
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index 696a8d68f2f..800e627a87e 100644
+index 800e627a87e..a07d99058ec 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -103,8 +103,9 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
- | 08000     | 18088       | Check privileges failed on source data source, reason is: %s |
- | 08000     | 18089       | Data sources can not connect, reason is: %s |
- | HY000     | 18090       | Importer job write data failed |
--| HY000     | 18091       | Can not poll event because of binlog sync channel already closed |
--| HY000     | 18092       | Task \`%s\` execute failed |
-+| 08000     | 18091       | Get binlog position failed by job \`%s\`, reason is: %s |
-+| HY000     | 18093       | Can not poll event because of binlog sync channel already closed |
-+| HY000     | 18094       | Task \`%s\` execute failed |
- 
- ## 功能异常
+@@ -96,14 +96,15 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | HY000     | 18081       | Job has already started |
+ | HY000     | 18082       | Sharding count of job \`%s\` is 0 |
+ | HY000     | 18083       | Can not split range for table \`%s\`, reason: %s |
+-| HY000     | 18084       | Target table \`%s\` is not empty |
+-| 01007     | 18085       | Source data source lacks %s privilege(s) |
+-| HY000     | 18086       | Source data source required \`%s = %s\`, now is \`%s\` |
+-| HY000     | 18087       | User \`%s\` does exist |
+-| 08000     | 18088       | Check privileges failed on source data source, reason is: %s |
+-| 08000     | 18089       | Data sources can not connect, reason is: %s |
+-| HY000     | 18090       | Importer job write data failed |
+-| 08000     | 18091       | Get binlog position failed by job \`%s\`, reason is: %s |
++| HY000     | 18084       | Can not split by unique key \`%s\` for table \`%s\`, reason is: %s |
++| HY000     | 18085       | Target table \`%s\` is not empty |
++| 01007     | 18086       | Source data source lacks %s privilege(s) |
++| HY000     | 18087       | Source data source required \`%s = %s\`, now is \`%s\` |
++| HY000     | 18088       | User \`%s\` does exist |
++| 08000     | 18089       | Check privileges failed on source data source, reason is: %s |
++| 08000     | 18090       | Data sources can not connect, reason is: %s |
++| HY000     | 18091       | Importer job write data failed |
++| 08000     | 18092       | Get binlog position failed by job \`%s\`, reason is: %s |
+ | HY000     | 18093       | Can not poll event because of binlog sync channel already closed |
+ | HY000     | 18094       | Task \`%s\` execute failed |
  
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 34e7a05e089..836ac81e0ab 100644
+index 836ac81e0ab..8ee731dffd8 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -103,8 +103,9 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- | 08000     | 18088       | Check privileges failed on source data source, reason is: %s |
- | 08000     | 18089       | Data sources can not connect, reason is: %s |
- | HY000     | 18090       | Importer job write data failed |
--| HY000     | 18091       | Can not poll event because of binlog sync channel already closed |
--| HY000     | 18092       | Task \`%s\` execute failed |
-+| 08000     | 18091       | Get binlog position failed by job \`%s\`, reason is: %s |
-+| HY000     | 18093       | Can not poll event because of binlog sync channel already closed |
-+| HY000     | 18094       | Task \`%s\` execute failed |
- 
- ## Feature Exception
+@@ -96,14 +96,15 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | HY000     | 18081       | Job has already started |
+ | HY000     | 18082       | Sharding count of job \`%s\` is 0 |
+ | HY000     | 18083       | Can not split range for table \`%s\`, reason: %s |
+-| HY000     | 18084       | Target table \`%s\` is not empty |
+-| 01007     | 18085       | Source data source lacks %s privilege(s) |
+-| HY000     | 18086       | Source data source required \`%s = %s\`, now is \`%s\` |
+-| HY000     | 18087       | User \`%s\` does exist |
+-| 08000     | 18088       | Check privileges failed on source data source, reason is: %s |
+-| 08000     | 18089       | Data sources can not connect, reason is: %s |
+-| HY000     | 18090       | Importer job write data failed |
+-| 08000     | 18091       | Get binlog position failed by job \`%s\`, reason is: %s |
++| HY000     | 18084       | Can not split by unique key \`%s\` for table \`%s\`, reason is: %s |
++| HY000     | 18085       | Target table \`%s\` is not empty |
++| 01007     | 18086       | Source data source lacks %s privilege(s) |
++| HY000     | 18087       | Source data source required \`%s = %s\`, now is \`%s\` |
++| HY000     | 18088       | User \`%s\` does exist |
++| 08000     | 18089       | Check privileges failed on source data source, reason is: %s |
++| 08000     | 18090       | Data sources can not connect, reason is: %s |
++| HY000     | 18091       | Importer job write data failed |
++| 08000     | 18092       | Get binlog position failed by job \`%s\`, reason is: %s |
+ | HY000     | 18093       | Can not poll event because of binlog sync channel already closed |
+ | HY000     | 18094       | Task \`%s\` execute failed |
  

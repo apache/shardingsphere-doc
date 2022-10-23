@@ -1,703 +1,220 @@
-commit 48e7a30ee2cbb7c155c6ab94b89eea5b23227ef5
-Author: jiangML <1060319118@qq.com>
-Date:   Sun Oct 23 00:13:38 2022 +0800
+commit 967e9fae4f8a435feea7aabca376826c227c9bde
+Author: Raigor <raigor.jiang@gmail.com>
+Date:   Sun Oct 23 23:49:33 2022 +0800
 
-    Change  SINGLE TABLE RULE & RESOURCE to STORAGE UNIT DistSQL syntax #21671 #21672 (#21682)
+    For #21698, change `migration process configuration` to `migration rule`. (#21705)
     
-    * Refactor single table DistSQL syntax #21672
+    * For #21698, change `migration process configuration` to `migration rule`.
     
-    * Fix single table related DistSQL test errors
+    * Remove parse test cases for `drop migration process configuration`
     
-    * Refactor DistSQL about resources
+    * Change case
     
-    * fix bug & add doc
+    * Update tag of xml.
     
-    * update doc of single table
-    
-    * remove extra blank lines
-    
-    * fix single table bug
-    
-    * improve test about single table
-    
-    * update doc
-    
-    * change resource-query.md to storage-unit-query.md
+    * Fix migration it.
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition.cn.md
-deleted file mode 100644
-index 6112c03f451..00000000000
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition.cn.md
-+++ /dev/null
-@@ -1,94 +0,0 @@
--+++
--title = "资源定义"
--weight = 1
--+++
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md
+index 0346843cc09..d94255052f1 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.cn.md
+@@ -80,7 +80,7 @@ sh bin/start.sh
+ 7.1. 查询配置。
+ 
+ ```sql
+-SHOW MIGRATION PROCESS CONFIGURATION;
++SHOW MIGRATION RULE;
+ ```
+ 
+ 默认配置如下：
+@@ -93,14 +93,14 @@ SHOW MIGRATION PROCESS CONFIGURATION;
+ +--------------------------------------------------------------+--------------------------------------+------------------------------------------------------+
+ ```
+ 
+-7.2. 新建配置（可选）。
++7.2. 修改配置（可选）。
+ 
+-不配置的话有默认值。
++因 migration rule 具有默认值，无需创建，仅提供 ALTER 语句。
+ 
+ 完整配置 DistSQL 示例：
+ 
+ ```sql
+-CREATE MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ(
+   WORKER_THREAD=40,
+   BATCH_SIZE=1000,
+@@ -119,7 +119,7 @@ STREAM_CHANNEL (TYPE(NAME='MEMORY',PROPERTIES('block-queue-size'='10000')))
+ 配置项说明：
+ 
+ ```sql
+-CREATE MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ( -- 数据读取配置。如果不配置则部分参数默认生效。
+   WORKER_THREAD=40, -- 从源端摄取全量数据的线程池大小。如果不配置则使用默认值。
+   BATCH_SIZE=1000, -- 一次查询操作返回的最大记录数。如果不配置则使用默认值。
+@@ -153,7 +153,7 @@ PROPERTIES( -- 算法属性
+ DistSQL 示例：配置 `READ` 限流。
+ 
+ ```sql
+-CREATE MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ(
+   RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='500')))
+ )
+@@ -162,38 +162,23 @@ READ(
+ 
+ 配置读取数据限流，其它配置使用默认值。
+ 
+-7.3. 修改配置。
++7.3. 恢复配置。
+ 
+-`ALTER MIGRATION PROCESS CONFIGURATION`，内部结构和 `CREATE MIGRATION PROCESS CONFIGURATION` 一致。
 -
--## 语法说明
+-DistSQL 示例：调整限流参数
++如需恢复默认配置，也通过 ALTER 语句进行操作。
+ 
+ ```sql
+-ALTER MIGRATION PROCESS CONFIGURATION (
+-READ(
+-  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
+-)
+-);
+----
+-ALTER MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ(
+-  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
+-), WRITE(
+-  RATE_LIMITER (TYPE(NAME='TPS',PROPERTIES('tps'='1000')))
+-)
++  WORKER_THREAD=40,
++  BATCH_SIZE=1000,
++  SHARDING_SIZE=10000000,
++  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='500')))
++),
++WRITE(
++  WORKER_THREAD=40,
++  BATCH_SIZE=1000,
++  RATE_LIMITER (TYPE(NAME='TPS',PROPERTIES('tps'='2000')))
++),
++STREAM_CHANNEL (TYPE(NAME='MEMORY',PROPERTIES('block-queue-size'='10000')))
+ );
+ ```
+-
+-7.4. 清除配置。
+-
+-DistSQL 示例：清空 `READ` 配置、恢复为默认值。
 -
 -```sql
--ADD RESOURCE resourceDefinition [, resourceDefinition] ...
--
--ALTER RESOURCE resourceDefinition [, resourceDefinition] ...
--    
--DROP RESOURCE resourceName [, resourceName] ... [ignore single tables]
--
--resourceDefinition:
--    simpleSource | urlSource
--
--simpleSource:
--    resourceName(HOST=hostname,PORT=port,DB=dbName,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
--
--urlSource:
--    resourceName(URL=url,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
--
--property:
--    key=value
+-DROP MIGRATION PROCESS CONFIGURATION '/READ';
 -```
 -
--### 参数解释
--
--| 名称          | 数据类型    | 说明       |
--|:-------------|:-----------|:-----------|
--| resourceName | IDENTIFIER | 资源名称    |
--| hostname     | STRING     | 数据源地址  |
--| port         | INT        | 数据源端口  |
--| dbName       | STRING     | 物理库名称  |
--| url          | STRING     | URL 地址   |
--| user         | STRING     | 用户名     |
--| password     | STRING     | 密码       |
--
--### 注意事项
--
--- 添加资源前请确认已经创建分布式数据库，并执行 `use` 命令成功选择一个数据库；
--- 确认将要添加或修改的资源是可以正常连接的， 否则将不能操作成功；
--- 不允许重复的 `resourceName`；
--- `PROPERTIES` 用于自定义连接池参数，`key` 和 `value` 均为 STRING 类型；
--- `ALTER RESOURCE` 修改资源时不允许改变该资源关联的真实数据源；
--- `ALTER RESOURCE` 修改资源时会发生连接池的切换，此操作可能对进行中的业务造成影响，请谨慎使用；
--- `DROP RESOURCE` 只会删除逻辑资源，不会删除真实的数据源；
--- 被规则引用的资源将无法被删除；
--- 若资源只被 `single table rule` 引用，且用户确认可以忽略该限制，则可以添加可选参数 `ignore single tables` 进行强制删除。
--
--## 示例
+-DistSQL 示例：清空 `READ/RATE_LIMITER` 配置。
 -
 -```sql
--ADD RESOURCE resource_0 (
--    HOST="127.0.0.1",
--    PORT=3306,
--    DB="db0",
--    USER="root",
--    PASSWORD="root"
--),resource_1 (
--    HOST="127.0.0.1",
--    PORT=3306,
--    DB="db1",
--    USER="root"
--),resource_2 (
--    HOST="127.0.0.1",
--    PORT=3306,
--    DB="db2",
--    USER="root",
--    PROPERTIES("maximumPoolSize"="10")
--),resource_3 (
--    URL="jdbc:mysql://127.0.0.1:3306/db3?serverTimezone=UTC&useSSL=false",
--    USER="root",
--    PASSWORD="root",
--    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
--);
--
--ALTER RESOURCE resource_0 (
--    HOST="127.0.0.1",
--    PORT=3309,
--    DB="db0",
--    USER="root",
--    PASSWORD="root"
--),resource_1 (
--    URL="jdbc:mysql://127.0.0.1:3309/db1?serverTimezone=UTC&useSSL=false",
--    USER="root",
--    PASSWORD="root",
--    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
--);
--
--DROP RESOURCE resource_0, resource_1;
--DROP RESOURCE resource_2, resource_3 ignore single tables;
+-DROP MIGRATION PROCESS CONFIGURATION '/READ/RATE_LIMITER';
 -```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition.en.md
-deleted file mode 100644
-index 72111c4e9ac..00000000000
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition.en.md
-+++ /dev/null
-@@ -1,94 +0,0 @@
--+++
--title = "Resource Definition"
--weight = 1
--+++
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md
+index aec7f7d7322..9cdad83a666 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/build.en.md
+@@ -80,7 +80,7 @@ The startup will have been successful.
+ 7.1. Query configuration.
+ 
+ ```sql
+-SHOW MIGRATION PROCESS CONFIGURATION;
++SHOW MIGRATION RULE;
+ ```
+ 
+ The default configuration is as follows.
+@@ -93,14 +93,14 @@ The default configuration is as follows.
+ +--------------------------------------------------------------+--------------------------------------+------------------------------------------------------+
+ ```
+ 
+-7.2. New configuration (Optional).
++7.2. Alter configuration (Optional).
+ 
+-A default value is available if there is no configuration.
++Since the migration rule has default values, there is no need to create it, only the `ALTER` statement is provided.
+ 
+ A completely configured DistSQL is as follows.
+ 
+ ```sql
+-CREATE MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ(
+   WORKER_THREAD=40,
+   BATCH_SIZE=1000,
+@@ -119,7 +119,7 @@ STREAM_CHANNEL (TYPE(NAME='MEMORY',PROPERTIES('block-queue-size'='10000')))
+ Configuration item description:
+ 
+ ```sql
+-CREATE MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ( -- Data reading configuration. If it is not configured, part of the parameters will take effect by default.
+   WORKER_THREAD=40, -- Obtain the thread pool size of all the data from the source side. If it is not configured, the default value is used.
+   BATCH_SIZE=1000, -- The maximum number of records returned by a query operation. If it is not configured, the default value is used.
+@@ -153,7 +153,7 @@ PROPERTIES( -- Algorithm property
+ DistSQL sample: configure `READ` for traffic limit.
+ 
+ ```sql
+-CREATE MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ(
+   RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='500')))
+ )
+@@ -162,38 +162,23 @@ READ(
+ 
+ Configure data reading for traffic limit. Other configurations use default values.
+ 
+-7.3. Modify configuration.
++7.3. Restore configuration.
+ 
+-`ALTER MIGRATION PROCESS CONFIGURATION`, and its internal structure is the same as that of `CREATE MIGRATION PROCESS CONFIGURATION`.
 -
--## Syntax
+-DistSQL sample: modify traffic limit parameter
++To restore the default configuration, also through the `ALTER` statement.
+ 
+ ```sql
+-ALTER MIGRATION PROCESS CONFIGURATION (
+-READ(
+-  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
+-)
+-);
+----
+-ALTER MIGRATION PROCESS CONFIGURATION (
++ALTER MIGRATION RULE (
+ READ(
+-  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='1000')))
+-), WRITE(
+-  RATE_LIMITER (TYPE(NAME='TPS',PROPERTIES('tps'='1000')))
+-)
++  WORKER_THREAD=40,
++  BATCH_SIZE=1000,
++  SHARDING_SIZE=10000000,
++  RATE_LIMITER (TYPE(NAME='QPS',PROPERTIES('qps'='500')))
++),
++WRITE(
++  WORKER_THREAD=40,
++  BATCH_SIZE=1000,
++  RATE_LIMITER (TYPE(NAME='TPS',PROPERTIES('tps'='2000')))
++),
++STREAM_CHANNEL (TYPE(NAME='MEMORY',PROPERTIES('block-queue-size'='10000')))
+ );
+ ```
+-
+-7.4. Clear configuration.
+-
+-DistSQL sample: clear the configuration of `READ` and restore it to the default value.
 -
 -```sql
--ADD RESOURCE resourceDefinition [, resourceDefinition] ...
--
--ALTER RESOURCE resourceDefinition [, resourceDefinition] ...
--
--DROP RESOURCE resourceName [, resourceName] ... [ignore single tables]
--
--resourceDefinition:
--    simpleSource | urlSource
--
--simpleSource:
--    resourceName(HOST=hostname,PORT=port,DB=dbName,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
--
--urlSource:
--    resourceName(URL=url,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
--
--property:
--    key=value
+-DROP MIGRATION PROCESS CONFIGURATION '/READ';
 -```
 -
--### Parameters Explained
--
--| Name         | DataType   | Description   |
--|:-------------|:-----------|:--------------|
--| resourceName | IDENTIFIER | Resource name |
--| hostname     | STRING     | Host or IP    |
--| port         | INT        | Port          |
--| dbName       | STRING     | DB name       |
--| url          | STRING     | URL           |
--| user         | STRING     | username      |
--| password     | STRING     | password      |
--
--### Notes
--
--- Before adding resources, please confirm that a distributed database has been created, and execute the `use` command to successfully select a database;
--- Confirm that the resource to be added or altered can be connected, otherwise the operation will not be successful;
--- Duplicate `resourceName` is not allowed;
--- `PROPERTIES` is used to customize connection pool parameters, `key` and `value` are both STRING types;
--- `ALTER RESOURCE` is not allowed to change the real data source associated with this resource;
--- `ALTER RESOURCE` will switch the connection pool. This operation may affect the ongoing business, please use it with caution;
--- `DROP RESOURCE` will only delete logical resources, not real data sources;
--- Resources referenced by rules cannot be deleted;
--- If the resource is only referenced by `single table rule`, and the user confirms that the restriction can be ignored, the optional parameter `ignore single tables` can be added to perform forced deletion.
--
--## Example
+-DistSQL sample: clear the configuration of `READ/RATE_LIMITER`.
 -
 -```sql
--ADD RESOURCE resource_0 (
--    HOST="127.0.0.1",
--    PORT=3306,
--    DB="db0",
--    USER="root",
--    PASSWORD="root"
--),resource_1 (
--    HOST="127.0.0.1",
--    PORT=3306,
--    DB="db1",
--    USER="root"
--),resource_2 (
--    HOST="127.0.0.1",
--    PORT=3306,
--    DB="db2",
--    USER="root",
--    PROPERTIES("maximumPoolSize"="10")
--),resource_3 (
--    URL="jdbc:mysql://127.0.0.1:3306/db3?serverTimezone=UTC&useSSL=false",
--    USER="root",
--    PASSWORD="root",
--    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
--);
--
--ALTER RESOURCE resource_0 (
--    HOST="127.0.0.1",
--    PORT=3309,
--    DB="db0",
--    USER="root",
--    PASSWORD="root"
--),resource_1 (
--    URL="jdbc:mysql://127.0.0.1:3309/db1?serverTimezone=UTC&useSSL=false",
--    USER="root",
--    PASSWORD="root",
--    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
--);
--
--DROP RESOURCE resource_0, resource_1;
--DROP RESOURCE resource_2, resource_3 ignore single tables;
+-DROP MIGRATION PROCESS CONFIGURATION '/READ/RATE_LIMITER';
 -```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.cn.md
-index 1bcac1b1aa0..f238b01d4f4 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.cn.md
-@@ -6,26 +6,17 @@ weight = 2
- ## 定义
- 
- ```sql
--CREATE DEFAULT SINGLE TABLE RULE singleTableRuleDefinition
-+SET DEFAULT SINGLE TABLE storageUnitDefinition
- 
--ALTER DEFAULT SINGLE TABLE RULE singleTableRuleDefinition
--
--DROP DEFAULT SINGLE TABLE RULE
--
--singleTableRuleDefinition:
--    RESOURCE = resourceName
-+storageUnitDefinition:
-+    STORAGE UNIT = storageUnitName | RANDOM
- ```
--- `RESOURCE` 需使用 RDL 管理的数据源资源。
-+- `STORAGE UNIT` 需使用 RDL 管理的存储单元。RANDOM 关键字代表随机存储。
- 
- 
- ## 示例
--
--### Single Table Rule
--
- ```sql
--CREATE DEFAULT SINGLE TABLE RULE RESOURCE = ds_0
--
--ALTER DEFAULT SINGLE TABLE RULE RESOURCE = ds_1
-+SET DEFAULT SINGLE TABLE STORAGE UNIT = ds_0
- 
--DROP DEFAULT SINGLE TABLE RULE
-+SET DEFAULT SINGLE TABLE STORAGE UNIT = RANDOM
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.en.md
-index ed2e2399140..04ed501cfe4 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table.en.md
-@@ -6,26 +6,16 @@ weight = 2
- ## Definition
- 
- ```sql
--CREATE DEFAULT SINGLE TABLE RULE singleTableRuleDefinition
-+SET DEFAULT SINGLE TABLE storageUnitDefinition
- 
--ALTER DEFAULT SINGLE TABLE RULE singleTableRuleDefinition
--
--DROP DEFAULT SINGLE TABLE RULE
--
--singleTableRuleDefinition:
--    RESOURCE = resourceName
-+storageUnitDefinition:
-+    STORAGE UNIT = storageUnitName | RANDOM
- ```
--- `RESOURCE` needs to use data source resource managed by RDL
--
-+- `STORAGE UNIT` needs to use storage unit managed by RDL. The RANDOM keyword stands for random storage.
- 
- ## Example
--
--### Single Table Rule
--
- ```sql
--CREATE DEFAULT SINGLE TABLE RULE RESOURCE = ds_0
--
--ALTER DEFAULT SINGLE TABLE RULE RESOURCE = ds_1
-+SET DEFAULT SINGLE TABLE STORAGE UNIT = ds_0
- 
--DROP DEFAULT SINGLE TABLE RULE
-+SET DEFAULT SINGLE TABLE STORAGE UNIT = RANDOM
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition.cn.md
-new file mode 100644
-index 00000000000..03c82e1009c
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition.cn.md
-@@ -0,0 +1,94 @@
-++++
-+title = "存储单元定义"
-+weight = 1
-++++
-+
-+## 语法说明
-+
-+```sql
-+REGISTER STORAGE UNIT storageUnitDefinition [, storageUnitDefinition] ...
-+
-+ALTER STORAGE UNIT storageUnitDefinition [, storageUnitDefinition] ...
-+    
-+UNREGISTER STORAGE UNIT storageUnitName [, storageUnitName] ... [ignore single tables]
-+
-+storageUnitDefinition:
-+    simpleSource | urlSource
-+
-+simpleSource:
-+    storageUnitName(HOST=hostname,PORT=port,DB=dbName,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
-+
-+urlSource:
-+    storageUnitName(URL=url,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
-+
-+property:
-+    key=value
-+```
-+
-+### 参数解释
-+
-+| 名称                 | 数据类型    | 说明     |
-+|:-------------------|:-----------|:-------|
-+| storageUnitName    | IDENTIFIER | 存储单元名称 |
-+| hostname           | STRING     | 数据源地址  |
-+| port               | INT        | 数据源端口  |
-+| dbName             | STRING     | 物理库名称  |
-+| url                | STRING     | URL 地址 |
-+| user               | STRING     | 用户名    |
-+| password           | STRING     | 密码     |
-+
-+### 注意事项
-+
-+- 添加存储单元前请确认已经创建分布式数据库，并执行 `use` 命令成功选择一个数据库；
-+- 确认将要添加或修改的存储单元是可以正常连接的， 否则将不能操作成功；
-+- 不允许重复的 `storageUnitName`；
-+- `PROPERTIES` 用于自定义连接池参数，`key` 和 `value` 均为 STRING 类型；
-+- `ALTER STORAGE UNIT` 修改存储单元时不允许改变该存储单元关联的真实数据源；
-+- `ALTER STORAGE UNIT` 修改存储单元时会发生连接池的切换，此操作可能对进行中的业务造成影响，请谨慎使用；
-+- `UNREGISTER STORAGE UNIT` 只会删除逻辑存储单元，不会删除真实的数据源；
-+- 被规则引用的存储单元将无法被删除；
-+- 若存储单元只被 `single table rule` 引用，且用户确认可以忽略该限制，则可以添加可选参数 `ignore single tables` 进行强制删除。
-+
-+## 示例
-+
-+```sql
-+REGISTER STORAGE UNIT su_0 (
-+    HOST="127.0.0.1",
-+    PORT=3306,
-+    DB="db0",
-+    USER="root",
-+    PASSWORD="root"
-+),su_1 (
-+    HOST="127.0.0.1",
-+    PORT=3306,
-+    DB="db1",
-+    USER="root"
-+),su_2 (
-+    HOST="127.0.0.1",
-+    PORT=3306,
-+    DB="db2",
-+    USER="root",
-+    PROPERTIES("maximumPoolSize"="10")
-+),su_3 (
-+    URL="jdbc:mysql://127.0.0.1:3306/db3?serverTimezone=UTC&useSSL=false",
-+    USER="root",
-+    PASSWORD="root",
-+    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
-+);
-+
-+ALTER STORAGE UNIT su_0 (
-+    HOST="127.0.0.1",
-+    PORT=3309,
-+    DB="db0",
-+    USER="root",
-+    PASSWORD="root"
-+),su_1 (
-+    URL="jdbc:mysql://127.0.0.1:3309/db1?serverTimezone=UTC&useSSL=false",
-+    USER="root",
-+    PASSWORD="root",
-+    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
-+);
-+
-+UNREGISTER STORAGE UNIT su_0, su_1;
-+UNREGISTER STORAGE UNIT su_2, su_3 ignore single tables;
-+```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition.en.md
-new file mode 100644
-index 00000000000..363304cfb88
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition.en.md
-@@ -0,0 +1,94 @@
-++++
-+title = "Storage Unit Definition"
-+weight = 1
-++++
-+
-+## Syntax
-+
-+```sql
-+REGISTER STORAGE UNIT storageUnitDefinition [, storageUnitDefinition] ...
-+
-+ALTER STORAGE UNIT storageUnitDefinition [, storageUnitDefinition] ...
-+
-+UNREGISTER STORAGE UNIT storageUnitName [, storageUnitName] ... [ignore single tables]
-+
-+storageUnitDefinition:
-+    simpleSource | urlSource
-+
-+simpleSource:
-+    storageUnitName(HOST=hostname,PORT=port,DB=dbName,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
-+
-+urlSource:
-+    storageUnitName(URL=url,USER=user [,PASSWORD=password] [,PROPERTIES(property [,property]) ...])
-+
-+property:
-+    key=value
-+```
-+
-+### Parameters Explained
-+
-+| Name             | DataType   | Description       |
-+|:-----------------|:-----------|:------------------|
-+| storageUnitName  | IDENTIFIER | Storage unit name |
-+| hostname         | STRING     | Host or IP        |
-+| port             | INT        | Port              |
-+| dbName           | STRING     | DB name           |
-+| url              | STRING     | URL               |
-+| user             | STRING     | username          |
-+| password         | STRING     | password          |
-+
-+### Notes
-+
-+- Before adding storage unit, please confirm that a distributed database has been created, and execute the `use` command to successfully select a database;
-+- Confirm that the storage unit to be added or altered can be connected, otherwise the operation will not be successful;
-+- Duplicate `storageUnitName` is not allowed;
-+- `PROPERTIES` is used to customize connection pool parameters, `key` and `value` are both STRING types;
-+- `ALTER RESOURCE` is not allowed to change the real data source associated with this storage unit;
-+- `ALTER RESOURCE` will switch the connection pool. This operation may affect the ongoing business, please use it with caution;
-+- `DROP RESOURCE` will only delete logical storage unit, not real data sources;
-+- Storage unit referenced by rules cannot be deleted;
-+- If the storage unit is only referenced by `single table rule`, and the user confirms that the restriction can be ignored, the optional parameter `ignore single tables` can be added to perform forced deletion.
-+
-+## Example
-+
-+```sql
-+REGISTER STORAGE UNIT su_0 (
-+    HOST="127.0.0.1",
-+    PORT=3306,
-+    DB="db0",
-+    USER="root",
-+    PASSWORD="root"
-+),su_1 (
-+    HOST="127.0.0.1",
-+    PORT=3306,
-+    DB="db1",
-+    USER="root"
-+),su_2 (
-+    HOST="127.0.0.1",
-+    PORT=3306,
-+    DB="db2",
-+    USER="root",
-+    PROPERTIES("maximumPoolSize"="10")
-+),su_3 (
-+    URL="jdbc:mysql://127.0.0.1:3306/db3?serverTimezone=UTC&useSSL=false",
-+    USER="root",
-+    PASSWORD="root",
-+    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
-+);
-+
-+ALTER STORAGE UNIT su_0 (
-+    HOST="127.0.0.1",
-+    PORT=3309,
-+    DB="db0",
-+    USER="root",
-+    PASSWORD="root"
-+),su_1 (
-+    URL="jdbc:mysql://127.0.0.1:3309/db1?serverTimezone=UTC&useSSL=false",
-+    USER="root",
-+    PASSWORD="root",
-+    PROPERTIES("maximumPoolSize"="10","idleTimeout"="30000")
-+);
-+
-+UNREGISTER STORAGE UNIT su_0, su_1;
-+UNREGISTER STORAGE UNIT su_2, su_3 ignore single tables;
-+```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.cn.md
-index 2db39631759..e6cacbccab4 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.cn.md
-@@ -6,9 +6,9 @@ weight = 2
- ## 语法说明
- 
- ```sql
--SHOW SINGLE TABLE (table | RULES) [FROM databaseName]
--
--SHOW SINGLE TABLES
-+SHOW DEFAULT SINGLE TABLE STORAGE UNIT [FROM databaseName]
-+    
-+SHOW SINGLE (TABLES | table) [FROM databaseName]
- 
- COUNT SINGLE_TABLE RULE [FROM databaseName]
- 
-@@ -18,12 +18,11 @@ table:
- 
- ## 返回值说明
- 
--### Single Table Rule
-+### Single Table Storage Unit
- 
--| 列            | 说明          |
--| ------------- | ------------ |
--| name          | 规则名称      |
--| resource_name | 数据源名称    |
-+| 列                  | 说明      |
-+|--------------------|---------|
-+| storage_unit_name  | 存储单元名称  |
- 
- ### Single Table
- 
-@@ -42,15 +41,15 @@ table:
- 
- ## 示例
- 
--*SHOW SINGLE TABLES RULES*
-+*SHOW DEFAULT SINGLE TABLE STORAGE UNIT*
- 
- ```sql
--sql> SHOW SINGLE TABLES RULES;
--+---------+---------------+
--| name    | resource_name |
--+---------+---------------+
--| default | ds_1          |
--+---------+---------------+
-+sql> SHOW DEFAULT SINGLE TABLE STORAGE UNIT;
-++-------------------+
-+| storage_unit_name |
-++-------------------+
-+|  ds_0             |
-++-------------------+
- 1 row in set (0.01 sec)
- ```
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.en.md
-index 4436f4e3844..87a511ab368 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table.en.md
-@@ -6,9 +6,9 @@ weight = 2
- ## Syntax
- 
- ```sql
--SHOW SINGLE TABLE (table | RULES) [FROM databaseName]
--
--SHOW SINGLE TABLES
-+SHOW DEFAULT SINGLE TABLE STORAGE UNIT [FROM databaseName]
-+    
-+SHOW SINGLE (TABLES | table) [FROM databaseName]
- 
- COUNT SINGLE_TABLE RULE [FROM databaseName]
- 
-@@ -18,12 +18,12 @@ table:
- 
- ## Return Value Description
- 
--### Single Table Rule
-+### Single Table Storage Unit
-+
-+| Column             | Description       |
-+|--------------------|-------------------|
-+| storage_unit_name  | Storage unit name |
- 
--| Column        | Description      |
--| ------------- | ---------------- |
--| name          | Rule name        |
--| resource_name | Data source name |
- 
- ### Single Table
- 
-@@ -42,15 +42,15 @@ table:
- 
- ## Example
- 
--*SHOW SINGLE TABLES RULES*
-+*SHOW DEFAULT SINGLE TABLE STORAGE UNIT*
- 
- ```sql
--sql>  SHOW SINGLE TABLES RULES;
--+---------+---------------+
--| name    | resource_name |
--+---------+---------------+
--| default | ds_1          |
--+---------+---------------+
-+sql> SHOW DEFAULT SINGLE TABLE STORAGE UNIT;
-++-------------------+
-+| storage_unit_name |
-++-------------------+
-+|  ds_0             |
-++-------------------+
- 1 row in set (0.01 sec)
- ```
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/storage-unit-query.cn.md
-similarity index 50%
-rename from docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query.cn.md
-rename to docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/storage-unit-query.cn.md
-index 22ec5c0bf3e..fdb853db99c 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/storage-unit-query.cn.md
-@@ -1,12 +1,12 @@
- +++
--title = "资源查询"
-+title = "存储单元查询"
- weight = 1
- +++
- 
- ## 语法说明
- 
- ```sql
--SHOW DATABASE RESOURCES [FROM databaseName]
-+SHOW STORAGE UNITS [ [FROM databaseName] | [WHERE USAGE_COUNT = usageCount] ]
- ```
- 
- ## 返回值说明
-@@ -23,7 +23,17 @@ SHOW DATABASE RESOURCES [FROM databaseName]
- ## 示例
- 
- ```sql
--mysql> SHOW DATABASE RESOURCES;
-+mysql> SHOW STORAGE UNITS;
-++------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+| name | type  | host      | port | db   | connection_timeout_milliseconds | idle_timeout_milliseconds | max_lifetime_milliseconds | max_pool_size | min_pool_size | read_only | other_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-++------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+| ds_0 | MySQL | 127.0.0.1 | 3306 | db_0 | 30000                           | 60000                     | 1800000                   | 50             | 1             | false     | {"dataSourceProperties":{"cacheServerConfiguration":"true","elideSetAutoCommits":"true","useServerPrepStmts":"true","cachePrepStmts":"true","rewriteBatchedStatements":"true","cacheResultSetMetadata":"false","useLocalSessionState":"true","maintainTimeStats":"false","prepStmtCacheSize":"8192","tinyInt1isBit":"false","prepStmtCacheSqlLimit":"2048","netTimeoutForStreamingResults":"0","zeroDateTimeBehavior":"round"},"healthCheckProperties":{},"initializationFailTimeout":1,"validationTimeout":5000,"leakDetectionThreshold":0,"poolName":"HikariPool-1","registerMbeans":false,"allowPoolSuspension":false,"autoCommit":true,"isolateInternalQueries":false} |
-+| ds_1 | MySQL | 127.0.0.1 | 3306 | db_1 | 30000                           | 60000                     | 1800000                   | 50             | 1             | false     | {"dataSourceProperties":{"cacheServerConfiguration":"true","elideSetAutoCommits":"true","useServerPrepStmts":"true","cachePrepStmts":"true","rewriteBatchedStatements":"true","cacheResultSetMetadata":"false","useLocalSessionState":"true","maintainTimeStats":"false","prepStmtCacheSize":"8192","tinyInt1isBit":"false","prepStmtCacheSqlLimit":"2048","netTimeoutForStreamingResults":"0","zeroDateTimeBehavior":"round"},"healthCheckProperties":{},"initializationFailTimeout":1,"validationTimeout":5000,"leakDetectionThreshold":0,"poolName":"HikariPool-2","registerMbeans":false,"allowPoolSuspension":false,"autoCommit":true,"isolateInternalQueries":false} |
-++------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+2 rows in set (0.84 sec)
-+```
-+```sql
-+mysql> SHOW STORAGE UNITS FROM sharding_db;
- +------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
- | name | type  | host      | port | db   | connection_timeout_milliseconds | idle_timeout_milliseconds | max_lifetime_milliseconds | max_pool_size | min_pool_size | read_only | other_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
- +------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/storage-unit-query.en.md
-similarity index 51%
-rename from docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query.en.md
-rename to docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/storage-unit-query.en.md
-index 48e42448753..9901ad1e98c 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/storage-unit-query.en.md
-@@ -1,12 +1,12 @@
- +++
--title = "Resource Query"
-+title = "Storage Unit Query"
- weight = 1
- +++
- 
- ## Syntax
- 
- ```sql
--SHOW DATABASE RESOURCES [FROM databaseName]
-+SHOW STORAGE UNITS [ [FROM databaseName] | [WHERE USAGE_COUNT = usageCount] ]
- ```
- 
- ## Return Value Description
-@@ -23,12 +23,21 @@ SHOW DATABASE RESOURCES [FROM databaseName]
- ## Example
- 
- ```sql
--mysql> SHOW DATABASE RESOURCES;
-+mysql> SHOW STORAGE UNITS;
- +------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
- | name | type  | host      | port | db   | connection_timeout_milliseconds | idle_timeout_milliseconds | max_lifetime_milliseconds | max_pool_size | min_pool_size | read_only | other_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
- +------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
- | ds_0 | MySQL | 127.0.0.1 | 3306 | db_0 | 30000                           | 60000                     | 1800000                   | 50             | 1             | false     | {"dataSourceProperties":{"cacheServerConfiguration":"true","elideSetAutoCommits":"true","useServerPrepStmts":"true","cachePrepStmts":"true","rewriteBatchedStatements":"true","cacheResultSetMetadata":"false","useLocalSessionState":"true","maintainTimeStats":"false","prepStmtCacheSize":"8192","tinyInt1isBit":"false","prepStmtCacheSqlLimit":"2048","netTimeoutForStreamingResults":"0","zeroDateTimeBehavior":"round"},"healthCheckProperties":{},"initializationFailTimeout":1,"validationTimeout":5000,"leakDetectionThreshold":0,"poolName":"HikariPool-1","registerMbeans":false,"allowPoolSuspension":false,"autoCommit":true,"isolateInternalQueries":false} |
- | ds_1 | MySQL | 127.0.0.1 | 3306 | db_1 | 30000                           | 60000                     | 1800000                   | 50             | 1             | false     | {"dataSourceProperties":{"cacheServerConfiguration":"true","elideSetAutoCommits":"true","useServerPrepStmts":"true","cachePrepStmts":"true","rewriteBatchedStatements":"true","cacheResultSetMetadata":"false","useLocalSessionState":"true","maintainTimeStats":"false","prepStmtCacheSize":"8192","tinyInt1isBit":"false","prepStmtCacheSqlLimit":"2048","netTimeoutForStreamingResults":"0","zeroDateTimeBehavior":"round"},"healthCheckProperties":{},"initializationFailTimeout":1,"validationTimeout":5000,"leakDetectionThreshold":0,"poolName":"HikariPool-2","registerMbeans":false,"allowPoolSuspension":false,"autoCommit":true,"isolateInternalQueries":false} |
- +------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
--2 rows in set (0.84 sec)
- ```
-+```sql
-+mysql> SHOW STORAGE UNITS FROM sharding_db;
-++------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+| name | type  | host      | port | db   | connection_timeout_milliseconds | idle_timeout_milliseconds | max_lifetime_milliseconds | max_pool_size | min_pool_size | read_only | other_attributes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-++------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+| ds_0 | MySQL | 127.0.0.1 | 3306 | db_0 | 30000                           | 60000                     | 1800000                   | 50             | 1             | false     | {"dataSourceProperties":{"cacheServerConfiguration":"true","elideSetAutoCommits":"true","useServerPrepStmts":"true","cachePrepStmts":"true","rewriteBatchedStatements":"true","cacheResultSetMetadata":"false","useLocalSessionState":"true","maintainTimeStats":"false","prepStmtCacheSize":"8192","tinyInt1isBit":"false","prepStmtCacheSqlLimit":"2048","netTimeoutForStreamingResults":"0","zeroDateTimeBehavior":"round"},"healthCheckProperties":{},"initializationFailTimeout":1,"validationTimeout":5000,"leakDetectionThreshold":0,"poolName":"HikariPool-1","registerMbeans":false,"allowPoolSuspension":false,"autoCommit":true,"isolateInternalQueries":false} |
-+| ds_1 | MySQL | 127.0.0.1 | 3306 | db_1 | 30000                           | 60000                     | 1800000                   | 50             | 1             | false     | {"dataSourceProperties":{"cacheServerConfiguration":"true","elideSetAutoCommits":"true","useServerPrepStmts":"true","cachePrepStmts":"true","rewriteBatchedStatements":"true","cacheResultSetMetadata":"false","useLocalSessionState":"true","maintainTimeStats":"false","prepStmtCacheSize":"8192","tinyInt1isBit":"false","prepStmtCacheSqlLimit":"2048","netTimeoutForStreamingResults":"0","zeroDateTimeBehavior":"round"},"healthCheckProperties":{},"initializationFailTimeout":1,"validationTimeout":5000,"leakDetectionThreshold":0,"poolName":"HikariPool-2","registerMbeans":false,"allowPoolSuspension":false,"autoCommit":true,"isolateInternalQueries":false} |
-++------+-------+-----------+------+------+---------------------------------+---------------------------+---------------------------+---------------+---------------+-----------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
-+2 rows in set (0.84 sec)
-+```
-\ No newline at end of file

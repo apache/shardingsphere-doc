@@ -1,58 +1,302 @@
-commit 97f7b1c63854d04a99091069cdea3ccaf4878675
-Author: Mike0601 <40025573+Mike0601@users.noreply.github.com>
-Date:   Wed Oct 26 10:28:09 2022 +0800
+commit a4cc08e5419bb2db385ecb0a8c270130a2713262
+Author: jiangML <1060319118@qq.com>
+Date:   Wed Oct 26 11:31:08 2022 +0800
 
-    add note of yaml size (#21757)
+    Update doc and change default shadow algorithm to default_shadow_algorithm (#21759)
+    
+    * update doc about shadow and readwrite-splitting
+    
+    * update doc and change default shadow algorithm to 'default_shadow_algorithm'
+    
+    * update doc
+    
+    * update doc
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.cn.md
-index a9e794a0e51..38678696fe1 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.cn.md
-@@ -9,6 +9,9 @@ chapter = true
- YAML 提供通过配置文件的方式与 ShardingSphere-JDBC 交互。
- 配合治理模块一同使用时，持久化在配置中心的配置均为 YAML 格式。
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md
+index 4d1b52fcfcd..71ecdb3a7e3 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md
+@@ -18,6 +18,8 @@ CREATE DEFAULT SHADOW ALGORITHM shadowAlgorithm
  
-+说明：
-+YAML 配置文件支持配置内容超过 3MB。
+ ALTER DEFAULT SHADOW ALGORITHM shadowAlgorithm
+ 
++DROP DEFAULT SHADOW ALGORITHM
 +
- YAML 配置是最常见的配置方式，可以省略编程的复杂度，简化用户配置。
+ SHOW DEFAULT SHADOW ALGORITHM
  
- ## 使用步骤
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.en.md
-index 14e62d60b22..bed16f7e28e 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/_index.en.md
-@@ -9,6 +9,9 @@ chapter = true
- YAML configuration provides interaction with ShardingSphere JDBC through configuration files.
- When used with the governance module together, the configuration of persistence in the configuration center is YAML format.
+ SHOW SHADOW ALGORITHMS
+@@ -28,7 +30,7 @@ resourceMapping: SOURCE=resourceName, SHADOW=resourceName
  
-+Note:
-+The YAML configuration file supports more than 3MB of configuration content.
+ shadowTableRule: tableName(shadowAlgorithm [, shadowAlgorithm] ...)
+ 
+-shadowAlgorithm: ([algorithmName, ] TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...)))
++shadowAlgorithm: TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...))
+ 
+ algorithmProperties: algorithmProperty [, algorithmProperty] ... 
+ 
+@@ -50,10 +52,10 @@ algorithmProperty: key=value
+ - 重复的`ruleName`无法被创建；
+ - `resourceMapping` 指定源数据库和影子库的映射关系，需使用 RDL 管理的 `resource` ，请参考 [数据源资源](/cn/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition/)；
+ - `shadowAlgorithm` 可同时作用于多个 `shadowTableRule`；
+-- `algorithmName` 未指定时会根据 `ruleName`、`tableName` 和 `shadowAlgorithmType` 自动生成；
+ - `shadowAlgorithmType` 目前支持 `VALUE_MATCH`、`REGEX_MATCH` 和 `SIMPLE_HINT`；
+ - `shadowTableRule` 能够被不同的 `shadowRuleDefinition` 复用，因此在执行 `DROP SHADOW RULE` 时，对应的 `shadowTableRule` 不会被移除；
+ - `shadowAlgorithm` 能够被不同的 `shadowTableRule` 复用，因此在执行 `ALTER SHADOW RULE` 时，对应的 `shadowAlgorithm` 不会被移除。
++- `algorithmName` 创建规则时会根据 `ruleName`、`tableName` 和 `shadowAlgorithmType` 和算法集合下标自动生成。默认算法名称为 `default_shadow_algorithm`。
+ 
+ ## 示例
+ 
+@@ -61,20 +63,22 @@ algorithmProperty: key=value
+ CREATE SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
++t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
++t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
+ 
+ ALTER SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
+-
+-CREATE DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")));
+-
+-ALTER DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar")));
++t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
++t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
+ 
+ DROP SHADOW RULE shadow_rule;
+ 
+ DROP SHADOW ALGORITHM simple_hint_algorithm;
 +
- YAML configuration is the most common configuration mode, which can omit the complexity of programming and simplify user configuration.
- 
- ## Usage
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.cn.md
-index 77989555bb9..b9cf8d89e49 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.cn.md
-@@ -6,4 +6,7 @@ weight = 2
- ShardingSphere-JDBC 的 YAML 配置是 ShardingSphere-Proxy 的子集。
- 在 `server.yaml` 文件中，ShardingSphere-Proxy 能够额外配置权限功能和更多的 Proxy 专有属性。
- 
-+说明：
-+YAML 配置文件支持配置内容超过 3MB。
++CREATE DEFAULT SHADOW ALGORITHM TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar");
 +
- 本章节将介绍 ShardingSphere-Proxy 的 YAML 额外配置。
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.en.md
-index 8412ecc4f9b..4805eb6a393 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/_index.en.md
-@@ -6,4 +6,7 @@ weight = 2
- The YAML configuration of ShardingSphere-JDBC is the subset of ShardingSphere-Proxy.
- In `server.yaml` file, ShardingSphere-Proxy can configure authority feature and more properties for Proxy only.
- 
-+Note:
-+The YAML configuration file supports more than 3MB of configuration content.
++ALTER DEFAULT SHADOW ALGORITHM TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar");
 +
- This chapter will introduce the extra YAML configuration of ShardingSphere-Proxy.
++DROP DEFAULT SHADOW ALGORITHM;
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md
+index 638ca33b757..c2f50414fcc 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md
+@@ -18,6 +18,8 @@ CREATE DEFAULT SHADOW ALGORITHM shadowAlgorithm
+ 
+ ALTER DEFAULT SHADOW ALGORITHM shadowAlgorithm
+ 
++DROP DEFAULT SHADOW ALGORITHM
++
+ SHOW DEFAULT SHADOW ALGORITHM
+ 
+ SHOW SHADOW ALGORITHMS
+@@ -28,7 +30,7 @@ resourceMapping: SOURCE=resourceName, SHADOW=resourceName
+ 
+ shadowTableRule: tableName(shadowAlgorithm [, shadowAlgorithm] ...)
+ 
+-shadowAlgorithm: ([algorithmName, ] TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...)))
++shadowAlgorithm: TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...))
+ 
+ algorithmProperties: algorithmProperty [, algorithmProperty] ... 
+ 
+@@ -46,13 +48,13 @@ algorithmProperty: key=value
+ 
+ ### Notes
+ 
+--  Duplicate `ruleName` cannot be created
++- Duplicate `ruleName` cannot be created
+ - `resourceMapping` specifies the mapping relationship between the source database and the shadow library. You need to use the `resource` managed by RDL, please refer to [resource](/en/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition/)
+ - `shadowAlgorithm` can act on multiple `shadowTableRule` at the same time
+-- If `algorithmName` is not specified, it will be automatically generated according to `ruleName`, `tableName` and `shadowAlgorithmType`
+ - `shadowAlgorithmType` currently supports `VALUE_MATCH`, `REGEX_MATCH` and `SIMPLE_HINT`
+ - `shadowTableRule` can be reused by different `shadowRuleDefinition`, so when executing `DROP SHADOW RULE`, the corresponding `shadowTableRule` will not be removed
+ - `shadowAlgorithm` can be reused by different `shadowTableRule`, so when executing `ALTER SHADOW RULE`, the corresponding `shadowAlgorithm` will not be removed
++- If `algorithmName` it will be automatically generated according to `ruleName`, `tableName`, `shadowAlgorithmType` and algorithm collection index. The default name is `default_shadow_algorithm`.
+ 
+ 
+ ## Example
+@@ -61,20 +63,22 @@ algorithmProperty: key=value
+ CREATE SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
++t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
++t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
+ 
+ ALTER SHADOW RULE shadow_rule(
+ SOURCE=demo_ds,
+ SHADOW=demo_ds_shadow,
+-t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
+-
+-CREATE DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")));
++t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
++t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
+ 
+-ALTER DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar")));
+-    
+ DROP SHADOW RULE shadow_rule;
+ 
+ DROP SHADOW ALGORITHM simple_hint_algorithm;
++
++CREATE DEFAULT SHADOW ALGORITHM NAME = simple_hint_algorithm;
++
++ALTER DEFAULT SHADOW ALGORITHM TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar");
++
++DROP DEFAULT SHADOW ALGORITHM;
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md
+index c8b4ce71f26..6adae671bf0 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md
+@@ -6,9 +6,16 @@ weight = 3
+ ## 语法说明
+ 
+ ```sql
+-SHOW READWRITE_SPLITTING RULES [FROM databaseName]
++SHOW STATUS FROM READWRITE_SPLITTING (RULES | RULE groupName)  [FROM databaseName]
+ ```
+ 
++## 参数解释
++
++| 名称                 | 数据类型        | 说明    |
++|:-------------------|:------------|:------|
++| groupName          | IDENTIFIER  | 规则组名称 |
++| databaseName       | IDENTIFIER  | 数据库名称 |
++
+ ## 返回值说明
+ 
+ | 列                          | 说明                                  |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md
+index a9dca669b39..e6da10e1886 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md
+@@ -6,9 +6,16 @@ weight = 3
+ ## Syntax
+ 
+ ```sql
+-SHOW READWRITE_SPLITTING RULES [FROM databaseName]
++SHOW STATUS FROM READWRITE_SPLITTING (RULES | RULE groupName)  [FROM databaseName]
+ ```
+ 
++## 参数解释
++
++| Name         | DateType     | Description   |
++|:-------------|:-------------|:--------------|
++| groupName    | IDENTIFIER   | Rule name     |
++| databaseName | IDENTIFIER   | Database name |
++
+ ## Return Value Description
+ 
+ | Column                      | Description                          |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md
+index d94dd734a51..a012e872aa0 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md
+@@ -35,8 +35,8 @@ REGISTER STORAGE UNIT ds_0 (
+ CREATE SHADOW RULE group_0(
+ SOURCE=ds_0,
+ SHADOW=ds_1,
+-t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
++t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
++t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+ ```
+ 
+ - 修改影子库压测规则
+@@ -45,7 +45,7 @@ t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
+ ALTER SHADOW RULE group_0(
+ SOURCE=ds_0,
+ SHADOW=ds_2,
+-t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
++t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+ ```
+ 
+ - 删除影子库压测规则
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md
+index 673b0a6d4e9..60989cdbd85 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md
+@@ -35,8 +35,8 @@ REGISTER STORAGE UNIT ds_0 (
+ CREATE SHADOW RULE group_0(
+ SOURCE=ds_0,
+ SHADOW=ds_1,
+-t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
+-t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
++t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
++t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+ ```
+ 
+ - Alter shadow rule
+@@ -45,7 +45,7 @@ t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
+ ALTER SHADOW RULE group_0(
+ SOURCE=ds_0,
+ SHADOW=ds_2,
+-t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
++t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+ ```
+ 
+ - Drop shadow rule
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
+index af6bb473d5c..0e5813ce7d5 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
+@@ -105,7 +105,7 @@ CREATE DATABASE sharding_db;
+ 
+ USE sharding_db
+ 
+-ADD RESOURCE ds_2 (
++REGISTER STORAGE UNIT ds_2 (
+     URL="jdbc:mysql://127.0.0.1:3306/migration_ds_10?serverTimezone=UTC&useSSL=false",
+     USER="root",
+     PASSWORD="root",
+@@ -313,7 +313,7 @@ CREATE DATABASE sharding_db;
+ 
+ \c sharding_db
+ 
+-ADD RESOURCE ds_2 (
++REGISTER STORAGE UNIT ds_2 (
+     URL="jdbc:postgresql://127.0.0.1:5432/migration_ds_10",
+     USER="postgres",
+     PASSWORD="root",
+@@ -510,7 +510,7 @@ CREATE DATABASE sharding_db;
+ 
+ \c sharding_db
+ 
+-ADD RESOURCE ds_2 (
++REGISTER STORAGE UNIT ds_2 (
+     URL="jdbc:opengauss://127.0.0.1:5432/migration_ds_10",
+     USER="gaussdb",
+     PASSWORD="Root@123",
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
+index 53bfbc94319..d82d5572e9a 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
+@@ -101,7 +101,7 @@ CREATE DATABASE sharding_db;
+ 
+ USE sharding_db
+ 
+-ADD RESOURCE ds_2 (
++REGISTER STORAGE UNIT ds_2 (
+     URL="jdbc:mysql://127.0.0.1:3306/migration_ds_10?serverTimezone=UTC&useSSL=false",
+     USER="root",
+     PASSWORD="root",
+@@ -296,7 +296,7 @@ CREATE DATABASE sharding_db;
+ 
+ \c sharding_db
+ 
+-ADD RESOURCE ds_2 (
++REGISTER STORAGE UNIT ds_2 (
+     URL="jdbc:postgresql://127.0.0.1:5432/migration_ds_10",
+     USER="postgres",
+     PASSWORD="root",
+@@ -479,7 +479,7 @@ CREATE DATABASE sharding_db;
+ 
+ \c sharding_db
+ 
+-ADD RESOURCE ds_2 (
++REGISTER STORAGE UNIT ds_2 (
+     URL="jdbc:opengauss://127.0.0.1:5432/migration_ds_10",
+     USER="gaussdb",
+     PASSWORD="Root@123",

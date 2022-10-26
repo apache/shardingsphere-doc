@@ -1,302 +1,289 @@
-commit a4cc08e5419bb2db385ecb0a8c270130a2713262
-Author: jiangML <1060319118@qq.com>
-Date:   Wed Oct 26 11:31:08 2022 +0800
+commit 0e8c172eed4fb1be291f9af445f030e2a5c5f1c3
+Author: Raigor <raigor.jiang@gmail.com>
+Date:   Wed Oct 26 12:03:45 2022 +0800
 
-    Update doc and change default shadow algorithm to default_shadow_algorithm (#21759)
+    Rename `sharding binding table` to `sharding table reference` in DistSQL (#21760)
     
-    * update doc about shadow and readwrite-splitting
+    * Optimize broadcast table rule updater.
     
-    * update doc and change default shadow algorithm to 'default_shadow_algorithm'
+    * Optimize usage of Collectors.toMap.
     
-    * update doc
+    * Update documents.
     
-    * update doc
+    * For #21717, rename `sharding binding table` to `sharding table reference`
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md
-index 4d1b52fcfcd..71ecdb3a7e3 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.cn.md
-@@ -18,6 +18,8 @@ CREATE DEFAULT SHADOW ALGORITHM shadowAlgorithm
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
+index 6e80f757018..2d163b9de7d 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
+@@ -139,19 +139,19 @@ auditorAlgorithmDefinition:
+ - `Sharding Table Rule` 同时支持 `Auto Table` 和 `Table` 两种类型，两者在语法上有所差异，对应配置文件请参考 [数据分片](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding/) ；
+ - 使用 `autoCreativeAlgorithm` 方式指定 `shardingStrategy` 时，将会自动创建新的分片算法，算法命名规则为 `tableName_strategyType_shardingAlgorithmType`，如 `t_order_database_inline`。
  
- ALTER DEFAULT SHADOW ALGORITHM shadowAlgorithm
- 
-+DROP DEFAULT SHADOW ALGORITHM
-+
- SHOW DEFAULT SHADOW ALGORITHM
- 
- SHOW SHADOW ALGORITHMS
-@@ -28,7 +30,7 @@ resourceMapping: SOURCE=resourceName, SHADOW=resourceName
- 
- shadowTableRule: tableName(shadowAlgorithm [, shadowAlgorithm] ...)
- 
--shadowAlgorithm: ([algorithmName, ] TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...)))
-+shadowAlgorithm: TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...))
- 
- algorithmProperties: algorithmProperty [, algorithmProperty] ... 
- 
-@@ -50,10 +52,10 @@ algorithmProperty: key=value
- - 重复的`ruleName`无法被创建；
- - `resourceMapping` 指定源数据库和影子库的映射关系，需使用 RDL 管理的 `resource` ，请参考 [数据源资源](/cn/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition/)；
- - `shadowAlgorithm` 可同时作用于多个 `shadowTableRule`；
--- `algorithmName` 未指定时会根据 `ruleName`、`tableName` 和 `shadowAlgorithmType` 自动生成；
- - `shadowAlgorithmType` 目前支持 `VALUE_MATCH`、`REGEX_MATCH` 和 `SIMPLE_HINT`；
- - `shadowTableRule` 能够被不同的 `shadowRuleDefinition` 复用，因此在执行 `DROP SHADOW RULE` 时，对应的 `shadowTableRule` 不会被移除；
- - `shadowAlgorithm` 能够被不同的 `shadowTableRule` 复用，因此在执行 `ALTER SHADOW RULE` 时，对应的 `shadowAlgorithm` 不会被移除。
-+- `algorithmName` 创建规则时会根据 `ruleName`、`tableName` 和 `shadowAlgorithmType` 和算法集合下标自动生成。默认算法名称为 `default_shadow_algorithm`。
- 
- ## 示例
- 
-@@ -61,20 +63,22 @@ algorithmProperty: key=value
- CREATE SHADOW RULE shadow_rule(
- SOURCE=demo_ds,
- SHADOW=demo_ds_shadow,
--t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
--t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
-+t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
-+t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
- 
- ALTER SHADOW RULE shadow_rule(
- SOURCE=demo_ds,
- SHADOW=demo_ds_shadow,
--t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
--t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
--
--CREATE DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")));
--
--ALTER DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar")));
-+t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
-+t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
- 
- DROP SHADOW RULE shadow_rule;
- 
- DROP SHADOW ALGORITHM simple_hint_algorithm;
-+
-+CREATE DEFAULT SHADOW ALGORITHM TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar");
-+
-+ALTER DEFAULT SHADOW ALGORITHM TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar");
-+
-+DROP DEFAULT SHADOW ALGORITHM;
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md
-index 638ca33b757..c2f50414fcc 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/shadow.en.md
-@@ -18,6 +18,8 @@ CREATE DEFAULT SHADOW ALGORITHM shadowAlgorithm
- 
- ALTER DEFAULT SHADOW ALGORITHM shadowAlgorithm
- 
-+DROP DEFAULT SHADOW ALGORITHM
-+
- SHOW DEFAULT SHADOW ALGORITHM
- 
- SHOW SHADOW ALGORITHMS
-@@ -28,7 +30,7 @@ resourceMapping: SOURCE=resourceName, SHADOW=resourceName
- 
- shadowTableRule: tableName(shadowAlgorithm [, shadowAlgorithm] ...)
- 
--shadowAlgorithm: ([algorithmName, ] TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...)))
-+shadowAlgorithm: TYPE(NAME=shadowAlgorithmType, PROPERTIES([algorithmProperties] ...))
- 
- algorithmProperties: algorithmProperty [, algorithmProperty] ... 
- 
-@@ -46,13 +48,13 @@ algorithmProperty: key=value
- 
- ### Notes
- 
---  Duplicate `ruleName` cannot be created
-+- Duplicate `ruleName` cannot be created
- - `resourceMapping` specifies the mapping relationship between the source database and the shadow library. You need to use the `resource` managed by RDL, please refer to [resource](/en/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition/)
- - `shadowAlgorithm` can act on multiple `shadowTableRule` at the same time
--- If `algorithmName` is not specified, it will be automatically generated according to `ruleName`, `tableName` and `shadowAlgorithmType`
- - `shadowAlgorithmType` currently supports `VALUE_MATCH`, `REGEX_MATCH` and `SIMPLE_HINT`
- - `shadowTableRule` can be reused by different `shadowRuleDefinition`, so when executing `DROP SHADOW RULE`, the corresponding `shadowTableRule` will not be removed
- - `shadowAlgorithm` can be reused by different `shadowTableRule`, so when executing `ALTER SHADOW RULE`, the corresponding `shadowAlgorithm` will not be removed
-+- If `algorithmName` it will be automatically generated according to `ruleName`, `tableName`, `shadowAlgorithmType` and algorithm collection index. The default name is `default_shadow_algorithm`.
- 
- 
- ## Example
-@@ -61,20 +63,22 @@ algorithmProperty: key=value
- CREATE SHADOW RULE shadow_rule(
- SOURCE=demo_ds,
- SHADOW=demo_ds_shadow,
--t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
--t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
-+t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
-+t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
- 
- ALTER SHADOW RULE shadow_rule(
- SOURCE=demo_ds,
- SHADOW=demo_ds_shadow,
--t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
--t_order_item((TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1')))));
--
--CREATE DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")));
-+t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="true", "foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
-+t_order_item(TYPE(NAME="VALUE_MATCH", PROPERTIES("operation"="insert","column"="user_id", "value"='1'))));
- 
--ALTER DEFAULT SHADOW ALGORITHM (simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar")));
--    
- DROP SHADOW RULE shadow_rule;
- 
- DROP SHADOW ALGORITHM simple_hint_algorithm;
-+
-+CREATE DEFAULT SHADOW ALGORITHM NAME = simple_hint_algorithm;
-+
-+ALTER DEFAULT SHADOW ALGORITHM TYPE(NAME="SIMPLE_HINT", PROPERTIES("shadow"="false", "foo"="bar");
-+
-+DROP DEFAULT SHADOW ALGORITHM;
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md
-index c8b4ce71f26..6adae671bf0 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.cn.md
-@@ -6,9 +6,16 @@ weight = 3
- ## 语法说明
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
  
  ```sql
--SHOW READWRITE_SPLITTING RULES [FROM databaseName]
-+SHOW STATUS FROM READWRITE_SPLITTING (RULES | RULE groupName)  [FROM databaseName]
+-CREATE SHARDING BINDING TABLE RULES bindTableRulesDefinition [, bindTableRulesDefinition] ...
++CREATE SHARDING TABLE REFERENCE RULE tableReferenceRuleDefinition [, tableReferenceRuleDefinition] ...
+ 
+-ALTER SHARDING BINDING TABLE RULES bindTableRulesDefinition [, bindTableRulesDefinition] ...
++ALTER SHARDING TABLE REFERENCE RULE tableReferenceRuleDefinition [, tableReferenceRuleDefinition] ...
+ 
+-DROP SHARDING BINDING TABLE RULES bindTableRulesDefinition [, bindTableRulesDefinition] ...
++DROP SHARDING TABLE REFERENCE RULE tableReferenceRuleDefinition [, tableReferenceRuleDefinition] ...
+ 
+-bindTableRulesDefinition:
++tableReferenceRuleDefinition:
+     (tableName [, tableName] ... )
+ ```
+-- `ALTER` 会使用新的配置直接覆盖数据库内的绑定表配置
++- `ALTER` 会使用新的配置覆盖数据库内的绑定表配置
+ 
+ ### Broadcast Table Rule
+ 
+@@ -258,22 +258,22 @@ TYPE="standard",SHARDING_COLUMN=another_id,SHARDING_ALGORITHM=database_inline
+ DROP DEFAULT SHARDING DATABASE STRATEGY;
  ```
  
-+## 参数解释
-+
-+| 名称                 | 数据类型        | 说明    |
-+|:-------------------|:------------|:------|
-+| groupName          | IDENTIFIER  | 规则组名称 |
-+| databaseName       | IDENTIFIER  | 数据库名称 |
-+
- ## 返回值说明
- 
- | 列                          | 说明                                  |
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md
-index a9dca669b39..e6da10e1886 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/readwrite-splitting.en.md
-@@ -6,9 +6,16 @@ weight = 3
- ## Syntax
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
  
  ```sql
--SHOW READWRITE_SPLITTING RULES [FROM databaseName]
-+SHOW STATUS FROM READWRITE_SPLITTING (RULES | RULE groupName)  [FROM databaseName]
+-CREATE SHARDING BINDING TABLE RULES (t_order,t_order_item),(t_1,t_2);
++CREATE SHARDING TABLE REFERENCE RULE (t_order,t_order_item),(t_1,t_2);
+ 
+-ALTER SHARDING BINDING TABLE RULES (t_order,t_order_item);
++ALTER SHARDING TABLE REFERENCE RULE (t_order,t_order_item);
+ 
+-DROP SHARDING BINDING TABLE RULES;
++DROP SHARDING TABLE REFERENCE RULE;
+ 
+-DROP SHARDING BINDING TABLE RULES (t_order,t_order_item);
++DROP SHARDING TABLE REFERENCE RULE (t_order,t_order_item);
  ```
  
-+## 参数解释
-+
-+| Name         | DateType     | Description   |
-+|:-------------|:-------------|:--------------|
-+| groupName    | IDENTIFIER   | Rule name     |
-+| databaseName | IDENTIFIER   | Database name |
-+
- ## Return Value Description
+ ### Broadcast Table Rule
  
- | Column                      | Description                          |
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md
-index d94dd734a51..a012e872aa0 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.cn.md
-@@ -35,8 +35,8 @@ REGISTER STORAGE UNIT ds_0 (
- CREATE SHADOW RULE group_0(
- SOURCE=ds_0,
- SHADOW=ds_1,
--t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
--t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
-+t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
-+t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+ ```sql
+-CREATE BROADCAST TABLE RULES t_a,t_b;
++CREATE BROADCAST TABLE RULE t_a,t_b;
+ 
+ DROP BROADCAST TABLE RULE t_a;
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
+index 6ee562a3a29..0ae383f3ba7 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
+@@ -139,16 +139,16 @@ auditorAlgorithmDefinition:
+ - `Sharding Table Rule` supports both `Auto Table` and `Table` at the same time. The two types are different in syntax. For the corresponding configuration file, please refer to [Sharding](/en/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding/)
+ - When using the `autoCreativeAlgorithm` way to specify `shardingStrategy`, a new sharding algorithm will be created automatically. The algorithm naming rule is `tableName_strategyType_shardingAlgorithmType`, such as `t_order_database_inline`
+ 
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
+ 
+ ```sql
+-CREATE SHARDING BINDING TABLE RULES bindTableRulesDefinition [, bindTableRulesDefinition] ...
++CREATE SHARDING TABLE REFERENCE RULE tableReferenceRuleDefinition [, tableReferenceRuleDefinition] ...
+ 
+-ALTER SHARDING BINDING TABLE RULES bindTableRulesDefinition [, bindTableRulesDefinition] ...
++ALTER SHARDING TABLE REFERENCE RULE tableReferenceRuleDefinition [, tableReferenceRuleDefinition] ...
+ 
+-DROP SHARDING BINDING TABLE RULES bindTableRulesDefinition [, bindTableRulesDefinition] ...
++DROP SHARDING TABLE REFERENCE RULE tableReferenceRuleDefinition [, tableReferenceRuleDefinition] ...
+ 
+-bindTableRulesDefinition:
++tableReferenceRuleDefinition:
+     (tableName [, tableName] ... )
+ ```
+ - `ALTER` will overwrite the binding table configuration in the database with the new configuration
+@@ -258,22 +258,22 @@ TYPE="standard",SHARDING_COLUMN=another_id,SHARDING_ALGORITHM=database_inline
+ DROP DEFAULT SHARDING DATABASE STRATEGY;
  ```
  
- - 修改影子库压测规则
-@@ -45,7 +45,7 @@ t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
- ALTER SHADOW RULE group_0(
- SOURCE=ds_0,
- SHADOW=ds_2,
--t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
-+t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
+ 
+ ```sql
+-CREATE SHARDING BINDING TABLE RULES (t_order,t_order_item),(t_1,t_2);
++CREATE SHARDING TABLE REFERENCE RULE (t_order,t_order_item),(t_1,t_2);
+ 
+-ALTER SHARDING BINDING TABLE RULES (t_order,t_order_item);
++ALTER SHARDING TABLE REFERENCE RULE (t_order,t_order_item);
+ 
+-DROP SHARDING BINDING TABLE RULES;
++DROP SHARDING TABLE REFERENCE RULE;
+ 
+-DROP SHARDING BINDING TABLE RULES (t_order,t_order_item);
++DROP SHARDING TABLE REFERENCE RULE (t_order,t_order_item);
  ```
  
- - 删除影子库压测规则
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md
-index 673b0a6d4e9..60989cdbd85 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/usage/shadow-rule.en.md
-@@ -35,8 +35,8 @@ REGISTER STORAGE UNIT ds_0 (
- CREATE SHADOW RULE group_0(
- SOURCE=ds_0,
- SHADOW=ds_1,
--t_order((simple_hint_algorithm, TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))),(TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]')))), 
--t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
-+t_order(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")),TYPE(NAME="REGEX_MATCH", PROPERTIES("operation"="insert","column"="user_id", "regex"='[1]'))), 
-+t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+ ### Broadcast Table Rule
+ 
+ ```sql
+-CREATE BROADCAST TABLE RULES t_a,t_b;
++CREATE BROADCAST TABLE RULE t_a,t_b;
+ 
+ DROP BROADCAST TABLE RULE t_a;
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
+index d76593bc971..29aa41db4bf 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.cn.md
+@@ -39,10 +39,10 @@ tableRule:
+ -  支持查询所有分片算法；
+ -  支持查询所有分片审计算法。
+ 
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
+ 
+ ```sql
+-SHOW SHARDING BINDING TABLE RULES [FROM databaseName]
++SHOW SHARDING TABLE REFERENCE RULES [FROM databaseName]
  ```
  
- - Alter shadow rule
-@@ -45,7 +45,7 @@ t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
- ALTER SHADOW RULE group_0(
- SOURCE=ds_0,
- SHADOW=ds_2,
--t_order_item((TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar")))));
-+t_order_item(TYPE(NAME="SIMPLE_HINT", PROPERTIES("foo"="bar"))));
+ ### Broadcast Table Rule
+@@ -138,17 +138,17 @@ SHOW BROADCAST TABLE RULES [FROM databaseName]
+ | name  | 分片规则名称    |
+ | nodes | 分片节点       |
+ 
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
+ 
+-| 列                      | 说明      |
+-| ----------------------- | -------- |
+-| sharding_binding_tables | 绑定表名称 |
++| 列                       | 说明      |
++|--------------------------|---------- |
++| sharding_table_reference | 表关联关系 |
+ 
+ ### Broadcast Table Rule
+ 
+-| 列                | 说明      |
+-| ---------------- | -------- |
+-| broadcast_tables | 广播表名称 |
++| 列              | 说明      |
++| --------------- | -------- |
++| broadcast_table | 广播表名称 |
+ 
+ ### Sharding Table Rule
+ 
+@@ -303,16 +303,16 @@ mysql> SHOW SHARDING TABLE NODES;
+ 1 row in set (0.02 sec)
  ```
  
- - Drop shadow rule
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-index af6bb473d5c..0e5813ce7d5 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-@@ -105,7 +105,7 @@ CREATE DATABASE sharding_db;
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
  
- USE sharding_db
+ ```sql
+-mysql> SHOW SHARDING BINDING TABLE RULES;
+-+----------------------+
+-| sharding_binding_tables |
+-+----------------------+
+-| t_order,t_order_item |
+-| t1,t2                |
+-+----------------------+
++mysql> SHOW SHARDING TABLE REFERENCE RULES;
+++--------------------------+
++| sharding_table_reference |
+++--------------------------+
++| t_order,t_order_item     |
++| t1,t2                    |
+++--------------------------+
+ 2 rows in set (0.00 sec)
+ ```
  
--ADD RESOURCE ds_2 (
-+REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/migration_ds_10?serverTimezone=UTC&useSSL=false",
-     USER="root",
-     PASSWORD="root",
-@@ -313,7 +313,7 @@ CREATE DATABASE sharding_db;
+@@ -321,7 +321,7 @@ mysql> SHOW SHARDING BINDING TABLE RULES;
+ ```sql
+ mysql> SHOW BROADCAST TABLE RULES;
+ +------------------------+
+-| broadcast_tables |
++| broadcast_table        |
+ +------------------------+
+ | t_1                    |
+ | t_2                    |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md
+index fe343f14fb4..e1dba88bb8f 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/sharding.en.md
+@@ -39,10 +39,10 @@ tableRule:
+ -  Support query all sharding algorithms
+ -  Support query all sharding audit algorithms
  
- \c sharding_db
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
  
--ADD RESOURCE ds_2 (
-+REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:postgresql://127.0.0.1:5432/migration_ds_10",
-     USER="postgres",
-     PASSWORD="root",
-@@ -510,7 +510,7 @@ CREATE DATABASE sharding_db;
+ ```sql
+-SHOW SHARDING BINDING TABLE RULES [FROM databaseName]
++SHOW SHARDING TABLE REFERENCE RULES [FROM databaseName]
+ ```
  
- \c sharding_db
+ ### Broadcast Table Rule
+@@ -138,17 +138,17 @@ SHOW BROADCAST TABLE RULES [FROM databaseName]
+ | name   | Sharding rule name   |
+ | nodes  | Sharding nodes        |
  
--ADD RESOURCE ds_2 (
-+REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:opengauss://127.0.0.1:5432/migration_ds_10",
-     USER="gaussdb",
-     PASSWORD="Root@123",
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-index 53bfbc94319..d82d5572e9a 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-@@ -101,7 +101,7 @@ CREATE DATABASE sharding_db;
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
  
- USE sharding_db
+-| Column                  | Description                 | 
+-| ----------------------- | --------------------------- |
+-| sharding_binding_tables | sharding Binding Table list |
++| Column                   | Description              | 
++| ------------------------ |--------------------------|
++| sharding_table_reference | Sharding table reference |
  
--ADD RESOURCE ds_2 (
-+REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/migration_ds_10?serverTimezone=UTC&useSSL=false",
-     USER="root",
-     PASSWORD="root",
-@@ -296,7 +296,7 @@ CREATE DATABASE sharding_db;
+ ### Broadcast Table Rule
  
- \c sharding_db
+-| Column             | Description               |
+-|--------------------|---------------------------|
+-| broadcast_tables   | Broadcast Table list      |
++| Column           | Description         |
++|------------------|---------------------|
++| broadcast_table  | Broadcast table     |
  
--ADD RESOURCE ds_2 (
-+REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:postgresql://127.0.0.1:5432/migration_ds_10",
-     USER="postgres",
-     PASSWORD="root",
-@@ -479,7 +479,7 @@ CREATE DATABASE sharding_db;
+ ### Sharding Table Rule
  
- \c sharding_db
+@@ -303,16 +303,16 @@ mysql> SHOW SHARDING TABLE NODES;
+ 1 row in set (0.02 sec)
+ ```
  
--ADD RESOURCE ds_2 (
-+REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:opengauss://127.0.0.1:5432/migration_ds_10",
-     USER="gaussdb",
-     PASSWORD="Root@123",
+-### Sharding Binding Table Rule
++### Sharding Table Reference Rule
+ 
+ ```sql
+-mysql> SHOW SHARDING BINDING TABLE RULES;
+-+----------------------+
+-| sharding_binding_tables |
+-+----------------------+
+-| t_order,t_order_item |
+-| t1,t2                |
+-+----------------------+
++mysql> SHOW SHARDING TABLE REFERENCE RULES;
+++--------------------------+
++| sharding_table_reference |
+++--------------------------+
++| t_order,t_order_item     |
++| t1,t2                    |
+++--------------------------+
+ 2 rows in set (0.00 sec)
+ ```
+ 
+@@ -320,11 +320,11 @@ mysql> SHOW SHARDING BINDING TABLE RULES;
+ 
+ ```sql
+ mysql> SHOW BROADCAST TABLE RULES;
+-+------------------------+
+-| broadcast_tables       |
+-+------------------------+
+-| t_1                    |
+-| t_2                    |
+-+------------------------+
+++-----------------------+
++| broadcast_table       |
+++-----------------------+
++| t_1                   |
++| t_2                   |
+++-----------------------+
+ 2 rows in set (0.00 sec)
+ ```

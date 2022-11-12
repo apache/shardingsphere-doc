@@ -1,182 +1,76 @@
-commit 3fb9f83e9c474ad9b36d027b232af9cdb7d6f8e4
-Author: gxxiong <xionggaoxiang@foxmail.com>
-Date:   Sat Nov 12 10:31:27 2022 +0800
+commit 8bf50f3ea24878574c5dc8bef343e02b26eab7c8
+Author: Zichao <57847965+Qianyi951015@users.noreply.github.com>
+Date:   Sat Nov 12 21:08:43 2022 +1300
 
-    Update builtin-algorithm and java-api on encrypt document (#22091)
+    Update Oracle DML SLELECT ROWID statement parse (#22099)
 
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-index 45f2d9fa7f8..d85321552a4 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-@@ -57,6 +57,19 @@ weight = 5
- | sm4-iv        | String    | SM4 使用的 IV （MODE 为 CBC 时需指定，16 Bytes）|
- | sm4-padding   | String    | SM4 使用的 PADDING （PKCS5Padding 或 PKCS7Padding，暂不支持 NoPadding）|
+diff --git a/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.cn.md b/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.cn.md
+index 1c206487e2d..da378e14f8f 100644
+--- a/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.cn.md
++++ b/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.cn.md
+@@ -11,7 +11,7 @@ weight = 10
  
-+### 单字符摘要模糊算法
-+
-+类型：CHAR_DIGEST_FUZZY
-+
-+可配置属性：
-+
-+| *名称* | *数据类型* | *说明*                      |
-+| -------- | ------------ | ----------------------------- |
-+| delta    | int          | 字符Unicode码偏移量（十进制） |
-+| mask     | int          | 字符加密掩码（十进制）        |
-+| start    | int          | 密文Unicode初始码（十进制）   |
-+| dict     | String       | 常见字                        |
-+
- ## 操作步骤
- 1. 在加密规则中配置加密器
- 2. 为加密器指定加密算法类型
-@@ -72,7 +85,11 @@ rules:
-           plainColumn: username_plain
-           cipherColumn: username
-           encryptorName: name-encryptor
-+          fuzzyQueryColumn: name_fuzzy
-+          fuzzyQueryEncryptorName: fuzzy-encryptor
-   encryptors:
-+    fuzzy-encryptor:
-+      type: CHAR_DIGEST_FUZZY
-     name-encryptor:
-       type: AES
-       props:
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-index ade900c93fc..ab8ed00aa53 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-@@ -56,6 +56,19 @@ Attributes:
- | sm4-iv        | String     | SM4 IV (should be specified on CBC, 16 bytes long)|
- | sm4-padding   | String     | SM4 PADDING (should be PKCS5Padding or PKCS7Padding, NoPadding excepted)|
+ ```sql
+ ExportDatabaseConfiguration ::=
+-  'IMPORT' 'DATABASE' 'CONFIGURATION' 'FROM' filePath ('TO' databaseName)?
++  'IMPORT' 'DATABASE' 'CONFIGURATION' 'FROM' 'FILE' filePath ('TO' databaseName)?
  
-+### CharDigestFuzzy Encrypt Algorithm
-+
-+Type：CHAR_DIGEST_FUZZY
-+
-+Attributes：
-+
-+| *Name* | *DataType* | *Description*                                   |
-+| -------- | ------------ | ------------------------------------------------- |
-+| delta    | int          | Character Unicode offset（decimal number）        |
-+| mask     | int          | Character encryption mask（decimal number）       |
-+| start    | int          | Ciphertext Unicode initial code（decimal number） |
-+| dict     | String       | Common words                                      |
-+
- ## Operating Procedures
- 1. Configure encryptors in an encryption rule.
- 2. Use relevant algorithm types in encryptors.
-@@ -71,7 +84,11 @@ rules:
-           plainColumn: username_plain
-           cipherColumn: username
-           encryptorName: name-encryptor
-+          fuzzyQueryColumn: name_fuzzy
-+          fuzzyQueryEncryptorName: fuzzy-encryptor
-   encryptors:
-+    fuzzy-encryptor:
-+      type: CHAR_DIGEST_FUZZY
-     name-encryptor:
-       type: AES
-       props:
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
-index c64da2475b4..d61b23fefdc 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
-@@ -44,9 +44,11 @@ weight = 5
- | logicColumn               | String   | 逻辑列名称     |
- | cipherColumn              | String   | 密文列名称     |
- | assistedQueryColumn (?)   | String   | 查询辅助列名称 |
-+| fuzzyQueryColumn (?)      | String   | 模糊查询列名称 |
- | plainColumn (?)           | String   | 原文列名称     |
- | encryptorName             | String   | 密文列加密算法名称   |
- | assistedQueryEncryptorName| String   | 查询辅助列加密算法名称   |
-+| fuzzyQueryEncryptorName   | String   | 模糊查询列加密算法名称   |
- | queryWithCipherColumn (?) | boolean                                             | 该列是否使用加密列进行查询 |
+ databaseName ::=
+   identifier
+@@ -31,18 +31,18 @@ filePath ::=
+ - 将 `YAML` 中的配置导入到指定逻辑库中
  
- ### 加解密算法配置
-@@ -78,12 +80,13 @@ public final class EncryptDatabasesConfiguration implements ExampleConfiguration
-     public DataSource getDataSource() {
-         Properties props = new Properties();
-         props.setProperty("aes-key-value", "123456");
--        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
--        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
-+        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "username_plain", "name_encryptor", null);
-+        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "fuzzy_pwd", "", "pwd_encryptor", null);
-         EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
-         Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
-         encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-         encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
-+        encryptAlgorithmConfigs.put("fuzzy_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_FUZZY", new Properties()));
-         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
-         try {
-             return ShardingSphereDataSourceFactory.createDataSource(DataSourceUtil.createDataSource("demo_ds"), Collections.singleton(encryptRuleConfig), props);
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
-index fea5520c638..828d28414ab 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
-@@ -44,9 +44,11 @@ Attributes:
- | logicColumn                | String     | Logic column name          |
- | cipherColumn               | String     | Cipher column name         |
- | assistedQueryColumn (?)    | String     | Assisted query column name |
-+| fuzzyQueryColumn (?)       | String     | Fuzzy query column name |
- | plainColumn (?)            | String     | Plain column name          |
- | encryptorName              | String     | Encrypt algorithm name     |
- | assistedQueryEncryptorName | String     | Assisted query encrypt algorithm name |
-+| fuzzyQueryEncryptorName    | String     | Fuzzy query encrypt algorithm name |
- | queryWithCipherColumn (?)  | boolean    | The current column whether query with cipher column for data encrypt |
+ ```sql
+-IMPORT DATABASE CONFIGURATION FROM "/xxx/config_test1.yaml" TO test1;
++IMPORT DATABASE CONFIGURATION FROM FILE "/xxx/config_test1.yaml" TO test1;
+ ```
  
- ### Encrypt Algorithm Configuration
-@@ -78,12 +80,13 @@ public final class EncryptDatabasesConfiguration implements ExampleConfiguration
-     public DataSource getDataSource() {
-         Properties props = new Properties();
-         props.setProperty("aes-key-value", "123456");
--        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
--        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
-+        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "username_plain", "name_encryptor", null);
-+        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "fuzzy_pwd", "", "pwd_encryptor", null);
-         EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
-         Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
-         encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-         encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
-+        encryptAlgorithmConfigs.put("fuzzy_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_FUZZY", new Properties()));
-         EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
-         try {
-             return ShardingSphereDataSourceFactory.createDataSource(DataSourceUtil.createDataSource("demo_ds"), Collections.singleton(encryptRuleConfig), props);
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-index e5ae584d5bf..b1dd1423b77 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-@@ -75,12 +75,13 @@ private static Map<String, DatabaseDiscoveryHeartBeatConfiguration> createDiscov
- public EncryptRuleConfiguration createEncryptRuleConfiguration() {
-     Properties props = new Properties();
-     props.setProperty("aes-key-value", "123456");
--    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
--    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
-+    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "username_plain", "name_encryptor", null);
-+    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "fuzzy_pwd", "", "pwd_encryptor", null);
-     EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
-     Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
-     encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-     encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
-+    encryptAlgorithmConfigs.put("fuzzy_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_FUZZY", new Properties()));
-     EncryptRuleConfiguration result = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
-     return result;
- }
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-index 9a76bb3db02..ba40bed670d 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-@@ -76,12 +76,13 @@ private static Map<String, DatabaseDiscoveryHeartBeatConfiguration> createDiscov
- public EncryptRuleConfiguration createEncryptRuleConfiguration() {
-     Properties props = new Properties();
-     props.setProperty("aes-key-value", "123456");
--    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "username_plain", "name_encryptor", null);
--    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "", "pwd_encryptor", null);
-+    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "username_plain", "name_encryptor", null);
-+    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "fuzzy_pwd", "", "pwd_encryptor", null);
-     EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
-     Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new LinkedHashMap<>(2, 1);
-     encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-     encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
-+    encryptAlgorithmConfigs.put("fuzzy_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_FUZZY", new Properties()));
-     EncryptRuleConfiguration result = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
-     return result;
- }
+ - 将 `YAML` 中的配置导入到当前逻辑库中
+ 
+ ```sql
+-IMPORT DATABASE CONFIGURATION FROM "/xxx/config_test1.yaml";
++IMPORT DATABASE CONFIGURATION FROM FILE "/xxx/config_test1.yaml";
+ ```
+ 
+ ### 保留字
+ 
+-`IMPORT`、`DATABASE`、`CONFIGURATION`、`FROM`、`TO`
++`IMPORT`、`DATABASE`、`CONFIGURATION`、`FROM`、`FILE`、`TO`
+ 
+ ### 相关链接
+ 
+diff --git a/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.en.md b/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.en.md
+index 91232fac2bb..fb13d1003dc 100644
+--- a/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.en.md
++++ b/docs/document/content/reference/distsql/syntax/ral/import-database-configuration.en.md
+@@ -11,7 +11,7 @@ The `IMPORT DATABASE CONFIGURATION` syntax is used to import `YAML` configuratio
+ 
+ ```sql
+ ExportDatabaseConfiguration ::=
+-  'IMPORT' 'DATABASE' 'CONFIGURATION' 'FROM' filePath ('TO' databaseName)?
++  'IMPORT' 'DATABASE' 'CONFIGURATION' 'FROM' 'FILE' filePath ('TO' databaseName)?
+ 
+ databaseName ::=
+   identifier
+@@ -31,18 +31,18 @@ filePath ::=
+ - Import the configuration in `YAML` into the specified database
+ 
+ ```sql
+-IMPORT DATABASE CONFIGURATION FROM "/xxx/config_test1.yaml" TO test1;
++IMPORT DATABASE CONFIGURATION FROM FILE "/xxx/config_test1.yaml" TO test1;
+ ```
+ 
+ - Import the configuration in `YAML` into the current database
+ 
+ ```sql
+-IMPORT DATABASE CONFIGURATION FROM "/xxx/config_test1.yaml";
++IMPORT DATABASE CONFIGURATION FROM FILE "/xxx/config_test1.yaml";
+ ```
+ 
+ ### Reserved word
+ 
+-`IMPORT`, `DATABASE`, `CONFIGURATION`, `FROM`, `TO`
++`IMPORT`, `DATABASE`, `CONFIGURATION`, `FROM`, `FILE`, `TO`
+ 
+ ### Related links
+ 

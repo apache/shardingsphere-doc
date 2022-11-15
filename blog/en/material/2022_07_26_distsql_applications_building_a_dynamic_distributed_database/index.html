@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>DistSQL Applications: Building a Dynamic Distributed Database &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">DistSQL Applications: Building a Dynamic Distributed Database</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h2 id="background">Background</h2>
+<p>Ever since the release of <a href="https://shardingsphere.apache.org/document/5.0.0/en/overview/">ShardingSphere 5.0.0</a>, <a href="https://shardingsphere.apache.org/document/5.1.0/en/concepts/distsql/">DistSQL</a> has been providing strong dynamic management capabilities to the ShardingSphere ecosystem.</p>
+<p>Thanks to DistSQL, users have been empowered to do the following:</p>
+<ul>
+<li>Create logical databases online.</li>
+<li>Dynamically configure rules (i.e. sharding, data encryption, read/write splitting, database discovery, shadow DB, and global rules).</li>
+<li>Adjust storage resources in real-time.</li>
+<li>Switch transaction types instantly.</li>
+<li>Turn SQL logs on and off at any time.</li>
+<li>Preview the SQL routing results.
+At the same time, in the context of increasingly diversified scenarios, more and more DistSQL features are being created and a variety of valuable syntaxes have been gaining popularity among users.</li>
+</ul>
+<h2 id="overview">Overview</h2>
+<p>This post takes data sharding as an example to illustrate DistSQL’s application scenarios and related sharding methods.</p>
+<p>A series of DistSQL statements are concatenated through practical cases, to give you a complete set of practical DistSQL sharding management schemes, which create and maintain distributed databases through dynamic management. The following DistSQL will be used in this example:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ja3n9bttj1z976itrg6o.png" alt="Image description"></p>
+<h2 id="practical-case">Practical Case</h2>
+<p><strong>Required scenarios</strong></p>
+<ul>
+<li>Create two sharding tables: <code>t_order</code> and <code>t_order_item</code>.</li>
+<li>For both tables, database shards are carried out with the <code>user_id</code> field, and table shards with the <code>order_id</code> field.</li>
+<li>The number of shards is 2 databases * 3 tables.
+As shown in the figure below:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/m8e9u22k4ep68oabmols.png" alt="Image description"></li>
+</ul>
+<p><strong>Setting up the environment</strong></p>
+<p>1.Prepare a MySQL database instance for access. Create two new databases: <code>demo_ds_0</code> and <code>demo_ds_1</code>.</p>
+<blockquote>
+<p>Here we take MySQL as an example, but you can also use PostgreSQL or openGauss databases.</p>
+</blockquote>
+<p>2.Deploy <a href="https://shardingsphere.apache.org/document/5.1.2/en/overview/">Apache ShardingSphere-Proxy 5.1.2</a> and <a href="https://zookeeper.apache.org/">Apache ZooKeeper</a>. ZooKeeper acts as a governance center and stores ShardingSphere metadata information.</p>
+<p>3.Configure <code>server.yaml</code> in the <code>Proxy conf</code> directory as follows:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">mode</span>:
+  <span style="color:#66d9ef">type</span>: Cluster
+  <span style="color:#66d9ef">repository</span>:
+    <span style="color:#66d9ef">type</span>: ZooKeeper
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">namespace</span>: governance_ds
+      <span style="color:#66d9ef">server-lists</span>: localhost:<span style="color:#ae81ff">2181</span>  <span style="color:#75715e"># ZooKeeper address</span>
+      <span style="color:#66d9ef">retryIntervalMilliseconds</span>: <span style="color:#ae81ff">500</span>
+      <span style="color:#66d9ef">timeToLiveSeconds</span>: <span style="color:#ae81ff">60</span>
+      <span style="color:#66d9ef">maxRetries</span>: <span style="color:#ae81ff">3</span>
+      <span style="color:#66d9ef">operationTimeoutMilliseconds</span>: <span style="color:#ae81ff">500</span>
+  <span style="color:#66d9ef">overwrite</span>: <span style="color:#66d9ef">false</span>
+<span style="color:#66d9ef">rules</span>:
+  - !AUTHORITY
+    <span style="color:#66d9ef">users</span>:
+      - root@%:root
+</code></pre></div><p>4.Start ShardingSphere-Proxy and connect it to Proxy using a client, for example:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">mysql -h 127.0.0.1 -P <span style="color:#ae81ff">3307</span> -u root -p
+</code></pre></div><p><strong>Creating a distributed database</strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> sharding_db;
+USE sharding_db;
+</code></pre></div><p><strong>Adding storage resources</strong>
+1.Add storage resources corresponding to the prepared <a href="https://www.mysql.com/">MySQL</a> database.</p>
+<pre><code>ADD RESOURCE ds_0 (
+    HOST=127.0.0.1,
+    PORT=3306,
+    DB=demo_ds_0,
+    USER=root,
+    PASSWORD=123456
+), ds_1(
+    HOST=127.0.0.1,
+    PORT=3306,
+    DB=demo_ds_1,
+    USER=root,
+    PASSWORD=123456
+);
+</code></pre><p>2.View storage resources</p>
+<pre><code>mysql&gt; SHOW DATABASE RESOURCES\G;
+*************************** 1. row ***************************
+                           name: ds_1
+                           type: MySQL
+                           host: 127.0.0.1
+                           port: 3306
+                             db: demo_ds_1
+                            -- Omit partial attributes
+*************************** 2. row ***************************
+                           name: ds_0
+                           type: MySQL
+                           host: 127.0.0.1
+                           port: 3306
+                             db: demo_ds_0
+                            -- Omit partial attributes
+</code></pre><blockquote>
+<p>Adding \G to the query statement aims to make the output format more readable, and it is not a must.</p>
+</blockquote>
+<p><strong>Creating sharding rules</strong>
+ShardingSphere’s sharding rules support regular sharding and automatic sharding. Both sharding methods have the same effect. The difference is that the configuration of automatic sharding is more concise, while regular sharding is more flexible and independent.</p>
+<blockquote>
+<p>Please refer to the following links for more details on automatic sharding:</p>
+</blockquote>
+<p><a href="https://medium.com/nerd-for-tech/intro-to-distsql-an-open-source-more-powerful-sql-bada4099211?source=your_stories_page-------------------------------------">Intro to DistSQL-An Open Source and More Powerful SQL</a></p>
+<p><a href="https://medium.com/geekculture/autotable-your-butler-like-sharding-configuration-tool-9a45dbb7e285">AutoTable: Your Butler-Like Sharding Configuration Tool</a></p>
+<p>Next, we’ll adopt regular sharding and use the <code>INLINE</code> expression algorithm to implement the sharding scenarios described in the requirements.</p>
+<p><strong>Primary key generator</strong></p>
+<p>The primary key generator can generate a secure and unique primary key for a data table in a distributed scenario. For details, refer to the document <a href="https://shardingsphere.apache.org/document/current/en/features/sharding/concept/key-generator/">Distributed Primary Key</a>.</p>
+<p>1.Create the primary key generator.</p>
+<pre><code>CREATE SHARDING KEY GENERATOR snowflake_key_generator (
+TYPE(NAME=SNOWFLAKE)
+);
+</code></pre><p>2.Query primary key generator</p>
+<pre><code>mysql&gt; SHOW SHARDING KEY GENERATORS;
++-------------------------+-----------+-------+
+| name                    | type      | props |
++-------------------------+-----------+-------+
+| snowflake_key_generator | snowflake | {}    |
++-------------------------+-----------+-------+
+1 row in set (0.01 sec)
+</code></pre><p><strong>Sharding algorithm</strong></p>
+<p>1.Create a database sharding algorithm, used by <code>t_order</code> and <code>t_order_item</code> in common.</p>
+<pre><code>-- Modulo 2 based on user_id in database sharding
+CREATE SHARDING ALGORITHM database_inline (
+TYPE(NAME=INLINE,PROPERTIES(&quot;algorithm-expression&quot;=&quot;ds_${user_id % 2}&quot;))
+);
+</code></pre><p>2.Create different table shards algorithms for <code>t_order</code> and <code>t_order_item</code>.</p>
+<pre><code>-- Modulo 3 based on order_id in table sharding
+CREATE SHARDING ALGORITHM t_order_inline (
+TYPE(NAME=INLINE,PROPERTIES(&quot;algorithm-expression&quot;=&quot;t_order_${order_id % 3}&quot;))
+);
+CREATE SHARDING ALGORITHM t_order_item_inline (
+TYPE(NAME=INLINE,PROPERTIES(&quot;algorithm-expression&quot;=&quot;t_order_item_${order_id % 3}&quot;))
+);
+</code></pre><p>3.Query sharding algorithm</p>
+<pre><code>mysql&gt; SHOW SHARDING ALGORITHMS;
++---------------------+--------+---------------------------------------------------+
+| name                | type   | props                                             |
++---------------------+--------+---------------------------------------------------+
+| database_inline     | inline | algorithm-expression=ds_${user_id % 2}            |
+| t_order_inline      | inline | algorithm-expression=t_order_${order_id % 3}      |
+| t_order_item_inline | inline | algorithm-expression=t_order_item_${order_id % 3} |
++---------------------+--------+---------------------------------------------------+
+3 rows in set (0.00 sec)
+</code></pre><p><strong>Default sharding strategy</strong></p>
+<p>Sharding strategy consists of sharding key and sharding algorithm. Please refer to <a href="https://shardingsphere.apache.org/document/current/en/features/sharding/concept/sharding/">Sharding Strategy</a> for its concept.</p>
+<p>Sharding strategy consists of <code>databaseStrategy</code> and <code>tableStrategy</code>.</p>
+<p>Since <code>t_order</code> and <code>t_order_item</code> have the same database sharding field and sharding algorithm, we create a default strategy that will be used by all shard tables with no sharding strategy configured:</p>
+<p>1.Create a default database sharding strategy</p>
+<pre><code>CREATE DEFAULT SHARDING DATABASE STRATEGY (
+TYPE=STANDARD,SHARDING_COLUMN=user_id,SHARDING_ALGORITHM=database_inline
+);
+</code></pre><p>2.Query default strategy</p>
+<pre><code>mysql&gt; SHOW DEFAULT SHARDING STRATEGY\G;
+*************************** 1. row ***************************
+                    name: TABLE
+                    type: NONE
+         sharding_column:
+ sharding_algorithm_name:
+ sharding_algorithm_type:
+sharding_algorithm_props:
+*************************** 2. row ***************************
+                    name: DATABASE
+                    type: STANDARD
+         sharding_column: user_id
+ sharding_algorithm_name: database_inline
+ sharding_algorithm_type: inline
+sharding_algorithm_props: {algorithm-expression=ds_${user_id % 2}}
+2 rows in set (0.00 sec)
+</code></pre><blockquote>
+<p>The default table sharding strategy is not configured, so the default strategy of <code>TABLE</code> is <code>NONE</code>.</p>
+</blockquote>
+<p><strong>Sharding rules</strong></p>
+<p>The primary key generator and sharding algorithm are both ready. Now create sharding rules.</p>
+<p>1.<code>t_order</code></p>
+<pre><code>CREATE SHARDING TABLE RULE t_order (
+DATANODES(&quot;ds_${0..1}.t_order_${0..2}&quot;),
+TABLE_STRATEGY(TYPE=STANDARD,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=t_order_inline),
+KEY_GENERATE_STRATEGY(COLUMN=order_id,KEY_GENERATOR=snowflake_key_generator)
+);
+</code></pre><blockquote>
+<p><code>DATANODES</code> specifies the data nodes of shard tables.
+<code>TABLE_STRATEGY</code> specifies the table strategy, among which <code>SHARDING_ALGORITHM</code> uses created sharding algorithm <code>t_order_inline</code>;
+<code>KEY_GENERATE_STRATEGY</code> specifies the primary key generation strategy of the table. Skip this configuration if primary key generation is not required.</p>
+</blockquote>
+<p>2.<code>t_order_item</code></p>
+<pre><code>CREATE SHARDING TABLE RULE t_order_item (
+DATANODES(&quot;ds_${0..1}.t_order_item_${0..2}&quot;),
+TABLE_STRATEGY(TYPE=STANDARD,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM=t_order_item_inline),
+KEY_GENERATE_STRATEGY(COLUMN=order_item_id,KEY_GENERATOR=snowflake_key_generator)
+);
+</code></pre><p>3.Query sharding rules</p>
+<pre><code>mysql&gt; SHOW SHARDING TABLE RULES\G;
+*************************** 1. row ***************************
+                            table: t_order
+                actual_data_nodes: ds_${0..1}.t_order_${0..2}
+              actual_data_sources:
+           database_strategy_type: STANDARD
+         database_sharding_column: user_id
+ database_sharding_algorithm_type: inline
+database_sharding_algorithm_props: algorithm-expression=ds_${user_id % 2}
+              table_strategy_type: STANDARD
+            table_sharding_column: order_id
+    table_sharding_algorithm_type: inline
+   table_sharding_algorithm_props: algorithm-expression=t_order_${order_id % 3}
+              key_generate_column: order_id
+               key_generator_type: snowflake
+              key_generator_props:
+*************************** 2. row ***************************
+                            table: t_order_item
+                actual_data_nodes: ds_${0..1}.t_order_item_${0..2}
+              actual_data_sources:
+           database_strategy_type: STANDARD
+         database_sharding_column: user_id
+ database_sharding_algorithm_type: inline
+database_sharding_algorithm_props: algorithm-expression=ds_${user_id % 2}
+              table_strategy_type: STANDARD
+            table_sharding_column: order_id
+    table_sharding_algorithm_type: inline
+   table_sharding_algorithm_props: algorithm-expression=t_order_item_${order_id % 3}
+              key_generate_column: order_item_id
+               key_generator_type: snowflake
+              key_generator_props:
+2 rows in set (0.00 sec)
+</code></pre><p>💡So far, the sharding rules for <code>t_order</code> and <code>t_order_item</code> have been configured.</p>
+<p>A bit complicated? Well, you can also skip the steps of creating the primary key generator, sharding algorithm, and default strategy, and complete the sharding rules in one step. Let&rsquo;s see how to make it easier.</p>
+<p><strong>Syntax</strong>
+Now, if we have to add a shard table <code>t_order_detail</code>, we can create sharding rules as follows:</p>
+<pre><code>CREATE SHARDING TABLE RULE t_order_detail (
+DATANODES(&quot;ds_${0..1}.t_order_detail_${0..1}&quot;),
+DATABASE_STRATEGY(TYPE=STANDARD,SHARDING_COLUMN=user_id,SHARDING_ALGORITHM(TYPE(NAME=INLINE,PROPERTIES(&quot;algorithm-expression&quot;=&quot;ds_${user_id % 2}&quot;)))),
+TABLE_STRATEGY(TYPE=STANDARD,SHARDING_COLUMN=order_id,SHARDING_ALGORITHM(TYPE(NAME=INLINE,PROPERTIES(&quot;algorithm-expression&quot;=&quot;t_order_detail_${order_id % 3}&quot;)))),
+KEY_GENERATE_STRATEGY(COLUMN=detail_id,TYPE(NAME=snowflake))
+);
+</code></pre><p>**Note: **The above statement specified database sharding strategy, table strategy, and primary key generation strategy, but it didn’t use existing algorithms.</p>
+<p>Therefore, the DistSQL engine automatically uses the input expression to create an algorithm for the sharding rules of <code>t_order_detail</code>. Now the primary key generator, sharding algorithm, and sharding rules are as follows:</p>
+<p>1.Primary key generator</p>
+<pre><code>mysql&gt; SHOW SHARDING KEY GENERATORS;
++--------------------------+-----------+-------+
+| name                     | type      | props |
++--------------------------+-----------+-------+
+| snowflake_key_generator  | snowflake | {}    |
+| t_order_detail_snowflake | snowflake | {}    |
++--------------------------+-----------+-------+
+2 rows in set (0.00 sec)
+</code></pre><p>2.Sharding algorithm</p>
+<pre><code>mysql&gt; SHOW SHARDING ALGORITHMS;
++--------------------------------+--------+-----------------------------------------------------+
+| name                           | type   | props                                               |
++--------------------------------+--------+-----------------------------------------------------+
+| database_inline                | inline | algorithm-expression=ds_${user_id % 2}              |
+| t_order_inline                 | inline | algorithm-expression=t_order_${order_id % 3}        |
+| t_order_item_inline            | inline | algorithm-expression=t_order_item_${order_id % 3}   |
+| t_order_detail_database_inline | inline | algorithm-expression=ds_${user_id % 2}              |
+| t_order_detail_table_inline    | inline | algorithm-expression=t_order_detail_${order_id % 3} |
++--------------------------------+--------+-----------------------------------------------------+
+5 rows in set (0.00 sec)
+</code></pre><p>3.Sharding rules</p>
+<pre><code>mysql&gt; SHOW SHARDING TABLE RULES\G;
+*************************** 1. row ***************************
+                            table: t_order
+                actual_data_nodes: ds_${0..1}.t_order_${0..2}
+              actual_data_sources:
+           database_strategy_type: STANDARD
+         database_sharding_column: user_id
+ database_sharding_algorithm_type: inline
+database_sharding_algorithm_props: algorithm-expression=ds_${user_id % 2}
+              table_strategy_type: STANDARD
+            table_sharding_column: order_id
+    table_sharding_algorithm_type: inline
+   table_sharding_algorithm_props: algorithm-expression=t_order_${order_id % 3}
+              key_generate_column: order_id
+               key_generator_type: snowflake
+              key_generator_props:
+*************************** 2. row ***************************
+                            table: t_order_item
+                actual_data_nodes: ds_${0..1}.t_order_item_${0..2}
+              actual_data_sources:
+           database_strategy_type: STANDARD
+         database_sharding_column: user_id
+ database_sharding_algorithm_type: inline
+database_sharding_algorithm_props: algorithm-expression=ds_${user_id % 2}
+              table_strategy_type: STANDARD
+            table_sharding_column: order_id
+    table_sharding_algorithm_type: inline
+   table_sharding_algorithm_props: algorithm-expression=t_order_item_${order_id % 3}
+              key_generate_column: order_item_id
+               key_generator_type: snowflake
+              key_generator_props:
+*************************** 3. row ***************************
+                            table: t_order_detail
+                actual_data_nodes: ds_${0..1}.t_order_detail_${0..1}
+              actual_data_sources:
+           database_strategy_type: STANDARD
+         database_sharding_column: user_id
+ database_sharding_algorithm_type: inline
+database_sharding_algorithm_props: algorithm-expression=ds_${user_id % 2}
+              table_strategy_type: STANDARD
+            table_sharding_column: order_id
+    table_sharding_algorithm_type: inline
+   table_sharding_algorithm_props: algorithm-expression=t_order_detail_${order_id % 3}
+              key_generate_column: detail_id
+               key_generator_type: snowflake
+              key_generator_props:
+3 rows in set (0.01 sec)
+</code></pre><p><strong>Note:</strong> In the <code>CREATE SHARDING TABLE RULE</code> statement, <code>DATABASE_STRATEGY</code>, <code>TABLE_STRATEGY</code>, and <code>KEY_GENERATE_STRATEGY</code> can all reuse existing algorithms.</p>
+<p>Alternatively, they can be defined quickly through syntax. The difference is that additional algorithm objects are created. Users can use it flexibly based on scenarios.</p>
+<p>After the configuration verification rules are created, you can verify them in the following ways:</p>
+<p><strong>Checking node distribution</strong></p>
+<p>DistSQL provides <code>SHOW SHARDING TABLE NODES</code> for checking node distribution and users can quickly learn the distribution of shard tables.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/psvtq8k8jo4m0jnadhzw.png" alt="Image description"></p>
+<p>We can see the node distribution of the shard table is consistent with what is described in the requirement.</p>
+<p><strong>SQL Preview</strong></p>
+<p>Previewing SQL is also an easy way to verify configurations. Its syntax is <code>PREVIEW SQL</code>:</p>
+<p>1.Query with no shard key with all routes
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/n4m1glocjtigxdcx5yg3.png" alt="Image description"></p>
+<p>2.Specify <code>user_id</code> to query with a single database route
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/adgjmx6ffhq6beag8nnw.png" alt="Image description"></p>
+<p>3.Specify <code>user_id</code> and <code>order_id</code> with a single table route
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/vryt0m6wfdp8rn4vkihp.png" alt="Image description"></p>
+<blockquote>
+<p>Single-table routes scan the least shard tables and offer the highest efficiency.</p>
+</blockquote>
+<h3 id="distsql-auxiliary-query">DistSQL auxiliary query</h3>
+<p>During the system maintenance, algorithms or storage resources that are no longer in use may need to be released, or resources that need to be released may have been referenced and cannot be deleted. The following DistSQL can solve these problems.</p>
+<p><strong>Query unused resources</strong></p>
+<p>1.Syntax: <code>SHOW UNUSED RESOURCES</code></p>
+<p>2.Sample:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/jsise5qea0j690twk7e9.png" alt="Image description"></p>
+<p><strong>Query unused primary key generator</strong></p>
+<p>1.Syntax: <code>SHOW UNUSED SHARDING KEY GENERATORS</code></p>
+<p>2.Sample:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ufoqmha63wnaadedj9vv.png" alt="Image description"></p>
+<p><strong>Query unused sharding algorithm</strong></p>
+<p>1.Syntax: <code>SHOW UNUSED SHARDING ALGORITHMS</code></p>
+<p>2.Sample:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/17qyt8evxl7l3pqd9hc8.png" alt="Image description"></p>
+<p><strong>Query rules that use the target storage resources</strong></p>
+<p>1.Syntax: <code>SHOW RULES USED RESOURCE</code></p>
+<p>2.Sample:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/d4pzeukg6umnbk52uw9r.png" alt="Image description"></p>
+<blockquote>
+<p>All rules that use the resource can be queried, not limited to the <code>Sharding Rule</code>.</p>
+</blockquote>
+<p><strong>Query sharding rules that use the target primary key generator</strong></p>
+<p>1.Syntax: <code>SHOW SHARDING TABLE RULES USED KEY GENERATOR</code></p>
+<p>2.Sample:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ugwcfdmf3sdcb4xzpivh.png" alt="Image description"></p>
+<p><strong>Query sharding rules that use the target algorithm</strong></p>
+<p>1.Syntax: <code>SHOW SHARDING TABLE RULES USED ALGORITHM</code></p>
+<p>2.Sample:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/xnq0u0491e7vwavkithv.png" alt="Image description"></p>
+<h2 id="conclusion">Conclusion</h2>
+<p>This post takes the data sharding scenario as an example to introduce <a href="https://shardingsphere.apache.org/document/5.1.0/en/concepts/distsql/">DistSQL</a>’s applications and methods.</p>
+<p>DistSQL provides flexible syntax to help simplify operations. In addition to the <code>INLINE</code> algorithm, DistSQL supports standard sharding, compound sharding, Hint sharding, and custom sharding algorithms. More examples will be covered in the coming future.</p>
+<p>If you have any questions or suggestions about <a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a>, please feel free to post them on the GitHub Issue list.</p>
+<h2 id="project-links">Project Links:</h2>
+<p><a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack
+</a>
+<a href="https://shardingsphere.apache.org/community/cn/involved/">Contributor Guide</a></p>
+<p><a href="https://github.com/apache/shardingsphere/issues">GitHub Issues</a></p>
+<p><a href="https://shardingsphere.apache.org/community/en/involved/">Contributor Guide</a></p>
+<h2 id="references">References</h2>
+<ol>
+<li>
+<p><a href="https://shardingsphere.apache.org/document/current/en/concepts/distsql/">Concept-DistSQL</a></p>
+</li>
+<li>
+<p><a href="https://shardingsphere.apache.org/document/current/en/features/sharding/concept/key-generator/">Concept-Distributed Primary Key</a></p>
+</li>
+<li>
+<p><a href="https://shardingsphere.apache.org/document/current/en/features/sharding/concept/sharding/">Concept-Sharding Strategy</a></p>
+</li>
+<li>
+<p><a href="https://shardingsphere.apache.org/document/current/en/features/sharding/concept/inline-expression/">Concept INLINE Expression
+</a></p>
+</li>
+<li>
+<p><a href="https://shardingsphere.apache.org/document/current/en/user-manual/common-config/builtin-algorithm/sharding/">Built-in Sharding Algorithm
+</a></p>
+</li>
+<li>
+<p><a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/">User Manual: DistSQL
+</a></p>
+</li>
+</ol>
+<h2 id="author">Author</h2>
+<p><strong>Jiang Longtao</strong>
+<a href="https://www.sphere-ex.com/en/">SphereEx</a> Middleware R&amp;D Engineer &amp; Apache ShardingSphere Committer.</p>
+<p>Longtao focuses on the R&amp;D of DistSQL and related features.</p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_07_28_database_pluss_embracing_the_cloud_shardingsphere-on-cloud_solution_released/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_07_20_user_case_china_unicom_digital_technology_ensuring_stability_efficiency_and_replicability_at_scale/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>How does Apache ShardingSphere implement distributed transactions? &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">How does Apache ShardingSphere implement distributed transactions?</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>With increasing amounts of data and increasing traffic load, business systems are facing significant challenges, and a strong demand for the scalability of database systems has emerged. Problems in online scaling of traditional standalone databases such as <a href="https://www.oracle.com/">Oracle</a>, <a href="https://www.mysql.com/">MySQL</a>, <a href="https://www.microsoft.com/en-us/sql-server/sql-server-downloads">SQL Server</a>, and <a href="https://www.postgresql.org/">PostgreSQL</a> is now more evident than ever. In such cases, the distributed database that can scale out was conceived to solve these scaling challenges. All of this means that distributed transactions are a problem that must be tackled.</p>
+<p>In this context, ShardingSphere provides a distributed database computing enhancement engine that can support distributed transactions with an ecosystem that is easily expandable thanks to a plugin oriented architecture.</p>
+<h2 id="transaction-processing">Transaction processing</h2>
+<p><strong>Transaction properties</strong>
+Three properties define transactions: atomicity, durability, consistency, and isolation.</p>
+<p><strong>Atomicity</strong></p>
+<p>In a distributed scenario, the operations of a transaction may be distributed on multiple physical nodes, ensuring that all operations on multiple nodes succeed or fail.</p>
+<p><strong>Durability</strong></p>
+<p>The operation of a transaction committed is valid even if the power is cut off.</p>
+<p><strong>Consistency</strong></p>
+<p><strong>Tip:</strong> Here “Consistency” is different from the C in CAP theorem. The C in CAP refers to the data consistency between multiple copies, but here it refers to an abstract concept between different levels.</p>
+<p>From a user’s persperctive, data transfers from one state to another and both states are confined to a certain degree. For example:</p>
+<p>Bank account A has 500$ and account B has 500$, totalling 1,000$. After A and B perform the transfer operation in a transaction, their total amount is still 1,000$.</p>
+<p><strong>Isolation</strong></p>
+<p>When transactions are executed concurrently, data correctness is ensured. For example, two transactions modify the same data at the same time to ensure that the two transactions are executed in a certain order to keep the data correct.</p>
+<p><strong>Challenges</strong>
+Compared to standalone transactions, distributed transactions face the following challenges:</p>
+<ol>
+<li>Atomicity. For standalone transactions, using undo log and redo log guarantees full commit or full roll-back. However, distributed transactions involve multiple physical nodes, each of which is different. Some node logs can be written successfully, while others fail.</li>
+<li>Network instability. Communication is stable for a standalone machine and any operation can be answered whether successful or not. However, in a distributed scenario, the network is unstable, and an operation may not be answered. Thus, how to ensure the availability of distributed transactions (clearing and recovery of abnormal transactions etc.) is a problem.</li>
+<li>Concurrency control. With the advent of MVCC, linearizable operation has become a rigid demand. Globally increasing transaction numbers can easily be done in a standalone database, but not in a distributed scenario.</li>
+</ol>
+<p><strong>Solutions</strong>
+<strong>Atomic commit</strong></p>
+<p>The mainstream solution to atomicity and network instability problems is <a href="https://en.wikipedia.org/wiki/Two-phase_commit_protocol">2PC (two-phase commit protocol)</a>, which defines two roles, that is TM (Transaction Manager) and RM (Resource Manager).</p>
+<p>In distributed scenarios, the operations of a transaction can be distributed in multiple nodes. And the transaction includes two phases.</p>
+<p><strong>Phase One:</strong> RM locks related resources and performs specific operations and then returns success or failure to TM.</p>
+<p><strong>Phase Two:</strong> according to the results returned by RM in the first phase, TM will execute the final commit operations (transaction state change, lock state deletion, etc.) if all the operations are successful, and roll back if any fails.</p>
+<p><strong>Note:</strong> There are, of course, some things that need to be optimized, such as converting transactions that do not involve multiple nodes to one-phase commit etc.</p>
+<p><strong>Note:</strong> The two-phase commit protocol only addresses the commit issue. Either the commit succeeds or fails. There is no intermediate state of partial success.It’s not necessarily related to the transaction isolation level.</p>
+<p><strong>Concurrency control</strong></p>
+<p>Concurrency control is a strategy ensuring that concurrent transactions are executed at a certain isolation level. Since the advent of Multiversion Concurrency Control (MVCC), mainstream databases have largely abandoned the previous two-phase locking model.</p>
+<p>Concurrency control essentially controls the concurrency of data read and write. The concurrency control stratigies determine the isolation level, and concurrency control addresses the following two problems:</p>
+<ol>
+<li>Determining the granularity of concurrency. For example, MySQL has row locks (lock granularity is one row) and table locks (lock granularity is one table) and so on.</li>
+<li>Three concurrency scenarios:
+a. Read concurrency. No special processing is required because no data changes are involved.
+b. Write concurrency. Do not write concurrently., otherwise data corruption will occur.
+c. Read/write concurrency. Performance optimization is mainly completed in this scenario. There are a variety of concurrency control mechanisms, among which Multiversion Concurrency Control is the most popular one.</li>
+</ol>
+<p><strong>MVCC Model</strong>
+Two mainstream implementation modes:</p>
+<ol>
+<li>
+<p>Based on transaction ID and ReadView
+The transaction ID is obtained for each transaction to identify the sequence in which the transaction is started. Snapshots are obtained through the active list to store multiple versions of data with the transaction ID, to achieve the effect of concurrency control. MySQL and <a href="https://www.postgres-xl.org/">Postgres-XL</a> both take this approach.</p>
+</li>
+<li>
+<p>Based on timestamp
+By introducing timestamp, the visibility can be determined by adding timestamp-related attributes to data and comparing commits (commit timestamp) and Snapshot timestamp of data, to achieve the linearized concurrency control. That’s what <a href="https://research.google/pubs/pub39966/">Spanner</a> did.</p>
+</li>
+</ol>
+<p>The above two modes are dependent on the generation of global transaction numbers. The common generation mechanisms include TrueTime (used by Spanner), HLC (<a href="https://www.cockroachlabs.com/">CockroachDB</a> uses HLC with errors), and TSO (Timestamp Oracle).</p>
+<h2 id="shardingspheres-transaction-design">ShardingSphere’s transaction design</h2>
+<p>ShardingSphere’s transaction feature is built on the local transaction of the storage DB, providing three transaction modes: <code>LOCAL</code>, <code>XA</code> and <code>BASE</code>. You’d only need to use the native transaction mode (<code>begin</code>/<code>commit</code>/<code>roll-back</code>) to use the three modes and make appropriate trade-offs between consistency and performance.</p>
+<p><strong>LOCAL</strong></p>
+<p><code>LOCAL</code> mode is directly built on the local transaction of thestorage DB. It has the highest performance, although there’s a problem with atomicity. If you can tolerate this problem, it’s a good choice.</p>
+<p><strong>XA</strong></p>
+<p>In XA mode, the XA protocol is based on a set of interaction protocols defined by 2PC. It defines the <code>xa start/prepare/end/commit/rollback</code> interface. The commonly-used implementations have Narayana, Atomics, and ShardingSphere integrate the XA implementation of Narayana and Atomics.</p>
+<ol>
+<li>The app connects to the Proxy, and the Proxy creates a session object bound to the connection.</li>
+<li>The app executes <code>begin</code>. Proxy creates a logical transaction through Narayana TM, and binds it to the current session.</li>
+<li>The app executes specific SQL. Session establishes a connection to storage DB, and connection can be registered to transaction through <code>Transaction.enlistResource ()</code> interface. Then execute<code>XA START {XID}</code> to start the transaction and execute the SQL overwritten by routing.</li>
+<li>The app runs the <code>commit</code> command, executes <code>xa prepare</code> for each connection registered in the transaction database, updates the transaction status to <code>prepared</code>, and performs <code>xa commit</code> for each connection. If the system returns ok, updates the transaction status to <code>Committed</code>, and the transaction is committed successfully. If the <code>prepare</code> process fails, you can run the <code>rollback</code> command to roll back the data. If not, a background process will clear the data.</li>
+<li>The app runs the <code>rollback</code> command, and the connection registered in the transaction that connects the storage DB executes <code>xa rollback</code> respectively.
+<img src="https://res.cloudinary.com/practicaldev/image/fetch/s--So-H7H7E--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/krrq38yl1vk54ymk8hyd.png" alt="Image description"></li>
+</ol>
+<p><strong>BASE</strong></p>
+<p><a href="https://phoenixnap.com/kb/acid-vs-base">BASE (Basically Available, Soft State, Eventually Consistent) </a>mode. BASE transaction is the result of balance between C and A in CAP theorem. The AT mode of <a href="https://seata.io/en-us/">Seata</a> is an implementation of BASE transaction, and ShardingSphere integrates the AT implementation of Seata.</p>
+<ol>
+<li>The app connects to the Proxy, and the Proxy creates a session object bound to the connection.</li>
+<li>The app executes <code>begin</code>. Proxy creates a logical transaction through Seata TM, binds it to the current session and registers it with Seata Server.</li>
+<li>The app executes logical SQL. Session establishes a connection to the storage DB. Each connection is a <code>ConnectionProxy</code> instance of Seata. And then parse the <code>actual sql</code> overwritten by routing and execute interceptions. For example, if it is a modification operation, execute <code>begin</code> to obtain the local lock, execute an <code>SQL</code> query, execute <code>commit</code> to release the local lock, and report the branch transaction results to Seata Server.</li>
+<li>After the app runs the <code>commit</code> command, the Seata TM in Proxy notifies the Seata Server and directly returns to the app. The Seata Server asynchronously interacts with the Proxy to delete transaction logs.</li>
+<li>The app runs the <code>rollback</code> command. After the Seata TM in the Proxy notifies the Seata Server, the Proxy directly returns to the app. The Seata Server asynchronously interacts with the Proxy, performs compensation operations, and deletes transaction logs.
+<img src="https://res.cloudinary.com/practicaldev/image/fetch/s--zm7EfmVq--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/4a7tny3orawdfl02bzuv.png" alt="Image description"></li>
+</ol>
+<h2 id="examples">Examples</h2>
+<p><strong>Installation package preparation</strong>
+Take an XA with good supporting capability integrated with Narayana implementation as an example. Due to the Narayana License issue, it cannot be packaged directly into the installation package, and additional dependencies need to be added.</p>
+<p>Download the installation package from the official website, decompress it to the directory <code>${ShardingSphere}</code> , and add the following <code>jar</code> packages to the directory <code>${ShardingSphere}/lib</code>.</p>
+<p>（Download：https://mvnrepository.com/）</p>
+<pre><code>jta-5.12.4.Final.jar
+arjuna-5.12.4.Final.jar
+common-5.12.4.Final.jar
+jboss-connector-api_1.7_spec-1.0.0.Final.jar                                             | ------------------------------------------------------------------------------------------------------------------------------------
+jboss-logging-3.2.1.Final.jar                                                    | ------------------------------------------------------------------------------------------------------------------------------------
+jboss-transaction-api_1.2_spec-1.0.0.Alpha3.jar                                           | ------------------------------------------------------------------------------------------------------------------------------------
+jboss-transaction-spi-7.6.0.Final.jar
+mysql-connector-java-5.1.47.jar                                                   | ------------------------------------------------------------------------------------------------------------------------------------
+narayana-jts-integration-5.12.4.Final.jar
+shardingsphere-transaction-xa-narayana-5.1.1-SNAPSHOT.jar
+</code></pre><p><strong>MySQL instance preparation</strong>
+Prepare two MySQL instances: 127.0.0.1:3306 and 127.0.0.1:3307.
+Create user root with password 12345678 for each MySQL instance.
+Create a test library for each MySQL instance.</p>
+<p><strong>ShardingSphere-Proxy configuration</strong>
+Modify the transaction configuration of <code>server.yaml</code></p>
+<pre><code>rules:
+  - !AUTHORITY
+    users:
+      - root@%:root
+      - sharding@:sharding
+    provider:
+      type: ALL_PRIVILEGES_PERMITTED
+  - !TRANSACTION
+    defaultType: XA
+    providerType: Narayana
+</code></pre><p>Modify <code>conf/conf-sharding.yaml</code></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">dataSources</span>:
+  <span style="color:#66d9ef">ds_0</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3306</span>/test?serverTimezone=UTC<span style="color:#75715e">&amp;allowPublicKeyRetrieval=true&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: <span style="color:#ae81ff">12345678</span>
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+  <span style="color:#66d9ef">ds_1</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3307</span>/test?serverTimezone=UTC<span style="color:#75715e">&amp;allowPublicKeyRetrieval=true&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: <span style="color:#ae81ff">12345678</span>
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+
+<span style="color:#66d9ef">rules</span>:
+  - !SHARDING
+    <span style="color:#66d9ef">tables</span>:
+      <span style="color:#66d9ef">account</span>:
+        <span style="color:#66d9ef">actualDataNodes</span>: ds_${<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span>}.account${<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span>}
+        <span style="color:#66d9ef">tableStrategy</span>:
+          <span style="color:#66d9ef">standard</span>:
+            <span style="color:#66d9ef">shardingColumn</span>: id
+            <span style="color:#66d9ef">shardingAlgorithmName</span>: account_inline
+        <span style="color:#66d9ef">keyGenerateStrategy</span>:
+          <span style="color:#66d9ef">column</span>: id
+          <span style="color:#66d9ef">keyGeneratorName</span>: snowflake
+    <span style="color:#66d9ef">defaultDatabaseStrategy</span>:
+      <span style="color:#66d9ef">standard</span>:
+        <span style="color:#66d9ef">shardingColumn</span>: id
+        <span style="color:#66d9ef">shardingAlgorithmName</span>: database_inline
+    <span style="color:#66d9ef">defaultTableStrategy</span>:
+      <span style="color:#66d9ef">none</span>:
+
+    <span style="color:#66d9ef">shardingAlgorithms</span>:
+      <span style="color:#66d9ef">database_inline</span>:
+        <span style="color:#66d9ef">type</span>: INLINE
+        <span style="color:#66d9ef">props</span>:
+          <span style="color:#66d9ef">algorithm-expression</span>: ds_${id % <span style="color:#ae81ff">2</span>}
+      <span style="color:#66d9ef">account_inline</span>:
+        <span style="color:#66d9ef">type</span>: INLINE
+        <span style="color:#66d9ef">props</span>:
+          <span style="color:#66d9ef">algorithm-expression</span>: account${id % <span style="color:#ae81ff">2</span>}
+
+    <span style="color:#66d9ef">keyGenerators</span>:
+      <span style="color:#66d9ef">snowflake</span>:
+        <span style="color:#66d9ef">type</span>: SNOWFLAKE
+        <span style="color:#66d9ef">props</span>:
+          <span style="color:#66d9ef">worker-id</span>: <span style="color:#ae81ff">123</span>
+</code></pre></div><p><strong>Start ShardingSphere-Proxy</strong>
+Start the Proxy by running the following command:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">cd <span style="color:#e6db74">${</span>ShardingSphere<span style="color:#e6db74">}</span>
+./bin/start.sh
+</code></pre></div><p><strong>Use ShardingSphere-Proxy</strong>
+Use MySQL Client to connect shardingSphere-Proxy for testing, refer to the following command.</p>
+<pre><code>mysql -h127.0.0.1 -P3307 -uroot -proot
+mysql&gt; use sharding_db;
+Database changed
+mysql&gt; create table account(id int, balance float ,transaction_id int);
+Query OK, 0 rows affected (0.12 sec)
+
+mysql&gt; select * from account;
+Empty set (0.02 sec)
+
+mysql&gt; begin;
+Query OK, 0 rows affected (0.09 sec)
+
+mysql&gt; insert into account(id, balance, transaction_id) values(1,1,1),(2,2,2);
+Query OK, 2 rows affected (0.53 sec)
+
+mysql&gt; select * from account;
++------+---------+----------------+
+| id  | balance | transaction_id |
++------+---------+----------------+
+|  2 |   2.0 |       2 |
+|  1 |   1.0 |       1 |
++------+---------+----------------+
+2 rows in set (0.03 sec)
+
+mysql&gt; commit;
+Query OK, 0 rows affected (0.05 sec)
+
+mysql&gt; select * from account;
++------+---------+----------------+
+| id  | balance | transaction_id |
++------+---------+----------------+
+|  2 |   2.0 |       2 |
+|  1 |   1.0 |       1 |
++------+---------+----------------+
+2 rows in set (0.02 sec)
+</code></pre><h2 id="future-plan">Future plan</h2>
+<p>Currently, ShardingSphere’s distributed transaction integrates the 2PC implementation scheme of the 3rd party to guarantee atomicity. Isolation depends on the isolation guarantee of the storage DB, providing available transaction functions.</p>
+<p>The future implementation of MVCC based on global Timestamp and combined with 2PC, will provide better support for transaction isolation semantics.</p>
+<p><strong>Apache ShardingSphere Project Links:</strong>
+<a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/involved/">Contributor Guide</a></p>
+<h2 id="author">Author</h2>
+<p>Lu Jingshang</p>
+<blockquote>
+<p><a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a> Committer &amp; Infrastructure R&amp;D Engineer at <a href="https://www.sphere-ex.com/">SphereEx</a>.
+Enthusiastic about open source and database technology.
+Focus on developing Apache ShardingSphere transaction module.</p>
+</blockquote>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_05_19_apache_shardingsphere_enterprise_user_case_zhongshang_huimins_transaction_middle_platform_architecture/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_05_10_whats_the_database_plus_concept_and_what_challenges_can_it_solve/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

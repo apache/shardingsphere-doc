@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Create a Distributed Database with High Availability with Apache ShardingSphere &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Create a Distributed Database with High Availability with Apache ShardingSphere</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<h2 id="what-is-database-high-availability-ha">What is Database High Availability (HA)?</h2>
+<p>Inthe digital age, modern business systems have to be highly available, reliable, and stable. As the cornerstone of the modern business system, databases are supposed to embrace high availability.</p>
+<p>HA allows databases to switch over services between primary and secondary databases and to automatically select <code>Master</code>, so it can pick the best node as the master when the previous one crashes.</p>
+<h2 id="mysql-high-availability">MySQL High Availability</h2>
+<p>There are plenty of MySQL high availability options, but each of them has its pros and cons. Below are several common high availability options:</p>
+<ul>
+<li>
+<p><a href="https://github.com/openark/orchestrator">Orchestrator</a> is a MySQL HA and replication topology management tool written in Go. Its advantage lies in its support for manual adjustment of primary-secondary topology, automatic failover, automatic or manual recovery of master nodes through the Web visual console. However, the program needs to be deployed separately, and also has a steep learning curve due to the complex configurations.</p>
+</li>
+<li>
+<p><a href="https://www.percona.com/blog/2016/09/02/mha-quickstart-guide/">MHA</a> is another mature solution. It provides primary/secondary switching and failover capabilities. The good thing about it is that it can ensure the least data loss in the switching process while it can work with semi-synchronous and asynchronous replication frameworks. However, after MHA starts, only <code>Master</code> is monitored, and MHA doesn’t provide the load balancing feature for the read database.</p>
+</li>
+<li>
+<p><a href="https://dev.mysql.com/doc/refman/8.0/en/group-replication.html">MGR</a> implements group replication based on the distributed Paxos protocol to ensure data consistency. It is an official HA component provided by MySQL and no extra deployment program is required. Instead, users only need to install MGR Plugin in each data source node. The tool features high consistency, high fault tolerance, high scalability, and high flexibility.</p>
+</li>
+</ul>
+<h2 id="apache-shardingsphere-high-availability">Apache ShardingSphere High Availability</h2>
+<p>Apache ShardingSphere’s architecture actually separates storage from computing. The storage node represents the underlying database, such as MySQL, PostgreSQL, openGauss, etc., while compute node refers to <a href="https://shardingsphere.apache.org/document/current/en/quick-start/shardingsphere-jdbc-quick-start/">ShardingSphere-JDBC</a> or <a href="https://shardingsphere.apache.org/document/current/en/quick-start/shardingsphere-proxy-quick-start/">ShardingSphere-Proxy</a>.</p>
+<p>Accordingly, the high availability solutions for storage nodes and compute nodes are different. For stateless compute nodes, while they need to perceive the changes in storage nodes, they also need to set up separate load balancers and have the capabilities of service discovery and request distribution. Stateful storage nodes need to be equipped with the capabilities of data synchronization, connection testing, electing a master node, and so on.</p>
+<p>Although ShardingSphere doesn’t provide a database with high availability, it can help users integrate database HA solutions such as primary-secondary switchover, faults discovery, traffic switching governance, and so on with the help of the database HA and through its capabilities of database discovery and dynamic perception.</p>
+<p>When combined with the primary-secondary flow control feature in distributed scenarios, ShardingSphere can provide better high availability read/write splitting solutions. <strong>It will be easier to operate and manage ShardingSphere clusters if we use <a href="https://opensource.com/article/21/9/distsql">DistSQL</a>’s dynamic high availability adjustment rules to get primary/secondary nodes&rsquo; information.</strong></p>
+<h2 id="best-practices">Best Practices</h2>
+<p>Apache ShardingSphere adopts a plugin-oriented architecture, so all its enhanced capabilities can be used independently or together. Its high availability function is often used together with read/write splitting to distribute query requests to the slave databases according to the load balancing algorithm to ensure system HA, relieve primary database pressure, and improve business system throughput.</p>
+<p>Here, we take HA+read/write splitting configuration with ShardingSphere DistSQL RAL statements as an example.</p>
+<p><strong>One thing to point out here is that ShardingSphere HA implementation leans on its distributed governance capability.</strong> Therefore, it can only be used under the cluster mode for the time being. Meanwhile, read/write splitting rules are revised in ShardingSphere 5.1.0. For details, please refer to the official documentation about <a href="https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting/">read/write splitting</a>.</p>
+<blockquote>
+<p><strong>Configuration</strong></p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">schemaName</span>: database_discovery_db
+
+<span style="color:#66d9ef">dataSources</span>:
+  <span style="color:#66d9ef">ds_0</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">1231</span>/demo_primary_ds?serverTimezone=UTC<span style="color:#75715e">&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: <span style="color:#ae81ff">123456</span>
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">3000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+  <span style="color:#66d9ef">ds_1</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">1232</span>/demo_primary_ds?serverTimezone=UTC<span style="color:#75715e">&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: <span style="color:#ae81ff">123456</span>
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">3000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+  <span style="color:#66d9ef">ds_2</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">1233</span>/demo_primary_ds?serverTimezone=UTC<span style="color:#75715e">&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: <span style="color:#ae81ff">123456</span>
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">3000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">50000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1300000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+
+<span style="color:#66d9ef">rules</span>:
+  - !READWRITE_SPLITTING
+    <span style="color:#66d9ef">dataSources</span>:
+      <span style="color:#66d9ef">replication_ds</span>:
+        <span style="color:#66d9ef">type</span>: Dynamic
+        <span style="color:#66d9ef">props</span>:
+          <span style="color:#66d9ef">auto-aware-data-source-name</span>: mgr_replication_ds
+  - !DB_DISCOVERY
+    <span style="color:#66d9ef">dataSources</span>:
+      <span style="color:#66d9ef">mgr_replication_ds</span>:
+        <span style="color:#66d9ef">dataSourceNames</span>:
+          - ds_0
+          - ds_1
+          - ds_2
+        <span style="color:#66d9ef">discoveryHeartbeatName</span>: mgr-heartbeat
+        <span style="color:#66d9ef">discoveryTypeName</span>: mgr
+    <span style="color:#66d9ef">discoveryHeartbeats</span>:
+      <span style="color:#66d9ef">mgr-heartbeat</span>:
+        <span style="color:#66d9ef">props</span>:
+          <span style="color:#66d9ef">keep-alive-cron</span>: <span style="color:#e6db74">&#39;0/5 * * * * ?&#39;</span>
+    <span style="color:#66d9ef">discoveryTypes</span>:
+      <span style="color:#66d9ef">mgr</span>:
+        <span style="color:#66d9ef">type</span>: MGR
+        <span style="color:#66d9ef">props</span>:
+          <span style="color:#66d9ef">group-name</span>: b13df29e-90b6<span style="color:#ae81ff">-11e8</span>-8d1b-525400fc3996
+</code></pre></div><blockquote>
+<p><strong>Requirements</strong></p>
+</blockquote>
+<ul>
+<li>ShardingSphere-Proxy 5.1.0 (Cluster mode + HA + dynamic read/write splitting rule)</li>
+<li>Zookeeper 3.7.0</li>
+<li>MySQL MGR cluster</li>
+</ul>
+<blockquote>
+<p><strong>SQL script</strong></p>
+</blockquote>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user<span style="color:#f92672">`</span> (
+  <span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> int(<span style="color:#ae81ff">8</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+  <span style="color:#f92672">`</span>mobile<span style="color:#f92672">`</span> char(<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+  <span style="color:#f92672">`</span>idcard<span style="color:#f92672">`</span> varchar(<span style="color:#ae81ff">18</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+  <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)
+) ENGINE<span style="color:#f92672">=</span>InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET<span style="color:#f92672">=</span>utf8mb4;
+</code></pre></div><blockquote>
+<p><strong>View the primary-secondary relationship</strong></p>
+</blockquote>
+<pre><code>mysql&gt; SHOW READWRITE_SPLITTING RULES;
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+| name           | auto_aware_data_source_name | write_data_source_name | read_data_source_names | load_balancer_type | load_balancer_props |
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+| replication_ds | mgr_replication_ds          | ds_0                   | ds_1,ds_2              | NULL               |                     |
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+1 row in set (0.09 sec)
+</code></pre><blockquote>
+<p><strong>View the secondary database state</strong></p>
+</blockquote>
+<pre><code>mysql&gt; SHOW READWRITE_SPLITTING READ RESOURCES;
++----------+---------+
+| resource | status  |
++----------+---------+
+| ds_1     | enabled |
+| ds_2     | enabled |
++----------+---------+
+</code></pre><p>We can learn from the results shown above that, currently, the primary database is <code>ds_0</code>, while secondary databases are <code>ds_1</code> and <code>ds_2</code>.</p>
+<p>Let’s test <code>INSERT</code>:</p>
+<pre><code>mysql&gt; INSERT INTO t_user(id, mobile, idcard) value (10000, '13718687777', '141121xxxxx');
+Query OK, 1 row affected (0.10 sec)
+</code></pre><p>View the ShardingSphere-Proxy log and see if the route node is the primary database <code>ds_0</code>.</p>
+<pre><code>[INFO ] 2022-02-28 15:28:21.495 [ShardingSphere-Command-2] ShardingSphere-SQL - Logic SQL: INSERT INTO t_user(id, mobile, idcard) value (10000, '13718687777', '141121xxxxx')
+[INFO ] 2022-02-28 15:28:21.495 [ShardingSphere-Command-2] ShardingSphere-SQL - SQLStatement: MySQLInsertStatement(setAssignment=Optional.empty, onDuplicateKeyColumns=Optional.empty)
+[INFO ] 2022-02-28 15:28:21.495 [ShardingSphere-Command-2] ShardingSphere-SQL - Actual SQL: ds_0 ::: INSERT INTO t_user(id, mobile, idcard) value (10000, '13718687777', '141121xxxxx')
+</code></pre><p>Let’s test <code>SELECT</code> (repeat it twice):</p>
+<pre><code>mysql&gt; SELECT id, mobile, idcard FROM t_user WHERE id = 10000;
+</code></pre><p>View the ShardingSphere-Proxy log and see if the route node is <code>ds_1</code> or <code>ds_2</code>.</p>
+<pre><code>[INFO ] 2022-02-28 15:34:07.912 [ShardingSphere-Command-4] ShardingSphere-SQL - Logic SQL: SELECT id, mobile, idcard FROM t_user WHERE id = 10000
+[INFO ] 2022-02-28 15:34:07.913 [ShardingSphere-Command-4] ShardingSphere-SQL - SQLStatement: MySQLSelectStatement(table=Optional.empty, limit=Optional.empty, lock=Optional.empty, window=Optional.empty)
+[INFO ] 2022-02-28 15:34:07.913 [ShardingSphere-Command-4] ShardingSphere-SQL - Actual SQL: ds_1 ::: SELECT id, mobile, idcard FROM t_user WHERE id = 10000
+[INFO ] 2022-02-28 15:34:21.501 [ShardingSphere-Command-4] ShardingSphere-SQL - Logic SQL: SELECT id, mobile, idcard FROM t_user WHERE id = 10000
+[INFO ] 2022-02-28 15:34:21.502 [ShardingSphere-Command-4] ShardingSphere-SQL - SQLStatement: MySQLSelectStatement(table=Optional.empty, limit=Optional.empty, lock=Optional.empty, window=Optional.empty)
+[INFO ] 2022-02-28 15:34:21.502 [ShardingSphere-Command-4] ShardingSphere-SQL - Actual SQL: ds_2 ::: SELECT id, mobile, idcard FROM t_user WHERE id = 10000
+</code></pre><blockquote>
+<p><strong>Switch to the primary database</strong></p>
+</blockquote>
+<p>Close the master database <code>ds_0</code>:
+<img src="https://miro.medium.com/max/1400/1*UjIbGkLz8DZzPZg9Mf0yRg.png" alt="Image description"></p>
+<p>View if the primary database has changed and if the secondary database state is correct through <code>DistSQL</code>.</p>
+<pre><code>mysql&gt; SHOW READWRITE_SPLITTING RULES;
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+| name           | auto_aware_data_source_name | write_data_source_name | read_data_source_names | load_balancer_type | load_balancer_props |
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+| replication_ds | mgr_replication_ds          | ds_1                   | ds_2                   | NULL               |                     |
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+1 row in set (0.01 sec)
+
+mysql&gt; SHOW READWRITE_SPLITTING READ RESOURCES;
++----------+----------+
+| resource | status   |
++----------+----------+
+| ds_2     | enabled  |
+| ds_0     | disabled |
++----------+----------+
+2 rows in set (0.01 sec)
+</code></pre><p>Now, let’s INSERT another line of data:</p>
+<pre><code>mysql&gt; INSERT INTO t_user(id, mobile, idcard) value (10001, '13521207777', '110xxxxx');
+Query OK, 1 row affected (0.04 sec)
+</code></pre><p>View the ShardingSphere-Proxy log and see if the route node is the primary database <code>ds_1</code>.</p>
+<pre><code>[INFO ] 2022-02-28 15:40:26.784 [ShardingSphere-Command-6] ShardingSphere-SQL - Logic SQL: INSERT INTO t_user(id, mobile, idcard) value (10001, '13521207777', '110xxxxx')
+[INFO ] 2022-02-28 15:40:26.784 [ShardingSphere-Command-6] ShardingSphere-SQL - SQLStatement: MySQLInsertStatement(setAssignment=Optional.empty, onDuplicateKeyColumns=Optional.empty)
+[INFO ] 2022-02-28 15:40:26.784 [ShardingSphere-Command-6] ShardingSphere-SQL - Actual SQL: ds_1 ::: INSERT INTO t_user(id, mobile, idcard) value (10001, '13521207777', '110xxxxx')
+</code></pre><p>Lastly, let’s test `SELECT(repeat it twice):</p>
+<pre><code>mysql&gt; SELECT id, mobile, idcard FROM t_user WHERE id = 10001;
+</code></pre><p>View the ShardingSphere-Proxy log and see if the route node is <code>ds_2</code>.</p>
+<pre><code>[INFO ] 2022-02-28 15:42:00.651 [ShardingSphere-Command-7] ShardingSphere-SQL - Logic SQL: SELECT id, mobile, idcard FROM t_user WHERE id = 10001
+[INFO ] 2022-02-28 15:42:00.651 [ShardingSphere-Command-7] ShardingSphere-SQL - SQLStatement: MySQLSelectStatement(table=Optional.empty, limit=Optional.empty, lock=Optional.empty, window=Optional.empty)
+[INFO ] 2022-02-28 15:42:00.651 [ShardingSphere-Command-7] ShardingSphere-SQL - Actual SQL: ds_2 ::: SELECT id, mobile, idcard FROM t_user WHERE id = 10001
+[INFO ] 2022-02-28 15:42:02.148 [ShardingSphere-Command-7] ShardingSphere-SQL - Logic SQL: SELECT id, mobile, idcard FROM t_user WHERE id = 10001
+[INFO ] 2022-02-28 15:42:02.149 [ShardingSphere-Command-7] ShardingSphere-SQL - SQLStatement: MySQLSelectStatement(table=Optional.empty, limit=Optional.empty, lock=Optional.empty, window=Optional.empty)
+[INFO ] 2022-02-28 15:42:02.149 [ShardingSphere-Command-7] ShardingSphere-SQL - Actual SQL: ds_2 ::: SELECT id, mobile, idcard FROM t_user WHERE id = 10001
+</code></pre><p>View the latest primary-secondary relationship changes through <code>DistSQL</code>. The state of <code>ds_0</code> node is recovered as enabled, while <code>ds_0</code> is integrated to <code>read_data_source_names</code>:</p>
+<pre><code>mysql&gt; SHOW READWRITE_SPLITTING RULES;
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+| name           | auto_aware_data_source_name | write_data_source_name | read_data_source_names | load_balancer_type | load_balancer_props |
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+| replication_ds | mgr_replication_ds          | ds_1                   | ds_0,ds_2              | NULL               |                     |
++----------------+-----------------------------+------------------------+------------------------+--------------------+---------------------+
+1 row in set (0.01 sec)
+
+mysql&gt; SHOW READWRITE_SPLITTING READ RESOURCES;
++----------+---------+
+| resource | status  |
++----------+---------+
+| ds_0     | enabled |
+| ds_2     | enabled |
++----------+---------+
+2 rows in set (0.00 sec)
+</code></pre><p>Based on the above-mentioned example, you now know more about ShardingSphere&rsquo;s high availability and dynamic read/write splitting.</p>
+<p>Next, we will introduce the principles behind the HA plans regarding the underlying database, also known as the storage nodes.</p>
+<h2 id="principles">Principles</h2>
+<p>ShardingSphere’s high availability solutions allow users to further customize it and make extensions. Currently, we have completed two HA plans: a MySQL high availability solution based on MGR, and openGauss database high availability solution contributed by some community committers. The principles of the two solutions are basically the same.</p>
+<p>Below is why and how ShardingSphere can achieve database high availability with MySQL as an example.
+<img src="https://miro.medium.com/max/1400/1*iUgQ6GLY4mhDarjEWGbMVQ.png" alt="Image description"></p>
+<h2 id="prerequisite">Prerequisite</h2>
+<p>ShardingSphere checks if the underlying MySQL cluster environment is ready by executing the following SQL statement. ShardingSphere cannot be started if any of the tests fail.</p>
+<ul>
+<li>Check if MGR is installed:</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> information_schema.PLUGINS <span style="color:#66d9ef">WHERE</span> PLUGIN_NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;group_replication&#39;</span>
+</code></pre></div><ul>
+<li>View the MGR group member number:
+The underlying MGR cluster should consist of at least three nodes:</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#66d9ef">count</span>(<span style="color:#f92672">*</span>) <span style="color:#66d9ef">FROM</span> performance_schema.replication_group_members
+</code></pre></div><ul>
+<li>Check whether the MGR cluster’s group name is consistent with that in the configuration:
+group name is the marker of a MGR group, and each group of a MGR cluster only has one group name.</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> performance_schema.global_variables <span style="color:#66d9ef">WHERE</span> VARIABLE_NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;group_replication_group_name&#39;</span>
+</code></pre></div><ul>
+<li>Check if the current MGR is set as the single primary mode:</li>
+</ul>
+<p>Currently, ShardingSphere does not support dual-write or multi-write scenarios. It only supports single-write mode:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> performance_schema.global_variables <span style="color:#66d9ef">WHERE</span> VARIABLE_NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;group_replication_single_primary_mode&#39;</span>
+</code></pre></div><ul>
+<li>Query all the node hosts, ports, and states in the MGR group cluster to check if the data source we configured is correct:</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> MEMBER_HOST, MEMBER_PORT, MEMBER_STATE <span style="color:#66d9ef">FROM</span> performance_schema.replication_group_members
+</code></pre></div><blockquote>
+<p>Dynamic primary database discovery</p>
+</blockquote>
+<ul>
+<li>ShardingSphere finds the primary database URL according to the query master database SQL command provided by MySQL.</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">private</span> String <span style="color:#a6e22e">findPrimaryDataSourceURL</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DataSource<span style="color:#f92672">&gt;</span> dataSourceMap<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    String result <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;&#34;</span><span style="color:#f92672">;</span>
+    String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;SELECT MEMBER_HOST, MEMBER_PORT FROM performance_schema.replication_group_members WHERE MEMBER_ID = &#34;</span>
+            <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;(SELECT VARIABLE_VALUE FROM performance_schema.global_status WHERE VARIABLE_NAME = &#39;group_replication_primary_member&#39;)&#34;</span><span style="color:#f92672">;</span>
+    <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>DataSource each <span style="color:#f92672">:</span> dataSourceMap<span style="color:#f92672">.</span><span style="color:#a6e22e">values</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Connection connection <span style="color:#f92672">=</span> each<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">();</span>
+             Statement statement <span style="color:#f92672">=</span> connection<span style="color:#f92672">.</span><span style="color:#a6e22e">createStatement</span><span style="color:#f92672">();</span>
+             ResultSet resultSet <span style="color:#f92672">=</span> statement<span style="color:#f92672">.</span><span style="color:#a6e22e">executeQuery</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>resultSet<span style="color:#f92672">.</span><span style="color:#a6e22e">next</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> String<span style="color:#f92672">.</span><span style="color:#a6e22e">format</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;%s:%s&#34;</span><span style="color:#f92672">,</span> resultSet<span style="color:#f92672">.</span><span style="color:#a6e22e">getString</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;MEMBER_HOST&#34;</span><span style="color:#f92672">),</span> resultSet<span style="color:#f92672">.</span><span style="color:#a6e22e">getString</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;MEMBER_PORT&#34;</span><span style="color:#f92672">));</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> SQLException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            log<span style="color:#f92672">.</span><span style="color:#a6e22e">error</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;An exception occurred while find primary data source url&#34;</span><span style="color:#f92672">,</span> ex<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><ul>
+<li>Compare the primary database URLs found above one by one with the <code>dataSources</code> URLs we configured. The matched data source is the primary database and it will be updated to the current ShardingSphere memory and be perpetuated to the registry center, through which it will be distributed to other compute nodes in the cluster.
+<img src="https://miro.medium.com/max/1400/1*1juMYewspe0CmEzhiHKqhQ.png" alt=""></li>
+</ul>
+<blockquote>
+<p><strong>Dynamic secondary database discovery</strong></p>
+</blockquote>
+<p>There are two types of secondary database states in ShardingSpherez: enable and disable. The secondary database state will be synchronized to the ShardingSphere memory to ensure that read traffic can be routed correctly.</p>
+<ul>
+<li>Get all the nodes in the MGR group:</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> MEMBER_HOST, MEMBER_PORT, MEMBER_STATE <span style="color:#66d9ef">FROM</span> performance_schema.replication_group_members
+</code></pre></div><ul>
+<li>Disable secondary databases:</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">determineDisabledDataSource</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String schemaName<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DataSource<span style="color:#f92672">&gt;</span> activeDataSourceMap<span style="color:#f92672">,</span>
+                                         <span style="color:#66d9ef">final</span> List<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> memberDataSourceURLs<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> String<span style="color:#f92672">&gt;</span> dataSourceURLs<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Entry<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DataSource<span style="color:#f92672">&gt;</span> entry <span style="color:#f92672">:</span> activeDataSourceMap<span style="color:#f92672">.</span><span style="color:#a6e22e">entrySet</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">boolean</span> disable <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span><span style="color:#f92672">;</span>
+        String url <span style="color:#f92672">=</span> <span style="color:#66d9ef">null</span><span style="color:#f92672">;</span>
+        <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Connection connection <span style="color:#f92672">=</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            url <span style="color:#f92672">=</span> connection<span style="color:#f92672">.</span><span style="color:#a6e22e">getMetaData</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getURL</span><span style="color:#f92672">();</span>
+            <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>String each <span style="color:#f92672">:</span> memberDataSourceURLs<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">!=</span> url <span style="color:#f92672">&amp;&amp;</span> url<span style="color:#f92672">.</span><span style="color:#a6e22e">contains</span><span style="color:#f92672">(</span>each<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+                    disable <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">;</span>
+                    <span style="color:#66d9ef">break</span><span style="color:#f92672">;</span>
+                <span style="color:#f92672">}</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> SQLException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            log<span style="color:#f92672">.</span><span style="color:#a6e22e">error</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;An exception occurred while find data source urls&#34;</span><span style="color:#f92672">,</span> ex<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>disable<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            ShardingSphereEventBus<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">().</span><span style="color:#a6e22e">post</span><span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> DataSourceDisabledEvent<span style="color:#f92672">(</span>schemaName<span style="color:#f92672">,</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getKey</span><span style="color:#f92672">(),</span> <span style="color:#66d9ef">true</span><span style="color:#f92672">));</span>
+        <span style="color:#f92672">}</span> <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>url<span style="color:#f92672">.</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            dataSourceURLs<span style="color:#f92672">.</span><span style="color:#a6e22e">put</span><span style="color:#f92672">(</span>entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getKey</span><span style="color:#f92672">(),</span> url<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Whether the secondary database is disabled is based on the data source we configured and all the nodes in the MGR group.</p>
+<p>ShardingSphere can check one by one whether the data source we configured can obtain <code>Connection</code> properly, and verify whether the data source URL contains nodes of the MGR group.</p>
+<p>If <code>Connection</code> cannot be obtained or the verification fails, ShardingSphere will disable the data source by an event trigger and synchronize it to the registry center.
+<img src="https://miro.medium.com/max/1400/1*zn92m1dV0L441ZlGIiiwVw.png" alt=""></p>
+<ul>
+<li>Enable secondary databases:</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">determineEnabledDataSource</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DataSource<span style="color:#f92672">&gt;</span> dataSourceMap<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> String schemaName<span style="color:#f92672">,</span>
+                                        <span style="color:#66d9ef">final</span> List<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> memberDataSourceURLs<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> String<span style="color:#f92672">&gt;</span> dataSourceURLs<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>String each <span style="color:#f92672">:</span> memberDataSourceURLs<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">boolean</span> enable <span style="color:#f92672">=</span> <span style="color:#66d9ef">true</span><span style="color:#f92672">;</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Entry<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> String<span style="color:#f92672">&gt;</span> entry <span style="color:#f92672">:</span> dataSourceURLs<span style="color:#f92672">.</span><span style="color:#a6e22e">entrySet</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">contains</span><span style="color:#f92672">(</span>each<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+                enable <span style="color:#f92672">=</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">;</span>
+                <span style="color:#66d9ef">break</span><span style="color:#f92672">;</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>enable<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">continue</span><span style="color:#f92672">;</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Entry<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DataSource<span style="color:#f92672">&gt;</span> entry <span style="color:#f92672">:</span> dataSourceMap<span style="color:#f92672">.</span><span style="color:#a6e22e">entrySet</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            String url<span style="color:#f92672">;</span>
+            <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Connection connection <span style="color:#f92672">=</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+                url <span style="color:#f92672">=</span> connection<span style="color:#f92672">.</span><span style="color:#a6e22e">getMetaData</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getURL</span><span style="color:#f92672">();</span>
+                <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">!=</span> url <span style="color:#f92672">&amp;&amp;</span> url<span style="color:#f92672">.</span><span style="color:#a6e22e">contains</span><span style="color:#f92672">(</span>each<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+                    ShardingSphereEventBus<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">().</span><span style="color:#a6e22e">post</span><span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> DataSourceDisabledEvent<span style="color:#f92672">(</span>schemaName<span style="color:#f92672">,</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getKey</span><span style="color:#f92672">(),</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">));</span>
+                    <span style="color:#66d9ef">break</span><span style="color:#f92672">;</span>
+                <span style="color:#f92672">}</span>
+            <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> SQLException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+                log<span style="color:#f92672">.</span><span style="color:#a6e22e">error</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;An exception occurred while find enable data source urls&#34;</span><span style="color:#f92672">,</span> ex<span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>After the crashed secondary database is recovered and added to the MGR group, our configuration will be checked to see whether the recovered data source is used. If yes, the event trigger will tell ShardingSphere that the data source needs to be enabled.</p>
+<blockquote>
+<p><strong>Heartbeat Mechanism</strong></p>
+</blockquote>
+<p>To ensure that the primary-secondary states are synchronized in real-time, the heartbeat mechanism is introduced to the HA module.</p>
+<p>By integrating the ShardingSphere sub-project ElasticJob, the above processes are executed by the <a href="https://shardingsphere.apache.org/elasticjob/">ElasticJob</a> scheduler framework in a form of Job when the HA module is initialized, thus achieving the separation of function development and job scheduling.</p>
+<p>Even if developers need to extend the HA function, they do not need to care about how jobs are developed and operated.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">initHeartBeatJobs</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String schemaName<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DataSource<span style="color:#f92672">&gt;</span> dataSourceMap<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    Optional<span style="color:#f92672">&lt;</span>ModeScheduleContext<span style="color:#f92672">&gt;</span> modeScheduleContext <span style="color:#f92672">=</span> ModeScheduleContextFactory<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">().</span><span style="color:#a6e22e">get</span><span style="color:#f92672">();</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>modeScheduleContext<span style="color:#f92672">.</span><span style="color:#a6e22e">isPresent</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Entry<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DatabaseDiscoveryDataSourceRule<span style="color:#f92672">&gt;</span> entry <span style="color:#f92672">:</span> dataSourceRules<span style="color:#f92672">.</span><span style="color:#a6e22e">entrySet</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> DataSource<span style="color:#f92672">&gt;</span> dataSources <span style="color:#f92672">=</span> dataSourceMap<span style="color:#f92672">.</span><span style="color:#a6e22e">entrySet</span><span style="color:#f92672">().</span><span style="color:#a6e22e">stream</span><span style="color:#f92672">().</span><span style="color:#a6e22e">filter</span><span style="color:#f92672">(</span>dataSource <span style="color:#f92672">-&gt;</span> <span style="color:#f92672">!</span>entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getDisabledDataSourceNames</span><span style="color:#f92672">().</span><span style="color:#a6e22e">contains</span><span style="color:#f92672">(</span>dataSource<span style="color:#f92672">.</span><span style="color:#a6e22e">getKey</span><span style="color:#f92672">()))</span>
+                    <span style="color:#f92672">.</span><span style="color:#a6e22e">collect</span><span style="color:#f92672">(</span>Collectors<span style="color:#f92672">.</span><span style="color:#a6e22e">toMap</span><span style="color:#f92672">(</span>Entry<span style="color:#f92672">::</span>getKey<span style="color:#f92672">,</span> Entry<span style="color:#f92672">::</span>getValue<span style="color:#f92672">));</span>
+            CronJob job <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> CronJob<span style="color:#f92672">(</span>entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getDatabaseDiscoveryType</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getType</span><span style="color:#f92672">()</span> <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;-&#34;</span> <span style="color:#f92672">+</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getGroupName</span><span style="color:#f92672">(),</span>
+                each <span style="color:#f92672">-&gt;</span> <span style="color:#66d9ef">new</span> HeartbeatJob<span style="color:#f92672">(</span>schemaName<span style="color:#f92672">,</span> dataSources<span style="color:#f92672">,</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getGroupName</span><span style="color:#f92672">(),</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getDatabaseDiscoveryType</span><span style="color:#f92672">(),</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getDisabledDataSourceNames</span><span style="color:#f92672">())</span>
+                            <span style="color:#f92672">.</span><span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span><span style="color:#66d9ef">null</span><span style="color:#f92672">),</span> entry<span style="color:#f92672">.</span><span style="color:#a6e22e">getValue</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getHeartbeatProps</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getProperty</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;keep-alive-cron&#34;</span><span style="color:#f92672">));</span>
+            modeScheduleContext<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">().</span><span style="color:#a6e22e">startCronJob</span><span style="color:#f92672">(</span>job<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><h2 id="conclusion">Conclusion</h2>
+<p>So far Apache ShardingSphere’s HA feature has proven to be applicable for MySQL and openGauss HA solutions.</p>
+<p>Moving forward, it will integrate more MySQL HA products and support more database HA solutions.</p>
+<p>As always, if you’re interested, you’re more than welcome to join us and contribute to the Apache ShardingSphere project.</p>
+<h2 id="apache-shardingsphere-project-links">Apache ShardingSphere Project Links:</h2>
+<p><a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/involved/">Contributor Guide</a></p>
+<h2 id="author">Author</h2>
+<p><strong>Zhao Jinchao</strong></p>
+<p>SphereEx Middleware Engineer &amp; Apache ShardingSphere Committer</p>
+<p>Currently, Zhao concentrates on developing the feature High Availability of Apache ShardingSphere.</p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_03_23_apache_shardingsphere_proxy_performance_with_postgresql_is_improved_26.8_with_version_5.1.0/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_03_11_asias_e-commerce_giant_dangdang_increases_order_processing_speed_by_30_saves_over_ten_million_in_technology_budget_with_apache_shardingsphere/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Your Guide to DistSQL Cluster Governance Capability——Apache ShardingSphere Feature Update &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Your Guide to DistSQL Cluster Governance Capability——Apache ShardingSphere Feature Update</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>Since Apache ShardingSphere 5.0.0-Beta version included DistSQL, it made the project increasingly loved by developers and Ops teams for its advantages such as dynamic effects, no restart, and elegant syntax close to standard SQL.</p>
+<p>With upgrades to 5.0.0 and 5.1.0, the ShardingSphere community has once again added abundant syntax to DistSQL, bringing more practical features.</p>
+<p>In this post, the community co-authors will share the latest functions of DistSQL from the perspective of “cluster governance”.</p>
+<h2 id="shardingsphere-cluster">ShardingSphere Cluster</h2>
+<p>In a typical cluster composed of ShardingSphere-Proxy, there are multiple <code>compute nodes</code> and storage nodes, as shown in the figure below:</p>
+<p>To make it easier to understand, in ShardingSphere, we refer to Proxy as a compute node and Proxy-managed distributed database resources (such as <code>ds_0</code>, <code>ds_1</code>) as <code>resources</code> or <code>storage nodes</code>.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/i233gunx5u6tr3xej822.png" alt="Image description"></p>
+<p>Multiple Proxy or compute nodes are connected to the same register center, sharing configuration, and rules, and can sense each other’s online status.</p>
+<p>These compute nodes also share the underlying storage nodes, so they can perform read and write operations to the storage nodes at the same time. The user application is connected to any compute node and can perform equivalent operations.</p>
+<p>Through this cluster architecture, you can quickly scale Proxy horizontally when compute resources are insufficient, reducing the risk of a single point of failure and improving system availability.</p>
+<p>The load balancing mechanism can also be added between application and compute node.</p>
+<p><strong>Compute Node Governance</strong>
+Compute node governance is suitable for Cluster mode. For more information about the ShardingSphere modes, please see <a href="https://medium.com/codex/your-detailed-guide-to-apache-shardingspheres-operating-modes-e50df1ee56e4">Your Detailed Guide to Apache ShardingSphere’s Operating Modes</a>.</p>
+<p><strong>Cluster Preparation</strong>
+Take a standalone simulation of three Proxy compute nodes as an example. To use the mode, follow the configuration below:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">mode</span>:
+  <span style="color:#66d9ef">type</span>: Cluster
+  <span style="color:#66d9ef">repository</span>:
+    <span style="color:#66d9ef">type</span>: ZooKeeper
+    <span style="color:#66d9ef">props</span>:
+      <span style="color:#66d9ef">namespace</span>: governance_ds
+      <span style="color:#66d9ef">server-lists</span>: localhost:<span style="color:#ae81ff">2181</span>
+      <span style="color:#66d9ef">retryIntervalMilliseconds</span>: <span style="color:#ae81ff">500</span>
+      <span style="color:#66d9ef">timeToLiveSeconds</span>: <span style="color:#ae81ff">60</span>
+      <span style="color:#66d9ef">maxRetries</span>: <span style="color:#ae81ff">3</span>
+      <span style="color:#66d9ef">operationTimeoutMilliseconds</span>: <span style="color:#ae81ff">500</span>
+  <span style="color:#66d9ef">overwrite</span>: <span style="color:#66d9ef">false</span>
+</code></pre></div><p>Execute the bootup command separately:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">sh %SHARDINGSPHERE_PROXY_HOME%/bin/start.sh <span style="color:#ae81ff">3307</span>
+sh %SHARDINGSPHERE_PROXY_HOME%/bin/start.sh <span style="color:#ae81ff">3308</span>
+sh %SHARDINGSPHERE_PROXY_HOME%/bin/start.sh <span style="color:#ae81ff">3309</span>
+</code></pre></div><p>After the three Proxy instances are successfully started, the compute node cluster is ready.</p>
+<p><code>SHOW INSTANCE LIST</code></p>
+<p>Use the client to connect to any compute node, such as 3307:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">mysql -h 127.0.0.1 -P <span style="color:#ae81ff">3307</span> -u root -p
+</code></pre></div><p>View the list of instances:</p>
+<pre><code>mysql&gt; SHOW INSTANCE LIST;
++----------------+-----------+------+---------+
+| instance_id    | host      | port | status  |
++----------------+-----------+------+---------+
+| 10.7.5.35@3309 | 10.7.5.35 | 3309 | enabled |
+| 10.7.5.35@3308 | 10.7.5.35 | 3308 | enabled |
+| 10.7.5.35@3307 | 10.7.5.35 | 3307 | enabled |
++----------------+-----------+------+---------+
+</code></pre><p>The above fields mean:</p>
+<ul>
+<li><code>instance_id </code>: The id of the instance, which is currently composed of host and port.</li>
+<li><code>Host</code> : host address.</li>
+<li><code>Port</code> : port number.</li>
+<li><code>Status</code> : the status of the instance enabled or disabled</li>
+</ul>
+<p><code>DISABLE INSTANCE</code></p>
+<p><code>DISABLE INSTANCE</code> statement is used to set the specified compute node to a disabled state.</p>
+<p>💡Note:
+the statement does not terminate the process of the target instance, but only virtually deactivates it.</p>
+<p><code>DISABLE INSTANCE</code> supports the following syntax forms:</p>
+<pre><code>DISABLE INSTANCE 10.7.5.35@3308;
+#or
+DISABLE INSTANCE IP=10.7.5.35, PORT=3308;
+</code></pre><p>Example:</p>
+<pre><code>mysql&gt; DISABLE INSTANCE 10.7.5.35@3308;
+Query OK, 0 rows affected (0.02 sec)
+
+mysql&gt; SHOW INSTANCE LIST;
++----------------+-----------+------+----------+
+| instance_id    | host      | port | status   | 
++----------------+-----------+------+----------+
+| 10.7.5.35@3309 | 10.7.5.35 | 3309 | enabled  |
+| 10.7.5.35@3308 | 10.7.5.35 | 3308 | disabled |
+| 10.7.5.35@3307 | 10.7.5.35 | 3307 | enabled  |
++----------------+-----------+------+----------+
+</code></pre><p>After executing the <code>DISABLE INSTANCE </code>statement, by querying again, you can see that the instance status of Port 3308 has been updated to <code>disabled</code> , indicating that the compute node has been disabled.</p>
+<p>If there is a client connected to the <code>10.7.5.35@3308</code> , executing any SQL statement will prompt an exception:</p>
+<p><code>1000 - Circuit break mode is ON.</code>
+💡Note:
+It is not allowed to disable the current compute node. If you send <code>10.7.5.35@3309</code> to <code>DISABLE INSTANCE 10.7.5.35@3309</code> , you will receive an exception prompt.</p>
+<p><code>ENABLE INSTANCE</code></p>
+<p><code>ENABLE INSTANCE</code> statement is used to set the specified compute node to an enabled state. <code>ENABLE INSTANCE</code> supports the following syntax forms:</p>
+<pre><code>ENABLE INSTANCE 10.7.5.35@3308;
+#or
+ENABLE INSTANCE IP=10.7.5.35, PORT=3308;
+</code></pre><p>Example:</p>
+<pre><code>mysql&gt; SHOW INSTANCE LIST;
++----------------+-----------+------+----------+
+| instance_id    | host      | port | status   | 
++----------------+-----------+------+----------+
+| 10.7.5.35@3309 | 10.7.5.35 | 3309 | enabled  |
+| 10.7.5.35@3308 | 10.7.5.35 | 3308 | disabled |
+| 10.7.5.35@3307 | 10.7.5.35 | 3307 | enabled  |
++----------------+-----------+------+----------+
+
+mysql&gt; ENABLE INSTANCE 10.7.5.35@3308;
+Query OK, 0 rows affected (0.01 sec)
+
+mysql&gt; SHOW INSTANCE LIST;
++----------------+-----------+------+----------+
+| instance_id    | host      | port | status   | 
++----------------+-----------+------+----------+
+| 10.7.5.35@3309 | 10.7.5.35 | 3309 | enabled  |
+| 10.7.5.35@3308 | 10.7.5.35 | 3308 | enabled  |
+| 10.7.5.35@3307 | 10.7.5.35 | 3307 | enabled  |
++----------------+-----------+------+----------+
+</code></pre><p>After executing the <code>ENABLE INSTANCE</code> statement, you can query again and view that the instance state of Port 3308 has been restored to <code>enabled</code>.</p>
+<h2 id="how-to-manage-compute-node-parameters">How to Manage Compute Node Parameters</h2>
+<p>In the previous article <a href="https://dzone.com/articles/integrating-sctl-into-distsqls-ral-making-apache-s">Integrating SCTL into RAL — Making Apache ShardingSphere Perfect for Database Management</a>, we explained the evolution of SCTL (ShardingSphere Control Language) to RAL (Resource &amp; Rule Administration Language) and the new <code>SHOW VARIABLE</code> and <code>SET VARIABLE</code> syntax.</p>
+<p>However, in 5.0.0-Beta, the <code>VARIABLE</code> category of DistSQL RAL only contains only the following three statements:</p>
+<pre><code>SET VARIABLE TRANSACTION_TYPE = xx; （LOCAL, XA, BASE）
+SHOW VARIABLE TRANSACTION_TYPE;
+SHOW VARIABLE CACHED_CONNECTIONS;
+</code></pre><p>By listening to the community’s feedback, we noticed that querying and modifying the props configuration of Proxy (located in <code>server.yaml</code>) is also a frequent operation. Therefore, we have added support for props configuration in DistSQL RAL since the 5.0.0 GA version.</p>
+<p><code>SHOW VARIABLE</code></p>
+<p>First, let’s review how to configure props:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">props</span>:
+  <span style="color:#66d9ef">max-connections-size-per-query</span>: <span style="color:#ae81ff">1</span>
+  <span style="color:#66d9ef">kernel-executor-size</span>: <span style="color:#ae81ff">16</span>  <span style="color:#75715e"># Infinite by default.</span>
+  <span style="color:#66d9ef">proxy-frontend-flush-threshold</span>: <span style="color:#ae81ff">128</span>  <span style="color:#75715e"># The default value is 128.</span>
+  <span style="color:#66d9ef">proxy-opentracing-enabled</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">proxy-hint-enabled</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">sql-show</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">check-table-metadata-enabled</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">show-process-list-enabled</span>: <span style="color:#66d9ef">false</span>
+    <span style="color:#75715e"># Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy.</span>
+    <span style="color:#75715e"># The default value is -1, which means set the minimum value for different JDBC drivers.</span>
+  <span style="color:#66d9ef">proxy-backend-query-fetch-size</span>: -<span style="color:#ae81ff">1</span>
+  <span style="color:#66d9ef">check-duplicate-table-enabled</span>: <span style="color:#66d9ef">false</span>
+  <span style="color:#66d9ef">proxy-frontend-executor-size</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Proxy frontend executor size. The default value is 0, which means let Netty decide.</span>
+    <span style="color:#75715e"># Available options of proxy backend executor suitable: OLAP(default), OLTP. The OLTP option may reduce time cost of writing packets to client, but it may increase the latency of SQL execution</span>
+    <span style="color:#75715e"># and block other clients if client connections are more than `proxy-frontend-executor-size`, especially executing slow SQL.</span>
+  <span style="color:#66d9ef">proxy-backend-executor-suitable</span>: OLAP
+  <span style="color:#66d9ef">proxy-frontend-max-connections</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Less than or equal to 0 means no limitation.</span>
+  <span style="color:#66d9ef">sql-federation-enabled</span>: <span style="color:#66d9ef">false</span>
+    <span style="color:#75715e"># Available proxy backend driver type: JDBC (default), ExperimentalVertx</span>
+  <span style="color:#66d9ef">proxy-backend-driver-type</span>: JDBC
+</code></pre></div><p>Now, you can perform interactive queries by using the following syntax:</p>
+<p><code>SHOW VARIABLE PROXY_PROPERTY_NAME;</code></p>
+<p>Example:</p>
+<pre><code>mysql&gt; SHOW VARIABLE MAX_CONNECTIONS_SIZE_PER_QUERY;
++--------------------------------+
+| max_connections_size_per_query |
++--------------------------------+
+| 1                              |
++--------------------------------+
+1 row in set (0.00 sec)
+
+mysql&gt; SHOW VARIABLE SQL_SHOW;
++----------+
+| sql_show |
++----------+
+| false    |
++----------+
+1 row in set (0.00 sec)
+……
+</code></pre><p>……
+💡Note:
+For DistSQL syntax, parameter keys are separated by underscores.</p>
+<p><code>SHOW ALL VARIABLES</code></p>
+<p>Since there are plenty of parameters in Proxy, you can also query all parameter values through <code>SHOW ALL VARIABLES</code> :</p>
+<pre><code>mysql&gt; SHOW ALL VARIABLES;
++---------------------------------------+----------------+
+| variable_name                         | variable_value |
++---------------------------------------+----------------+
+| sql_show                              | false          |
+| sql_simple                            | false          |
+| kernel_executor_size                  | 0              |
+| max_connections_size_per_query        | 1              |
+| check_table_metadata_enabled          | false          |
+| proxy_frontend_database_protocol_type |                |
+| proxy_frontend_flush_threshold        | 128            |
+| proxy_opentracing_enabled             | false          |
+| proxy_hint_enabled                    | false          |
+| show_process_list_enabled             | false          |
+| lock_wait_timeout_milliseconds        | 50000          |
+| proxy_backend_query_fetch_size        | -1             |
+| check_duplicate_table_enabled         | false          |
+| proxy_frontend_executor_size          | 0              |
+| proxy_backend_executor_suitable       | OLAP           |
+| proxy_frontend_max_connections        | 0              |
+| sql_federation_enabled                | false          |
+| proxy_backend_driver_type             | JDBC           |
+| agent_plugins_enabled                 | false          |
+| cached_connections                    | 0              |
+| transaction_type                      | LOCAL          |
++---------------------------------------+----------------+
+21 rows in set (0.01 sec)
+</code></pre><p><code>SET VARIABLE</code></p>
+<p>Dynamic management of resources and rules is a special advantage of DistSQL. Now you can also dynamically update props parameters by using the <code>SET VARIABLE</code> statement. For example:</p>
+<pre><code>#Enable SQL log output
+SET VARIABLE SQL_SHOW = true;
+#Turn on hint function
+SET VARIABLE PROXY_HINT_ENABLED = true;
+#Open federal query
+SET VARIABLE SQL_FEDERATION_ENABLED = true;
+……
+</code></pre><p>💡Note:</p>
+<p>The following parameters can be modified by the SET VARIABLE statement, but the new value takes effect only after the Proxy restart:</p>
+<ul>
+<li><code>kernel_executor_size</code></li>
+<li><code>proxy_frontend_executor_size</code></li>
+<li><code>proxy_backend_driver_type</code></li>
+</ul>
+<p>The following parameters are read-only and cannot be modified:</p>
+<ul>
+<li><code>cached_connections</code></li>
+</ul>
+<p>Other parameters will take effect immediately after modification.</p>
+<h2 id="how-to-manage-storage-nodes">How to Manage Storage nodes</h2>
+<p>In ShardingSphere, storage nodes are not directly bound to compute nodes. Because one storage node may play different roles in different schemas at the same time, in order to implement different business logic. Storage nodes are always associated with a schema.</p>
+<p>For DistSQL, storage nodes are managed through <code>RESOURCE</code> related statements, including:</p>
+<ul>
+<li><code>ADD RESOURCE</code></li>
+<li><code>ALTER RESOURCE</code></li>
+<li><code>DROP RESOURCE</code></li>
+<li><code>SHOW SCHEMA RESOURCES</code></li>
+</ul>
+<p><strong>Schema Preparation</strong>
+<code>RESOURCE</code> related statements only work on schemas, so before operating, you need to create and use <code>USE</code> command to successfully select a schema:</p>
+<pre><code>DROP DATABASE IF EXISTS sharding_db;
+CREATE DATABASE sharding_db;
+USE sharding_db;
+</code></pre><p><code>ADD RESOURCE</code></p>
+<p><code>ADD RESOURCE</code> supports the following syntax forms:</p>
+<p>Specify <code>HOST</code>, <code>PORT</code>, <code>DB</code></p>
+<pre><code>ADD RESOURCE resource_0 (
+    HOST=127.0.0.1,
+    PORT=3306,
+    DB=db0,
+    USER=root,
+    PASSWORD=root
+);
+</code></pre><p>Specify <code>URL</code></p>
+<pre><code>ADD RESOURCE resource_1 (
+    URL=&quot;jdbc:mysql://127.0.0.1:3306/db1?serverTimezone=UTC&amp;useSSL=false&quot;,
+    USER=root,
+    PASSWORD=root
+);
+</code></pre><p>The above two syntax forms support the extension parameter PROPERTIES that is used to specify the attribute configuration of the connection pool between the Proxy and the storage node, such as:</p>
+<pre><code>ADD RESOURCE resource_2 (
+    HOST=127.0.0.1,
+    PORT=3306,
+    DB=db2,
+    USER=root,
+    PASSWORD=root,
+    PROPERTIES(&quot;maximumPoolSize&quot;=10)
+),resource_3 (
+    URL=&quot;jdbc:mysql://127.0.0.1:3306/db3?serverTimezone=UTC&amp;useSSL=false&quot;,
+    USER=root,
+    PASSWORD=root,
+    PROPERTIES(&quot;maximumPoolSize&quot;=10,&quot;idleTimeout&quot;=&quot;30000&quot;)
+);
+</code></pre><p>💡 Note: Specifying JDBC connection parameters, such as <code>useSSL</code>, is supported only with URL form.</p>
+<p><code>ALTER RESOURCE</code></p>
+<p><code>ALTER RESOURCE</code> is used to modify the connection information of storage nodes, such as changing the size of a connection pool, modifying JDBC connection parameters, etc.</p>
+<p>Syntactically, <code>ALTER RESOURCE</code> is identical to <code>ADD RESOURCE</code>.</p>
+<pre><code>ALTER RESOURCE resource_2 (
+    HOST=127.0.0.1,
+    PORT=3306,
+    DB=db2,
+    USER=root,
+    PROPERTIES(&quot;maximumPoolSize&quot;=50)
+),resource_3 (
+    URL=&quot;jdbc:mysql://127.0.0.1:3306/db3?serverTimezone=GMT&amp;useSSL=false&quot;,
+    USER=root,
+    PASSWORD=root,
+    PROPERTIES(&quot;maximumPoolSize&quot;=50,&quot;idleTimeout&quot;=&quot;30000&quot;)
+);
+</code></pre><p>💡 Note: Since modifying the storage node may cause metadata changes or application data exceptions, <code>ALTER RESOURCE</code> cannot used to modify the target database of the connection. Only the following values can be modified:</p>
+<ul>
+<li>User name</li>
+<li>User password</li>
+<li><code>PROPERTIES</code> connection pool parameters</li>
+<li>JDBC parameters</li>
+</ul>
+<p><code>DROP RESOURCE</code></p>
+<p><code>DROP RESOURCE</code> is used to delete storage nodes from a schema without deleting any data in the storage node. The statement example is as follows:</p>
+<p><code>DROP RESOURCE resource_0, resource_1;</code></p>
+<p>💡 Note: In order to ensure data correctness, the storage node referenced by the rule cannot be deleted.</p>
+<p><code>t_order</code> is a sharding table, and its actual tables are distributed in <code>resource_0</code> and <code>resource_1</code>. When <code>resource_0</code> and <code>resource_1</code> are referenced by <code>t_order</code> sharding rules, they cannot be deleted.</p>
+<p><code>SHOW SCHEMA RESOURCES</code></p>
+<p><code>SHOW SCHEMA RESOURCES</code> is used to query storage nodes in schemas and supports the following syntax forms:</p>
+<pre><code>#Query the storage node in the current schema
+SHOW SCHEMA RESOURCES;
+#Query the storage node in the specified schema
+SHOW SCHEMA RESOURCES FROM sharding_db;
+</code></pre><p>Example:</p>
+<p>Add 4 storage nodes through the above-mentioned <code>ADD RESOURCE</code> command, and then execute a query:</p>
+<blockquote>
+<p>There are actually a large number of columns in the query result, but here we only show part of it.</p>
+</blockquote>
+<p>Above we have introduced you to the ways to dynamically manage storage nodes through DistSQL.</p>
+<p>Compared with modifying YAML files, exectuting DistSQL statements is real-time, and there is no need to restart the Proxy or compute node, making online operations safer.</p>
+<p>Changes executed through DistSQL can be synchronized to other compute nodes in the cluster in real time through the register center, while the client connected to any compute node can also query changes of storage nodes in real time.</p>
+<p>Apache ShardingSphere’s cluster governance is very powerful.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>If you have any questions or suggestions about Apache ShardingSphere, please open an issue on the GitHub issue list. If you are interested in contributing to the project, you’re very welcome to join the Apache ShardingSphere community.</p>
+<p>GitHub issue：https://github.com/apache/shardingsphere/issues</p>
+<p>Issues · apache/shardingsphere
+New issue Have a question about this project? Sign up for a free GitHub account to open an issue and contact its…
+github.com</p>
+<h2 id="reference">Reference</h2>
+<p>**1. ShardingSphere-Proxy Quickstart: **<a href="https://shardingsphere.apache.org/document/5.1.0/en/quick-start/shardingsphere-proxy-quick-start/">https://shardingsphere.apache.org/document/5.1.0/cn/quick-start/shardingsphere-proxy-quick-start/</a></p>
+<p>**2.DistSQL RDL：**<a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition/">https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/rdl/resource-definition/</a></p>
+<p>**3.DistSQL RQL：**<a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query/">https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/rql/resource-query/</a></p>
+<p>**4.DistSQL RAL：**<a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/ral/">https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-proxy/distsql/syntax/ral/</a></p>
+<p><strong>Apache ShardingSphere Project Links:</strong>
+<a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/involved/">Contributor Guide</a></p>
+<p><strong>Authors</strong>
+<strong>Longtao JIANG</strong></p>
+<p>SphereEx Middleware Development Engineer &amp; Apache ShardingSphere Committer</p>
+<p>Jiang works on DistSQL and security features R&amp;D.</p>
+<p><strong>Chengxiang Lan</strong></p>
+<p>SphereEx Middleware Development Engineer &amp; Apache ShardingSphere Committer</p>
+<p>Lan contributes to DistSQL’s R&amp;D.</p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_06_02_database_mesh_2.0_database_governance_in_a_cloud_native_environment/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_05_19_apache_shardingsphere_enterprise_user_case_zhongshang_huimins_transaction_middle_platform_architecture/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>ShardingSphere-Proxy Front-End Protocol Troubleshooting Guide and Examples &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">ShardingSphere-Proxy Front-End Protocol Troubleshooting Guide and Examples</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p><a href="https://shardingsphere.apache.org/document/current/en/quick-start/shardingsphere-proxy-quick-start/">ShardingSphere-Proxy</a>, positioned as a transparent database proxy, is one of <a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a>’s access points.</p>
+<p>ShardingSphere-Proxy implements a database protocol that can be accessed by any client using or compatible with <a href="https://www.mysql.com/">MySQL</a> / <a href="https://www.postgresql.org/">PostgreSQL</a> / <a href="https://opengauss.org/en/">openGauss</a> protocols. The advantage of ShardingSphere-Proxy over <a href="https://shardingsphere.apache.org/document/current/en/overview/#shardingsphere-jdbc">ShardingSphere-JDBC</a> is the support for heterogeneous languages and the operable entry point to the database cluster for DBAs.</p>
+<p>Similar to ShardingSphere’s SQL parsing module, establishing ShardingSphere-Proxy’s support for database protocols is a long-term process that requires developers to continuously improve the database protocol deployment.</p>
+<p>This post will introduce you to the tools commonly used in database protocol development by presenting a troubleshooting guide for ShardingSphere-Proxy MySQL protocol issues as a case study.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/fq6vixjvjskcwoggzq2v.png" alt="Image description"></p>
+<h2 id="1-use-wireshark-to-analyze-network-protocols">1. Use Wireshark to analyze network protocols</h2>
+<p><a href="https://www.wireshark.org/">Wireshark</a> is a popular network protocol analysis tool with built-in support for parsing hundreds of protocols (including the MySQL / PostgreSQL protocols relevant to this article) and the ability to read many different types of packet capture formats.</p>
+<p>The full features, installation and other details about Wireshark can be found in the official Wireshark documents.</p>
+<h2 id="11-packet-capture-using-tools-like-wireshark-or-tcpdump">1.1 Packet capture using tools like Wireshark or tcpdump</h2>
+<p><strong>1.1.1 Wireshark</strong>
+Wireshark itself has the ability to capture packets, so if the environment connected to ShardingSphere-Proxy can run Wireshark, you can use it to capture packets directly.</p>
+<p>After initiating Wireshark , first select the correct network card.</p>
+<p>For example, if you are running ShardingSphere-Proxy locally, the client connects to ShardingSphere-Proxy on port 3307 at 127.0.0.1 and the traffic passes through the Loopback NIC, which is selected as the target of packet capture.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/r5i0nphl9vk859im6lea.png" alt="Image description"></p>
+<p>Once the NIC is selected, Wireshark starts capturing packets. Since there may be a lot of traffic from other processes on the NIC, it is necessary to filter out the traffic coming from specified port.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/p11ab3e8qjqdiaa7repp.png" alt="Image description"></p>
+<p><strong>1.1.2 tcpdump</strong>
+In cases where ShardingSphere-Proxy is deployed in an online environment, or when you cannot use Wireshark to capture packets, consider using tcpdump or other tools.</p>
+<p>NIC eth0 as target, filter TCP port 3307, write the result to /path/to/dump.cap. Command Example:</p>
+<p><code>tcpdump -i eth0 -w /path/to/dump.cap tcp port 3307</code>
+To know how to use tcpdump, you can man tcpdump. tcpdump’s packet capture result file can be opened through Wireshark.</p>
+<p><strong>1.1.3 Note</strong>
+When a client connects to MySQL, SSL encryption may be automatically enabled, causing the packet capture result to not directly parse the protocol content. You can disable SSL by specifying parameters using the MySQL client command line with the following command:</p>
+<p><code>mysql --ssl-mode=disable</code>
+Parameters can be added using JDBC with the following parameters:</p>
+<p><code>jdbc:mysql://127.0.0.1:3306/db?useSSL=false</code></p>
+<h2 id="12-use-wireshark-to-read-packet-capture-result">1.2 Use Wireshark to read packet capture result</h2>
+<p>Wireshark supports reading multiple packet capture file formats, including tcpdump’s capture format.</p>
+<p>By default, Wireshark decodes port 3306 to MySQL protocol and port 5432 to PostgreSQL protocol. For cases where ShardingSphere-Proxy may use a different port, you can configure the protocol for specified port in Decode As…</p>
+<p>For example, ShardingSphere-Proxy MySQL uses 3307 port, which can be parsed as SQL protocols according to the following steps:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/0xusspvc11lrc87earnk.png" alt="Image description">
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/k66xw1v28ocq3nh335jy.png" alt="Image description"></p>
+<p>Once Wireshark is able to parse out the MySQL protocol, we can add filters to display only the MySQL protocol data:</p>
+<p><code>tcp.port == 3307 and mysql</code>
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/sjdeclrsse0mvzyo03c3.png" alt="Image description"></p>
+<p>After selecting the correct protocol for the specified port, you can see the contents in the Wireshark window.</p>
+<p>For example, after the client establishes a TCP connection with the server, the MySQL server initiates a <code>Greeting</code> to the client as shown below:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/h1pck7o9xxnhk0d3zx90.png" alt="Image description">
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/3sldzmzjbr81wtio465j.png" alt="Image description"></p>
+<p>Example: the client executes SQL select version() with the protocol shown below:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/80t0hbqgl3xfa47nto7e.png" alt="Image description"></p>
+<h2 id="2-protocol-troubeshooting-case-study-shardingsphere-proxy-mysql-support-oversized-data-packages">2. Protocol Troubeshooting Case Study: ShardingSphere-Proxy MySQL support oversized data packages</h2>
+<h2 id="21-problem-description">2.1 Problem Description</h2>
+<p>Using MySQL Connector/J 8.0.28 as a client to connect to ShardingSphere-Proxy 5.1.1, bulk insertion error prompted while executing.</p>
+<p>Problem solved after replacing driver MySQL Connector/J 5.1.38.</p>
+<pre><code>[INFO ] 2022-05-21 17:32:22.375 [main] o.a.s.p.i.BootstrapInitializer - Database name is `MySQL`, version is `8.0.28`
+[INFO ] 2022-05-21 17:32:22.670 [main] o.a.s.p.frontend.ShardingSphereProxy - ShardingSphere-Proxy start success
+[ERROR] 2022-05-21 17:37:57.925 [Connection-143-ThreadExecutor] o.a.s.p.f.c.CommandExecutorTask - Exception occur: 
+java.lang.IllegalArgumentException: Sequence ID of MySQL command packet must be `0`.
+ at com.google.common.base.Preconditions.checkArgument(Preconditions.java:142)
+ at org.apache.shardingsphere.db.protocol.mysql.packet.command.MySQLCommandPacketTypeLoader.getCommandPacketType(MySQLCommandPacketTypeLoader.java:38)
+ at org.apache.shardingsphere.proxy.frontend.mysql.command.MySQLCommandExecuteEngine.getCommandPacketType(MySQLCommandExecuteEngine.java:50)
+ at org.apache.shardingsphere.proxy.frontend.mysql.command.MySQLCommandExecuteEngine.getCommandPacketType(MySQLCommandExecuteEngine.java:46)
+ at org.apache.shardingsphere.proxy.frontend.command.CommandExecutorTask.executeCommand(CommandExecutorTask.java:95)
+ at org.apache.shardingsphere.proxy.frontend.command.CommandExecutorTask.run(CommandExecutorTask.java:72)
+ at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)
+ at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)
+ at java.base/java.lang.Thread.run(Thread.java:834)
+[ERROR] 2022-05-21 17:44:24.926 [Connection-317-ThreadExecutor] o.a.s.p.f.c.CommandExecutorTask - Exception occur: 
+java.lang.IllegalArgumentException: Sequence ID of MySQL command packet must be `0`.
+ at com.google.common.base.Preconditions.checkArgument(Preconditions.java:142)
+ at org.apache.shardingsphere.db.protocol.mysql.packet.command.MySQLCommandPacketTypeLoader.getCommandPacketType(MySQLCommandPacketTypeLoader.java:38)
+ at org.apache.shardingsphere.proxy.frontend.mysql.command.MySQLCommandExecuteEngine.getCommandPacketType(MySQLCommandExecuteEngine.java:50)
+ at org.apache.shardingsphere.proxy.frontend.mysql.command.MySQLCommandExecuteEngine.getCommandPacketType(MySQLCommandExecuteEngine.java:46)
+ at org.apache.shardingsphere.proxy.frontend.command.CommandExecutorTask.executeCommand(CommandExecutorTask.java:95)
+ at org.apache.shardingsphere.proxy.frontend.command.CommandExecutorTask.run(CommandExecutorTask.java:72)
+ at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1128)
+ at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)
+ at java.base/java.lang.Thread.run(Thread.java:834)
+</code></pre><h2 id="22-troubleshooting">2.2 Troubleshooting</h2>
+<p>The error occurred at the front end of the Proxy, which excludes the backend JDBC Driver and is related to the protocol implementation.</p>
+<p><strong>2.2.1 Analysis</strong>
+Directly determine in the source code that if the sequence ID is not equal to 0, an error is reported.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">MySQLCommandPacketTypeLoader</span> <span style="color:#f92672">{</span>
+    
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Get command packet type.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * @param payload packet payload for MySQL
+</span><span style="color:#75715e">     * @return command packet type for MySQL
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> MySQLCommandPacketType <span style="color:#a6e22e">getCommandPacketType</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> MySQLPacketPayload payload<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        Preconditions<span style="color:#f92672">.</span><span style="color:#a6e22e">checkArgument</span><span style="color:#f92672">(</span>0 <span style="color:#f92672">==</span> payload<span style="color:#f92672">.</span><span style="color:#a6e22e">readInt1</span><span style="color:#f92672">(),</span> <span style="color:#e6db74">&#34;Sequence ID of MySQL command packet must be `0`.&#34;</span><span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">return</span> MySQLCommandPacketType<span style="color:#f92672">.</span><span style="color:#a6e22e">valueOf</span><span style="color:#f92672">(</span>payload<span style="color:#f92672">.</span><span style="color:#a6e22e">readInt1</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p><strong>Code link:</strong>
+<a href="https://github.com/apache/shardingsphere/blob/d928165ea4f6ecf2983b2a3a8670ff66ffe63647/shardingsphere-db-protocol/shardingsphere-db-protocol-mysql/src/main/java/org/apache/shardingsphere/db/protocol/mysql/packet/command/MySQLCommandPacketTypeLoader.java#L38">https://github.com/apache/shardingsphere/blob/d928165ea4f6ecf2983b2a3a8670ff66ffe63647/shardingsphere-db-protocol/shardingsphere-db-protocol-mysql/src/main/java/org/apache/shardingsphere/db/protocol/mysql/packet/command/MySQLCommandPacketTypeLoader.java#L38</a></p>
+<p>In accordance with MySQL protocol documentation, consider when the sequence ID will not equal 0 [2].</p>
+<ul>
+<li>The server responds multiple messages to the client.</li>
+<li>The client sends multiple consecutive messages.</li>
+<li>……
+In this case, the message header of MySQL Packet consists of 3 bytes length + 1 byte Sequence ID [3], so the maximum length of Payload part is 16 MB — 1.</li>
+</ul>
+<p>Considering that the error is generated during bulk insertion, the problem might be that the data sent by the client exceeds the length limit of a single MySQL Packet and was split into multiple consecutive MySQL Packets, which the Proxy could not handle.</p>
+<p><strong>2.2.2 Trying to recreate the problem</strong>
+Using a <code>longtext</code> type field. The original idea was to construct a SQL with a length of more than 16 MB, but inadvertently we found that the error was also reported when the SQL length was more than 8 MB. The code was reproduced as follows:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Connection connection <span style="color:#f92672">=</span> DriverManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;jdbc:mysql://127.0.0.1:13306/bmsql&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;root&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;root&#34;</span><span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Statement statement <span style="color:#f92672">=</span> connection<span style="color:#f92672">.</span><span style="color:#a6e22e">createStatement</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        statement<span style="color:#f92672">.</span><span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;drop table if exists foo&#34;</span><span style="color:#f92672">);</span>
+        statement<span style="color:#f92672">.</span><span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;create table foo (id bigint primary key, str0 longtext)&#34;</span><span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">long</span> id <span style="color:#f92672">=</span> ThreadLocalRandom<span style="color:#f92672">.</span><span style="color:#a6e22e">current</span><span style="color:#f92672">().</span><span style="color:#a6e22e">nextLong</span><span style="color:#f92672">();</span>
+        String str0 <span style="color:#f92672">=</span> RandomStringUtils<span style="color:#f92672">.</span><span style="color:#a6e22e">randomAlphanumeric</span><span style="color:#f92672">(</span>1 <span style="color:#f92672">&lt;&lt;</span> 23<span style="color:#f92672">);</span>
+        String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;insert into foo (id, str0) values (&#34;</span> <span style="color:#f92672">+</span> id <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;, &#39;&#34;</span> <span style="color:#f92672">+</span> str0 <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;&#39;)&#34;</span><span style="color:#f92672">;</span>
+        System<span style="color:#f92672">.</span><span style="color:#a6e22e">out</span><span style="color:#f92672">.</span><span style="color:#a6e22e">println</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">.</span><span style="color:#a6e22e">length</span><span style="color:#f92672">());</span>
+        statement<span style="color:#f92672">.</span><span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Error reported as follows:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ykgz23olfk6pw4smytq1.png" alt="Image description"></p>
+<p>Wireshark packet capture results show that packet length 0x80003C == 8388668 with only one MySQL Packet, and the sequence ID is only 0:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/svt0hq9nbm53arq4ve0j.png" alt="Image description"></p>
+<p>Debugging the code reveals that the readMediumLE() method used by the Proxy was a signed number and the Packet length was read as a negative number.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ldp56zvqvd0a3g3wez75.png" alt="Image description"></p>
+<p>The problem is relatively easy to fix, just replace the corresponding <code>readUnsignedMediumLE()</code> method.</p>
+<p>Although the error message is consistent with the problem description, it does not yet completely solve the underlying issue.</p>
+<p>After the length exceeding issue is fixed, continue troubleshooting the problem. Send approximately 64 MB of data to ShardingSphere-Proxy using the following code:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Connection connection <span style="color:#f92672">=</span> DriverManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;jdbc:mysql://127.0.0.1:13306/bmsql&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;root&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;root&#34;</span><span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Statement statement <span style="color:#f92672">=</span> connection<span style="color:#f92672">.</span><span style="color:#a6e22e">createStatement</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        statement<span style="color:#f92672">.</span><span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;drop table if exists foo&#34;</span><span style="color:#f92672">);</span>
+        statement<span style="color:#f92672">.</span><span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;create table foo (id bigint primary key, str0 longtext)&#34;</span><span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">long</span> id <span style="color:#f92672">=</span> ThreadLocalRandom<span style="color:#f92672">.</span><span style="color:#a6e22e">current</span><span style="color:#f92672">().</span><span style="color:#a6e22e">nextLong</span><span style="color:#f92672">();</span>
+        String str0 <span style="color:#f92672">=</span> RandomStringUtils<span style="color:#f92672">.</span><span style="color:#a6e22e">randomAlphanumeric</span><span style="color:#f92672">(</span>1 <span style="color:#f92672">&lt;&lt;</span> 26<span style="color:#f92672">);</span>
+        String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;insert into foo (id, str0) values (&#34;</span> <span style="color:#f92672">+</span> id <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;, &#39;&#34;</span> <span style="color:#f92672">+</span> str0 <span style="color:#f92672">+</span> <span style="color:#e6db74">&#34;&#39;)&#34;</span><span style="color:#f92672">;</span>
+        statement<span style="color:#f92672">.</span><span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Error Occurred:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/xl44b5uwm3oavlz9ufkb.png" alt="Image description"></p>
+<p>Analyze packet capture results:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/n8k75fbhvm9l009ormot.png" alt="Image description"></p>
+<p><img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7oj0fsvqf7w1tzr3c3oe.png" alt="Image description"></p>
+<p>The results indicate that the client sent multiple 16MB data packets, and Wireshark was unable to parse the MySQL long packets properly, but we can locate the MySQL Packet Header by using the search function.</p>
+<p>Correlating with ShardingSphere-Proxy MySQL decoding logic:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">int</span> payloadLength <span style="color:#f92672">=</span> in<span style="color:#f92672">.</span><span style="color:#a6e22e">markReaderIndex</span><span style="color:#f92672">().</span><span style="color:#a6e22e">readUnsignedMediumLE</span><span style="color:#f92672">();</span>
+<span style="color:#66d9ef">int</span> remainPayloadLength <span style="color:#f92672">=</span> SEQUENCE_LENGTH <span style="color:#f92672">+</span> payloadLength<span style="color:#f92672">;</span>
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>in<span style="color:#f92672">.</span><span style="color:#a6e22e">readableBytes</span><span style="color:#f92672">()</span> <span style="color:#f92672">&lt;</span> remainPayloadLength<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    in<span style="color:#f92672">.</span><span style="color:#a6e22e">resetReaderIndex</span><span style="color:#f92672">();</span>
+    <span style="color:#66d9ef">return</span><span style="color:#f92672">;</span>
+<span style="color:#f92672">}</span>
+out<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span>in<span style="color:#f92672">.</span><span style="color:#a6e22e">readRetainedSlice</span><span style="color:#f92672">(</span>SEQUENCE_LENGTH <span style="color:#f92672">+</span> payloadLength<span style="color:#f92672">));</span>
+</code></pre></div><p>The problem is clear: because ShardingSphere-Proxy didn’t aggregate packets, multiple packets are parsed separately by Proxy as multiple commands, and because the <code>Sequence ID</code> of subsequent packets is greater than 0, the Proxy’s internal assertion logic for the Sequence ID reported an error.</p>
+<h2 id="23-troubleshooting-and-repair">2.3 Troubleshooting and Repair</h2>
+<p>After troubleshooting, the error was reported as:</p>
+<ul>
+<li>(Direct cause) The ShardingSphere-Proxy MySQL protocol unpacket logic does not handle the length sign correctly [4].</li>
+<li>(Root cause) ShardingSphere-Proxy MySQL does not aggregate packets larger than 16 MB [5].</li>
+</ul>
+<p>It is first important to understand how MySQL protocol handles very long packets [6].</p>
+<ul>
+<li>
+<p>When the total data length exceeds 16 MB — 1, the protocol splits the data into multiple Packets of length 16 MB — 1 until the final data length is less than 16 MB — 1, as shown in the following figure:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/dwundre9oa9slkzyx6vu.png" alt="Image description"></p>
+</li>
+<li>
+<p>When the data length is exactly equal to 16 MB — 1 or a multiple thereof, one or more packets of length 16 MB — 1 are sent followed by a packet of length 0, as shown in the following figure:
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/2ag3mbjanbchj012eu5c.png" alt="Image description"></p>
+</li>
+</ul>
+<p><strong>Solution:</strong> in order for the protocol implementation of ShardingSphere-Proxy MySQL to not care about how very long packets are handled, it is better to aggregate the packets in the data decoding logic.</p>
+<p>In the ShardingSphere-Proxy front-end <a href="https://netty.io/">Netty</a> decoding logic, when a data Packet of length <code>0xFFFFFF</code> is encountered, the Payload part of multiple MySQL Packets is aggregated via CompositeByteBuf.</p>
+<p>See the Pull Request in the reference documentation for specific codes.</p>
+<p>The following issues are currently fixed:</p>
+<ul>
+<li>
+<p>Correctly handle packet length numeric notation [7].</p>
+</li>
+<li>
+<p>MySQL protocol decoding logic supports more than 16 MB packets [8].
+Potential issues to be addressed later, including but not limited to:</p>
+</li>
+<li>
+<p>The MySQL protocol encoding logic does not support responding to packets larger than 16 MB.</p>
+</li>
+</ul>
+<h2 id="3-summarizing-troubleshooting-methods-for-shardingsphere-front-end-protocols">3. Summarizing troubleshooting methods for Shardingsphere front-end protocols</h2>
+<p>For protocol-based problem troubleshooting, you first need to be familiar with the corresponding protocols and the database protocols including but not limited to:</p>
+<p>Observing the protocol of the client’s direct connection to the database via packet capture tools.</p>
+<p>According to database protocol documents, read the protocol coding logic source code of the official client database (e.g. JDBC Driver).</p>
+<p>Once you have a basic grasp of packet capture tools and protocols, you can start troubleshooting ShardingSphere-Proxy front-end protocol issues.</p>
+<p>The code entry, where ShardingSphere-Proxy establishes the connection with the client, is in org.apache.shardingsphere.proxy.frontend.netty.ServerHandlerInitializer[9], which can be used as a starting point to identify the problem.</p>
+<p>The solutions presented in this article have been released with Apache ShardingSphere 5.1.2 [10].</p>
+<h2 id="relevant-links">Relevant Links:</h2>
+<p>[1] <a href="https://www.wireshark.org/">https://www.wireshark.org/</a></p>
+<p>[2] <a href="https://dev.mysql.com/doc/internals/en/sequence-id.html">https://dev.mysql.com/doc/internals/en/sequence-id.html</a>
+[3] <a href="https://dev.mysql.com/doc/internals/en/mysql-packet.html">https://dev.mysql.com/doc/internals/en/mysql-packet.html</a></p>
+<p>[4] <a href="https://github.com/apache/shardingsphere/issues/17891">https://github.com/apache/shardingsphere/issues/17891</a></p>
+<p>[5] <a href="https://github.com/apache/shardingsphere/issues/17907">https://github.com/apache/shardingsphere/issues/17907</a></p>
+<p>[6] <a href="https://dev.mysql.com/doc/internals/en/sending-more-than-16mbyte.html">https://dev.mysql.com/doc/internals/en/sending-more-than-16mbyte.html</a></p>
+<p>[7] <a href="https://github.com/apache/shardingsphere/pull/17898">https://github.com/apache/shardingsphere/pull/17898</a></p>
+<p>[8] <a href="https://github.com/apache/shardingsphere/pull/17914">https://github.com/apache/shardingsphere/pull/17914</a>
+[9] <a href="https://github.com/apache/shardingsphere/blob/2c9936497214b8a654cb56d43583f62cd7a6b76b/shardingsphere-proxy/shardingsphere-proxy-frontend/shardingsphere-proxy-frontend-core/src/main/java/org/apache/shardingsphere/proxy/frontend/netty/ServerHandlerInitializer.java">https://github.com/apache/shardingsphere/blob/2c9936497214b8a654cb56d43583f62cd7a6b76b/shardingsphere-proxy/shardingsphere-proxy-frontend/shardingsphere-proxy-frontend-core/src/main/java/org/apache/shardingsphere/proxy/frontend/netty/ServerHandlerInitializer.java</a>
+[10] <a href="https://shardingsphere.apache.org/document/current/cn/downloads/">https://shardingsphere.apache.org/document/current/cn/downloads/</a></p>
+<p><a href="https://github.com/apache/shardingsphere/issues">GitHub issue</a></p>
+<p><a href="https://shardingsphere.apache.org/community/en/involved/">Contributor Guide</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack
+</a>
+<a href="https://community.sphere-ex.com/">Chinese Community</a></p>
+<h2 id="author">Author</h2>
+<p>Weijie Wu, Apache ShardingSphere PMC, R&amp;D Engineer of <a href="https://www.sphere-ex.com/en/">SphereEx</a> Infrastructure. Weijie focuses on the Apache ShardingSphere access side and the ShardingSphere subproject <a href="https://shardingsphere.apache.org/elasticjob/">ElasticJob</a>.</p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_07_12_shardingsphere_cloud_applications_-an_out-of-the-box_shardingsphere-proxy_cluster/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_07_06_shardingsphere-jdbc_driver_released_a_jdbc_driver_that_requires_no_code_modifications/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

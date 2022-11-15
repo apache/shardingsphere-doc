@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Understanding Apache ShardingSphere&#39;s SPI, and why it’s simpler than Dubbo’s &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Understanding Apache ShardingSphere&#39;s SPI, and why it’s simpler than Dubbo’s</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p><img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/phd62v4hi28k41td0gws.png" alt="Image description"></p>
+<h2 id="why-learn-shardingspherehttpsshardingsphereapacheorgs-spi">Why learn <a href="https://shardingsphere.apache.org/">ShardingSphere</a>’s SPI?</h2>
+<p>You might already be familiar with <a href="https://www.java.com/en/">Java</a> and <a href="https://dubbo.apache.org/en/">Dubbo</a>’s SPI (<a href="https://en.wikipedia.org/wiki/Service_provider_interface">Service Provider Interface</a>) mechanism, so you may wonder “why would I learn about <a href="https://shardingsphere.apache.org/">ShardingSphere</a>’s SPI mechanism?” The reasons are quite simple:</p>
+<ol>
+<li>ShardingSphere’s source code is simpler and easier to adapt.</li>
+<li>The execution of ShardingSphere’s SPI mechanism is quite smooth, with less code required for day-to-day operations. Unlike Dubbo’s SPI mechanism and its additional features related to <a href="https://medium.com/@amitkma/understanding-inversion-of-control-ioc-principle-163b1dc97454">IoC</a>, the one in ShardingSphere only preserves the fundamental structure, making it effortless to use.</li>
+</ol>
+<h2 id="understanding-shardingspheres-spi">Understanding ShardingSphere’s SPI</h2>
+<p>We also have to mention some shortcomings found in the <a href="https://docs.oracle.com/javase/tutorial/sound/SPI-intro.html">Java SPI</a> mechanism:</p>
+<ol>
+<li>Instances of the <a href="https://docs.oracle.com/javase/8/docs/api/java/util/ServiceLoader.html">ServiceLoader</a> class with multiple concurrent threads are not safe to use.</li>
+<li>Each time you get an element, you need to iterate through all the elements, and you can’t load them on demand.</li>
+<li>When the implementation class fails to load, an exception is prompted without indicating the real reason, making the error difficult to locate.</li>
+<li>The way to get an implementation class is not flexible enough. It can only be obtained through the <a href="https://docs.oracle.com/javase/8/docs/api/java/util/Iterator.html">Iterator</a> form, not based on one parameter to get the corresponding implementation class.</li>
+</ol>
+<p>In light of this, let’s see how <a href="https://shardingsphere.apache.org/">ShardingSphere</a> solves these problems in a simple way.</p>
+<h2 id="loading-spi-class">Loading SPI class</h2>
+<p>Dubbo is a direct rewrite of its own SPI, including the SPI file name and the way the file is configured, in stark contrast to <a href="https://www.oracle.com/java/technologies/downloads/">JDK</a>. Let’s briefly compare the differences between the uses of these two:</p>
+<p><strong>Java SPI</strong></p>
+<p>Add interface implementation class under the folder <code>META-INF/services</code></p>
+<pre><code>optimusPrime = org.apache.spi.OptimusPrime
+bumblebee = org.apache.spi.Bumblebee
+</code></pre><p><strong>Dubbo SPI</strong></p>
+<p>Add the implementation class of the interface to the folder <code>META-INF/services</code>, configure by means of <code>key</code>, <code>value</code> like the following example:</p>
+<pre><code>optimusPrime = org.apache.spi.OptimusPrime
+bumblebee = org.apache.spi.Bumblebee
+</code></pre><p>We can see now that Dubbo’s Java SPI is completely different from the JDK SPI.</p>
+<h2 id="how-does-shardingsphere-easily-extend-the-jdk-spi">How does ShardingSphere easily extend the JDK SPI?</h2>
+<p>Unlike the Dubbo implementation concept, ShardingSphere extends the JDK SPI with less code.</p>
+<ol>
+<li>The configuration is exactly the same as in the Java SPI.
+Let’s take the <code>DialectTableMetaDataLoader</code> interface implementation class as an example:</li>
+</ol>
+<p><code>DialectTableMetaDataLoader.class</code></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">DialectTableMetaDataLoader</span> <span style="color:#66d9ef">extends</span> StatelessTypedSPI <span style="color:#f92672">{</span>
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Load table meta data.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * @param dataSource data source
+</span><span style="color:#75715e">     * @param tables tables
+</span><span style="color:#75715e">     * @return table meta data map
+</span><span style="color:#75715e">     * @throws SQLException SQL exception
+</span><span style="color:#75715e">     */</span>
+    Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> TableMetaData<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">load</span><span style="color:#f92672">(</span>DataSource dataSource<span style="color:#f92672">,</span> Collection<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> tables<span style="color:#f92672">)</span> <span style="color:#66d9ef">throws</span> SQLException<span style="color:#f92672">;</span>
+<span style="color:#f92672">}</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">TypedSPI</span> <span style="color:#f92672">{</span>
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Get type.
+</span><span style="color:#75715e">     * 
+</span><span style="color:#75715e">     * @return type
+</span><span style="color:#75715e">     */</span>
+    String <span style="color:#a6e22e">getType</span><span style="color:#f92672">();</span>
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Get type aliases.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * @return type aliases
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#66d9ef">default</span> Collection<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">getTypeAliases</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">();</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p><code>StatelessTypedSPI</code> interface takes it from <code>TypedSPI</code> and multiple interfaces are used to meet the principle of single interface responsibility. <code>TypedSPI</code> is the key of the <code>Map</code> where subclasses need to specify their own SPI.</p>
+<p>Here you don’t need to care about what methods are defined by the <code>DialectTableMetaDataLoader</code> interface, you just have to focus on how the subclasses are loaded by SPI. If it is a Java SPI, to load the subclasses, you just define it by the full class name in <code>META-INF/services</code>.
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/9nzzkyhn91dpzvbkapxy.png" alt="Image description"></p>
+<p>As you can see, it is exactly the same as the native java SPI configuration. So how about its shortcomings?</p>
+<h2 id="using-the-factory-method-pattern">Using the Factory Method Pattern</h2>
+<p>For every interface that needs to be extended and created by SPI, there usually is a similar <code>xxDataLoaderFactory</code> for creating and acquiring the specified SPI extension class.</p>
+<p><code>DialectTableMetaDataLoaderFactory</code></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@NoArgsConstructor</span><span style="color:#f92672">(</span>access <span style="color:#f92672">=</span> AccessLevel<span style="color:#f92672">.</span><span style="color:#a6e22e">PRIVATE</span><span style="color:#f92672">)</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">DialectTableMetaDataLoaderFactory</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">static</span> <span style="color:#f92672">{</span>
+        ShardingSphereServiceLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">register</span><span style="color:#f92672">(</span>DialectTableMetaDataLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Create new instance of dialect table meta data loader.
+</span><span style="color:#75715e">     * 
+</span><span style="color:#75715e">     * @param databaseType database type
+</span><span style="color:#75715e">     * @return new instance of dialect table meta data loader
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> Optional<span style="color:#f92672">&lt;</span>DialectTableMetaDataLoader<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">newInstance</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> DatabaseType databaseType<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> TypedSPIRegistry<span style="color:#f92672">.</span><span style="color:#a6e22e">findRegisteredService</span><span style="color:#f92672">(</span>DialectTableMetaDataLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">,</span> databaseType<span style="color:#f92672">.</span><span style="color:#a6e22e">getName</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Here you can see that a static block is used, and all the <code>DialectTableMetaDataLoader</code> implementation classes are registered through <code>ShardingSphereServiceLoader.register</code> while class loading is in process. By using <code>TypedSPIRegistry.findRegisteredService</code>, we can get our specified spi extension class.</p>
+<pre><code>TypedSPIRegistry.findRegisteredService(final Class&lt;T&gt; spiClass, final String type)
+</code></pre><p>So we just have to pay attention to <code>ShardingSphereServiceLoader.register</code> and <code>ypedSPIRegistry.findRegisteredService</code> approaches.</p>
+<p><strong><code>ShardingSphereServiceLoader</code></strong></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@NoArgsConstructor</span><span style="color:#f92672">(</span>access <span style="color:#f92672">=</span>AccessLevel<span style="color:#f92672">.</span><span style="color:#a6e22e">PRIVATE</span><span style="color:#f92672">)</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ShardingSphereServiceLoader</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>Class<span style="color:#f92672">&lt;?&gt;,</span> Collection<span style="color:#f92672">&lt;</span>object<span style="color:#f92672">&gt;&gt;</span> SERVICES <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ConcurrentHashMap<span style="color:#f92672">&lt;&gt;();</span>
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     *Register service.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     *@param serviceInterface service interface
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">register</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;?&gt;</span> serviceInterface<span style="color:#f92672">){</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">put</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">,</span> load<span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">)</span> <span style="color:#f92672">;</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+   
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">load</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> LinkedList<span style="color:#f92672">&lt;&gt;();</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>T each<span style="color:#f92672">:</span> ServiceLoader<span style="color:#f92672">.</span> <span style="color:#a6e22e">load</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+        result<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span>each<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     *Get singleton service instances.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     *@param service service class
+</span><span style="color:#75715e">     * @param &lt;T&gt; type of service
+</span><span style="color:#75715e">     *@return service instances
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#a6e22e">@SuppressWarnings</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;unchecked&#34;</span><span style="color:#f92672">)</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">getSingletonServiceInstances</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> service<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#f92672">(</span>Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;)</span> SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">getorDefault</span><span style="color:#f92672">(</span>service<span style="color:#f92672">,</span>Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     *New service instances.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * eparam service service class
+</span><span style="color:#75715e">     *@param &lt;T&gt; type of service
+</span><span style="color:#75715e">     *@return service instances
+</span><span style="color:#75715e">     */</span>
+    <span style="color:#a6e22e">@SuppressWarnings</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#34;unchecked&#34;</span> <span style="color:#f92672">)</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">newserviceInstances</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> service<span style="color:#f92672">){</span>
+        <span style="color:#66d9ef">if</span><span style="color:#f92672">(!</span>SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">containskey</span><span style="color:#f92672">(</span>service<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+           <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">();</span>
+        <span style="color:#f92672">}</span>
+        Collection<span style="color:#f92672">&lt;</span>object<span style="color:#f92672">&gt;</span> services <span style="color:#f92672">=</span> SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(</span>service<span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>services<span style="color:#f92672">.</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">()){</span>
+            <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">();</span>
+        <span style="color:#f92672">}</span>
+        Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ArrayList<span style="color:#f92672">&lt;&gt;(</span>services<span style="color:#f92672">.</span><span style="color:#a6e22e">size</span><span style="color:#f92672">());</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Object each<span style="color:#f92672">:</span> services<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            result<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">((</span>T<span style="color:#f92672">)</span> newServiceInstance<span style="color:#f92672">(</span>each<span style="color:#f92672">.</span><span style="color:#a6e22e">getClass</span><span style="color:#f92672">()));</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> Object <span style="color:#a6e22e">newServiceInstance</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;?&gt;</span> clazz<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">try</span><span style="color:#f92672">{</span>
+           <span style="color:#66d9ef">return</span> clazz<span style="color:#f92672">.</span><span style="color:#a6e22e">getDeclaredConstructor</span><span style="color:#f92672">(</span> <span style="color:#f92672">)</span> <span style="color:#f92672">.</span> newInstance<span style="color:#f92672">(</span> <span style="color:#f92672">)</span> <span style="color:#f92672">;</span>
+        <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ReflectiveOperationException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> ServiceLoaderInstantiationException<span style="color:#f92672">(</span>clazz<span style="color:#f92672">,</span> ex<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>We can see that all SPI classes are placed in this <code>SERVICES</code>property.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>Class<span style="color:#f92672">&lt;?&gt;,</span> Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;&gt;</span> SERVICES <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ConcurrentHashMap<span style="color:#f92672">&lt;&gt;();</span>
+</code></pre></div><p>And registering is pretty simple too, just use the SPI api embedded in java.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">register</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;?&gt;</span> serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">put</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">,</span> load<span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">));</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">load</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> LinkedList<span style="color:#f92672">&lt;&gt;();</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>T each <span style="color:#f92672">:</span> ServiceLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">load</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            result<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span>each<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+</code></pre></div><p><strong><code>TypedSPIRegistry</code></strong></p>
+<p>The <code>findRegisteredService</code> method in <code>TypedSPIRegistry</code> is essentially a call to the <code>getSingletonServiceInstancesmethod</code> of the <code>ShardingSphereServiceLoader</code>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T <span style="color:#66d9ef">extends</span> StatelessTypedSPI<span style="color:#f92672">&gt;</span> Optional<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">findRegisteredService</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> spiClass<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> String type<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>T each <span style="color:#f92672">:</span> ShardingSphereServiceLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">getSingletonServiceInstances</span><span style="color:#f92672">(</span>spiClass<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>matchesType<span style="color:#f92672">(</span>type<span style="color:#f92672">,</span> each<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> Optional<span style="color:#f92672">.</span><span style="color:#a6e22e">of</span><span style="color:#f92672">(</span>each<span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> Optional<span style="color:#f92672">.</span><span style="color:#a6e22e">empty</span><span style="color:#f92672">();</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">matchesType</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String type<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> TypedSPI typedSPI<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> typedSPI<span style="color:#f92672">.</span><span style="color:#a6e22e">getType</span><span style="color:#f92672">().</span><span style="color:#a6e22e">equalsIgnoreCase</span><span style="color:#f92672">(</span>type<span style="color:#f92672">)</span> <span style="color:#f92672">||</span> typedSPI<span style="color:#f92672">.</span><span style="color:#a6e22e">getTypeAliases</span><span style="color:#f92672">().</span><span style="color:#a6e22e">contains</span><span style="color:#f92672">(</span>type<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+</code></pre></div><p>Here you can see that the class extension is using <code>getType</code> or <code>getTypeAliases</code> in <code>TypedSPI</code> to get a match, which is why each SPI needs to implement the <code>TypedSPI</code> interface.</p>
+<p>Now let’s see the <code>newServiceInstances</code> method in <code>ShardingSphereServiceLoader</code></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">newServiceInstances</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> service<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>service<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">();</span>
+        <span style="color:#f92672">}</span>
+        Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> services <span style="color:#f92672">=</span> SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(</span>service<span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>services<span style="color:#f92672">.</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">();</span>
+        <span style="color:#f92672">}</span>
+        Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ArrayList<span style="color:#f92672">&lt;&gt;(</span>services<span style="color:#f92672">.</span><span style="color:#a6e22e">size</span><span style="color:#f92672">());</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Object each <span style="color:#f92672">:</span> services<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            result<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">((</span>T<span style="color:#f92672">)</span> newServiceInstance<span style="color:#f92672">(</span>each<span style="color:#f92672">.</span><span style="color:#a6e22e">getClass</span><span style="color:#f92672">()));</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+</code></pre></div><p>You can see that it is also very simple to find all implementations class returns of the interface directly in <code>SERVICES</code> registered through the static code block.</p>
+<p>Although short, this short walkthrough basically introduced ShardingSphere’s SPI source code. We’re sure that you have already noticed it’s much easier and simpler to work with ShardingSphere’s SPI than Dubbo&rsquo;s SPI mechanism.</p>
+<h2 id="summary">Summary</h2>
+<p>Both ShardingSphere and Dubbo’s SPIs meet the requirement of finding the specified implementation class by key, without having to reload all the implementation classes every time you use it, solving the concurrent loading problem. However, compared to Dubbo, the ShardingSphere SPI is more streamlined and easier to use.</p>
+<p>You can refer to the ShardingSphere implementation later on when writing your own SPI extensions, as it is simpler to implement, and elegant to work with. You can write an expandable configuration file parser based on SPI so that we can understand what SPI is capable of as well as its application scenarios.</p>
+<p><strong>Apache ShardingSphere Project Links:</strong></p>
+<p><a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github</a></p>
+<p><a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/involved/">Contributor Guide</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_06_21_heterogeneous_migration_reducing_dangdangs_customer_system_rto_60x_and_increasing_speed_by_20/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_06_10_apache_shardingsphere_enterprise_applications_bilibili/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

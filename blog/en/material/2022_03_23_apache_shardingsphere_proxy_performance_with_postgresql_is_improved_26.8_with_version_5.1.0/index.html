@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Apache ShardingSphere -Proxy Performance with PostgreSQL is Improved 26.8% with Version 5.1.0 &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Apache ShardingSphere -Proxy Performance with PostgreSQL is Improved 26.8% with Version 5.1.0</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>Increasing Apache ShardingSphere adoption across various industries, has allowed our community to receive valuable feedback for our latest release.
+Our team has made numerous performance optimizations to the ShardingSphere Kernel, interface and etc. since the release of Version 5.0.0. This article introduces some of the performance optimizations at the code level, and showcases the optimized results of ShardingSphere-Proxy TPC-C benchmark tests.</p>
+<h2 id="optimizations">Optimizations</h2>
+<p><strong>Correct the Use of Optional</strong></p>
+<p>java.util.Optional, introduced by Java 8, it makes the code cleaner. For example, it can avoid methods returningnull values. Optionalis commonly used in two situations:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> T <span style="color:#a6e22e">orElse</span><span style="color:#f92672">(</span>T other<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">return</span> value <span style="color:#f92672">!=</span> <span style="color:#66d9ef">null</span> <span style="color:#f92672">?</span> value <span style="color:#f92672">:</span> other<span style="color:#f92672">;</span>
+<span style="color:#f92672">}</span>
+
+<span style="color:#66d9ef">public</span> T <span style="color:#a6e22e">orElseGet</span><span style="color:#f92672">(</span>Supplier<span style="color:#f92672">&lt;?</span> <span style="color:#66d9ef">extends</span> T<span style="color:#f92672">&gt;</span> other<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">return</span> value <span style="color:#f92672">!=</span> <span style="color:#66d9ef">null</span> <span style="color:#f92672">?</span> value <span style="color:#f92672">:</span> other<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">();</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>In ShardingSphere item <code>org.apache.shardingsphere.infra.binder.segment.select.orderby.engine.OrderByContextEngine</code>, an Optional code is used as:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">Optional<span style="color:#f92672">&lt;</span>OrderByContext<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#75715e">// Omit codes...
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">return</span> result<span style="color:#f92672">.</span><span style="color:#a6e22e">orElse</span><span style="color:#f92672">(</span>getDefaultOrderByContextWithoutOrderBy<span style="color:#f92672">(</span>groupByContext<span style="color:#f92672">));</span>
+
+</code></pre></div><p>In the <code>orElse</code> statement above, the <code>orElse</code> methods will be called even if the result isn’t null. If the <code>orElse</code> method involves modification operations, accidents might occur. In the case of method calls, the statement should be adjusted accordingly:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">Optional<span style="color:#f92672">&lt;</span>OrderByContext<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#75715e">// Omit codes...
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">return</span> result<span style="color:#f92672">.</span><span style="color:#a6e22e">orElseGet</span><span style="color:#f92672">(()</span> <span style="color:#f92672">-&gt;</span> getDefaultOrderByContextWithoutOrderBy<span style="color:#f92672">(</span>groupByContext<span style="color:#f92672">));</span>
+</code></pre></div><p>Lambda is used to provide a <code>Supplier</code> to <code>orElseGet</code>. This way, <code>theorElseGet</code> method will only be called when the result is null.</p>
+<blockquote>
+<p>Relevant PR：https://github.com/apache/shardingsphere/pull/11459/files</p>
+</blockquote>
+<p><strong>Avoid Frequent Concurrent calls for Java 8 ConcurrentHashMap’s computeIfAbsent</strong></p>
+<p><code>java.util.concurrent.ConcurrentHashMap</code> is commonly used in concurrent situations. Compared to <code>java.util.Hashtable</code>, which modifies all operations with synchronized, <code>ConcurrentHashMap</code> can provide better performance while ensuring thread security.</p>
+<p>However, in the Java 8 implementation even if the key exists, the method <code>computeIfAbsent</code> of <code>ConcurrentHashMap</code> still retrieves the value in the <code>synchronized</code> code snippet. Frequent calls of <code>computeIfAbsent</code> by the same key will greatly compromise concurrent performance.</p>
+<blockquote>
+<p>Reference：https://bugs.openjdk.java.net/browse/JDK-8161372</p>
+</blockquote>
+<p>This problem has been solved in Java 9. However, to avoid this problem and ensure concurrent performance in Java 8, we have adjusted the syntax in ShardingSphere’s code.
+Taking a frequently called ShardingSphere class <code>org.apache.shardingsphere.infra.executor.sql.prepare.driver.DriverExecutionPrepareEngine</code> as an example:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"> <span style="color:#75715e">// Omit some code...
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> SQLExecutionUnitBuilder<span style="color:#f92672">&gt;</span> TYPE_TO_BUILDER_MAP <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ConcurrentHashMap<span style="color:#f92672">&lt;&gt;(</span>8<span style="color:#f92672">,</span> 1<span style="color:#f92672">);</span>
+    <span style="color:#75715e">// Omit some code...
+</span><span style="color:#75715e"></span>    <span style="color:#66d9ef">public</span> <span style="color:#a6e22e">DriverExecutionPrepareEngine</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String type<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">int</span> maxConnectionsSizePerQuery<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> ExecutorDriverManager<span style="color:#f92672">&lt;</span>C<span style="color:#f92672">,</span> <span style="color:#f92672">?,</span> <span style="color:#f92672">?&gt;</span> executorDriverManager<span style="color:#f92672">,</span> 
+                                        <span style="color:#66d9ef">final</span> StorageResourceOption option<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Collection<span style="color:#f92672">&lt;</span>ShardingSphereRule<span style="color:#f92672">&gt;</span> rules<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">super</span><span style="color:#f92672">(</span>maxConnectionsSizePerQuery<span style="color:#f92672">,</span> rules<span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">this</span><span style="color:#f92672">.</span><span style="color:#a6e22e">executorDriverManager</span> <span style="color:#f92672">=</span> executorDriverManager<span style="color:#f92672">;</span>
+        <span style="color:#66d9ef">this</span><span style="color:#f92672">.</span><span style="color:#a6e22e">option</span> <span style="color:#f92672">=</span> option<span style="color:#f92672">;</span>
+        sqlExecutionUnitBuilder <span style="color:#f92672">=</span> TYPE_TO_BUILDER_MAP<span style="color:#f92672">.</span><span style="color:#a6e22e">computeIfAbsent</span><span style="color:#f92672">(</span>type<span style="color:#f92672">,</span> 
+                key <span style="color:#f92672">-&gt;</span> TypedSPIRegistry<span style="color:#f92672">.</span><span style="color:#a6e22e">getRegisteredService</span><span style="color:#f92672">(</span>SQLExecutionUnitBuilder<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">,</span> key<span style="color:#f92672">,</span> <span style="color:#66d9ef">new</span> Properties<span style="color:#f92672">()));</span>
+    <span style="color:#f92672">}</span>
+</code></pre></div><p>In the code above, only two <code>type</code> will be passed into <code>computeIfAbsent</code>, and most SQL execution must adopt this code. As a result, there will be frequent concurrent calls of <code>computeIfAbsent</code> by the same key, hindering concurrent performance. The following method is adopted to avoid this problem:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">SQLExecutionUnitBuilder result<span style="color:#f92672">;</span>
+<span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">==</span> <span style="color:#f92672">(</span>result <span style="color:#f92672">=</span> TYPE_TO_BUILDER_MAP<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(</span>type<span style="color:#f92672">)))</span> <span style="color:#f92672">{</span>
+    result <span style="color:#f92672">=</span> TYPE_TO_BUILDER_MAP<span style="color:#f92672">.</span><span style="color:#a6e22e">computeIfAbsent</span><span style="color:#f92672">(</span>type<span style="color:#f92672">,</span> key <span style="color:#f92672">-&gt;</span> TypedSPIRegistry<span style="color:#f92672">.</span><span style="color:#a6e22e">getRegisteredService</span><span style="color:#f92672">(</span>SQLExecutionUnitBuilder<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">,</span> key<span style="color:#f92672">,</span> <span style="color:#66d9ef">new</span> Properties<span style="color:#f92672">()));</span>
+<span style="color:#f92672">}</span>
+<span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+</code></pre></div><blockquote>
+<p>Relevant PR：https://github.com/apache/shardingsphere/pull/13275/files</p>
+</blockquote>
+<p><strong>Avoid Frequent Calls of java.util.Properties</strong></p>
+<p><code>java.util.Properties</code> is one of the commonly used ShardingSphere configuration classes. <code>Properties</code> inherites <code>java.util.Hashtable</code> and it&rsquo;s therefore necessary to avoid frequent calls of <code>Properties</code> under concurrent situations.</p>
+<p>We found that there is a logic frequently calling <code>getProperty</code> in <code>org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm</code>, a ShardingSphere data sharding class, resulting in limited concurrent performance. To solve this problem, we put the logic that calls <code>Properties</code> under the <code>init</code> of <code>InlineShardingAlgorithm</code>, which avoids the calculation of concurrent performance in the sharding algorithm.</p>
+<blockquote>
+<p>Relevant PR：https://github.com/apache/shardingsphere/pull/13282/files</p>
+</blockquote>
+<p><strong>Avoid the Use of Collections.synchronizedMap</strong>
+While examining the ShardingSphere’s Monitor Blocked, we found a frequently called Map in <code>org.apache.shardingsphere.infra.metadata.schema.model.TableMetaData</code>, which is modified by <code>Collections.synchronizedMap</code>.</p>
+<p>This affects concurrent performance. Modification operations only exist at the initial phase of the modified Map, and the rest are all reading operations, therefore, <code>Collections.synchronizedMap</code> modification method can directly be removed.</p>
+<blockquote>
+<p>Relevant PR: <a href="https://github.com/apache/shardingsphere/pull/13264/files">https://github.com/apache/shardingsphere/pull/13264/files</a></p>
+</blockquote>
+<p><strong>Replace unnecessary String.format with string concatenation</strong>
+There ShardingSphere item <code>org.apache.shardingsphere.sql.parser.sql.common.constant.QuoteCharacter</code> has the following logic:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">  <span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">wrap</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String value<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> String<span style="color:#f92672">.</span><span style="color:#a6e22e">format</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;%s%s%s&#34;</span><span style="color:#f92672">,</span> startDelimiter<span style="color:#f92672">,</span> value<span style="color:#f92672">,</span> endDelimiter<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+</code></pre></div><p>The logic above is obviously a string concatenation, but the use of <code>String.format</code> means it costs more than direct string concatenation. It&rsquo;s adjusted as follows:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">wrap</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String value<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> startDelimiter <span style="color:#f92672">+</span> value <span style="color:#f92672">+</span> endDelimiter<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+</code></pre></div><p>We use JMH to do a simple test. Here are the testing results:</p>
+<pre><code># JMH version: 1.33
+# VM version: JDK 17.0.1, Java HotSpot(TM) 64-Bit Server VM, 17.0.1+12-LTS-39
+# Blackhole mode: full + dont-inline hint (default, use -Djmh.blackhole.autoDetect=true to auto-detect)
+# Warmup: 3 iterations, 5 s each
+# Measurement: 3 iterations, 5 s each
+# Timeout: 10 min per iteration
+# Threads: 16 threads, will synchronize iterations
+# Benchmark mode: Throughput, ops/time
+Benchmark                           Mode  Cnt          Score         Error  Units
+StringConcatBenchmark.benchFormat  thrpt    9   28490416.644 ± 1377409.528  ops/s
+StringConcatBenchmark.benchPlus    thrpt    9  163475708.153 ± 1748461.858  ops/s
+</code></pre><p>It’s obvious that <code>String.format</code> costs more than <code>+</code> string concatenation, and direct string concatenation&rsquo;s performance has been optimized since Java 9. This shows the importance of choosing the right string concatenation method.</p>
+<blockquote>
+<p>Relevant PR：https://github.com/apache/shardingsphere/pull/11291/files</p>
+</blockquote>
+<h2 id="replace-frequent-stream-with-for-each">Replace Frequent Stream with For-each</h2>
+<p><code>java.util.stream.Stream </code>frequently appears in ShardingSphere 5. X&rsquo;s code.
+In a previous BenchmarkSQL (TPC-C test for Java implementation) press testing — ShardingSphere-JDBC + openGauss performance test, we found significant performance improvements in ShardingSphere-JDBC when all the frequent streams were replaced by <code>for-each</code>.</p>
+<p><img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/gcv87zk2plmvq1dkl19u.png" alt="Image description"></p>
+<blockquote>
+<p>NOTE：ShardingSphere-JDBC and openGauss are on two separate 128-core aarch64 machines, using Bisheng JDK 8.</p>
+</blockquote>
+<p>The testing results above may be related to aarch64 and JDK, but the stream itself does carry some overheads, and the performance varies greatly under different scenarios. We recommend <code>for-each</code> for logics that are frequently called and uncertain if their performances can be optimized through steam.</p>
+<blockquote>
+<p>Relevant PR：https://github.com/apache/shardingsphere/pull/13845/files</p>
+</blockquote>
+<p><strong>Avoid Unnecessary Logic (Repetitive) calls</strong></p>
+<p>There are many cases of avoiding unnecessary logic repetitive calls:</p>
+<ul>
+<li>hashCode calculation
+The ShardingSphere class <code>org.apache.shardingsphere.sharding.route.engine.condition.Column</code> implements the <code>equals</code> and <code>hashCode</code> methods:</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@RequiredArgsConstructor</span>
+<span style="color:#a6e22e">@Getter</span>
+<span style="color:#a6e22e">@ToString</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Column</span> <span style="color:#f92672">{</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> String name<span style="color:#f92672">;</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> String tableName<span style="color:#f92672">;</span>
+
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">equals</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Object obj<span style="color:#f92672">)</span> <span style="color:#f92672">{...}</span>
+
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">hashCode</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> Objects<span style="color:#f92672">.</span><span style="color:#a6e22e">hashCode</span><span style="color:#f92672">(</span>name<span style="color:#f92672">.</span><span style="color:#a6e22e">toUpperCase</span><span style="color:#f92672">(),</span> tableName<span style="color:#f92672">.</span><span style="color:#a6e22e">toUpperCase</span><span style="color:#f92672">());</span> 
+    <span style="color:#f92672">}</span> 
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Obviously, the class above is unchangeable, but it calculates <code>hashCode</code> every time in <code>hashCode</code> implementation. If the instance is frequently put into or withdrawn from <code>Map</code> or <code>Set</code>, it will cause a lot of unnecessary calculation expenses.</p>
+<p>After adjustment:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@Getter</span>
+<span style="color:#a6e22e">@ToString</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Column</span> <span style="color:#f92672">{</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> String name<span style="color:#f92672">;</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> String tableName<span style="color:#f92672">;</span>
+
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">int</span> hashCode<span style="color:#f92672">;</span>
+
+    <span style="color:#66d9ef">public</span> <span style="color:#a6e22e">Column</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String name<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> String tableName<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">this</span><span style="color:#f92672">.</span><span style="color:#a6e22e">name</span> <span style="color:#f92672">=</span> name<span style="color:#f92672">;</span>
+        <span style="color:#66d9ef">this</span><span style="color:#f92672">.</span><span style="color:#a6e22e">tableName</span> <span style="color:#f92672">=</span> tableName<span style="color:#f92672">;</span>
+        hashCode <span style="color:#f92672">=</span> Objects<span style="color:#f92672">.</span><span style="color:#a6e22e">hash</span><span style="color:#f92672">(</span>name<span style="color:#f92672">.</span><span style="color:#a6e22e">toUpperCase</span><span style="color:#f92672">(),</span> tableName<span style="color:#f92672">.</span><span style="color:#a6e22e">toUpperCase</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">equals</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Object obj<span style="color:#f92672">)</span> <span style="color:#f92672">{...}</span>
+
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">hashCode</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> hashCode<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span> 
+<span style="color:#f92672">}</span>
+</code></pre></div><blockquote>
+<p>Relevant PR：https://github.com/apache/shardingsphere/pull/11760/files</p>
+</blockquote>
+<p><strong>Replace Reflection Calls with Lambda</strong>
+In ShardingSphere’s source code, the following scenarios require you to log methods and parameters calls, and replay method calls to the targets when needed.</p>
+<ol>
+<li>Send <code>begin</code> and other syntaxes to ShardingSphere-Proxy.</li>
+<li>Use <code>ShardingSpherePreparedStatement</code> to set placeholder parameters for specific positions.</li>
+</ol>
+<p>Take the following code as an example. Before reconstruction, it uses reflection to log method calls and replay. The reflection calls approach requires some overheads, and the code lacks readability.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@Override</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">begin</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+    recordMethodInvocation<span style="color:#f92672">(</span>Connection<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;setAutoCommit&#34;</span><span style="color:#f92672">,</span> <span style="color:#66d9ef">new</span> Class<span style="color:#f92672">[]{</span><span style="color:#66d9ef">boolean</span><span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">},</span> <span style="color:#66d9ef">new</span> Object<span style="color:#f92672">[]{</span><span style="color:#66d9ef">false</span><span style="color:#f92672">});</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>After reconstruction, the overheads of the reflection calls method are avoided:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@Override</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">begin</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+    connection<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnectionPostProcessors</span><span style="color:#f92672">().</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span>target <span style="color:#f92672">-&gt;</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
+            target<span style="color:#f92672">.</span><span style="color:#a6e22e">setAutoCommit</span><span style="color:#f92672">(</span><span style="color:#66d9ef">false</span><span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> SQLException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> RuntimeException<span style="color:#f92672">(</span>ex<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">});</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><blockquote>
+<p>Relevant PR：
+<a href="https://github.com/apache/shardingsphere/pull/10466/files">https://github.com/apache/shardingsphere/pull/10466/files</a>
+<a href="https://github.com/apache/shardingsphere/pull/11415/files">https://github.com/apache/shardingsphere/pull/11415/files</a></p>
+</blockquote>
+<p><strong>Netty Epoll’s Support to aarch64</strong></p>
+<p>Since <code>4.1.50.Final</code>, <a href="https://netty.io/wiki/native-transports.html">Netty’s Epoll </a>has been available in Linux environments with <a href="https://en.wikipedia.org/wiki/AArch64">aarch64</a> architecture. Under an aarch64 Linux environment, compared to <a href="https://netty.io/">Netty NIO</a> API, performance can be greatly enhanced with the use of Netty Epoll API.</p>
+<blockquote>
+<p>Reference：https://stackoverflow.com/a/23465481/7913731</p>
+</blockquote>
+<p><strong>ShardingSphere-Proxy TPC-C Performance Test Comparison between 5.1.0 and 5.0.0 versions</strong></p>
+<p>We use TPC-C to conduct the ShardingSphere-Proxy benchmark test, to verify the performance optimization results. Due to limited support for <a href="https://www.postgresql.org/">PostgreSQL</a> in earlier versions of ShardingSphere-Proxy, TPC-C testing could not be performed, so the comparison is made between Versions 5.0.0 and 5.0.1.</p>
+<p>To highlight the performance loss of ShardingSphere-Proxy itself, this test will use ShardingSphere-Proxy with sharding data (1 shard) against PostgreSQL 14.2.</p>
+<p>The test is conducted following the official file <a href="https://shardingsphere.apache.org/document/current/cn/reference/test/performance-test/benchmarksql-test/">BenchmarkSQL Performance Test</a>, and the configuration is reduced from 4 shards to 1 shard.</p>
+<p><strong>Testing Environment</strong>
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/irmtm4oucizld7hmuf5y.png" alt="Image description"></p>
+<p><strong>Testing Parameters</strong>
+BenchmarkSQL Parameters</p>
+<ul>
+<li>warehouses=192 (Data volume)</li>
+<li>terminals=192 (Concurrent numbers)</li>
+<li>terminalWarehouseFixed=false</li>
+<li>Operation time 30 mins</li>
+</ul>
+<p>PostgreSQL JDBC Parameters</p>
+<ul>
+<li>defaultRowFetchSize=50</li>
+<li>reWriteBatchedInserts=true</li>
+</ul>
+<p>ShardingSphere-Proxy JVM Partial options</p>
+<ul>
+<li>-Xmx16g</li>
+<li>-Xms16g</li>
+<li>-Xmn12g</li>
+<li>-XX:AutoBoxCacheMax=4096</li>
+<li>-XX:+UseNUMA</li>
+<li>-XX:+DisableExplicitGC</li>
+<li>-XX:LargePageSizeInBytes=128m</li>
+<li>-XX:+SegmentedCodeCache</li>
+<li>-XX:+AggressiveHeap</li>
+</ul>
+<p><strong>Testing Results</strong>
+<img src="https://dev-to-uploads.s3.amazonaws.com/uploads/articles/sz64rikesf6dxo04iya1.png" alt="Image description"></p>
+<p>The results drawn from the context and environment of this article are:</p>
+<ul>
+<li>With ShardingSphere-Proxy 5.0.0 + PostgreSQL as the benchmark, the performance of Apache ShardingSphere Version 5.1.0 is improved by 26.8%.</li>
+<li>Based on the direct connection to PostgreSQL, ShardingSphere-Proxy 5.1.0 reduces 15% loss compared to Version 5.0.0, from 42.7% to 27.4%.</li>
+</ul>
+<p>The testing results above do not cover all optimization points since detailed code optimizations have been made throughout ShardingSphere modules.</p>
+<p><strong>How to Look at the Performance Issue</strong>
+From time to time, people may ask, “How is ShardingSphere’s performance? How much is the loss?”</p>
+<p>I believe that performance is good as long as it meets the demands. Performance is a complex issue, affected by numerous factors. There is no silver bullet for all situations. Depending on different environments and scenarios, ShardingSphere’s performance loss can be less than 1% or as high as 50%.</p>
+<p>Moreover, ShardingSphere as an infrastructure, its performance is one of the key considerations in the R&amp;D process. Teams and individuals in the ShardingSphere community will double down on pushing ShardingSphere performance to its limits.</p>
+<p>Apache ShardingSphere Open Source Project Links:
+<a href="https://github.com/apache/shardingsphere">ShardingSphere Github</a>
+<a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a>
+<a href="https://apacheshardingsphere.slack.com/ssb/redirect">ShardingSphere Slack Channel</a>
+<a href="https://shardingsphere.apache.org/community/cn/involved/">Contributor Guide</a></p>
+<h3 id="author">Author</h3>
+<p>Wu Weijie</p>
+<blockquote>
+<p>SphereEx Infrastructure R&amp;D Engineer &amp; Apache ShardingSphere Committer</p>
+</blockquote>
+<p>Wu now focuses on the research and development of Apache ShardingSphere and its sub-project ElasticJob.</p>
+<p><img src="https://res.cloudinary.com/practicaldev/image/fetch/s--7h5qsKPD--/c_limit%2Cf_auto%2Cfl_progressive%2Cq_auto%2Cw_880/https://dev-to-uploads.s3.amazonaws.com/uploads/articles/07x5hkfrhblf0o8evsza.png" alt="Image description"></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_03_18_executor_engine_performance_optimization_showcase_with_apache_shardingsphere_5.1.0/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_03_16_create_a_distributed_database_with_high_availability_with_apache_shardingsphere/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

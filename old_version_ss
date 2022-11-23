@@ -1,192 +1,40 @@
-commit 494eb52595ab99a5dbd6de9648231b6c0143849f
-Author: gxxiong <xionggaoxiang@foxmail.com>
-Date:   Tue Nov 22 15:56:04 2022 +0800
+commit ad3c6abdae3c5d8aabcdb33c0167793e97e0415f
+Author: ChenJiaHao <37339007+Pace2Car@users.noreply.github.com>
+Date:   Wed Nov 23 18:48:16 2022 +0800
 
-    Update spring-namespace rules on encrypt document and spring-namespace test (#22337)
+    Improve DistSQL DROP SHARDING TABLE RULE (#22361)
     
-    Signed-off-by: gxxiong <xionggaoxiang@foxmail.com>
+    * Improve DROP SHARDING TABLE RULE, removing unused algorithm by default
     
-    Signed-off-by: gxxiong <xionggaoxiang@foxmail.com>
+    * Format code
+    
+    * Fix remove unused auditor
+    
+    * Supplementary test cases
+    
+    * Update document
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.cn.md
-index cf65283975e..2be7a90a79e 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.cn.md
-@@ -14,10 +14,10 @@ weight = 4
- \<encrypt:rule />
- 
- | *名称*                     | *类型* | *说明*                                               | *默认值* |
--| ------------------------- | ----- | ---------------------------------------------------- | ------- |
--| id                        | 属性  | Spring Bean Id                                        |         |
--| queryWithCipherColumn (?) | 属性  | 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询 | true   |
--| table (+)                 | 标签  | 加密表配置                                              |         |
-+| ---------------------------- | ----- | ------------------------------------------------------ | ------- |
-+| id                           | 属性  | Spring Bean Id                                          |         |
-+| query-with-cipher-column (?) | 属性  | 是否使用加密列进行查询。在有原文列的情况下，可以使用原文列进行查询 | true    |
-+| table (+)                    | 标签  | 加密表配置                                                |         |
- 
- \<encrypt:table />
- 
-@@ -29,13 +29,17 @@ weight = 4
- 
- \<encrypt:column />
- 
--| *名称*                    | *类型* | *说明*       |
--| ------------------------- | ----- | ----------- |
--| logic-column              | 属性  | 加密列逻辑名称 |
--| cipher-column             | 属性  | 加密列名称    |
--| assisted-query-column (?) | 属性  | 查询辅助列名称 |
--| plain-column (?)          | 属性  | 原文列名称    |
--| encrypt-algorithm-ref     | 属性  | 加密算法名称   |
-+| *名称*                               | *类型* | *说明*                |
-+| ------------------------------------ | ----- | -------------------- |
-+| logic-column                         | 属性  | 加密列逻辑名称          |
-+| cipher-column                        | 属性  | 加密列名称             |
-+| assisted-query-column (?)            | 属性  | 查询辅助列名称          |
-+| like-query-column (?)                | 属性  | 查询辅助列名称          |
-+| plain-column (?)                     | 属性  | 原文列名称              |
-+| encrypt-algorithm-ref                | 属性  | 密文列加密算法名称       |
-+| assisted-query-encrypt-algorithm-ref | 属性  | 辅助查询列加密算法名称    |
-+| like-query-encrypt-algorithm-ref     | 属性  | 模糊查询列加密算法名称    |
-+| query-with-cipher-column(?)          | 属性  | 该列是否使用加密列进行查询 |
- 
- \<encrypt:encrypt-algorithm />
- 
-@@ -86,12 +90,18 @@ weight = 4
-             <prop key="aes-key-value">123456</prop>
-         </props>
-     </encrypt:encrypt-algorithm>
--    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
-+    <encrypt:encrypt-algorithm id="pwd_encryptor" type="MD5" />
-+    <encrypt:encrypt-algorithm id="pwd_assisted_encryptor" type="AES">
-+        <props>
-+            <prop key="aes-key-value">123456</prop>
-+        </props>
-+    </encrypt:encrypt-algorithm>
-+    <encrypt:encrypt-algorithm id="like_query_encryptor" type="CHAR_DIGEST_LIKE" />
-     
-     <encrypt:rule id="encryptRule">
--        <encrypt:table name="t_user">
--            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
--            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
-+        <encrypt:table name="t_user" query-with-cipher-column="false">
-+            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" query-with-cipher-column="true"/>
-+            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" like-query-column="like_query_pwd" encrypt-algorithm-ref="pwd_encryptor" assisted-query-encrypt-algorithm-ref="pwd_assisted_encryptor" like-query-encrypt-algorithm-ref="like_query_encryptor" query-with-cipher-column="true" />
-         </encrypt:table>
-     </encrypt:rule>
-     
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.en.md
-index d16fb781e98..247bedc0837 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/encrypt.en.md
-@@ -16,7 +16,7 @@ Namespace: [http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encry
- | *Name*                    | *Type*    | *Description*                                                                                  | *Default Value* |
- | ------------------------- | --------- | ---------------------------------------------------------------------------------------------- | --------------- |
- | id                        | Attribute | Spring Bean Id                                                                                 |                 |
--| queryWithCipherColumn (?) | Attribute | Whether query with cipher column for data encrypt. User you can use plaintext to query if have | true            |
-+| uery-with-cipher-column (?) | Attribute | Whether query with cipher column for data encrypt. User you can use plaintext to query if have | true            |
- | table (+)                 | Tag       | Encrypt table configuration                                                                    |                 |
- 
- \<encrypt:table />
-@@ -29,13 +29,17 @@ Namespace: [http://shardingsphere.apache.org/schema/shardingsphere/encrypt/encry
- 
- \<encrypt:column />
- 
--| *Name*                    | *Type*     | *Description*              |
--| ------------------------- | ---------- | -------------------------- |
--| logic-column              | Attribute  | Column logic name          |
--| cipher-column             | Attribute  | Cipher column name         |
--| assisted-query-column (?) | Attribute  | Assisted query column name |
--| plain-column (?)          | Attribute  | Plain column name          |
--| encrypt-algorithm-ref     | Attribute  | Encrypt algorithm name     |
-+| *Name*                               | *Type*    | *Description*                                                        |
-+| ------------------------------------ | --------- | -------------------------------------------------------------------- |
-+| logic-column                         | Attribute | Column logic name                                                    |
-+| cipher-column                        | Attribute | Cipher column name                                                   |
-+| assisted-query-column (?)            | Attribute | Assisted query column name                                           |
-+| like-query-column (?)                | Attribute | Like query column name                                               |
-+| plain-column (?)                     | Attribute | Plain column name                                                    |
-+| encrypt-algorithm-ref                | Attribute | Cipher encrypt algorithm name                                        |
-+| assisted-query-encrypt-algorithm-ref | Attribute | Assisted query encrypt algorithm name                                |
-+| like-query-encrypt-algorithm-ref     | Attribute | Like query encrypt algorithm name                                    |
-+| query-with-cipher-column(?)          | Attribute | The current column whether query with cipher column for data encrypt |
- 
- \<encrypt:encrypt-algorithm />
- 
-@@ -86,12 +90,18 @@ Please refer to [Built-in Encrypt Algorithm List](/en/user-manual/common-config/
-             <prop key="aes-key-value">123456</prop>
-         </props>
-     </encrypt:encrypt-algorithm>
--    <encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
-+    <encrypt:encrypt-algorithm id="pwd_encryptor" type="MD5" />
-+    <encrypt:encrypt-algorithm id="pwd_assisted_encryptor" type="AES">
-+        <props>
-+            <prop key="aes-key-value">123456</prop>
-+        </props>
-+    </encrypt:encrypt-algorithm>
-+    <encrypt:encrypt-algorithm id="like_query_encryptor" type="CHAR_DIGEST_LIKE" />
-     
-     <encrypt:rule id="encryptRule">
--        <encrypt:table name="t_user">
--            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
--            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
-+        <encrypt:table name="t_user" query-with-cipher-column="false">
-+            <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" query-with-cipher-column="true"/>
-+            <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" like-query-column="like_query_pwd" encrypt-algorithm-ref="pwd_encryptor" assisted-query-encrypt-algorithm-ref="pwd_assisted_encryptor" like-query-encrypt-algorithm-ref="like_query_encryptor" query-with-cipher-column="true" />
-         </encrypt:table>
-     </encrypt:rule>
-     
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md
-index 3f16539c0d3..aed2b9065e4 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.cn.md
-@@ -58,12 +58,18 @@ ShardingSphere 涵盖了很多功能，例如，分库分片、读写分离、
-         <prop key="aes-key-value">123456</prop>
-     </props>
- </encrypt:encrypt-algorithm>
--<encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
-+<encrypt:encrypt-algorithm id="pwd_encryptor" type="MD5" />
-+<encrypt:encrypt-algorithm id="pwd_assisted_encryptor" type="AES">
-+    <props>
-+        <prop key="aes-key-value">123456</prop>
-+    </props>
-+</encrypt:encrypt-algorithm>
-+<encrypt:encrypt-algorithm id="like_query_encryptor" type="CHAR_DIGEST_LIKE" />
- 
- <encrypt:rule id="encryptRule">
--    <encrypt:table name="t_user">
--        <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
--        <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
-+    <encrypt:table name="t_user" query-with-cipher-column="false">
-+        <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" query-with-cipher-column="true"/>
-+        <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" like-query-column="like_query_pwd" encrypt-algorithm-ref="pwd_encryptor" assisted-query-encrypt-algorithm-ref="pwd_assisted_encryptor" like-query-encrypt-algorithm-ref="like_query_encryptor" query-with-cipher-column="true" />
-     </encrypt:table>
- </encrypt:rule>
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md
-index 537b3d17c78..5931dbfa19c 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/spring-namespace/rules/mix.en.md
-@@ -60,12 +60,18 @@ Below, you will find the configuration samples based on Spring Namespace.
-         <prop key="aes-key-value">123456</prop>
-     </props>
- </encrypt:encrypt-algorithm>
--<encrypt:encrypt-algorithm id="pwd_encryptor" type="assistedTest" />
-+<encrypt:encrypt-algorithm id="pwd_encryptor" type="MD5" />
-+<encrypt:encrypt-algorithm id="pwd_assisted_encryptor" type="AES">
-+    <props>
-+        <prop key="aes-key-value">123456</prop>
-+    </props>
-+</encrypt:encrypt-algorithm>
-+<encrypt:encrypt-algorithm id="like_query_encryptor" type="CHAR_DIGEST_LIKE" />
- 
- <encrypt:rule id="encryptRule">
--    <encrypt:table name="t_user">
--        <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" />
--        <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" encrypt-algorithm-ref="pwd_encryptor" />
-+    <encrypt:table name="t_user" query-with-cipher-column="false">
-+        <encrypt:column logic-column="username" cipher-column="username" plain-column="username_plain" encrypt-algorithm-ref="name_encryptor" query-with-cipher-column="true"/>
-+        <encrypt:column logic-column="pwd" cipher-column="pwd" assisted-query-column="assisted_query_pwd" like-query-column="like_query_pwd" encrypt-algorithm-ref="pwd_encryptor" assisted-query-encrypt-algorithm-ref="pwd_assisted_encryptor" like-query-encrypt-algorithm-ref="like_query_encryptor" query-with-cipher-column="true" />
-     </encrypt:table>
- </encrypt:rule>
- ```
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
+index a9c64b2ef48..f2aba23def1 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.cn.md
+@@ -113,7 +113,6 @@ auditorAlgorithmDefinition:
+ - `keyGenerateStrategyType` 指定分布式主键生成策略，请参考 [分布式主键](/cn/user-manual/common-config/builtin-algorithm/keygen/)；
+ - `auditorAlgorithmType` 指定分片审计策略，请参考 [分片审计](/cn/user-manual/common-config/builtin-algorithm/audit/)；
+ - 重复的 `tableName` 将无法被创建；
+-- `shardingAlgorithm` 能够被不同的 `Sharding Table Rule` 复用，因此在执行 `DROP SHARDING TABLE RULE` 时，对应的 `shardingAlgorithm` 不会被移除；
+ - 如需移除 `shardingAlgorithm`，请执行 `DROP SHARDING ALGORITHM`；
+ - `strategyType` 指定分片策略，请参考[分片策略](/cn/features/sharding/concept/sharding/#%E5%88%86%E7%89%87%E7%AD%96%E7%95%A5)；
+ - `Sharding Table Rule` 同时支持 `Auto Table` 和 `Table` 两种类型，两者在语法上有所差异，对应配置文件请参考 [数据分片](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding/) ；
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
+index 000034b664f..49d259a6a2e 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/sharding.en.md
+@@ -113,7 +113,6 @@ auditorAlgorithmDefinition:
+ - `keyGenerateStrategyType` specifies the distributed primary key generation strategy, please refer to [Key Generate Algorithm](/en/user-manual/common-config/builtin-algorithm/keygen/)
+ - `auditorAlgorithmType` specifies the sharding audit strategy, please refer to [Sharding Audit Algorithm](/cn/user-manual/common-config/builtin-algorithm/audit/)；
+ - Duplicate `tableName` will not be created
+-- `shardingAlgorithm` can be reused by different `Sharding Table Rule`, so when executing `DROP SHARDING TABLE RULE`, the corresponding `shardingAlgorithm` will not be removed
+ - To remove `shardingAlgorithm`, please execute `DROP SHARDING ALGORITHM`
+ - `strategyType` specifies the sharding strategy, please refer to[Sharding Strategy](/en/features/sharding/concept/sharding/#sharding-strategy)
+ - `Sharding Table Rule` supports both `Auto Table` and `Table` at the same time. The two types are different in syntax. For the corresponding configuration file, please refer to [Sharding](/en/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding/)

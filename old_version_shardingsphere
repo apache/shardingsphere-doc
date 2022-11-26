@@ -1,37 +1,217 @@
-commit 4f58466dd4e7798eadba70eebeadf3652a9bef97
-Author: Liang Zhang <zhangliang@apache.org>
-Date:   Fri Nov 25 19:05:09 2022 +0800
+commit 153906668df5023f1437a686c18f453544c2d2fe
+Author: gxxiong <xionggaoxiang@foxmail.com>
+Date:   Sat Nov 26 17:10:10 2022 +0800
 
-    Update code conduct (#22416)
+    Update yaml-config rules on encrypt document (#22436)
+    
+    Signed-off-by: gxxiong <xionggaoxiang@foxmail.com>
+    
+    Signed-off-by: gxxiong <xionggaoxiang@foxmail.com>
 
-diff --git a/docs/community/content/involved/conduct/code.cn.md b/docs/community/content/involved/conduct/code.cn.md
-index 900dd4c2161..b28d4d53a3a 100644
---- a/docs/community/content/involved/conduct/code.cn.md
-+++ b/docs/community/content/involved/conduct/code.cn.md
-@@ -80,7 +80,10 @@ chapter = true
-  - 每个测试用例需精确断言，尽量不使用 `not`、`containsString` 断言。
-  - 准备环境的代码和测试代码分离。
-  - 只有 Mockito，junit `Assert`，hamcrest `CoreMatchers` 和 `MatcherAssert` 相关可以使用 static import。
-- - 数据断言方法的使用：对于 boolean 类型的断言应使用 `assertTrue` 和 `assertFalse`，断言是否为空应使用 `assertNull` 和 `assertNotNull`，其他场景应使用 `assertThat`。
-+ - 数据断言规范应遵循：
-+    - 布尔类型断言应使用 `assertTrue` 和 `assertFalse`；
-+    - 空值断言应使用 `assertNull` 和 `assertNotNull`；
-+    - 其他类型应使用 `assertThat`。
-  - 测试用例的真实值应名为为 actual XXX，期望值应命名为 expected XXX。
-  - 测试类和 `@Test` 标注的方法无需 javadoc。
-  - 使用 Mockito `mockStatic` 和 `mockConstruction` 方法必须搭配 try-with-resource 或在清理方法中关闭，避免泄漏。
-diff --git a/docs/community/content/involved/conduct/code.en.md b/docs/community/content/involved/conduct/code.en.md
-index 3fed4a823f1..2cac4aac191 100644
---- a/docs/community/content/involved/conduct/code.en.md
-+++ b/docs/community/content/involved/conduct/code.en.md
-@@ -79,6 +79,10 @@ The following code of conduct is based on full compliance with [ASF CODE OF COND
-  - Environment preparation codes should be separate from test codes.
-  - Only those that relate to `Mockito`, junit `Assert`, hamcrest `CoreMatchers` and `MatcherAssert` can use static import.
-  - Usage of assertion methods: for boolean type asserts, `assertTrue` and `assertFalse` should be used, `assertNull` and `assertNotNull` should be used to assert whether the assertion is null, and `assertThat` should be used for other scenarios.
-+ - Usage of assertion methods:
-+   - Use `assertTrue` and `assertFalse` for boolean value;
-+   - Use `assertNull` and `assertNotNull` for null value;
-+   - Use `assertThat` for other values.
-  - Actual values of test cases should be named `actualXXX`, expected values `expectedXXX`.
-  - Class for test case and `@Test` annotation do not need javadoc.
-  - Mockito `mockStatic` and `mockConstruction` methods must be used with try-with-resource or closed in the teardown method to avoid leaks.
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
+index 9a01c3ab116..1065987deaf 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
+@@ -16,10 +16,13 @@ rules:
+     <table-name> (+): # 加密表名称
+       columns:
+         <column-name> (+): # 加密列名称
++          plainColumn (?): # 原文列名称
+           cipherColumn: # 密文列名称
++          encryptorName: # 密文列加密算法名称
+           assistedQueryColumn (?):  # 查询辅助列名称
+-          plainColumn (?): # 原文列名称
+-          encryptorName: # 加密算法名称
++          assistedQueryEncryptorName:  # 查询辅助列加密算法名称
++          likeQueryColumn (?):  # 模糊查询列名称
++          likeQueryEncryptorName:  # 模糊查询列加密算法名称
+       queryWithCipherColumn(?): # 该表是否使用加密列进行查询
+     
+   # 加密算法配置
+@@ -60,18 +63,30 @@ rules:
+         username:
+           plainColumn: username_plain
+           cipherColumn: username
+-          encryptorName: name-encryptor
++          encryptorName: name_encryptor
++          assistedQueryColumn: assisted_query_username
++          assistedQueryEncryptorName: assisted_encryptor
++          likeQueryColumn: like_query_username
++          likeQueryEncryptorName: like_encryptor
+         pwd:
+           cipherColumn: pwd
+-          assistedQueryColumn: assisted_query_pwd
+           encryptorName: pwd_encryptor
++          assistedQueryColumn: assisted_query_pwd
++          assistedQueryEncryptorName: assisted_encryptor
++      queryWithCipherColumn: true
+   encryptors:
+-    name-encryptor:
++    name_encryptor:
++      type: AES
++      props:
++        aes-key-value: 123456abc
++    assisted_encryptor:
+       type: AES
+       props:
+         aes-key-value: 123456abc
++    like_encryptor:
++      type: CHAR_DIGEST_LIKE
+     pwd_encryptor:
+-      type: assistedTest
++      type: MD5
+ ```
+ 
+ 然后通过 YamlShardingSphereDataSourceFactory 的 createDataSource 方法创建数据源。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
+index 82144b0e163..f86f35d6b4e 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
+@@ -17,10 +17,13 @@ rules:
+     <table-name> (+): # Encrypt table name
+       columns:
+         <column-name> (+): # Encrypt logic column name
++          plainColumn (?): # Plain column name
+           cipherColumn: # Cipher column name
++          encryptorName: # Cipher encrypt algorithm name
+           assistedQueryColumn (?):  # Assisted query column name
+-          plainColumn (?): # Plain column name
+-          encryptorName: # Encrypt algorithm name
++          assistedQueryEncryptorName:  # Assisted query encrypt algorithm name
++          likeQueryColumn (?):  # Like query column name
++          likeQueryEncryptorName:  # Like query encrypt algorithm name
+       queryWithCipherColumn(?): # The current table whether query with cipher column for data encrypt. 
+     
+   # Encrypt algorithm configuration
+@@ -61,18 +64,30 @@ rules:
+         username:
+           plainColumn: username_plain
+           cipherColumn: username
+-          encryptorName: name-encryptor
++          encryptorName: name_encryptor
++          assistedQueryColumn: assisted_query_username
++          assistedQueryEncryptorName: assisted_encryptor
++          likeQueryColumn: like_query_username
++          likeQueryEncryptorName: like_encryptor
+         pwd:
+           cipherColumn: pwd
+-          assistedQueryColumn: assisted_query_pwd
+           encryptorName: pwd_encryptor
++          assistedQueryColumn: assisted_query_pwd
++          assistedQueryEncryptorName: assisted_encryptor
++      queryWithCipherColumn: true
+   encryptors:
+-    name-encryptor:
++    name_encryptor:
++      type: AES
++      props:
++        aes-key-value: 123456abc
++    assisted_encryptor:
+       type: AES
+       props:
+         aes-key-value: 123456abc
++    like_encryptor:
++      type: CHAR_DIGEST_LIKE
+     pwd_encryptor:
+-      type: assistedTest
++      type: MD5
+ ```
+ 
+ Read the YAML configuration to create a data source according to the createDataSource method of YamlShardingSphereDataSourceFactory.
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
+index e1e9ac9b539..bf51869ac98 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
+@@ -82,13 +82,15 @@ rules:
+     tables:
+       <table-name>: # 加密表名称
+         columns:
+-          <column-name>: # 加密列名称
+-            plainColumn: # 原文列名称
++          <column-name> (+): # 加密列名称
++            plainColumn (?): # 原文列名称
+             cipherColumn: # 密文列名称
+-            encryptorName: # 加密算法名称
+-          <column-name>: # 加密列名称
+-            cipherColumn: # 密文列名称
+-            encryptorName:  # 加密算法名称
++            encryptorName: # 密文列加密算法名称
++            assistedQueryColumn (?):  # 查询辅助列名称
++            assistedQueryEncryptorName:  # 查询辅助列加密算法名称
++            likeQueryColumn (?):  # 模糊查询列名称
++            likeQueryEncryptorName:  # 模糊查询列加密算法名称
++        queryWithCipherColumn(?): # 该表是否使用加密列进行查询
+ ```
+ 
+ ## 配置示例
+@@ -167,6 +169,8 @@ rules:
+           aes-key-value: 123456abc
+       md5_encryptor:
+         type: MD5
++      like_encryptor:
++        type: CHAR_DIGEST_LIKE
+     tables:
+       t_encrypt:
+         columns:
+@@ -174,7 +178,12 @@ rules:
+             plainColumn: user_plain
+             cipherColumn: user_cipher
+             encryptorName: aes_encryptor
++            assistedQueryColumn: assisted_query_user
++            assistedQueryEncryptorName: aes_encryptor
++            likeQueryColumn: like_query_user
++            likeQueryEncryptorName: like_encryptor
+           order_id:
+             cipherColumn: order_cipher
+             encryptorName: md5_encryptor
++        queryWithCipherColumn: true
+ ```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
+index 3efcb911121..c980400316e 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
+@@ -83,13 +83,15 @@ rules:
+     tables:
+       <table-name>: # Encryption table name
+         columns:
+-          <column-name>: # Encryption name
+-            plainColumn: # Plaincolumn name
+-            cipherColumn: # Ciphercolumn name
+-            encryptorName: # Encryption algorithm name
+-          <column-name>: # Encryption column name
+-            cipherColumn: # Ciphercolumn name
+-            encryptorName:  # Encryption algorithm name
++          <column-name> (+): # Encrypt logic column name
++            plainColumn (?): # Plain column name
++            cipherColumn: # Cipher column name
++            encryptorName: # Cipher encrypt algorithm name
++            assistedQueryColumn (?):  # Assisted query column name
++            assistedQueryEncryptorName:  # Assisted query encrypt algorithm name
++            likeQueryColumn (?):  # Like query column name
++            likeQueryEncryptorName:  # Like query encrypt algorithm name
++        queryWithCipherColumn(?): # The current table whether query with cipher column for data encrypt. 
+ ```
+ 
+ ## Samples
+@@ -168,6 +170,8 @@ rules:
+           aes-key-value: 123456abc
+       md5_encryptor:
+         type: MD5
++      like_encryptor:
++        type: CHAR_DIGEST_LIKE
+     tables:
+       t_encrypt:
+         columns:
+@@ -175,7 +179,12 @@ rules:
+             plainColumn: user_plain
+             cipherColumn: user_cipher
+             encryptorName: aes_encryptor
++            assistedQueryColumn: assisted_query_user
++            assistedQueryEncryptorName: aes_encryptor
++            likeQueryColumn: like_query_user
++            likeQueryEncryptorName: like_encryptor
+           order_id:
+             cipherColumn: order_cipher
+             encryptorName: md5_encryptor
++        queryWithCipherColumn: true
+ ```

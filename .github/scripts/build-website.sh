@@ -174,8 +174,86 @@ else
     #ls -al
 fi
 
+################################################
+##        SHARDINGSPHERE-ON-CLOUD DOCS        ##
+################################################
+echo "[1] ====>>>> process shardingsphere-on-cloud/docs"
+echo git clone https://github.com/apache/shardingsphere-on-cloud
+
+git clone https://github.com/apache/shardingsphere-on-cloud _oncloud 
+
+# ------------------------- build history docs --------------------------------------
+cd _oncloud
+TAGS=(`git tag --sort=taggerdate | grep -E '^[[:digit:]]+.[[:digit:]]+.*+'`)
+VALID_TAGS=()
+
+# generate released document
+if [ ${#TAGS} -gt 0 ] ; then
+  for tag in ${TAGS[@]}
+  do
+    echo "generate $tag documnet"
+    git checkout $tag
+    if [ -d docs -a -f docs/build.sh ] ; then
+      VALID_TAGS=(${VALID_TAGS[@]} $tag)
+      if [ ! -d ../oncloud/$tag ] ; then
+        count=1
+        dir=$tag
+        env HUGO_BASEURL="https://shardingsphere.apache.org/oncloud/$dir/" \
+          HUGO_PARAMS_EDITURL="" \
+          bash docs/build.sh
+        find docs/target/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/current|<option id="\1" value="/'$dir'|g' {} \;
+        mv docs/target/current/ ../oncloud/$dir
+      fi
+    fi
+  done
+fi
+
+
+# -----------------------------------------------------------------------------------
+echo check diff
+if  [ ! -s ../old_version_oc ]  ; then
+    echo init > ../old_version_oc
+fi
+git checkout main
+git log -1 -p docs > new_version_oc
+diff ../old_version_oc new_version_oc > result_version
+
+if  [ ! -s result_version ]  ; then
+    echo "shardingsphere-on-cloud docs sources didn't change and nothing to do!"
+    cd ..
+else
+    count=2
+    echo "check shardingsphere-on-cloud something new, launch a build..."
+    cd ..
+    rm -rf old_version_oc
+    mv _oncloud/new_version_oc ./old_version_oc
+    
+    cp -rf _oncloud/docs ./
+    mv docs ocdocs
+    
+    echo build hugo oncloud documents
+    sh ./ocdocs/build.sh
+    cp -rf ocdocs/target ./
+    rm -rf ocdocs
+    mv target octarget
+    
+    echo replace old files
+    # Overwrite HTLM files
+    echo copy document/current to dest dir
+    if [ ! -d "oncloud/current"  ];then
+      mkdir -p oncloud/current
+    else
+      echo current  exist
+      rm -rf oncloud/current/*
+    fi
+    cp -fr octarget/current/* oncloud/current
+    
+    rm -rf octarget
+fi
+rm -rf _oncloud
+
 if [ $count -eq 0 ];then
-    echo "Both ShardingSphere&ElasticJob docs are not Changed, Skip&Return now."
+    echo "Both ShardingSphere&ElasticJob&OnCloud docs are not Changed, Skip&Return now."
 else
     echo git push new files
     git add .

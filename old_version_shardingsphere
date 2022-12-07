@@ -1,258 +1,32 @@
-commit 7582da1640abdafce99ca5d82d0e26bae525d504
-Author: Hongsheng Zhong <zhonghongsheng@apache.org>
-Date:   Wed Dec 7 17:45:35 2022 +0800
+commit 73ff7b6ef40744593e916dc6542f65c9cded430b
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Wed Dec 7 23:55:58 2022 +0800
 
-    Update heterogeneous migration example and migration permission doc (#22720)
+    Revert "Rename `MetaData` to `Metadata` for mode module. (#22704)" (#22733)
     
-    * Update heterogeneous migration example for openGauss
-    
-    * Update migration permission doc, uncompleted
+    This reverts commit 1a191f8605545cf06d10d5f5cd45067c9de12039.
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-index 34bdedbe88d..d5ba3b47f27 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.cn.md
-@@ -11,7 +11,7 @@ weight = 2
- 
- ### 权限要求
- 
--1. 开启 `binlog`
-+1. 源端开启 `binlog`
- 
- MySQL 5.7 `my.cnf` 示例配置：
- 
-@@ -43,16 +43,14 @@ show variables like '%binlog%';
- +-----------------------------------------+---------------------------------------+
- ```
- 
--2. 赋予 MySQL 账号 Replication 相关权限。
-+2. 赋予源端 MySQL 账号 replication 相关权限。
- 
- 执行以下命令，查看该用户是否有迁移权限：
--
- ```
- SHOW GRANTS FOR 'migration_user';
- ```
- 
- 示例结果：
--
- ```
- +------------------------------------------------------------------------------+
- |Grants for ${username}@${host}                                                |
-@@ -62,14 +60,18 @@ SHOW GRANTS FOR 'migration_user';
- +------------------------------------------------------------------------------+
- ```
- 
--3. 赋予迁移时用到物理库的增删改查权限
--
--如果使用非超级管理员账号进行迁移，要求该账号在迁移时用到的物理库上，具备增删改查的权限。
-+3. 赋予 MySQL 账号 DDL DML 权限
- 
-+源端账号需要具备查询权限。
- 示例：
-+```sql
-+GRANT SELECT ON migration_ds_0.* TO `migration_user`@`%`;
-+```
- 
-+目标端账号需要具备增删改查等权限。
-+示例：
- ```sql
--GRANT CREATE, DROP, SELECT, INSERT, UPDATE, DELETE, INDEX ON migration_ds_0.* TO `migration_user`@`%`;
-+GRANT CREATE, DROP, INDEX, SELECT, INSERT, UPDATE, DELETE ON *.* TO `migration_user`@`%`;
- ```
- 
- 详情请参见 [MySQL GRANT](https://dev.mysql.com/doc/refman/8.0/en/grant.html)
-@@ -253,9 +255,9 @@ REFRESH TABLE METADATA;
- 
- ### 权限要求
- 
--1. 开启 [test_decoding](https://www.postgresql.org/docs/9.4/test-decoding.html)。
-+1. 源端开启 [test_decoding](https://www.postgresql.org/docs/9.4/test-decoding.html)。
- 
--2. 调整 WAL 配置。
-+2. 源端调整 WAL 配置。
- 
- `postgresql.conf` 示例配置：
- ```
-@@ -268,7 +270,7 @@ max_connections = 600
- 
- 详情请参见 [Write Ahead Log](https://www.postgresql.org/docs/9.6/runtime-config-wal.html) 和 [Replication](https://www.postgresql.org/docs/9.6/runtime-config-replication.html )。
- 
--3. 配置 PostgreSQL 允许 Proxy 拥有 replication 权限。
-+3. 赋予源端 PostgreSQL 账号 replication 权限。
- 
- `pg_hba.conf` 示例配置：
- ```
-@@ -277,12 +279,11 @@ host replication repl_acct 0.0.0.0/0 md5
- 
- 详情请参见 [The pg_hba.conf File](https://www.postgresql.org/docs/9.6/auth-pg-hba-conf.html)。
- 
--4. 赋予数据库和表的访问权限
-+4. 赋予源端 PostgreSQL 账号 DDL DML 权限。
- 
- 如果使用非超级管理员账号进行迁移，要求该账号在迁移时用到的数据库上，具备 CREATE 和 CONNECT 的权限。
- 
- 示例：
--
- ```sql
- GRANT CREATE, CONNECT ON DATABASE migration_ds_0 TO migration_user;
- ```
-@@ -467,7 +468,7 @@ REFRESH TABLE METADATA;
- 
- ### 权限要求
- 
--1. 调整 WAL 配置。
-+1. 调整源端 WAL 配置。
- 
- `postgresql.conf` 示例配置：
- ```
-@@ -480,7 +481,7 @@ max_connections = 600
- 
- 详情请参见 [Write Ahead Log](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/settings.html) 和 [Replication](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/sending-server.html)。
- 
--2. 配置 openGauss 允许 Proxy 拥有 replication 权限。
-+2. 赋予源端 openGauss 账号 replication 权限。
- 
- `pg_hba.conf` 示例配置：
- ```
-@@ -489,12 +490,11 @@ host replication repl_acct 0.0.0.0/0 md5
- 
- 详情请参见 [Configuring Client Access Authentication](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/configuring-client-access-authentication.html) 和 [Example: Logic Replication Code](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/example-logic-replication-code.html)。
- 
--3. 赋予数据库和表的访问权限
-+3. 赋予 openGauss 账号 DDL DML 权限。
- 
- 如果使用非超级管理员账号进行迁移，要求该账号在迁移时用到的数据库上，具备 CREATE 和 CONNECT 的权限。
- 
- 示例：
--
- ```sql
- GRANT CREATE, CONNECT ON DATABASE migration_ds_0 TO migration_user;
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-index 0930f95375c..b9d68cb1200 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/migration/usage.en.md
-@@ -11,7 +11,7 @@ Supported MySQL versions: 5.1.15 to 8.0.x.
- 
- ### Authority required
- 
--1. Enable `binlog`
-+1. Enable `binlog` in source
- 
- MySQL 5.7 `my.cnf` configuration sample:
- 
-@@ -41,7 +41,7 @@ If the following information is displayed, binlog is enabled.
- +-----------------------------------------+---------------------------------------+
- ```
- 
--2. Grant Replication-related permissions for MySQL account.
-+2. Grant Replication-related permissions for source MySQL account.
- 
- Run the following command to check whether the user has migration permission.
- ```
-@@ -58,12 +58,16 @@ Result sample:
- +------------------------------------------------------------------------------+
- ```
- 
--3. Grant insert, select, update and delete permissions to the physical library used in the migration
-+3. Grant DDL DML permissions for MySQL account
- 
--If you use a non-super admin account for migration, you need to make sure that the account has the permission to insert, select, update and delete on the physical library used for migration.
-+Source MySQL account needs SELECT permission. Example:
-+```sql
-+GRANT SELECT ON migration_ds_0.* TO `migration_user`@`%`;
-+```
- 
-+Target MySQL account needs part of DDL and all DML permissions. Example:
- ```sql
--GRANT CREATE, DROP, SELECT, INSERT, UPDATE, DELETE, INDEX ON migration_ds_0.* TO `migration_user`@`%`;
-+GRANT CREATE, DROP, INDEX, SELECT, INSERT, UPDATE, DELETE ON *.* TO `migration_user`@`%`;
- ```
- 
- Please refer to [MySQL GRANT](https://dev.mysql.com/doc/refman/8.0/en/grant.html)
-@@ -249,9 +253,9 @@ Supported PostgreSQL version: 9.4 or later.
- 
- ### Authority required
- 
--1. Enable [test_decoding](https://www.postgresql.org/docs/9.4/test-decoding.html).
-+1. Enable [test_decoding](https://www.postgresql.org/docs/9.4/test-decoding.html) in source.
- 
--2. Modify WAL Configuration.
-+2. Modify WAL configuration in source.
- 
- `postgresql.conf` configuration sample:
- ```
-@@ -264,7 +268,7 @@ max_connections = 600
- 
- Please refer to [Write Ahead Log](https://www.postgresql.org/docs/9.6/runtime-config-wal.html) and [Replication](https://www.postgresql.org/docs/9.6/runtime-config-replication.html ) for details.
- 
--3. Configure PostgreSQL and grant Proxy the replication permission.
-+3. Grant replication permission for source PostgreSQL account.
- 
- `pg_hba.conf` instance configuration:
- ```
-@@ -273,7 +277,7 @@ host replication repl_acct 0.0.0.0/0 md5
- 
- Please refer to [The pg_hba.conf File](https://www.postgresql.org/docs/9.6/auth-pg-hba-conf.html) for details.
- 
--4. Grant access to databases and tables 
-+4. Grant DDL DML permissions for PostgreSQL account.
- 
- If you are using a non-super admin account for migration, you need to GRANT CREATE and CONNECT privileges on the database used for migration.
- 
-@@ -462,7 +466,7 @@ Supported openGauss version: 2.0.1 to 3.0.0.
- 
- ### Authority required
- 
--1. Modify WAL configuration.
-+1. Modify WAL configuration in source.
- 
- `postgresql.conf` configuration sample:
- ```
-@@ -475,7 +479,7 @@ max_connections = 600
- 
- Please refer to [Write Ahead Log](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/settings.html) and [Replication](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/sending-server.html) for details.
- 
--2. Configure openGauss and grant Proxy the replication permission.
-+2. Grant replication permission for source openGauss account.
- 
- `pg_hba.conf` instance configuration:
- ```
-@@ -484,7 +488,7 @@ host replication repl_acct 0.0.0.0/0 md5
- 
- Please refer to [Configuring Client Access Authentication](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/configuring-client-access-authentication.html) and [Example: Logic Replication Code](https://opengauss.org/en/docs/2.0.1/docs/Developerguide/example-logic-replication-code.html) for details.
- 
--3. Grant access to databases and tables 
-+3. Grant DDL DML permissions for openGauss account.
- 
- If you are using a non-super admin account for migration, you need to GRANT CREATE and CONNECT privileges on the database used for migration.
- 
-@@ -612,6 +616,8 @@ CREATE TABLE t_order (order_id INT NOT NULL, user_id INT NOT NULL, status VARCHA
- 
- 2. Configure the source storage units in proxy.
- 
-+2.1. Isomorphic database.
-+
- ```sql
- REGISTER MIGRATION SOURCE STORAGE UNIT ds_0 (
-     URL="jdbc:opengauss://127.0.0.1:5432/migration_ds_0",
-@@ -621,6 +627,18 @@ REGISTER MIGRATION SOURCE STORAGE UNIT ds_0 (
- );
- ```
- 
-+2.2. Heterogeneous database.
-+
-+MySQL example:
-+```sql
-+REGISTER MIGRATION SOURCE STORAGE UNIT ds_0 (
-+    URL="jdbc:mysql://127.0.0.1:3306/migration_ds_0?serverTimezone=UTC&useSSL=false",
-+    USER="root",
-+    PASSWORD="root",
-+    PROPERTIES("minPoolSize"="1","maxPoolSize"="20","idleTimeout"="60000")
-+);
-+```
-+
- 3. Enable data migration.
- 
- ```sql
+diff --git a/docs/document/content/dev-manual/mode.cn.md b/docs/document/content/dev-manual/mode.cn.md
+index 6dcfc061a92..1670dd68b69 100644
+--- a/docs/document/content/dev-manual/mode.cn.md
++++ b/docs/document/content/dev-manual/mode.cn.md
+@@ -56,6 +56,6 @@ chapter = true
+ | ----------------------------------------------------------------------- | --------------------------------------| ---------------------------- |
+ | Types: ADDED, UPDATED, DELETED; WatchingKeys: /nodes/compute_nodes      | 计算节点状态变化监听器                   | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.status.compute.watcher.ComputeNodeStateChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/compute/watcher/ComputeNodeStateChangedWatcher.java) |
+ | Types: ADDED, DELETED;  WatchingKeys: /lock/database/locks              | 数据库锁状态变化监听器                   | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.lock.database.watcher.DatabaseLockChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/watcher/GlobalRuleChangedWatcher.java) |
+-| Types: ADDED, UPDATED, DELETED; WatchingKeys: /metadata/${databaseName} | 元数据变化监听器                        | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.metadata.watcher.MetadataChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/metadata/watcher/MetaDataChangedWatcher.java) |
++| Types: ADDED, UPDATED, DELETED; WatchingKeys: /metadata/${databaseName} | 元数据变化监听器                        | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.metadata.watcher.MetaDataChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/metadata/watcher/MetaDataChangedWatcher.java) |
+ | Types: ADDED, UPDATED; WatchingKeys: /props                             | 属性变化监听器                          | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.watcher.PropertiesChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/watcher/PropertiesChangedWatcher.java) |
+ | Types: ADDED, UPDATED, DELETED; WatchingKeys: /nodes/storage_nodes      | 存储节点状态变化监听器                    | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.status.storage.watcher.StorageNodeStateChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/storage/watcher/StorageNodeStateChangedWatcher.java) |
+diff --git a/docs/document/content/dev-manual/mode.en.md b/docs/document/content/dev-manual/mode.en.md
+index efef1febac8..597ef30a5f4 100644
+--- a/docs/document/content/dev-manual/mode.en.md
++++ b/docs/document/content/dev-manual/mode.en.md
+@@ -56,6 +56,6 @@ Governance listener definition
+ | ----------------------------------------------------------------------- | --------------------------------------------- | ---------------------------- |
+ | Types: ADDED, UPDATED, DELETED; WatchingKeys: /nodes/compute_nodes      | Compute node state change listener            | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.status.compute.watcher.ComputeNodeStateChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/compute/watcher/ComputeNodeStateChangedWatcher.java) |
+ | Types: UPDATED; WatchingKeys: /rules                                    | The global rule configuration change listener | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.watcher.GlobalRuleChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/watcher/GlobalRuleChangedWatcher.java) |
+-| Types: ADDED, UPDATED, DELETED; WatchingKeys: /metadata/${databaseName} | Metadata change listener                      | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.metadata.watcher.MetadataChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/metadata/watcher/MetaDataChangedWatcher.java) |
++| Types: ADDED, UPDATED, DELETED; WatchingKeys: /metadata/${databaseName} | Metadata change listener                      | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.metadata.watcher.MetaDataChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/metadata/watcher/MetaDataChangedWatcher.java) |
+ | Types: ADDED, UPDATED; WatchingKeys: /props                             | Property change listener                      | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.watcher.PropertiesChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/watcher/PropertiesChangedWatcher.java) |
+ | Types: ADDED, UPDATED, DELETED; WatchingKeys: /nodes/storage_nodes      | Storage node state change listener            | [`org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.status.storage.watcher.StorageNodeStateChangedWatcher`](https://github.com/apache/shardingsphere/blob/master/mode/type/cluster/core/src/main/java/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/storage/watcher/StorageNodeStateChangedWatcher.java) |

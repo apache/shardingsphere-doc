@@ -87,14 +87,14 @@ function generate_pdf {
         done
 
         if [[ "$1" == "shardingsphere" ]] ;then
-            test="test"
+            findex="findex"
             testweight=0
-            mkdir $test
-            echo "test" >> "${test}/_index.md.rst"
-            echo -e "${testweight}\t${test}/index" >> "${lastpath}/filelist.txt"
-            echo "============================" >> "${test}/index.rst"
-            echo "test" >> "${test}/index.rst"
-            echo "============================" >> "${test}/index.rst"
+            mkdir findex
+            echo "test" >> "${findex}/_index.md.rst"
+            echo -e "${testweight}\t${findex}/index" >> "${lastpath}/filelist.txt"
+            echo "============================" >> "${findex}/index.rst"
+            echo "test" >> "${findex}/index.rst"
+            echo "============================" >> "${findex}/index.rst"
             echo -e ".. toctree::\n   :hidden: \n\n   _index.md" >> "${path}/index.rst"
         fi
 

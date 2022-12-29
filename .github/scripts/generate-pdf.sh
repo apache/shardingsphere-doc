@@ -119,7 +119,7 @@ function generate_pdf {
                 sed -i /branch=master/d $f
             fi
             sed -i /http.*codacy/d $f
-            pandoc $f -fmarkdown-implicit_figures --lua-filters="${currentDir}/.github/scripts/remove-tab.lua" -o "${f}.rst"
+            pandoc $f -fmarkdown-implicit_figures --lua-filter="${currentDir}/.github/scripts/remove-tab.lua" -o "${f}.rst"
             rm $f
         done
 

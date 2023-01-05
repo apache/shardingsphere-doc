@@ -1,222 +1,113 @@
-commit 133d1897f26374567a98991dba73adffd8fcb60c
-Author: zhuxiaoyu118 <35491513+zhuxiaoyu118@users.noreply.github.com>
-Date:   Wed Jan 4 16:29:54 2023 +0800
+commit e58cb1b1ff4e96d9fad33689052aa8b875ea6474
+Author: Zhengqiang Duan <duanzhengqiang@apache.org>
+Date:   Thu Jan 5 15:28:37 2023 +0800
 
-    Insert mask (#23326)
-    
-    * Update _index.cn.md
-    
-    * Create _index.cn.md
-    
-    * Create _index.en.md
-    
-    * Update _index.cn.md
-    
-    * Update _index.en.md
-    
-    * Update _index.cn.md
-    
-    * Update _index.en.md
-    
-    * Create 4_cn_v3.png
-    
-    * Create 1_cn.png
-    
-    * Create 1_en.png
-    
-    * Create 2_cn.png
-    
-    * Create 2_en.png
-    
-    * Create 3_cn.png
-    
-    * Create 3_en.png
-    
-    Co-authored-by: shardingsphere <dev@shardingsphere.apache.org>
+    Add new ShardingAlgorithmInitializationException to handle related exceptions (#23341)
 
-diff --git a/docs/document/content/reference/encrypt/_index.cn.md b/docs/document/content/reference/encrypt/_index.cn.md
-index 7783a6c3797..566d58f0e4c 100644
---- a/docs/document/content/reference/encrypt/_index.cn.md
-+++ b/docs/document/content/reference/encrypt/_index.cn.md
-@@ -58,7 +58,7 @@ Apache ShardingSphere 接收到该 SQL，通过用户提供的加密配置，发
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+index ca229d45792..6d5b80dfbb9 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+@@ -143,9 +143,9 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
  
- 下方图片展示了使用加密模块进行增删改查时，其中的处理流程和转换逻辑，如下图所示。
+ ### 数据分片
  
--![4](https://shardingsphere.apache.org/document/current/img/encrypt/4_cn_v2.png)
-+![4](https://shardingsphere.apache.org/document/current/img/encrypt/4_cn_v3.png)
+-| SQL State | Vendor Code | 错误信息 |
+-| --------- | ----------- | ------ |
+-| 44000     | 20000       | Can not find table rule with logic tables \`%s\`. |
++| SQL State | Vendor Code | 错误信息                                                                                                                       |
++| --------- |-------------|----------------------------------------------------------------------------------------------------------------------------|
++| 44000     | 20000       | Can not find table rule with logic tables \`%s\`.                                                                          |
+ | 44000     | 20001       | Can not get uniformed table structure for logic table \`%s\`, it has different meta data of actual tables are as follows: %s |
+ | 42S02     | 20002       | Can not find data source in sharding rule, invalid actual data node \`%s\`. |
+ | 44000     | 20003       | Data nodes must be configured for sharding table \`%s\`. |
+@@ -174,6 +174,7 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | HY000     | 20080       | Sharding algorithm class \`%s\` should be implement \`%s\`. |
+ | HY000     | 20081       | Routed target \`%s\` does not exist, available targets are \`%s\`. |
+ | 44000     | 20082       | Inline sharding algorithms expression \`%s\` and sharding column \`%s\` do not match. |
++| HY000     | 20083       | Sharding algorithm \`%s\` initialization failed, reason is: %s. |
+ | 44000     | 20090       | Can not find strategy for generate keys with table \`%s\`. |
+ | HY000     | 20099       | Sharding plugin error, reason is: %s |
  
- ## 解决方案详解
+@@ -207,14 +208,14 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
  
-diff --git a/docs/document/content/reference/mask/_index.cn.md b/docs/document/content/reference/mask/_index.cn.md
-new file mode 100644
-index 00000000000..3d51efa76ae
---- /dev/null
-+++ b/docs/document/content/reference/mask/_index.cn.md
-@@ -0,0 +1,39 @@
-++++
-+pre = "<b>7.8. </b>"
-+title = "数据脱敏"
-+weight = 8
-++++
-+
-+## 处理流程详解
-+
-+Apache ShardingSphere 通过对用户查询的 SQL 进行解析，并依据用户提供的脱敏规则对 SQL 执行结果进行装饰，从而实现对原文数据进行脱敏。
-+### 整体架构
-+
-+![1](https://shardingsphere.apache.org/document/current/img/mask/1_cn.png)
-+
-+脱敏模块将用户发起的 SQL 进行拦截，并通过 SQL 语法解析器进行解析、执行，再依据用户传入的脱敏规则，找出需要脱敏的字段和所使用的脱敏算法对查询结果进行装饰，返回给客户端。
-+
-+
-+### 脱敏规则
-+
-+在详解整套流程之前，我们需要先了解下脱敏规则与配置，这是认识整套流程的基础。脱敏配置主要分为三部分：数据源配置，脱敏算法配置，脱敏表配置：
-+
-+![2](https://shardingsphere.apache.org/document/current/img/mask/2_cn.png)
-+
-+**数据源配置**：指数据源配置。
-+
-+**脱敏算法配置**：指使用什么脱敏算法。目前 ShardingSphere 内置了多种脱敏算法：MD5、KEEP_FIRST_N_LAST_M、KEEP_FROM_X_TO_Y 、MASK_FIRST_N_LAST_M、MASK_FROM_X_TO_Y、MASK_BEFORE_SPECIAL_CHARS、MASK_AFTER_SPECIAL_CHARS、PERSONAL_IDENTITY_NUMBER_RANDOM_REPLACE、MILITARY_IDENTITY_NUMBER_RANDOM_REPLACE 和 TELEPHONE_RANDOM_REPLACE。用户还可以通过实现 ShardingSphere 提供的接口，自行实现一套脱敏算法。
-+
-+**脱敏表配置**：用于告诉 ShardingSphere 数据表里哪个列用于数据脱敏、使用什么算法脱敏。
-+
-+**脱敏规则创建即可生效**
-+
-+### 脱敏处理过程
-+
-+举例说明，假如数据库里有一张表叫做 `t_user`，这张表里有一个字段 `phone_number` 使用 `MASK_FROM_X_TO_Y`  进行算法处理，Apache ShardingSphere 不会改变数据存储，只会按脱敏算法对结果进行装饰，从而达到脱敏的效果
-+
-+如下图所示：
-+
-+![3](https://shardingsphere.apache.org/document/current/img/mask/3_cn.png)
-+
-+
-diff --git a/docs/document/content/reference/mask/_index.en.md b/docs/document/content/reference/mask/_index.en.md
-new file mode 100644
-index 00000000000..ef67588f1fe
---- /dev/null
-+++ b/docs/document/content/reference/mask/_index.en.md
-@@ -0,0 +1,38 @@
-++++
-+pre = "<b>7.8. </b>"
-+title = "Mask"
-+weight = 8
-++++
-+
-+Apache ShardingSphere realizes the desensitization of the original data by parsing the SQL queried by users and decorating the SQL execution results according to the desensitization rules provided by users. 
-+
-+### Overall Architecture
-+
-+![1](https://shardingsphere.apache.org/document/current/img/mask/1_en.png)
-+
-+The desensitization module intercepts the SQL initiated by the user, analyzes and executes it through the SQL syntax parser, and then decorates the query results by finding out the fields to be desensitized and the desensitization algorithm to be used according to the desensitization rules passed in by the user, and returns to the client.
-+
-+### Mask Rules
-+
-+Before explaining the whole process in detail, we need to first understand the desensitization rules and configuration, which is the basis of understanding the whole process. Desensitization configuration is mainly divided into three parts: data source configuration, desensitization algorithm configuration, desensitization table configuration:
-+
-+![2](https://shardingsphere.apache.org/document/current/img/mask/2_en.png)
-+
-+**Data source configuration**: the configuration of the data source.
-+
-+**Mask algorithm configuration**: What desensitization algorithm is used. At present, ShardingSphere has a variety of built-in desensitization algorithms: MD5, KEEP_FIRST_N_LAST_M, KEEP_FROM_X_TO_Y , MASK_FIRST_N_LAST_M, MASK_FROM_X_TO_Y, MASK_BEFORE_SPECIAL_CHARS, MASK_AFTER_SPECIAL_CHARS, PERSONAL_IDENTITY_NUMBER_RANDOM_REPLACE, MILITARY_IDENTITY_NUMBER_RANDOM_REPLACE, and TELEPHONE_RANDOM_REPLACE. Users can also implement a set of desensitization algorithm by implementing the interface provided by ShardingSphere.
-+
-+**Mask table configuration**: Used to tell ShardingSphere which column in the data table is used for data desensitization and which algorithm is used for desensitization.
-+
-+**The mask rule takes effect after it is created**
-+
-+Query attribute configuration: if both plaintext and ciphertext data are stored in the underlying database table, this attribute can be used to determine whether to query the plaintext data in the database table and return it directly, or query the ciphertext data and return it after decryption through Apache ShardingSphere. This attribute can be configured at the table level and the entire rule level. The table-level has the highest priority.
-+
-+### Mask Process
-+
-+For example, if there is a table in the database called `t_user and` there is a field in the table called `phone_number` that uses `MASK_FROM_X_TO_Y`, Apache ShardingSphere does not change the data store. Only according to the desensitization algorithm to decorate the result, so as to achieve the desensitization effect 
-+ 
-+As shown in the picture below:
-+
-+![3](https://shardingsphere.apache.org/document/current/img/mask/3_en.png)
-+
-diff --git a/docs/document/content/reference/observability/_index.cn.md b/docs/document/content/reference/observability/_index.cn.md
-index 28f483a0f95..b9f60427738 100644
---- a/docs/document/content/reference/observability/_index.cn.md
-+++ b/docs/document/content/reference/observability/_index.cn.md
-@@ -1,7 +1,7 @@
- +++
--pre = "<b>7.9. </b>"
-+pre = "<b>7.10. </b>"
- title = "可观察性"
--weight = 9
-+weight = 10
- +++
+ ### 数据加密
  
- ## 原理说明
-diff --git a/docs/document/content/reference/observability/_index.en.md b/docs/document/content/reference/observability/_index.en.md
-index 2fb998d318f..50d5b5d108b 100644
---- a/docs/document/content/reference/observability/_index.en.md
-+++ b/docs/document/content/reference/observability/_index.en.md
-@@ -1,7 +1,7 @@
- +++
--pre = "<b>7.9. </b>"
-+pre = "<b>7.10. </b>"
- title = "Oberservability"
--weight = 9
-+weight = 10
- +++
+-| SQL State | Vendor Code | 错误信息 |
+-| --------- | ----------- | ------ |
+-| 44000     | 20700       | Can not find logic encrypt column by \`%s\`. |
+-| 44000     | 20701       | Fail to find encrypt column \`%s\` from table \`%s\`. |
++| SQL State | Vendor Code | 错误信息                                                                                               |
++| --------- | ----------- |----------------------------------------------------------------------------------------------------|
++| 44000     | 20700       | Can not find logic encrypt column by \`%s\`.                                                       |
++| 44000     | 20701       | Fail to find encrypt column \`%s\` from table \`%s\`.                                              |
+ | 44000     | 20702       | Altered column \`%s\` must use same encrypt algorithm with previous column \`%s\` in table \`%s\`. |
+-| 42000     | 20740       | Insert value of index \`%s\` can not support for encrypt. |
+-| 0A000     | 20741       | The SQL clause \`%s\` is unsupported in encrypt rule. |
+-| HY004     | 20780       | Encrypt algorithm \`%s\` initialization failed, reason is: %s |
++| 42000     | 20740       | Insert value of index \`%s\` can not support for encrypt.                                          |
++| 0A000     | 20741       | The SQL clause \`%s\` is unsupported in encrypt rule.                                              |
++| HY004     | 20780       | Encrypt algorithm \`%s\` initialization failed, reason is: %s.                                     |
  
- ## How it works
-diff --git a/docs/document/content/reference/shadow/_index.cn.md b/docs/document/content/reference/shadow/_index.cn.md
-index 341b2c63056..4fe3da0dd86 100644
---- a/docs/document/content/reference/shadow/_index.cn.md
-+++ b/docs/document/content/reference/shadow/_index.cn.md
-@@ -1,7 +1,7 @@
- +++
--pre = "<b>7.8. </b>"
-+pre = "<b>7.9. </b>"
- title = "影子库"
--weight = 8
-+weight = 9
- +++
+ ### 影子库
  
- ## 原理介绍
-diff --git a/docs/document/content/reference/shadow/_index.en.md b/docs/document/content/reference/shadow/_index.en.md
-index 9983a4c143f..7a74576fd13 100644
---- a/docs/document/content/reference/shadow/_index.en.md
-+++ b/docs/document/content/reference/shadow/_index.en.md
-@@ -1,7 +1,7 @@
- +++
--pre = "<b>7.8. </b>"
-+pre = "<b>7.9. </b>"
- title = "Shadow"
--weight = 8
-+weight = 9
- +++
+@@ -225,9 +226,9 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
  
- ## How it works
-diff --git a/docs/document/static/img/encrypt/4_cn_v3.png b/docs/document/static/img/encrypt/4_cn_v3.png
-new file mode 100644
-index 00000000000..9878e4e91a3
-Binary files /dev/null and b/docs/document/static/img/encrypt/4_cn_v3.png differ
-diff --git a/docs/document/static/img/mask/1_cn.png b/docs/document/static/img/mask/1_cn.png
-new file mode 100644
-index 00000000000..b457d74a835
-Binary files /dev/null and b/docs/document/static/img/mask/1_cn.png differ
-diff --git a/docs/document/static/img/mask/1_en.png b/docs/document/static/img/mask/1_en.png
-new file mode 100644
-index 00000000000..820ade8bfbc
-Binary files /dev/null and b/docs/document/static/img/mask/1_en.png differ
-diff --git a/docs/document/static/img/mask/2_cn.png b/docs/document/static/img/mask/2_cn.png
-new file mode 100644
-index 00000000000..1be33ffa839
-Binary files /dev/null and b/docs/document/static/img/mask/2_cn.png differ
-diff --git a/docs/document/static/img/mask/2_en.png b/docs/document/static/img/mask/2_en.png
-new file mode 100644
-index 00000000000..3a9fccccf7a
-Binary files /dev/null and b/docs/document/static/img/mask/2_en.png differ
-diff --git a/docs/document/static/img/mask/3_cn.png b/docs/document/static/img/mask/3_cn.png
-new file mode 100644
-index 00000000000..6e445789a55
-Binary files /dev/null and b/docs/document/static/img/mask/3_cn.png differ
-diff --git a/docs/document/static/img/mask/3_en.png b/docs/document/static/img/mask/3_en.png
-new file mode 100644
-index 00000000000..422a7f60b13
-Binary files /dev/null and b/docs/document/static/img/mask/3_en.png differ
+ ### 数据脱敏
+ 
+-| SQL State | Vendor Code | 错误信息                                                       |
+-| --------- |-------------|------------------------------------------------------------|
+-| HY000     | 20980       | Mask algorithm \`%s\` initialization failed, reason is: %s |
++| SQL State | Vendor Code | 错误信息                                                        |
++| --------- |-------------|-------------------------------------------------------------|
++| HY000     | 20980       | Mask algorithm \`%s\` initialization failed, reason is: %s. |
+ 
+ ## 其他异常
+ 
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+index 1fd61618b4c..d1195058719 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+@@ -174,6 +174,7 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | HY000     | 20080       | Sharding algorithm class \`%s\` should be implement \`%s\`. |
+ | HY000     | 20081       | Routed target \`%s\` does not exist, available targets are \`%s\`. |
+ | 44000     | 20082       | Inline sharding algorithms expression \`%s\` and sharding column \`%s\` do not match. |
++| HY000     | 20083       | Sharding algorithm \`%s\` initialization failed, reason is: %s. |
+ | 44000     | 20090       | Can not find strategy for generate keys with table \`%s\`. |
+ | HY000     | 20099       | Sharding plugin error, reason is: %s |
+ 
+@@ -207,14 +208,14 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ 
+ ### Data Encrypt
+ 
+-| SQL State | Vendor Code | Reason |
+-| --------- | ----------- | ------ |
+-| 44000     | 20700       | Can not find logic encrypt column by \`%s\`. |
+-| 44000     | 20701       | Fail to find encrypt column \`%s\` from table \`%s\`. |
++| SQL State | Vendor Code | Reason                                                                                             |
++| --------- | ----------- |----------------------------------------------------------------------------------------------------|
++| 44000     | 20700       | Can not find logic encrypt column by \`%s\`.                                                       |
++| 44000     | 20701       | Fail to find encrypt column \`%s\` from table \`%s\`.                                              |
+ | 44000     | 20702       | Altered column \`%s\` must use same encrypt algorithm with previous column \`%s\` in table \`%s\`. |
+-| 42000     | 20740       | Insert value of index \`%s\` can not support for encrypt. |
+-| 0A000     | 20741       | The SQL clause \`%s\` is unsupported in encrypt rule. |
+-| HY004     | 20780       | Encrypt algorithm \`%s\` initialization failed, reason is: %s |
++| 42000     | 20740       | Insert value of index \`%s\` can not support for encrypt.                                          |
++| 0A000     | 20741       | The SQL clause \`%s\` is unsupported in encrypt rule.                                              |
++| HY004     | 20780       | Encrypt algorithm \`%s\` initialization failed, reason is: %s.                                     |
+ 
+ ### Shadow Database
+ 
+@@ -225,9 +226,9 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ 
+ ### Data Masking
+ 
+-| SQL State | Vendor Code | Reason                                                       |
+-| --------- |-------------|------------------------------------------------------------|
+-| HY000     | 20980       | Mask algorithm \`%s\` initialization failed, reason is: %s |
++| SQL State | Vendor Code | Reason                                                      |
++| --------- |-------------|-------------------------------------------------------------|
++| HY000     | 20980       | Mask algorithm \`%s\` initialization failed, reason is: %s. |
+ 
+ ## Other Exception
+ 

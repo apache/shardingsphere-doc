@@ -1,72 +1,54 @@
-commit fb186baacf4052ccc1ed2131d81719add27fae92
+commit cb110996a55d0749c6bb0c51a363418c26f00a69
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Tue Jan 24 00:29:55 2023 +0800
+Date:   Tue Jan 24 20:48:46 2023 +0800
 
-    Add default type logic in TypedSPIRegistry (#23711)
-    
-    * Refactor ReadwriteSplittingRuleStatementChecker
-    
-    * Add default type logic in TypedSPIRegistry
-    
-    * Add default type logic in TypedSPIRegistry
+    Merge ShardingConditionEngine and DefaultShardingConditionEngine (#23715)
 
-diff --git a/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md b/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
-index 9fc0c713bdc..9fc6287288a 100644
---- a/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
-+++ b/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
-@@ -60,7 +60,7 @@ Taking a frequently called ShardingSphere class `org.apache.shardingsphere.infra
-         this.executorDriverManager = executorDriverManager;
-         this.option = option;
-         sqlExecutionUnitBuilder = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, 
--                key -> TypedSPIRegistry.getRegisteredService(SQLExecutionUnitBuilder.class, key, new Properties()));
-+                key -> TypedSPIRegistry.getService(SQLExecutionUnitBuilder.class, key, new Properties()));
-     }
- ```
- 
-@@ -69,7 +69,7 @@ In the code above, only two `type` will be passed into `computeIfAbsent`, and mo
- ```java
- SQLExecutionUnitBuilder result;
- if (null == (result = TYPE_TO_BUILDER_MAP.get(type))) {
--    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPIRegistry.getRegisteredService(SQLExecutionUnitBuilder.class, key, new Properties()));
-+    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPIRegistry.getService(SQLExecutionUnitBuilder.class, key, new Properties()));
- }
- return result;
- ```
-diff --git "a/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md" "b/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
-index 7eebdcf246f..5b6654b5d9c 100644
---- "a/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
-+++ "b/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
-@@ -110,16 +110,16 @@ public final class DialectTableMetaDataLoaderFactory {
-      * @return new instance of dialect table meta data loader
-      */
-     public static Optional<DialectTableMetaDataLoader> newInstance(final DatabaseType databaseType) {
--        return TypedSPIRegistry.findRegisteredService(DialectTableMetaDataLoader.class, databaseType.getName());
-+        return TypedSPIRegistry.findService(DialectTableMetaDataLoader.class, databaseType.getName());
-     }
- }
- ```
--Here you can see that a static block is used, and all the `DialectTableMetaDataLoader` implementation classes are registered through `ShardingSphereServiceLoader.register` while class loading is in process. By using `TypedSPIRegistry.findRegisteredService`, we can get our specified spi extension class.
-+Here you can see that a static block is used, and all the `DialectTableMetaDataLoader` implementation classes are registered through `ShardingSphereServiceLoader.register` while class loading is in process. By using `TypedSPIRegistry.findService`, we can get our specified spi extension class.
- 
- ```
--TypedSPIRegistry.findRegisteredService(final Class<T> spiClass, final String type)
-+TypedSPIRegistry.findService(final Class<T> spiClass, final String type)
- ```
--So we just have to pay attention to `ShardingSphereServiceLoader.register` and `ypedSPIRegistry.findRegisteredService` approaches.
-+So we just have to pay attention to `ShardingSphereServiceLoader.register` and `TypedSPIRegistry.findService` approaches.
- 
- **`ShardingSphereServiceLoader`**
- 
-@@ -215,10 +215,10 @@ private static <T> Collection<Object> load(final Class<T> serviceInterface) {
- ```
- **`TypedSPIRegistry`**
- 
--The `findRegisteredService` method in `TypedSPIRegistry` is essentially a call to the `getSingletonServiceInstancesmethod` of the `ShardingSphereServiceLoader`.
-+The `findService` method in `TypedSPIRegistry` is essentially a call to the `getSingletonServiceInstancesmethod` of the `ShardingSphereServiceLoader`.
- 
- ```java
--public static <T extends StatelessTypedSPI> Optional<T> findRegisteredService(final Class<T> spiClass, final String type) {
-+public static <T extends StatelessTypedSPI> Optional<T> findService(final Class<T> spiClass, final String type) {
-         for (T each : ShardingSphereServiceLoader.getSingletonServiceInstances(spiClass)) {
-             if (matchesType(type, each)) {
-                 return Optional.of(each);
+diff --git a/docs/document/content/dev-manual/sharding.cn.md b/docs/document/content/dev-manual/sharding.cn.md
+index 332f175b5eb..ce413846ebe 100644
+--- a/docs/document/content/dev-manual/sharding.cn.md
++++ b/docs/document/content/dev-manual/sharding.cn.md
+@@ -85,19 +85,3 @@ chapter = true
+ | ----------------------- | ----------------------------- | ---------- |
+ | DatabaseDatetimeService | 从数据库中获取当前时间进行路由      | [`org.apache.shardingsphere.datetime.database.DatabaseDatetimeService`](https://github.com/apache/shardingsphere/blob/master/infra/datetime/type/database/src/main/java/org/apache/shardingsphere/datetime/database/DatabaseDatetimeService.java) |
+ | SystemDatetime          | 从应用系统时间中获取当前时间进行路由 | [`org.apache.shardingsphere.datetime.system.SystemDatetimeService`](https://github.com/apache/shardingsphere/blob/master/infra/datetime/type/system/src/main/java/org/apache/shardingsphere/datetime/system/SystemDatetimeService.java) |
+-
+-## ShardingConditionEngine
+-
+-### 全限定类名
+-
+-[`org.apache.shardingsphere.sharding.route.engine.condition.engine.ShardingConditionEngine`](https://github.com/apache/shardingsphere/blob/master/features/sharding/core/src/main/java/org/apache/shardingsphere/sharding/route/engine/condition/engine/ShardingConditionEngine.java)
+-
+-### 定义
+-
+-分片条件生成引擎
+-
+-### 已知实现
+-
+-| *配置标识*                       | *详细说明*        | *全限定类名* |
+-| ------------------------------ | ---------------- | ---------- |
+-| DefaultShardingConditionEngine | 默认分片条件生成引擎 | [`org.apache.shardingsphere.sharding.route.engine.condition.engine.impl.DefaultShardingConditionEngine`](https://github.com/apache/shardingsphere/blob/master/features/sharding/core/src/main/java/org/apache/shardingsphere/sharding/route/engine/condition/engine/impl/DefaultShardingConditionEngine.java) |
+diff --git a/docs/document/content/dev-manual/sharding.en.md b/docs/document/content/dev-manual/sharding.en.md
+index 3a90bdccbf8..f5904c57b7e 100644
+--- a/docs/document/content/dev-manual/sharding.en.md
++++ b/docs/document/content/dev-manual/sharding.en.md
+@@ -85,19 +85,3 @@ Obtain the current date for routing definition
+ | ----------------------- | ------------------------------------------------------------ | ---------------------------- |
+ | DatabaseDatetimeService | Get the current time from the database for routing           | [`org.apache.shardingsphere.datetime.database.DatabaseDatetimeService`](https://github.com/apache/shardingsphere/blob/master/infra/datetime/type/database/src/main/java/org/apache/shardingsphere/datetime/database/DatabaseDatetimeService.java) |
+ | SystemDatetime          | Get the current time from the application system for routing | [`org.apache.shardingsphere.datetime.system.SystemDatetimeService`](https://github.com/apache/shardingsphere/blob/master/infra/datetime/type/system/src/main/java/org/apache/shardingsphere/datetime/system/SystemDatetimeService.java) |
+-
+-## ShardingConditionEngine
+-
+-### Fully-qualified class name
+-
+-[`org.apache.shardingsphere.sharding.route.engine.condition.engine.ShardingConditionEngine`](https://github.com/apache/shardingsphere/blob/master/features/sharding/core/src/main/java/org/apache/shardingsphere/sharding/route/engine/condition/engine/ShardingConditionEngine.java)
+-
+-### Definition
+-
+-Sharding condition generator engine
+-
+-### Implementation classes
+-
+-| *Configuration Type*           | *Description*                               | *Fully-qualified class name* |
+-| ------------------------------ | ------------------------------------------- | ---------------------------- |
+-| DefaultShardingConditionEngine | Default sharding condition generator engine | [`org.apache.shardingsphere.sharding.route.engine.condition.engine.impl.DefaultShardingConditionEngine`](https://github.com/apache/shardingsphere/blob/master/features/sharding/core/src/main/java/org/apache/shardingsphere/sharding/route/engine/condition/engine/impl/DefaultShardingConditionEngine.java) |

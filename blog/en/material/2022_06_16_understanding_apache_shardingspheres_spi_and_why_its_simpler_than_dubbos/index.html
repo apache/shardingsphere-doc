@@ -145,9 +145,7 @@ Let’s take the <code>DialectTableMetaDataLoader</code> interface implementatio
 <p><code>DialectTableMetaDataLoaderFactory</code></p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@NoArgsConstructor</span><span style="color:#f92672">(</span>access <span style="color:#f92672">=</span> AccessLevel<span style="color:#f92672">.</span><span style="color:#a6e22e">PRIVATE</span><span style="color:#f92672">)</span>
 <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">DialectTableMetaDataLoaderFactory</span> <span style="color:#f92672">{</span>
-    <span style="color:#66d9ef">static</span> <span style="color:#f92672">{</span>
-        ShardingSphereServiceLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">register</span><span style="color:#f92672">(</span>DialectTableMetaDataLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">);</span>
-    <span style="color:#f92672">}</span>
+    
     <span style="color:#75715e">/**
 </span><span style="color:#75715e">     * Create new instance of dialect table meta data loader.
 </span><span style="color:#75715e">     * 
@@ -155,95 +153,14 @@ Let’s take the <code>DialectTableMetaDataLoader</code> interface implementatio
 </span><span style="color:#75715e">     * @return new instance of dialect table meta data loader
 </span><span style="color:#75715e">     */</span>
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> Optional<span style="color:#f92672">&lt;</span>DialectTableMetaDataLoader<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">newInstance</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> DatabaseType databaseType<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-        <span style="color:#66d9ef">return</span> TypedSPIRegistry<span style="color:#f92672">.</span><span style="color:#a6e22e">findService</span><span style="color:#f92672">(</span>DialectTableMetaDataLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">,</span> databaseType<span style="color:#f92672">.</span><span style="color:#a6e22e">getName</span><span style="color:#f92672">());</span>
+        <span style="color:#66d9ef">return</span> TypedSPILoader<span style="color:#f92672">.</span><span style="color:#a6e22e">findService</span><span style="color:#f92672">(</span>DialectTableMetaDataLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">,</span> databaseType<span style="color:#f92672">.</span><span style="color:#a6e22e">getName</span><span style="color:#f92672">());</span>
     <span style="color:#f92672">}</span>
 <span style="color:#f92672">}</span>
-</code></pre></div><p>Here you can see that a static block is used, and all the <code>DialectTableMetaDataLoader</code> implementation classes are registered through <code>ShardingSphereServiceLoader.register</code> while class loading is in process. By using <code>TypedSPIRegistry.findService</code>, we can get our specified spi extension class.</p>
-<pre><code>TypedSPIRegistry.findService(final Class&lt;T&gt; spiClass, final String type)
-</code></pre><p>So we just have to pay attention to <code>ShardingSphereServiceLoader.register</code> and <code>TypedSPIRegistry.findService</code> approaches.</p>
-<p><strong><code>ShardingSphereServiceLoader</code></strong></p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@NoArgsConstructor</span><span style="color:#f92672">(</span>access <span style="color:#f92672">=</span>AccessLevel<span style="color:#f92672">.</span><span style="color:#a6e22e">PRIVATE</span><span style="color:#f92672">)</span>
-<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ShardingSphereServiceLoader</span> <span style="color:#f92672">{</span>
-    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>Class<span style="color:#f92672">&lt;?&gt;,</span> Collection<span style="color:#f92672">&lt;</span>object<span style="color:#f92672">&gt;&gt;</span> SERVICES <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ConcurrentHashMap<span style="color:#f92672">&lt;&gt;();</span>
-    <span style="color:#75715e">/**
-</span><span style="color:#75715e">     *Register service.
-</span><span style="color:#75715e">     *
-</span><span style="color:#75715e">     *@param serviceInterface service interface
-</span><span style="color:#75715e">     */</span>
-    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">register</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;?&gt;</span> serviceInterface<span style="color:#f92672">){</span>
-        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
-            SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">put</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">,</span> load<span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">)</span> <span style="color:#f92672">;</span>
-        <span style="color:#f92672">}</span>
-    <span style="color:#f92672">}</span>
-   
-    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">load</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-        Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> LinkedList<span style="color:#f92672">&lt;&gt;();</span>
-        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>T each<span style="color:#f92672">:</span> ServiceLoader<span style="color:#f92672">.</span> <span style="color:#a6e22e">load</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
-        result<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span>each<span style="color:#f92672">);</span>
-        <span style="color:#f92672">}</span>
-        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
-    <span style="color:#f92672">}</span>
-    
-    <span style="color:#75715e">/**
-</span><span style="color:#75715e">     *Get singleton service instances.
-</span><span style="color:#75715e">     *
-</span><span style="color:#75715e">     *@param service service class
-</span><span style="color:#75715e">     * @param &lt;T&gt; type of service
-</span><span style="color:#75715e">     *@return service instances
-</span><span style="color:#75715e">     */</span>
-    <span style="color:#a6e22e">@SuppressWarnings</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;unchecked&#34;</span><span style="color:#f92672">)</span>
-    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">getSingletonServiceInstances</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> service<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-        <span style="color:#66d9ef">return</span> <span style="color:#f92672">(</span>Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;)</span> SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">getorDefault</span><span style="color:#f92672">(</span>service<span style="color:#f92672">,</span>Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">());</span>
-    <span style="color:#f92672">}</span>
-    
-    <span style="color:#75715e">/**
-</span><span style="color:#75715e">     *New service instances.
-</span><span style="color:#75715e">     *
-</span><span style="color:#75715e">     * eparam service service class
-</span><span style="color:#75715e">     *@param &lt;T&gt; type of service
-</span><span style="color:#75715e">     *@return service instances
-</span><span style="color:#75715e">     */</span>
-    <span style="color:#a6e22e">@SuppressWarnings</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#34;unchecked&#34;</span> <span style="color:#f92672">)</span>
-    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">newserviceInstances</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> service<span style="color:#f92672">){</span>
-        <span style="color:#66d9ef">if</span><span style="color:#f92672">(!</span>SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">containskey</span><span style="color:#f92672">(</span>service<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
-           <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">();</span>
-        <span style="color:#f92672">}</span>
-        Collection<span style="color:#f92672">&lt;</span>object<span style="color:#f92672">&gt;</span> services <span style="color:#f92672">=</span> SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(</span>service<span style="color:#f92672">);</span>
-        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>services<span style="color:#f92672">.</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">()){</span>
-            <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">emptyList</span><span style="color:#f92672">();</span>
-        <span style="color:#f92672">}</span>
-        Collection<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ArrayList<span style="color:#f92672">&lt;&gt;(</span>services<span style="color:#f92672">.</span><span style="color:#a6e22e">size</span><span style="color:#f92672">());</span>
-        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>Object each<span style="color:#f92672">:</span> services<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-            result<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">((</span>T<span style="color:#f92672">)</span> newServiceInstance<span style="color:#f92672">(</span>each<span style="color:#f92672">.</span><span style="color:#a6e22e">getClass</span><span style="color:#f92672">()));</span>
-        <span style="color:#f92672">}</span>
-        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
-    <span style="color:#f92672">}</span>
-    
-    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> Object <span style="color:#a6e22e">newServiceInstance</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;?&gt;</span> clazz<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-        <span style="color:#66d9ef">try</span><span style="color:#f92672">{</span>
-           <span style="color:#66d9ef">return</span> clazz<span style="color:#f92672">.</span><span style="color:#a6e22e">getDeclaredConstructor</span><span style="color:#f92672">(</span> <span style="color:#f92672">)</span> <span style="color:#f92672">.</span> newInstance<span style="color:#f92672">(</span> <span style="color:#f92672">)</span> <span style="color:#f92672">;</span>
-        <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ReflectiveOperationException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-            <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> ServiceLoaderInstantiationException<span style="color:#f92672">(</span>clazz<span style="color:#f92672">,</span> ex<span style="color:#f92672">);</span>
-        <span style="color:#f92672">}</span>
-    <span style="color:#f92672">}</span>
-<span style="color:#f92672">}</span>
-</code></pre></div><p>We can see that all SPI classes are placed in this <code>SERVICES</code>property.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>Class<span style="color:#f92672">&lt;?&gt;,</span> Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;&gt;</span> SERVICES <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ConcurrentHashMap<span style="color:#f92672">&lt;&gt;();</span>
-</code></pre></div><p>And registering is pretty simple too, just use the SPI api embedded in java.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">register</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;?&gt;</span> serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
-            SERVICES<span style="color:#f92672">.</span><span style="color:#a6e22e">put</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">,</span> load<span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">));</span>
-        <span style="color:#f92672">}</span>
-    <span style="color:#f92672">}</span>
-<span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">load</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> serviceInterface<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
-        Collection<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> LinkedList<span style="color:#f92672">&lt;&gt;();</span>
-        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>T each <span style="color:#f92672">:</span> ServiceLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">load</span><span style="color:#f92672">(</span>serviceInterface<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
-            result<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span>each<span style="color:#f92672">);</span>
-        <span style="color:#f92672">}</span>
-        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
-    <span style="color:#f92672">}</span>
-</code></pre></div><p><strong><code>TypedSPIRegistry</code></strong></p>
-<p>The <code>findService</code> method in <code>TypedSPIRegistry</code> is essentially a call to the <code>getSingletonServiceInstancesmethod</code> of the <code>ShardingSphereServiceLoader</code>.</p>
+</code></pre></div><p>Here you can see that a static block is used, and all the <code>DialectTableMetaDataLoader</code> implementation classes are registered through <code>ShardingSphereServiceLoader.register</code> while class loading is in process. By using <code>TypedSPILoader.findService</code>, we can get our specified spi extension class.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">TypedSPILoader<span style="color:#f92672">.</span><span style="color:#a6e22e">findService</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> spiClass<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> String type<span style="color:#f92672">)</span>
+</code></pre></div><p>So we just have to pay attention to <code>TypedSPILoader.findService</code> approaches.</p>
+<p><strong><code>TypedSPILoader</code></strong></p>
+<p>The <code>findService</code> method in <code>TypedSPILoader</code> is essentially a call to the <code>getSingletonServiceInstancesmethod</code> of the <code>ShardingSphereServiceLoader</code>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#f92672">&lt;</span>T <span style="color:#66d9ef">extends</span> StatelessTypedSPI<span style="color:#f92672">&gt;</span> Optional<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">findService</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Class<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> spiClass<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> String type<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span>T each <span style="color:#f92672">:</span> ShardingSphereServiceLoader<span style="color:#f92672">.</span><span style="color:#a6e22e">getSingletonServiceInstances</span><span style="color:#f92672">(</span>spiClass<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
             <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>matchesType<span style="color:#f92672">(</span>type<span style="color:#f92672">,</span> each<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>

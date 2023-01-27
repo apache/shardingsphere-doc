@@ -1,34 +1,171 @@
-commit 0455fce5f829539ac1cbd5bc9f3984180f9f7467
+commit a77642415d1fbb9e1e19484f1611f0299fa595ae
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Fri Jan 27 00:14:30 2023 +0800
+Date:   Fri Jan 27 17:17:10 2023 +0800
 
-    Refactor DatabaseTimeService (#23733)
-    
-    * Refactor DatabaseTimeService
-    
-    * Refactor DatabaseTimeService
+    Rename TypedSPIRegistry and OrderedSPIRegistry to TypedSPILoader and OrderedSPILoader (#23742)
 
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index 6ca80d7875d..97e97eba940 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -31,7 +31,6 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
- | --------- |-------------| ------ |
- | HY004     | 11000       | Invalid value \`%s\`. |
- | HY004     | 11001       | Unsupported conversion data type \`%s\` for value \`%s\`. |
--| HY000     | 11002       | Can not find \`%s\` file for datetime initialize. |
- | HY004     | 11010       | Unsupported conversion stream charset \`%s\`. |
+diff --git a/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md b/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
+index 9fc6287288a..06b569bc4e0 100644
+--- a/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
++++ b/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
+@@ -8,6 +8,7 @@ Increasing Apache ShardingSphere adoption across various industries, has allowed
+ Our team has made numerous performance optimizations to the ShardingSphere Kernel, interface and etc. since the release of Version 5.0.0. This article introduces some of the performance optimizations at the code level, and showcases the optimized results of ShardingSphere-Proxy TPC-C benchmark tests.
  
- ### 语法
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 6e3f28427d9..de5fbd36640 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -31,7 +31,6 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- | --------- | ----------- | ------ |
- | HY004     | 11000       | Invalid value \`%s\`. |
- | HY004     | 11001       | Unsupported conversion data type \`%s\` for value \`%s\`. |
--| HY000     | 11002       | Can not find \`%s\` file for datetime initialize. |
- | HY004     | 11010       | Unsupported conversion stream charset \`%s\`. |
+ ## Optimizations
++
+ **Correct the Use of Optional**
  
- ### Syntax
+ java.util.Optional, introduced by Java 8, it makes the code cleaner. For example, it can avoid methods returningnull values. Optionalis commonly used in two situations:
+@@ -59,8 +60,7 @@ Taking a frequently called ShardingSphere class `org.apache.shardingsphere.infra
+         super(maxConnectionsSizePerQuery, rules);
+         this.executorDriverManager = executorDriverManager;
+         this.option = option;
+-        sqlExecutionUnitBuilder = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, 
+-                key -> TypedSPIRegistry.getService(SQLExecutionUnitBuilder.class, key, new Properties()));
++        sqlExecutionUnitBuilder = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPILoader.getService(SQLExecutionUnitBuilder.class, key));
+     }
+ ```
+ 
+@@ -69,7 +69,7 @@ In the code above, only two `type` will be passed into `computeIfAbsent`, and mo
+ ```java
+ SQLExecutionUnitBuilder result;
+ if (null == (result = TYPE_TO_BUILDER_MAP.get(type))) {
+-    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPIRegistry.getService(SQLExecutionUnitBuilder.class, key, new Properties()));
++    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPILoader.getService(SQLExecutionUnitBuilder.class, key));
+ }
+ return result;
+ ```
+diff --git "a/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md" "b/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
+index 5b6654b5d9c..d7402de2041 100644
+--- "a/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
++++ "b/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
+@@ -100,9 +100,7 @@ For every interface that needs to be extended and created by SPI, there usually
+ ```java
+ @NoArgsConstructor(access = AccessLevel.PRIVATE)
+ public final class DialectTableMetaDataLoaderFactory {
+-    static {
+-        ShardingSphereServiceLoader.register(DialectTableMetaDataLoader.class);
+-    }
++    
+     /**
+      * Create new instance of dialect table meta data loader.
+      * 
+@@ -110,112 +108,22 @@ public final class DialectTableMetaDataLoaderFactory {
+      * @return new instance of dialect table meta data loader
+      */
+     public static Optional<DialectTableMetaDataLoader> newInstance(final DatabaseType databaseType) {
+-        return TypedSPIRegistry.findService(DialectTableMetaDataLoader.class, databaseType.getName());
++        return TypedSPILoader.findService(DialectTableMetaDataLoader.class, databaseType.getName());
+     }
+ }
+ ```
+-Here you can see that a static block is used, and all the `DialectTableMetaDataLoader` implementation classes are registered through `ShardingSphereServiceLoader.register` while class loading is in process. By using `TypedSPIRegistry.findService`, we can get our specified spi extension class.
+-
+-```
+-TypedSPIRegistry.findService(final Class<T> spiClass, final String type)
+-```
+-So we just have to pay attention to `ShardingSphereServiceLoader.register` and `TypedSPIRegistry.findService` approaches.
+ 
+-**`ShardingSphereServiceLoader`**
++Here you can see that a static block is used, and all the `DialectTableMetaDataLoader` implementation classes are registered through `ShardingSphereServiceLoader.register` while class loading is in process. By using `TypedSPILoader.findService`, we can get our specified spi extension class.
+ 
+ ```java
+-@NoArgsConstructor(access =AccessLevel.PRIVATE)
+-public final class ShardingSphereServiceLoader {
+-    private static final Map<Class<?>, Collection<object>> SERVICES = new ConcurrentHashMap<>();
+-    /**
+-     *Register service.
+-     *
+-     *@param serviceInterface service interface
+-     */
+-    public static void register(final Class<?> serviceInterface){
+-        if (!SERVICES.containsKey(serviceInterface)) {
+-            SERVICES.put(serviceInterface, load(serviceInterface) ) ;
+-        }
+-    }
+-   
+-    private static <T> Collection<Object> load(final Class<T> serviceInterface) {
+-        Collection<Object> result = new LinkedList<>();
+-        for (T each: ServiceLoader. load(serviceInterface)) {
+-        result.add(each);
+-        }
+-        return result;
+-    }
+-    
+-    /**
+-     *Get singleton service instances.
+-     *
+-     *@param service service class
+-     * @param <T> type of service
+-     *@return service instances
+-     */
+-    @SuppressWarnings("unchecked")
+-    public static <T> Collection<T> getSingletonServiceInstances(final Class<T> service) {
+-        return (Collection<T>) SERVICES.getorDefault(service,Collections.emptyList());
+-    }
+-    
+-    /**
+-     *New service instances.
+-     *
+-     * eparam service service class
+-     *@param <T> type of service
+-     *@return service instances
+-     */
+-    @SuppressWarnings ("unchecked" )
+-    public static <T> Collection<T> newserviceInstances(final Class<T> service){
+-        if(!SERVICES.containskey(service)) {
+-           return Collections.emptyList();
+-        }
+-        Collection<object> services = SERVICES.get(service);
+-        if (services.isEmpty()){
+-            return Collections.emptyList();
+-        }
+-        Collection<T> result = new ArrayList<>(services.size());
+-        for (Object each: services) {
+-            result.add((T) newServiceInstance(each.getClass()));
+-        }
+-        return result;
+-    }
+-    
+-    private static Object newServiceInstance(final Class<?> clazz) {
+-        try{
+-           return clazz.getDeclaredConstructor( ) . newInstance( ) ;
+-        } catch (final ReflectiveOperationException ex) {
+-            throw new ServiceLoaderInstantiationException(clazz, ex);
+-        }
+-    }
+-}
+-```
+-We can see that all SPI classes are placed in this `SERVICES`property.
+-
+-```java
+-private static final Map<Class<?>, Collection<Object>> SERVICES = new ConcurrentHashMap<>();
++TypedSPILoader.findService(final Class<T> spiClass, final String type)
+ ```
+ 
++So we just have to pay attention to `TypedSPILoader.findService` approaches.
+ 
+-And registering is pretty simple too, just use the SPI api embedded in java.
+-
+-```java
+-public static void register(final Class<?> serviceInterface) {
+-        if (!SERVICES.containsKey(serviceInterface)) {
+-            SERVICES.put(serviceInterface, load(serviceInterface));
+-        }
+-    }
+-private static <T> Collection<Object> load(final Class<T> serviceInterface) {
+-        Collection<Object> result = new LinkedList<>();
+-        for (T each : ServiceLoader.load(serviceInterface)) {
+-            result.add(each);
+-        }
+-        return result;
+-    }
+-```
+-**`TypedSPIRegistry`**
++**`TypedSPILoader`**
+ 
+-The `findService` method in `TypedSPIRegistry` is essentially a call to the `getSingletonServiceInstancesmethod` of the `ShardingSphereServiceLoader`.
++The `findService` method in `TypedSPILoader` is essentially a call to the `getSingletonServiceInstancesmethod` of the `ShardingSphereServiceLoader`.
+ 
+ ```java
+ public static <T extends StatelessTypedSPI> Optional<T> findService(final Class<T> spiClass, final String type) {

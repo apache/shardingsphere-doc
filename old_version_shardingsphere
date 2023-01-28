@@ -1,171 +1,117 @@
-commit a77642415d1fbb9e1e19484f1611f0299fa595ae
-Author: Liang Zhang <zhangliang@apache.org>
-Date:   Fri Jan 27 17:17:10 2023 +0800
+commit 471cdf496d5eaf6ca1bf182bce85ea4140be27f1
+Author: 孙念君 Nianjun Sun <sunnianjun@apache.org>
+Date:   Sat Jan 28 16:40:29 2023 +0800
 
-    Rename TypedSPIRegistry and OrderedSPIRegistry to TypedSPILoader and OrderedSPILoader (#23742)
+    Add : add document for remote debug testcontainer (#23759) (#23777)
+    
+    * Add : add document for remote debug testcontainer (#23759)
+    
+    * Refactor : refactor the decription of the step to get mapping port (#23759)
 
-diff --git a/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md b/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
-index 9fc6287288a..06b569bc4e0 100644
---- a/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
-+++ b/docs/blog/content/material/2022_03_23_Apache_ShardingSphere_Proxy_Performance_with_PostgreSQL_is_Improved_26.8%_with_Version_5.1.0.en.md
-@@ -8,6 +8,7 @@ Increasing Apache ShardingSphere adoption across various industries, has allowed
- Our team has made numerous performance optimizations to the ShardingSphere Kernel, interface and etc. since the release of Version 5.0.0. This article introduces some of the performance optimizations at the code level, and showcases the optimized results of ShardingSphere-Proxy TPC-C benchmark tests.
+diff --git a/docs/document/content/test-manual/integration-test/_index.cn.md b/docs/document/content/test-manual/integration-test/_index.cn.md
+index 5c8ee8e84c0..7b2218210f7 100644
+--- a/docs/document/content/test-manual/integration-test/_index.cn.md
++++ b/docs/document/content/test-manual/integration-test/_index.cn.md
+@@ -144,13 +144,13 @@ it.cluster.databases=H2,MySQL,Oracle,SQLServer,PostgreSQL
+ #### 运行调试模式
  
- ## Optimizations
+   - 标准测试引擎
+-    运行 `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.General${SQL-TYPE}IT` 以启动不同 SQL 类型的测试引擎。
++    运行 `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.General${SQL-TYPE}E2EIT` 以启动不同 SQL 类型的测试引擎。
+ 
+   - 批量测试引擎
+-    运行 `org.apache.shardingsphere.test.integration.engine.dml.BatchDMLIT`，以启动为 DML 语句提供的测试 `addBatch()` 的批量测试引擎。
++    运行 `org.apache.shardingsphere.test.integration.engine.dml.BatchDMLE2EIT`，以启动为 DML 语句提供的测试 `addBatch()` 的批量测试引擎。
+ 
+   - 附加测试引擎
+-    运行 `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.Additional${SQL-TYPE}IT` 以启动使用更多 JDBC 方法调用的测试引擎。
++    运行 `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.Additional${SQL-TYPE}E2EIT` 以启动使用更多 JDBC 方法调用的测试引擎。
+     附加测试引擎需要通过设置 `it.run.additional.cases=true` 开启。
+ 
+ #### 运行 Docker 模式
+@@ -168,18 +168,29 @@ it.cluster.databases=H2,MySQL,Oracle,SQLServer,PostgreSQL
+ 
+ #### 远程 debug Docker 容器中的 Proxy 代码
+ 
+-IT 测试的 Proxy 镜像默认开启了 3308 端口用于远程调试容器中的实例。  
++##### 远程调试通过镜像启动的 Proxy
++E2E 测试的 Proxy 镜像默认开启了 3308 端口用于远程调试容器中的实例。  
+ 使用 IDEA 等 IDE 工具可以通过如下方式连接并 debug 容器中的 Proxy 代码：
+ 
+ IDEA -> Run -> Edit Configurations -> Add New Configuration -> Remote JVM Debug
+ 
+ 编辑对应的信息：
+-  - Name：一个描述性的名字，例如 docker-debug。
++  - Name：一个描述性的名字，例如 e2e-debug。
+   - Host：可以访问 docker 的 IP，例如 127.0.0.1。
+   - Port：调试端口 3308。
+   - use module classpath：项目根目录 shardingsphere。
+ 
+-编辑好上面的信息后，在 IDEA 中 Run -> Run -> docker-debug 即可启动 IDEA 的远程 debug。
++编辑好上面的信息后，在 IDEA 中 Run -> Run -> e2e-debug 即可启动 IDEA 的远程 debug。
 +
- **Correct the Use of Optional**
++##### 远程调试通过 Testcontainer 启动的 Proxy
++> 注意：如果通过 Testcontainer 启动 Proxy 容器，由于 Testcontainer 启动前 3308 端口还没有暴露出来，无法通过 `远程调试通过镜像启动的 Proxy` 方式进行 debug。
++可以通过如下方式 debug Testcontainer 启动的 Proxy 容器：
++  - 在 Testcontainer 的相关启动类后打一个断点，例如 suite 测试中 BaseE2EIT#setUp() -> `containerComposer.start();` 后面的一行打断点，此时相关容器一定已经启动。
++  - 通过快捷键 Alt + F8，进入断点调试模式，查看 containerComposer 下的 Proxy 对象 3308 映射的端口（Testcontainer 对外映射端口是随机的）。例如本次通过该表达式：`((ShardingSphereProxyClusterContainer)((java.util.LinkedList)((ITContainers)((ClusterContainerComposer)containerComposer).containers).dockerContainers).getLast()).getMappedPort(3308)` 获取到映射的对外随机端口为 51837
++  - 参考 `远程调试通过镜像启动的 Proxy` 中的方式，Port 设置为上一步中获取到的端口。
++
++编辑好上面的信息后，在 IDEA 中 Run -> Run -> e2e-debug 即可启动 IDEA 的远程 debug。
++
  
- java.util.Optional, introduced by Java 8, it makes the code cleaner. For example, it can avoid methods returningnull values. Optionalis commonly used in two situations:
-@@ -59,8 +60,7 @@ Taking a frequently called ShardingSphere class `org.apache.shardingsphere.infra
-         super(maxConnectionsSizePerQuery, rules);
-         this.executorDriverManager = executorDriverManager;
-         this.option = option;
--        sqlExecutionUnitBuilder = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, 
--                key -> TypedSPIRegistry.getService(SQLExecutionUnitBuilder.class, key, new Properties()));
-+        sqlExecutionUnitBuilder = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPILoader.getService(SQLExecutionUnitBuilder.class, key));
-     }
+ #### 注意事项
+ 
+diff --git a/docs/document/content/test-manual/integration-test/_index.en.md b/docs/document/content/test-manual/integration-test/_index.en.md
+index d932b852c2a..e019381440b 100644
+--- a/docs/document/content/test-manual/integration-test/_index.en.md
++++ b/docs/document/content/test-manual/integration-test/_index.en.md
+@@ -145,13 +145,13 @@ it.cluster.databases=H2,MySQL,Oracle,SQLServer,PostgreSQL
+ #### Run debugging mode
+ 
+   - Standard test engine
+-    Run `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.General${SQL-TYPE}IT` to start the test engines of different SQL types.
++    Run `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.General${SQL-TYPE}E2EIT` to start the test engines of different SQL types.
+ 
+   - Batch test engine
+-    Run `org.apache.shardingsphere.test.integration.engine.dml.BatchDMLIT` to start the batch test engine for the test `addBatch()` provided for DML statements.
++    Run `org.apache.shardingsphere.test.integration.engine.dml.BatchDMLE2EIT` to start the batch test engine for the test `addBatch()` provided for DML statements.
+ 
+   - Additional test engine
+-    Run `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.Additional${SQL-TYPE}IT` to start the test engine with more JDBC method calls.
++    Run `org.apache.shardingsphere.test.integration.engine.${SQL-TYPE}.Additional${SQL-TYPE}E2EIT` to start the test engine with more JDBC method calls.
+     Additional test engines need to be enabled by setting `it.run.additional.cases=true`.
+ 
+ #### Run Docker mode
+@@ -166,6 +166,31 @@ If you only modify the test code, you can reuse the existing test mirror without
+ ./mvnw -B clean install -f shardingsphere-test/shardingsphere-test-e2e/shardingsphere-test-e2e-test-suite/pom.xml -Pit.env.docker -Dit.cluster.adapters=proxy,jdbc -Dit.scenarios=${scenario_name_1,scenario_name_2,scenario_name_n} -Dit.cluster.databases=MySQL
  ```
  
-@@ -69,7 +69,7 @@ In the code above, only two `type` will be passed into `computeIfAbsent`, and mo
- ```java
- SQLExecutionUnitBuilder result;
- if (null == (result = TYPE_TO_BUILDER_MAP.get(type))) {
--    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPIRegistry.getService(SQLExecutionUnitBuilder.class, key, new Properties()));
-+    result = TYPE_TO_BUILDER_MAP.computeIfAbsent(type, key -> TypedSPILoader.getService(SQLExecutionUnitBuilder.class, key));
- }
- return result;
- ```
-diff --git "a/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md" "b/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
-index 5b6654b5d9c..d7402de2041 100644
---- "a/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
-+++ "b/docs/blog/content/material/2022_06_16_Understanding_Apache_ShardingSphere's_SPI_and_why_it\342\200\231s_simpler_than_Dubbo\342\200\231s.en.md"
-@@ -100,9 +100,7 @@ For every interface that needs to be extended and created by SPI, there usually
- ```java
- @NoArgsConstructor(access = AccessLevel.PRIVATE)
- public final class DialectTableMetaDataLoaderFactory {
--    static {
--        ShardingSphereServiceLoader.register(DialectTableMetaDataLoader.class);
--    }
-+    
-     /**
-      * Create new instance of dialect table meta data loader.
-      * 
-@@ -110,112 +108,22 @@ public final class DialectTableMetaDataLoaderFactory {
-      * @return new instance of dialect table meta data loader
-      */
-     public static Optional<DialectTableMetaDataLoader> newInstance(final DatabaseType databaseType) {
--        return TypedSPIRegistry.findService(DialectTableMetaDataLoader.class, databaseType.getName());
-+        return TypedSPILoader.findService(DialectTableMetaDataLoader.class, databaseType.getName());
-     }
- }
- ```
--Here you can see that a static block is used, and all the `DialectTableMetaDataLoader` implementation classes are registered through `ShardingSphereServiceLoader.register` while class loading is in process. By using `TypedSPIRegistry.findService`, we can get our specified spi extension class.
--
--```
--TypedSPIRegistry.findService(final Class<T> spiClass, final String type)
--```
--So we just have to pay attention to `ShardingSphereServiceLoader.register` and `TypedSPIRegistry.findService` approaches.
++#### Remote debug Proxy code in Docker container
++
++##### Remote debug Proxy started by docker image
++E2E Test Proxy image opens the 3308 port by default for remote debugging of the instance in the container.
++Use the following method to connect and debug the Proxy code in the container with IDE tools such as IDEA:
++
++IDEA -> Run -> Edit Configurations -> Add New Configuration -> Remote JVM Debug
++
++Edit the corresponding information:
++  - Name: A descriptive name, such as e2e-debug.
++  - Host: A IP that can access docker, such as 127.0.0.1
++  - Port: debugging port 3308.
++  - use module classpath: The root directory of the project shardingsphere.
++
++After editing the above information, run Run -> Run -> e2e-debug in IDEA to start the remote debug of IDEA.
++
++##### Remote debug Proxy started by Testcontainer
++> Note: If the Proxy container is started by Testcontainer, because the 3308 port is not exposed before Testcontainer starts, it cannot be debugged by the `Remote debug Proxy started by docker image` method.
++Debug Testcontainer started Proxy container by the following method:
++  - Set a breakpoint in the relevant startup class of Testcontainer, for example, after the line `containerComposer.start();` in BaseE2EIT#setUp() in the suite test, at this time, the relevant containers must have been started.
++  - Access breakpoint debugging mode through shortcut key Alt + F8, and view the port mapped by the 3308 mapping of the Proxy object under the containerComposer (the external mapping port of Testcontainer is random). For example, the expression `((ShardingSphereProxyClusterContainer)((java.util.LinkedList)((ITContainers)((ClusterContainerComposer)containerComposer).containers).dockerContainers).getLast()).getMappedPort(3308)` get the mapped random port 51837.
++  - See the `Remote debug Proxy started by docker image` method, set the Name, Host, Port, and use the port got in previous step.
++
++After editing the above information, run Run -> Run -> e2e-debug in IDEA to start the remote debug of IDEA.
++
+ #### Notice
  
--**`ShardingSphereServiceLoader`**
-+Here you can see that a static block is used, and all the `DialectTableMetaDataLoader` implementation classes are registered through `ShardingSphereServiceLoader.register` while class loading is in process. By using `TypedSPILoader.findService`, we can get our specified spi extension class.
- 
- ```java
--@NoArgsConstructor(access =AccessLevel.PRIVATE)
--public final class ShardingSphereServiceLoader {
--    private static final Map<Class<?>, Collection<object>> SERVICES = new ConcurrentHashMap<>();
--    /**
--     *Register service.
--     *
--     *@param serviceInterface service interface
--     */
--    public static void register(final Class<?> serviceInterface){
--        if (!SERVICES.containsKey(serviceInterface)) {
--            SERVICES.put(serviceInterface, load(serviceInterface) ) ;
--        }
--    }
--   
--    private static <T> Collection<Object> load(final Class<T> serviceInterface) {
--        Collection<Object> result = new LinkedList<>();
--        for (T each: ServiceLoader. load(serviceInterface)) {
--        result.add(each);
--        }
--        return result;
--    }
--    
--    /**
--     *Get singleton service instances.
--     *
--     *@param service service class
--     * @param <T> type of service
--     *@return service instances
--     */
--    @SuppressWarnings("unchecked")
--    public static <T> Collection<T> getSingletonServiceInstances(final Class<T> service) {
--        return (Collection<T>) SERVICES.getorDefault(service,Collections.emptyList());
--    }
--    
--    /**
--     *New service instances.
--     *
--     * eparam service service class
--     *@param <T> type of service
--     *@return service instances
--     */
--    @SuppressWarnings ("unchecked" )
--    public static <T> Collection<T> newserviceInstances(final Class<T> service){
--        if(!SERVICES.containskey(service)) {
--           return Collections.emptyList();
--        }
--        Collection<object> services = SERVICES.get(service);
--        if (services.isEmpty()){
--            return Collections.emptyList();
--        }
--        Collection<T> result = new ArrayList<>(services.size());
--        for (Object each: services) {
--            result.add((T) newServiceInstance(each.getClass()));
--        }
--        return result;
--    }
--    
--    private static Object newServiceInstance(final Class<?> clazz) {
--        try{
--           return clazz.getDeclaredConstructor( ) . newInstance( ) ;
--        } catch (final ReflectiveOperationException ex) {
--            throw new ServiceLoaderInstantiationException(clazz, ex);
--        }
--    }
--}
--```
--We can see that all SPI classes are placed in this `SERVICES`property.
--
--```java
--private static final Map<Class<?>, Collection<Object>> SERVICES = new ConcurrentHashMap<>();
-+TypedSPILoader.findService(final Class<T> spiClass, final String type)
- ```
- 
-+So we just have to pay attention to `TypedSPILoader.findService` approaches.
- 
--And registering is pretty simple too, just use the SPI api embedded in java.
--
--```java
--public static void register(final Class<?> serviceInterface) {
--        if (!SERVICES.containsKey(serviceInterface)) {
--            SERVICES.put(serviceInterface, load(serviceInterface));
--        }
--    }
--private static <T> Collection<Object> load(final Class<T> serviceInterface) {
--        Collection<Object> result = new LinkedList<>();
--        for (T each : ServiceLoader.load(serviceInterface)) {
--            result.add(each);
--        }
--        return result;
--    }
--```
--**`TypedSPIRegistry`**
-+**`TypedSPILoader`**
- 
--The `findService` method in `TypedSPIRegistry` is essentially a call to the `getSingletonServiceInstancesmethod` of the `ShardingSphereServiceLoader`.
-+The `findService` method in `TypedSPILoader` is essentially a call to the `getSingletonServiceInstancesmethod` of the `ShardingSphereServiceLoader`.
- 
- ```java
- public static <T extends StatelessTypedSPI> Optional<T> findService(final Class<T> spiClass, final String type) {
+ 1. To test Oracle, add an Oracle driver dependency to pom.xml.

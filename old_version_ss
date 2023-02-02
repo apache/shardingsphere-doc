@@ -1,52 +1,197 @@
-commit 9ef4d9825cc190ee4e6c50dc2b56ac2f199cf3a9
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Wed Feb 1 14:11:39 2023 +0800
+commit 7e12ccdef4a607fa5651f291903adff73df3080d
+Author: Ling Hengqian <linghengqian@outlook.com>
+Date:   Thu Feb 2 13:06:41 2023 +0800
 
-    Revise pr#23685 (#23893)
+    Introduce Truffle Espresso to make GroovyShell available under GraalVM Native Image and update GraalVM Reachability Metadata Repository to 0.2.6 (#23873)
 
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/mask.cn.md b/docs/document/content/user-manual/common-config/builtin-algorithm/mask.cn.md
-index 2154998d8e6..bb23d1f4f21 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/mask.cn.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/mask.cn.md
-@@ -141,12 +141,12 @@ weight = 9
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
+index 8e523158383..90005df99b5 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
+@@ -21,7 +21,7 @@ services:
+   apache-shardingsphere-proxy-native:
+     image: ghcr.io/apache/shardingsphere-proxy-native:latest
+     volumes:
+-      - ./custom/conf:/conf
++      - ./custom/conf:/opt/shardingsphere-proxy-native/conf
+     ports:
+       - "3307:3307"
+ ```
+@@ -34,17 +34,29 @@ services:
+   需要等待 Junit 5 Platform 的集成，你总是需要在构建 GraalVM Native Image 的过程中，
+   加上特定于 `GraalVM Native Build Tools` 的 `-DskipNativeTests` 或 `-DskipTests` 参数跳过 Native Image 中的单元测试。
  
- 可配置属性：
++- 如下 3 个算法类由于涉及到 GraalVM Truffle Espresso 不方便在 host JVM 和 guest JVM 之间交互的 `groovy.lang.Closure`
++  类，暂未可在 GraalVM Native Image 下使用。
++    - `org.apache.shardingsphere.sharding.algorithm.sharding.complex.ComplexInlineShardingAlgorithm`
++    - `org.apache.shardingsphere.sharding.algorithm.sharding.hint.HintInlineShardingAlgorithm`
++    - `org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm`
++
++- 当前阶段，GraalVM Native Image 形态的 ShardingSphere Proxy 处于混合 AOT ( GraalVM Native Image ) 和 JIT ( GraalVM
++  Truffle Espresso ) 运行的阶段。由于 https://github.com/oracle/graal/issues/4555 尚未关闭，GraalVM Truffle Espresso
++  运行需要的 `.so` 文件并不会进入 GraalVM Native Image 内。因此如果你需要在 Docker Image 外运行 ShardingSphere Proxy
++  Native 的二进制文件，你需要确保系统环境变量 `GRAALVM_HOME` 或 `JAVA_HOME` 指向 GraalVM 的 `bin` 目录，并且此 GraalVM
++  实例已经通过 `GraalVM Updater` 安装了 `espresso` 组件。目前，`GRAALVM_HOME` 优先级比 `JAVA_HOME` 高。
++
+ - 本节假定处于 Linux（amd64，aarch64）， MacOS（amd64）或 Windows（amd64）环境。
+-  如果你位于 MacOS（aarch64/M1） 环境，你需要关注尚未关闭的 https://github.com/oracle/graal/issues/2666。
++  如果你位于 MacOS（aarch64/M1） 环境，你需要关注尚未关闭的 https://github.com/oracle/graal/issues/2666 。
  
--| *名称*            | *数据类型* | *说明*        |
--|-----------------|----------|-------------|
--| uppercase-letter-codes | String   | 大写字母 |
--| lowercase-letter-codes | String   | 小写字母 |
--| digital-random-codes   | String   | 数字    |
--| special-codes          | String   | 特殊字符 |
-+| *名称*                   | *数据类型* | *说明*                                                                   |
-+|------------------------|----------|------------------------------------------------------------------------|
-+| uppercase-letter-codes | String   | 大写字母码表（以英文逗号分隔，默认值：A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z）|
-+| lowercase-letter-codes | String   | 小写字母码表（以英文逗号分隔，默认值：a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z）|
-+| digital-codes          | String   | 数字码表（以英文逗号分隔，默认值：0,1,2,3,4,5,6,7,8,9）                                  |
-+| special-codes          | String   | 特殊字符码表（以英文逗号分隔，默认值：~,!,@,#,$,%,^,&,*,:,&lt;,&gt;,&#166;）|
+ ## 前提条件
  
- ## 操作步骤
- 1. 在脱敏规则中配置脱敏算法；
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/mask.en.md b/docs/document/content/user-manual/common-config/builtin-algorithm/mask.en.md
-index d442057d267..8dc72f3937d 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/mask.en.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/mask.en.md
-@@ -141,12 +141,12 @@ Type: GENERIC_TABLE_RANDOM_REPLACE
+ 1. 根据 https://www.graalvm.org/downloads/ 要求安装和配置 JDK 17 对应的 `GraalVM CE` 或 `GraalVM EE`。
+    同时可以通过 `SDKMAN!` 安装 JDK 17 对应的 `GraalVM CE`。
  
- Attributes:
+-2. 通过 `GraalVM Updater` 工具安装 `native-image` 组件。
++2. 通过 `GraalVM Updater` 工具安装 `native-image` 和 `espresso` 组件。
  
--| *Name*          | *DataType* | *Description*                         |
--|-----------------|--------|---------------------------------------|
--| uppercase-letter-codes | String   | Uppercase letter (No Split) |
--| lowercase-letter-codes | String   | Lowercase-letter (No Split) |
--| digital-random-codes   | String   | Number (No Split)   |
--| special-codes          | String   | Special code (No Split)|
-+| *Name*                 | *DataType* | *Description*                                                                                                    |
-+|------------------------|--------|------------------------------------------------------------------------------------------------------------------|
-+| uppercase-letter-codes | String   | Uppercase letter codes (separate with comma, default value: A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) |
-+| lowercase-letter-codes | String   | Lowercase-letter codes (separate with comma, default value: a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z) |
-+| digital-random-codes   | String   | Numbers (separate with comma, default value: 0,1,2,3,4,5,6,7,8,9)                                                |
-+| special-codes          | String   | Special codes (separate with comma, default value: ~,!,@,#,$,%,^,&,*,:,&lt;,&gt;,&#166;)                         |
+-3. 根据 https://www.graalvm.org/22.2/reference-manual/native-image/#prerequisites 的要求安装本地工具链。
++3. 根据 https://www.graalvm.org/22.3/reference-manual/native-image/#prerequisites 的要求安装本地工具链。
  
- ## Operating Procedure
- 1. Configure maskAlgorithms in a mask rule.
+ 4. 如果需要构建 Docker Image， 确保 `docker-cli` 在系统环境变量内。
+ 
+@@ -73,16 +85,16 @@ services:
+ ```xml
+ 
+ <dependencies>
+-    <dependency>
+-        <groupId>com.mysql</groupId>
+-        <artifactId>mysql-connector-j</artifactId>
+-        <version>8.0.31</version>
+-    </dependency>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-sql-translator-jooq-provider</artifactId>
+-        <version>5.2.0</version>
+-    </dependency>
++  <dependency>
++    <groupId>com.mysql</groupId>
++    <artifactId>mysql-connector-j</artifactId>
++    <version>8.0.32</version>
++  </dependency>
++  <dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sql-translator-jooq-provider</artifactId>
++    <version>5.3.1</version>
++  </dependency>
+ </dependencies>
+ ```
+ 
+@@ -116,14 +128,14 @@ services:
+   apache-shardingsphere-proxy-native:
+     image: apache/shardingsphere-proxy-native:latest
+     volumes:
+-      - ./custom/conf:/conf
++      - ./custom/conf:/opt/shardingsphere-proxy-native/conf
+     ports:
+       - "3307:3307"
+ ```
+ 
+ - 如果你不对 Git Source 做任何更改， 上文提及的命令将使用 `oraclelinux:9-slim` 作为 Base Docker Image。
+   但如果你希望使用 `busybox:glic`，`gcr.io/distroless/base` 或 `scratch` 等更小体积的 Docker Image 作为 Base Docker
+-  Image，你需要根据 https://www.graalvm.org/22.2/reference-manual/native-image/guides/build-static-executables/ 的要求，
++  Image，你需要根据 https://www.graalvm.org/22.3/reference-manual/native-image/guides/build-static-executables/ 的要求，
+   做为 `pom.xml`的 `native profile` 添加 `-H:+StaticExecutableWithDynamicLibC` 的 `jvmArgs` 等操作。
+   另请注意，某些第三方依赖将需要在 `Dockerfile` 安装更多系统库，例如 `libdl`。
+   因此请确保根据你的使用情况调整 `distribution/proxy-native`
+@@ -135,7 +147,7 @@ services:
+   Proxy，其提供的可观察性的能力与 https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/observability/
+   并不一致。
+ 
+-- 你可以使用 https://www.graalvm.org/22.2/tools/ 提供的一系列命令行工具或可视化工具观察 GraalVM Native Image
++- 你可以使用 https://www.graalvm.org/22.3/tools/ 提供的一系列命令行工具或可视化工具观察 GraalVM Native Image
+   的内部行为，并根据其要求使用 VSCode 完成调试工作。
+   如果你正在使用 IntelliJ IDEA 并且希望调试生成的 GraalVM Native Image，
+   你可以关注 https://blog.jetbrains.com/idea/2022/06/intellij-idea-2022-2-eap-5/#Experimental_GraalVM_Native_Debugger_for_Java
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
+index bf482eeb6f4..0f03b9d8834 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
+@@ -23,7 +23,7 @@ services:
+   apache-shardingsphere-proxy-native:
+     image: ghcr.io/apache/shardingsphere-proxy-native:latest
+     volumes:
+-      - ./custom/conf:/conf
++      - ./custom/conf:/opt/shardingsphere-proxy-native/conf
+     ports:
+       - "3307:3307"
+ ````
+@@ -38,8 +38,23 @@ services:
+   Plus `-DskipNativeTests` or `-DskipTests` parameter specific to `GraalVM Native Build Tools` to skip unit tests in
+   Native Image.
+ 
++- The following three algorithm classes are not available under GraalVM Native Image because they involve
++  the `groovy.lang.Closure` class that is inconvenient for GraalVM Truffle Espresso to interact between the host JVM and
++  the guest JVM.
++    - `org.apache.shardingsphere.sharding.algorithm.sharding.complex.ComplexInlineShardingAlgorithm`
++    - `org.apache.shardingsphere.sharding.algorithm.sharding.hint.HintInlineShardingAlgorithm`
++    - `org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm`
++
++- At the current stage, ShardingSphere Proxy in GraalVM Native Image is in the stage of mixed AOT ( GraalVM
++  Native Image ) and JIT ( GraalVM Truffle Espresso ) operation. Since https://github.com/oracle/graal/issues/4555 has
++  not been closed, the `.so` file required for GraalVM Truffle Espresso to run does not enter the GraalVM Native Image.
++  So if you need to run the binary files of ShardingSphere Proxy Native outside the Docker Image, you need to ensure
++  that the system environment variable `GRAALVM_HOME` or `JAVA_HOME` points to the `bin` directory of GraalVM, and this
++  GraalVM instance has been installed `espresso` component by `GraalVM Updater`. Currently, `GRAALVM_HOME` has higher
++  priority than `JAVA_HOME`.
++
+ - This section assumes a Linux (amd64, aarch64), MacOS (amd64) or Windows (amd64) environment.
+-  If you are on MacOS(aarch64/M1) environment, you need to follow https://github.com/oracle/graal/issues/2666 which is
++  If you are on MacOS (aarch64/M1) environment, you need to follow https://github.com/oracle/graal/issues/2666 which is
+   not closed yet.
+ 
+ ## Premise
+@@ -47,9 +62,9 @@ services:
+ 1. Install and configure `GraalVM CE` or `GraalVM EE` for JDK 17 according to https://www.graalvm.org/downloads/.
+    `GraalVM CE` for JDK 17 can also be installed via `SDKMAN!`.
+ 
+-2. Install the `native-image` component via the `GraalVM Updater` tool.
++2. Install the `native-image` and `espresso` component via the `GraalVM Updater` tool.
+ 
+-3. Install the local toolchain as required by https://www.graalvm.org/22.2/reference-manual/native-image/#prerequisites.
++3. Install the local toolchain as required by https://www.graalvm.org/22.3/reference-manual/native-image/#prerequisites.
+ 
+ 4. If you need to build a Docker Image, make sure `docker-cli` is in the system environment variables.
+ 
+@@ -83,12 +98,12 @@ services:
+     <dependency>
+         <groupId>com.mysql</groupId>
+         <artifactId>mysql-connector-j</artifactId>
+-        <version>8.0.31</version>
++        <version>8.0.32</version>
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-sql-translator-jooq-provider</artifactId>
+-        <version>5.2.0</version>
++        <version>5.3.1</version>
+     </dependency>
+ </dependencies>
+ ```
+@@ -125,7 +140,7 @@ services:
+   apache-shardingsphere-proxy-native:
+     image: apache/shardingsphere-proxy-native:latest
+     volumes:
+-      - ./custom/conf:/conf
++      - ./custom/conf:/opt/shardingsphere-proxy-native/conf
+     ports:
+       - "3307:3307"
+ ```
+@@ -134,7 +149,7 @@ services:
+   Base Docker Image.
+   But if you want to use a smaller Docker Image like `busybox:glic`, `gcr.io/distroless/base` or `scratch` as the Base
+   Docker Image, you need according
+-  to https://www.graalvm.org/22.2/reference-manual/native-image/guides/build-static-executables/,
++  to https://www.graalvm.org/22.3/reference-manual/native-image/guides/build-static-executables/,
+   Add operations such as `-H:+StaticExecutableWithDynamicLibC` to `jvmArgs` as the `native profile` of `pom.xml`.
+   Also note that some 3rd party dependencies will require more system libraries such as `libdl` to be installed in
+   the `Dockerfile`.
+@@ -148,7 +163,7 @@ services:
+   Not consistent.
+ 
+ - You can observe GraalVM Native Image using a series of command line tools or visualization tools available
+-  at https://www.graalvm.org/22.2/tools/, and use VSCode to debug it according to its requirements.
++  at https://www.graalvm.org/22.3/tools/, and use VSCode to debug it according to its requirements.
+   If you are using IntelliJ IDEA and want to debug the generated GraalVM Native Image,
+   You can
+   follow https://blog.jetbrains.com/idea/2022/06/intellij-idea-2022-2-eap-5/#Experimental_GraalVM_Native_Debugger_for_Java

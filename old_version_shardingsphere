@@ -1,69 +1,53 @@
-commit fb40ef02461e5c0bb27df5a3c61791681835b64d
-Author: FPokerFace <112867462+FPokerFace@users.noreply.github.com>
-Date:   Tue Feb 28 13:38:44 2023 +0800
+commit 98ee5f03015567f6561f7edbe405c6b0da5b1aa4
+Author: jiangML <1060319118@qq.com>
+Date:   Tue Feb 28 19:18:26 2023 +0800
 
-    2.28 upload articles (#24371)
+    optimize the transactions total metrics (#24380)
     
-    * upload 1 article
+    * merge proxy_commit_transactions_total, proxy_rollback_transactions_total metrics to proxy_transactions_total
     
-    * Update 2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios.en.md
+    * optimize agent file plugin e2e test
 
-diff --git a/docs/blog/content/material/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios.en.md b/docs/blog/content/material/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios.en.md
-index 7446c94ecee..61256b5e756 100644
---- a/docs/blog/content/material/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios.en.md
-+++ b/docs/blog/content/material/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios.en.md
-@@ -9,7 +9,7 @@ chapter = true
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.cn.md
+index d7ad6ecc1c2..700f09d331d 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.cn.md
+@@ -164,7 +164,6 @@ services:
+ | proxy_meta_data_info              | GAUGE_METRIC_FAMILY | ShardingSphere-Proxy 元数据信息，database_count：逻辑库数量，storage_unit_count：存储节点数量 |
+ | proxy_current_connections         | GAUGE               | ShardingSphere-Proxy 的当前连接数                                               |
+ | proxy_requests_total              | COUNTER             | ShardingSphere-Proxy 的接受请求总数                                              |
+-| proxy_commit_transactions_total   | COUNTER             | ShardingSphere-Proxy 的事务提交总数                                              |
+-| proxy_rollback_transactions_total | COUNTER             | ShardingSphere-Proxy 的事务回滚总数                                              |
++| proxy_transactions_total          | COUNTER             | ShardingSphere-Proxy 的事务总数，按 commit，rollback 分类                      |
+ | proxy_execute_latency_millis      | HISTOGRAM           | ShardingSphere-Proxy 的执行耗时毫秒直方图                                           |
+ | proxy_execute_errors_total        | COUNTER             | ShardingSphere-Proxy 的执行异常总数                                              |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.en.md
+index 499a54795cc..0a042dfb9d8 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/observability/_index.en.md
+@@ -157,17 +157,16 @@ services:
  
- ## 1. Background
+ ## Metrics
  
--Thanks to our continuous review of the [ShardingSphere](https://shardingsphere.apache.org/)’s community feedback that we use to develop features such as data sharding and read/write splitting, we found that some users create a large number of shards when using the data sharding feature.
-+Thanks to our continuous review of the [ShardingSphere](https://shardingsphere.apache.org/)'s community feedback that we use to develop features such as data sharding and read/write splitting, we found that some users create a large number of shards when using the data sharding feature.
- 
- In such cases, there can be 1,000 physical tables corresponding to a sharding logical table, which largely disturbs users.
- 
-@@ -19,15 +19,15 @@ However, if users are not familiar with Proxy, or write a `where` condition and
- 
- A full route can lower the performance of Proxy and even result in the failure of a reasonable request. Imagine that there are 1000 shards in a physical database, if they are executed in parallel, 1,000 connections are needed — and if in serial, the request can lead to a timeout. In this regard, community users requested whether the unreasonable request can be intercepted directly.
- 
--We’ve considered the issue for a while. If we simply block the full-route operation, we just need to check it in the code and add a switch to the configuration file. On the other hand, if the user later needs to set a table to read-only or requires the update operation to carry a `limit`, does that mean we need to change the code and configuration again? This obviously goes against the pluggable logic of Proxy.
-+We've considered the issue for a while. If we simply block the full-route operation, we just need to check it in the code and add a switch to the configuration file. On the other hand, if the user later needs to set a table to read-only or requires the update operation to carry a `limit`, does that mean we need to change the code and configuration again? This obviously goes against the pluggable logic of Proxy.
- 
- In response to the above problems, the [recently released Apache ShardingSphere 5.2.0](https://faun.pub/apache-shardingsphere-5-2-0-is-released-bringing-new-cloud-native-possibilities-8d674d964a93?source=your_stories_page-------------------------------------) provides users with SQL audit for the sharding function. The audit can either be an interception operation or a statistical operation. Similar to the sharding and unique key generation algorithms, the audit algorithm is also plugin-oriented, user-defined, and configurable.
- 
--Next, we will elaborate on the implementation logic for data sharding’s audit, with specific SQL examples.
-+Next, we will elaborate on the implementation logic for data sharding's audit, with specific SQL examples.
- 
- ## **2. Audit for sharding interface**
- 
--The entrance to Apache ShardingSphere’s audit is in the `org.apache.shardingsphere.infra.executor.check.SQLCheckEngine` class, which will invoke the `check` method of the `SQLChecker` interface. Currently, ShardingSphere audit contains audit for permission (verify username and password) and audit for sharding.
-+The entrance to Apache ShardingSphere's audit is in the `org.apache.shardingsphere.infra.executor.check.SQLCheckEngine` class, which will invoke the `check` method of the `SQLChecker` interface. Currently, ShardingSphere audit contains audit for permission (verify username and password) and audit for sharding.
- 
- Here we focus on the parent interface implemented in `ShardingAuditChecker` of audit for sharding.
- 
-@@ -59,7 +59,7 @@ For this reason, we provide `Hint: disableAuditNames` to skip audit interception
- 
- ## **3. Audit for sharding algorithm**
- 
--The audit for sharding algorithm interface `org.apache.shardingsphere.sharding.spi.ShardingAuditAlgorithm` is inherited from SPI class `ShardingSphereAlgorithm`. It inherits `type` and `props` properties and defines its own `check` method. If you‘re looking to customize your own audit algorithm, just implement the interface and add it to `INF.services`.
-+The audit for sharding algorithm interface `org.apache.shardingsphere.sharding.spi.ShardingAuditAlgorithm` is inherited from SPI class `ShardingSphereAlgorithm`. It inherits `type` and `props` properties and defines its own `check` method. If you're looking to customize your own audit algorithm, just implement the interface and add it to `INF.services`.
- 
- ![img](https://shardingsphere.apache.org/blog/img/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios3.png)
- 
-@@ -118,7 +118,7 @@ public final class DMLShardingConditionsShardingAuditAlgorithm implements Shardi
- }
- ```
- 
--Here we’d like to introduce another audit for sharding algorithm: `LimitRequiredShardingAuditAlgorithm`. This algorithm can intercept SQL without carrying `limit` in the `update` and `delete` operations.
-+Here we'd like to introduce another audit for sharding algorithm: `LimitRequiredShardingAuditAlgorithm`. This algorithm can intercept SQL without carrying `limit` in the `update` and `delete` operations.
- 
- As this algorithm is less universal, it is not currently integrated into Apache ShardingSphere. As you can see, it is very easy to implement a custom algorithm, which is why we need to design the audit for sharding framework. Thanks to its plugin-oriented architecture, ShardingSphere boasts great scalability.
- 
-@@ -237,7 +237,7 @@ CREATE SHARDING TABLE RULE # including AUDIT_STRATEGY
- 
- This post introduced how audit for sharding works with specific examples. I believe you already have basic understanding of this function, and you can use it whenever you need or use custom algorithm.
- 
--You are also welcome to submit general algorithms to the community. If you have any ideas you’d like to contribute or you encounter any issues with your ShardingSphere, feel free to post them on [GitHub](https://github.com/apache/shardingsphere).
-+You are also welcome to submit general algorithms to the community. If you have any ideas you'd like to contribute or you encounter any issues with your ShardingSphere, feel free to post them on [GitHub](https://github.com/apache/shardingsphere).
- 
- # Author
- 
+-| Name                              | Type                | Description                                                                                                                              |
+-| :-------------------------------- | :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------- |
+-| build_info                        | GAUGE_METRIC_FAMILY | Build information                                                                                                                        |
+-| parsed_sql_total                  | COUNTER             | Total count of parsed by type (INSERT, UPDATE, DELETE, SELECT, DDL, DCL, DAL, TCL, RQL, RDL, RAL, RUL)                                   |
+-| routed_sql_total                  | COUNTER             | Total count of routed by type (INSERT, UPDATE, DELETE, SELECT)                                                                           |
+-| routed_result_total               | COUNTER             | Total count of routed result (data source routed, table routed)                                                                          |
+-| proxy_state                       | GAUGE_METRIC_FAMILY | Status information of ShardingSphere-Proxy. 0 is OK; 1 is CIRCUIT BREAK; 2 is LOCK                                                       |
++| Name                              | Type                | Description                                                                                                                               |
++| :-------------------------------- | :------------------ |:------------------------------------------------------------------------------------------------------------------------------------------|
++| build_info                        | GAUGE_METRIC_FAMILY | Build information                                                                                                                         |
++| parsed_sql_total                  | COUNTER             | Total count of parsed by type (INSERT, UPDATE, DELETE, SELECT, DDL, DCL, DAL, TCL, RQL, RDL, RAL, RUL)                                    |
++| routed_sql_total                  | COUNTER             | Total count of routed by type (INSERT, UPDATE, DELETE, SELECT)                                                                            |
++| routed_result_total               | COUNTER             | Total count of routed result (data source routed, table routed)                                                                           |
++| proxy_state                       | GAUGE_METRIC_FAMILY | Status information of ShardingSphere-Proxy. 0 is OK; 1 is CIRCUIT BREAK; 2 is LOCK                                                        |
+ | proxy_meta_data_info              | GAUGE_METRIC_FAMILY | Meta data information of ShardingSphere-Proxy. database_count is logic number of databases; storage_unit_count is number of storage units |
+ | proxy_current_connections         | GAUGE               | Current connections of ShardingSphere-Proxy                                                                                               |
+ | proxy_requests_total              | COUNTER             | Total requests of ShardingSphere-Proxy                                                                                                    |
+-| proxy_commit_transactions_total   | COUNTER             | Total commit transactions of ShardingSphere-Proxy                                                                                         |
+-| proxy_rollback_transactions_total | COUNTER             | Total rollback transactions of ShardingSphere-Proxy                                                                                       |
++| proxy_transactions_total          | COUNTER             | Total transactions of ShardingSphere-Proxy, classify by commit, rollback                                                                  |
+ | proxy_execute_latency_millis      | HISTOGRAM           | Execute latency millis histogram of ShardingSphere-Proxy                                                                                  |
+ | proxy_execute_errors_total        | COUNTER             | Total executor errors of ShardingSphere-Proxy                                                                                             |

@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title> ShardingSphere 5.2.0: Audit for sharding intercepts unreasonable requests in multi-shards scenarios &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title"> ShardingSphere 5.2.0: Audit for sharding intercepts unreasonable requests in multi-shards scenarios</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p><img src="https://shardingsphere.apache.org/blog/img/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios1.png" alt="img"></p>
+<h2 id="1-background">1. Background</h2>
+<p>Thanks to our continuous review of the <a href="https://shardingsphere.apache.org/">ShardingSphere</a>’s community feedback that we use to develop features such as data sharding and read/write splitting, we found that some users create a large number of shards when using the data sharding feature.</p>
+<p>In such cases, there can be 1,000 physical tables corresponding to a sharding logical table, which largely disturbs users.</p>
+<p>For instance, a <code>SELECT * FROM t_order</code> statement will lead to a full-route, which is obviously not the case for <a href="https://shardingsphere.apache.org/blog/en/material/2022_04_26_how_to_use_shardingsphere-proxy_in_real_production_scenarios_your_quick_start_guide/">OLTP</a>. This SQL can be placed in another Proxy to avoid blocking other requests.</p>
+<p>However, if users are not familiar with Proxy, or write a <code>where</code> condition and don&rsquo;t know that sharding is not supported in this condition, a full-route is still required.</p>
+<p>A full route can lower the performance of Proxy and even result in the failure of a reasonable request. Imagine that there are 1000 shards in a physical database, if they are executed in parallel, 1,000 connections are needed — and if in serial, the request can lead to a timeout. In this regard, community users requested whether the unreasonable request can be intercepted directly.</p>
+<p>We’ve considered the issue for a while. If we simply block the full-route operation, we just need to check it in the code and add a switch to the configuration file. On the other hand, if the user later needs to set a table to read-only or requires the update operation to carry a <code>limit</code>, does that mean we need to change the code and configuration again? This obviously goes against the pluggable logic of Proxy.</p>
+<p>In response to the above problems, the <a href="https://faun.pub/apache-shardingsphere-5-2-0-is-released-bringing-new-cloud-native-possibilities-8d674d964a93?source=your_stories_page-------------------------------------">recently released Apache ShardingSphere 5.2.0</a> provides users with SQL audit for the sharding function. The audit can either be an interception operation or a statistical operation. Similar to the sharding and unique key generation algorithms, the audit algorithm is also plugin-oriented, user-defined, and configurable.</p>
+<p>Next, we will elaborate on the implementation logic for data sharding’s audit, with specific SQL examples.</p>
+<h2 id="2-audit-for-sharding-interface"><strong>2. Audit for sharding interface</strong></h2>
+<p>The entrance to Apache ShardingSphere’s audit is in the <code>org.apache.shardingsphere.infra.executor.check.SQLCheckEngine</code> class, which will invoke the <code>check</code> method of the <code>SQLChecker</code> interface. Currently, ShardingSphere audit contains audit for permission (verify username and password) and audit for sharding.</p>
+<p>Here we focus on the parent interface implemented in <code>ShardingAuditChecker</code> of audit for sharding.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios2.png" alt="img"></p>
+<p>We can learn its working principles quickly through viewing the <code>check</code> code of <code>org.apache.shardingsphere.sharding.checker.audit.ShardingAuditChecker</code>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">ShardingAuditAlgorithm</span> <span style="color:#66d9ef">extends</span> ShardingSphereAlgorithm <span style="color:#f92672">{</span>
+    
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Sharding audit algorithm SQL check.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * @param sqlStatementContext SQL statement context
+</span><span style="color:#75715e">     * @param parameters SQL parameters
+</span><span style="color:#75715e">     * @param grantee grantee
+</span><span style="color:#75715e">     * @param database database
+</span><span style="color:#75715e">     * @return SQL check result
+</span><span style="color:#75715e">     */</span>
+    SQLCheckResult <span style="color:#a6e22e">check</span><span style="color:#f92672">(</span>SQLStatementContext<span style="color:#f92672">&lt;?&gt;</span> sqlStatementContext<span style="color:#f92672">,</span> List<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> parameters<span style="color:#f92672">,</span> Grantee grantee<span style="color:#f92672">,</span> ShardingSphereDatabase database<span style="color:#f92672">);</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>This method obtains the audit strategies of all the sharding tables involved and invokes the audit algorithms configured in each sharding table audit strategy. If an audit algorithm fails to pass, an exception is displayed to the user.</p>
+<p>Some users may wonder what <code>disableAuditNames</code> does here. The audit for sharding also allows users to skip this process. In some cases, users may need to execute SQL that should have been blocked by the audit, and they are aware of the impact of this SQL.</p>
+<p>For this reason, we provide <code>Hint: disableAuditNames</code> to skip audit interception, which will be described with practical examples later on. The Proxy Administrators can configure <code>allowHintDisable</code> to control whether to allow users to skip this process. The default value is <code>true</code>, indicating that Hint-based skip is allowed.</p>
+<h2 id="3-audit-for-sharding-algorithm"><strong>3. Audit for sharding algorithm</strong></h2>
+<p>The audit for sharding algorithm interface <code>org.apache.shardingsphere.sharding.spi.ShardingAuditAlgorithm</code> is inherited from SPI class <code>ShardingSphereAlgorithm</code>. It inherits <code>type</code> and <code>props</code> properties and defines its own <code>check</code> method. If you‘re looking to customize your own audit algorithm, just implement the interface and add it to <code>INF.services</code>.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2022_10_14_ShardingSphere_5.2.0_Audit_for_sharding_intercepts_unreasonable_requests_in_multi-shards_scenarios3.png" alt="img"></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">ShardingAuditAlgorithm</span> <span style="color:#66d9ef">extends</span> ShardingSphereAlgorithm <span style="color:#f92672">{</span>
+    
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Sharding audit algorithm SQL check.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * @param sqlStatementContext SQL statement context
+</span><span style="color:#75715e">     * @param parameters SQL parameters
+</span><span style="color:#75715e">     * @param grantee grantee
+</span><span style="color:#75715e">     * @param database database
+</span><span style="color:#75715e">     * @return SQL check result
+</span><span style="color:#75715e">     */</span>
+    SQLCheckResult <span style="color:#a6e22e">check</span><span style="color:#f92672">(</span>SQLStatementContext<span style="color:#f92672">&lt;?&gt;</span> sqlStatementContext<span style="color:#f92672">,</span> List<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> parameters<span style="color:#f92672">,</span> Grantee grantee<span style="color:#f92672">,</span> ShardingSphereDatabase database<span style="color:#f92672">);</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Apache ShardingSphere implements a general audit for sharding algorithm <code>org.apache.shardingsphere.sharding.algorithm.audit.DMLShardingConditionsShardingAuditAlgorithm</code>, namely the above-mentioned SQL statement that intercepts the full-route.</p>
+<p>The algorithm makes decisions by determining whether the sharding condition is <code>null</code>. Of course, it won&rsquo;t intercept broadcast tables and non-sharding tables.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">DMLShardingConditionsShardingAuditAlgorithm</span> <span style="color:#66d9ef">implements</span> ShardingAuditAlgorithm <span style="color:#f92672">{</span>
+    
+    <span style="color:#a6e22e">@Getter</span>
+    <span style="color:#66d9ef">private</span> Properties props<span style="color:#f92672">;</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">init</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Properties props<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">this</span><span style="color:#f92672">.</span><span style="color:#a6e22e">props</span> <span style="color:#f92672">=</span> props<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#a6e22e">@SuppressWarnings</span><span style="color:#f92672">({</span><span style="color:#e6db74">&#34;rawtypes&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;unchecked&#34;</span><span style="color:#f92672">})</span>
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> SQLCheckResult <span style="color:#a6e22e">check</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> SQLStatementContext<span style="color:#f92672">&lt;?&gt;</span> sqlStatementContext<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> List<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> parameters<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Grantee grantee<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> ShardingSphereDatabase database<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>sqlStatementContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getSqlStatement</span><span style="color:#f92672">()</span> <span style="color:#66d9ef">instanceof</span> DMLStatement<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            ShardingRule rule <span style="color:#f92672">=</span> database<span style="color:#f92672">.</span><span style="color:#a6e22e">getRuleMetaData</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getSingleRule</span><span style="color:#f92672">(</span>ShardingRule<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">);</span>
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>rule<span style="color:#f92672">.</span><span style="color:#a6e22e">isAllBroadcastTables</span><span style="color:#f92672">(</span>sqlStatementContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getTablesContext</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getTableNames</span><span style="color:#f92672">())</span>
+                    <span style="color:#f92672">||</span> sqlStatementContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getTablesContext</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getTableNames</span><span style="color:#f92672">().</span><span style="color:#a6e22e">stream</span><span style="color:#f92672">().</span><span style="color:#a6e22e">noneMatch</span><span style="color:#f92672">(</span>rule<span style="color:#f92672">::</span>isShardingTable<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> SQLCheckResult<span style="color:#f92672">(</span><span style="color:#66d9ef">true</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;&#34;</span><span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+            ShardingConditionEngine shardingConditionEngine <span style="color:#f92672">=</span> ShardingConditionEngineFactory<span style="color:#f92672">.</span><span style="color:#a6e22e">createShardingConditionEngine</span><span style="color:#f92672">(</span>sqlStatementContext<span style="color:#f92672">,</span> database<span style="color:#f92672">,</span> rule<span style="color:#f92672">);</span>
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>shardingConditionEngine<span style="color:#f92672">.</span><span style="color:#a6e22e">createShardingConditions</span><span style="color:#f92672">(</span>sqlStatementContext<span style="color:#f92672">,</span> parameters<span style="color:#f92672">).</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> SQLCheckResult<span style="color:#f92672">(</span><span style="color:#66d9ef">false</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;Not allow DML operation without sharding conditions&#34;</span><span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> SQLCheckResult<span style="color:#f92672">(</span><span style="color:#66d9ef">true</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;&#34;</span><span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">getType</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#34;DML_SHARDING_CONDITIONS&#34;</span><span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Here we’d like to introduce another audit for sharding algorithm: <code>LimitRequiredShardingAuditAlgorithm</code>. This algorithm can intercept SQL without carrying <code>limit</code> in the <code>update</code> and <code>delete</code> operations.</p>
+<p>As this algorithm is less universal, it is not currently integrated into Apache ShardingSphere. As you can see, it is very easy to implement a custom algorithm, which is why we need to design the audit for sharding framework. Thanks to its plugin-oriented architecture, ShardingSphere boasts great scalability.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">LimitRequiredShardingAuditAlgorithm</span> <span style="color:#66d9ef">implements</span> ShardingAuditAlgorithm <span style="color:#f92672">{</span>
+    
+    <span style="color:#a6e22e">@Getter</span>
+    <span style="color:#66d9ef">private</span> Properties props<span style="color:#f92672">;</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">init</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Properties props<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">this</span><span style="color:#f92672">.</span><span style="color:#a6e22e">props</span> <span style="color:#f92672">=</span> props<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#a6e22e">@SuppressWarnings</span><span style="color:#f92672">({</span><span style="color:#e6db74">&#34;rawtypes&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;unchecked&#34;</span><span style="color:#f92672">})</span>
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> SQLCheckResult <span style="color:#a6e22e">check</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> SQLStatementContext<span style="color:#f92672">&lt;?&gt;</span> sqlStatementContext<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> List<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">&gt;</span> parameters<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Grantee grantee<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> ShardingSphereDatabase database<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>sqlStatementContext <span style="color:#66d9ef">instanceof</span> UpdateStatementContext <span style="color:#f92672">&amp;&amp;</span> <span style="color:#f92672">!((</span>MySQLUpdateStatement<span style="color:#f92672">)</span> sqlStatementContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getSqlStatement</span><span style="color:#f92672">()).</span><span style="color:#a6e22e">getLimit</span><span style="color:#f92672">().</span><span style="color:#a6e22e">isPresent</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> SQLCheckResult<span style="color:#f92672">(</span><span style="color:#66d9ef">false</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;Not allow update without limit&#34;</span><span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>sqlStatementContext <span style="color:#66d9ef">instanceof</span> DeleteStatementContext <span style="color:#f92672">&amp;&amp;</span> <span style="color:#f92672">!((</span>MySQLDeleteStatement<span style="color:#f92672">)</span> sqlStatementContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getSqlStatement</span><span style="color:#f92672">()).</span><span style="color:#a6e22e">getLimit</span><span style="color:#f92672">().</span><span style="color:#a6e22e">isPresent</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> SQLCheckResult<span style="color:#f92672">(</span><span style="color:#66d9ef">false</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;Not allow delete without limit&#34;</span><span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> SQLCheckResult<span style="color:#f92672">(</span><span style="color:#66d9ef">true</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;&#34;</span><span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+    
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">getType</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#34;LIMIT_REQUIRED&#34;</span><span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><h2 id="4-using-audit-for-sharding"><strong>4. Using audit for sharding</strong></h2>
+<p>Audit for sharding requires you to configure audit strategy for logical tables. To help you quickly get started, its configuration is the same with that of the sharding algorithm and the sharding key value generator.</p>
+<p>There is an algorithm definition and strategy definition, and default audit strategy is also supported. If the audit strategy is configured in the logical table, it takes effect only for the logical table.</p>
+<p>If <code>defaultAuditStrategy</code> is configured in the logical table, it takes effect fo all the logical tables under the sharding rule. <code>Auditors</code> are similar to <code>ShardingAlgorithms</code>, <code>auditStrategy</code> to <code>databaseStrategy</code>, and <code>defaultAuditStrategy</code> to <code>defaultDatabaseStrategy</code> or <code>defaultTableStrategy</code>.</p>
+<p>Please refer to the following configuration. Only the configuration of audit for sharding is displayed. You need to configure the sharding algorithm and data source by yourself.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">rules:
+  <span style="color:#f92672">-</span> <span style="color:#f92672">!</span>SHARDING
+    tables:
+      t_order:
+        actualDataNodes: ds_$<span style="color:#960050;background-color:#1e0010">{</span><span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span><span style="color:#960050;background-color:#1e0010">}</span>.t_order_$<span style="color:#960050;background-color:#1e0010">{</span><span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">1</span><span style="color:#960050;background-color:#1e0010">}</span>
+        auditStrategy:
+          auditorNames:
+            <span style="color:#f92672">-</span> sharding_key_required_auditor
+          allowHintDisable: <span style="color:#66d9ef">true</span>    defaultAuditStrategy:
+      auditorNames:
+        <span style="color:#f92672">-</span> sharding_key_required_auditor
+      allowHintDisable: <span style="color:#66d9ef">true</span>    auditors:
+      sharding_key_required_auditor:
+        <span style="color:#66d9ef">type</span>: DML_SHARDING_CONDITIONS
+</code></pre></div><p><strong>Step 1:</strong> Execute a query operation. An error is displayed as the audit strategy for intercepting the full-database route is configured.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-mysql" data-lang="mysql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_order;
+ERROR <span style="color:#ae81ff">13000</span> (<span style="color:#ae81ff">44000</span>): <span style="color:#66d9ef">SQL</span> <span style="color:#66d9ef">check</span> failed, error message: <span style="color:#66d9ef">Not</span> allow DML operation without sharding conditions
+</code></pre></div><p><strong>Step 2:</strong> Add <code>HINT.</code> The name of the <code>HINT</code> is <code>/* ShardingSphere hint: disableAuditNames */</code>，and <code>disableAuditNames</code> is followed by the <code>auditorsNames</code> configured in the preceding command.</p>
+<p>If there are multiple names, separate them with spaces such as <code>/* ShardingSphere hint: disableAuditNames=auditName1 auditName2*/</code>. After using <code>HINT</code>, we can see that the SQL operation is successfully executed.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-mysql" data-lang="mysql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#75715e">/* ShardingSphere hint: disableAuditNames=sharding_key_required_auditor */</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_order;
+<span style="color:#f92672">+----------+---------+------------+--------+</span>
+<span style="color:#f92672">|</span> order_id <span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> address_id <span style="color:#f92672">|</span> status <span style="color:#f92672">|</span>
+<span style="color:#f92672">+----------+---------+------------+--------+</span>
+<span style="color:#f92672">|</span>       <span style="color:#ae81ff">30</span> <span style="color:#f92672">|</span>      <span style="color:#ae81ff">20</span> <span style="color:#f92672">|</span>         <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">20</span>     <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>       <span style="color:#ae81ff">32</span> <span style="color:#f92672">|</span>      <span style="color:#ae81ff">22</span> <span style="color:#f92672">|</span>         <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">20</span>     <span style="color:#f92672">|</span>
+<span style="color:#f92672">+----------+---------+------------+--------+</span>
+<span style="color:#ae81ff">2</span> rows <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">01</span> sec)
+</code></pre></div><p><strong>Note:</strong> <code>HINT</code> requires you to modify the <code>server.yaml</code> configuration of Proxy. In addition, if you are using MySQL terminal to connect to Proxy directly, you need to add the <code>-c</code> property — otherwise, <code>HINT </code>comments will be filtered out of the MySQL terminal and will not be parsed by Proxy on the backend.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">rules:
+  <span style="color:#f92672">-</span> <span style="color:#f92672">!</span>SQL_PARSER
+    sqlCommentParseEnabled: <span style="color:#66d9ef">true</span>
+    sqlStatementCache:
+      initialCapacity: <span style="color:#ae81ff">2000</span>
+      maximumSize: <span style="color:#ae81ff">65535</span>
+    parseTreeCache:
+      initialCapacity: <span style="color:#ae81ff">128</span>
+      maximumSize: <span style="color:#ae81ff">1024</span>
+props:
+  proxy<span style="color:#f92672">-</span>hint<span style="color:#f92672">-</span>enabled: truemysql <span style="color:#f92672">-</span>uroot <span style="color:#f92672">-</span>proot <span style="color:#f92672">-</span>h127.<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">1</span> <span style="color:#f92672">-</span>P3307  <span style="color:#f92672">-</span><span style="color:#66d9ef">c</span>
+</code></pre></div><h2 id="5-distsql-with-audit-for-sharding"><strong>5. DistSQL with audit for sharding</strong></h2>
+<p>Currently, as you can see from the <a href="https://github.com/apache/shardingsphere/releases/tag/5.2.0">release notes</a> Apache ShardingSphere 5.2.0 supports the following <a href="https://shardingsphere.apache.org/document/5.1.0/en/concepts/distsql/">DistSQL</a> with audit for sharding function.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">CREATE</span> SHARDING AUDITOR
+<span style="color:#66d9ef">ALTER</span> SHARDING AUDITOR
+<span style="color:#66d9ef">SHOW</span> SHARDING AUDIT ALGORITHMS
+</code></pre></div><p>The following DistSQL will be supported in future releases:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">DROP</span> SHARDING AUDITOR
+<span style="color:#66d9ef">SHOW</span> UNUSED SHARDING AUDIT ALGORITHMS
+<span style="color:#66d9ef">CREATE</span> SHARDING <span style="color:#66d9ef">TABLE</span> <span style="color:#66d9ef">RULE</span> <span style="color:#f92672">#</span> <span style="color:#66d9ef">including</span> AUDIT_STRATEGY
+</code></pre></div><p>This post introduced how audit for sharding works with specific examples. I believe you already have basic understanding of this function, and you can use it whenever you need or use custom algorithm.</p>
+<p>You are also welcome to submit general algorithms to the community. If you have any ideas you’d like to contribute or you encounter any issues with your ShardingSphere, feel free to post them on <a href="https://github.com/apache/shardingsphere">GitHub</a>.</p>
+<h1 id="author">Author</h1>
+<p>Huang Ting, a technology engineer at <a href="https://www.tencent.com/en-us/">Tencent</a> Financial Technology (FiT) &amp; <a href="https://shardingsphere.apache.org/community/en/team/">ShardingSphere Committer</a>.</p>
+<p>He is mainly responsible for the R&amp;D of Proxy-related audit for sharding and transaction features.</p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_09_22_how_does_shardingspheres_show_processlist__kill_work/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

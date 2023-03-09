@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Fuzzy query for CipherColumn | ShardingSphere 5.3.0 Deep Dive &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Fuzzy query for CipherColumn | ShardingSphere 5.3.0 Deep Dive</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive1.png" alt="img"></p>
+<h1 id="1-background">1. Background</h1>
+<p><a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a> supports data encryption. By parsing users&rsquo; SQL input and rewriting the SQL according to the users&rsquo; encryption rules, the original data is encrypted and stored with ciphertext data in the underlying database at the same time.</p>
+<p>When a user queries the data, it only fetches the ciphertext data from the database, decrypts it, and finally returns the decrypted original data to the user. However, because the encryption algorithm encrypts the whole string, fuzzy queries cannot be achieved.</p>
+<p>Nevertheless, many businesses still need fuzzy queries after the data is encrypted. <a href="https://medium.com/faun/shardingsphere-5-3-0-is-released-new-features-and-improvements-bf4d1c43b09b?source=your_stories_page-------------------------------------">In version 5.3.0</a>, Apache ShardingSphere provides users with a default fuzzy query algorithm, supporting the fuzzy query for encrypted fields. The algorithm also supports hot plugging, which can be customized by users, and the fuzzy query can be achieved through configuration.</p>
+<h1 id="2-how-to-achieve-fuzzy-query-in-encrypted-scenarios"><strong>2. How to achieve fuzzy query in encrypted scenarios?</strong></h1>
+<h2 id="21-load-data-to-the-in-memory-database-imdb">2.1 Load data to the in-memory database (IMDB)</h2>
+<p>Load all the data into the IMDB to decrypt it; then it&rsquo;ll be like querying the original data. This method can achieve fuzzy queries. If the amount of data is small, this method will prove to be simple and cost-effective, while on the other hand, if the amount of data is large, it&rsquo;ll turn out to be a disaster.</p>
+<h2 id="22-implement-encryption--decryption-functions-consistent-with-database-programs">2.2 Implement encryption &amp; decryption functions consistent with database programs</h2>
+<p>The second method is to modify fuzzy query conditions and use the database decryption function to decrypt data first and then implement fuzzy query. This method&rsquo;s advantage is the low implementation &amp; development cost, as well as use cost.</p>
+<p>Users only need to slightly modify the previous fuzzy query conditions. However, the ciphertext and encryption functions are stored together in the database, which cannot cope with the problem of account data leaks.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">Native <span style="color:#66d9ef">SQL</span>: <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">where</span> name <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#34;%xxx%&#34;</span> 
+<span style="color:#66d9ef">After</span> implementing the decryption <span style="color:#66d9ef">function</span>: <span style="color:#960050;background-color:#1e0010">ѕе</span>lесt <span style="color:#f92672">*</span> frоm uѕеr whеrе dесоdе(namе) lіkе <span style="color:#e6db74">&#34;%ххх%&#34;</span>
+</code></pre></div><h2 id="23-store-after-data-masking">2.3 Store after data masking</h2>
+<p>Implement data masking on ciphertext and then store it in a fuzzy query column. This method could lack in terms of precision.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-markdown" data-lang="markdown">For example, mobile number 13012345678 becomes 130****5678 after the masking algorithm is performed.
+</code></pre></div><h2 id="24-perform-encrypted-storage-after-tokenization-and-combination">2.4 Perform encrypted storage after tokenization and combination</h2>
+<p>This method performs tokenization and combination on ciphertext data and then encrypts the resultset by grouping characters with fixed length and splitting a field into multiple ones. For example, we take four English characters and two Chinese characters as a query condition:</p>
+<p><code>ningyu1</code> uses the 4-character as a group to encrypt, so the first group is <code>ning</code>, the second group <code>ingy</code>, the third group <code>ngyu</code>, the fourth group <code>gyu1</code>, and so on. All the characters are encrypted and stored in the fuzzy query column. If you want to retrieve all data that contains four characters, such as <code>ingy</code>, encrypt the characters and use a key <code>like&quot;%partial%&quot;</code> to query.</p>
+<p><strong>Shortcomings:</strong></p>
+<ol>
+<li>Increased storage costs: free grouping will increase the amount of data and the data length will increase after being encrypted.</li>
+<li>Limited length in fuzzy query: due to security issues, the length of free grouping cannot be too short, otherwise it will be easily cracked by the <a href="https://www.techtarget.com/whatis/definition/rainbow-table">rainbow table</a>. Like the example I mentioned above, the length of fuzzy query characters must be greater than or equal to 4 letters/digits, or 2 Chinese characters.</li>
+</ol>
+<h2 id="25-single-character-digest-algorithm-default-fuzzy-query-algorithm-provided-in-shardingsphere-version-530httpsmediumcomfaunshardingsphere-5-3-0-is-released-new-features-and-improvements-bf4d1c43b09bsourceyour_stories_page-------------------------------------">2.5 Single-character digest algorithm (default fuzzy query algorithm provided in ShardingSphere <a href="https://medium.com/faun/shardingsphere-5-3-0-is-released-new-features-and-improvements-bf4d1c43b09b?source=your_stories_page-------------------------------------">version 5.3.0</a>)</h2>
+<p>Although the above methods are all viable, it&rsquo;s only natural to wonder if there&rsquo;s a better alternative out there. In our community, we find that single-character encryption and storage can balance both performance and query, but fails to meet security requirements.</p>
+<p>Then what&rsquo;s the ideal solution? Inspired by masking algorithms and cryptographic hash functions, we find that data loss and one-way functions can be used.</p>
+<p>The cryptographic hash function should have the following four features:</p>
+<ol>
+<li>For any given message, it should be easy to calculate the hash value.</li>
+<li>It should be difficult to infer the original message from a known hash value.</li>
+<li>It should not be feasible to modify the message without changing the hash value.</li>
+<li>There should only be a very low chance that two different messages produce the same hash value.</li>
+</ol>
+<p><strong>Security:</strong> because of the one-way function, it&rsquo;s not possible to infer the original message. In order to improve the accuracy of the fuzzy query, we want to encrypt a single character, but it will be cracked by the rainbow table.</p>
+<p>So we take a one-way function (to make sure every character is the same after encryption) and increase the frequency of collisions (to make sure every string is 1: N backward), which greatly enhances security.</p>
+<h1 id="3-fuzzy-query-algorithm">3. Fuzzy query algorithm</h1>
+<p>Apache ShardingSphere implements a universal fuzzy query algorithm by using the below single-character digest algorithm <code>org.apache.shardingsphere.encrypt.algorithm.like.CharDigestLikeEncryptAlgorithm</code>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">CharDigestLikeEncryptAlgorithm</span> <span style="color:#66d9ef">implements</span> LikeEncryptAlgorithm<span style="color:#f92672">&lt;</span>Object<span style="color:#f92672">,</span> String<span style="color:#f92672">&gt;</span> <span style="color:#f92672">{</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> String DELTA <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;delta&#34;</span><span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> String MASK <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;mask&#34;</span><span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> String START <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;start&#34;</span><span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> String DICT <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;dict&#34;</span><span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">int</span> DEFAULT_DELTA <span style="color:#f92672">=</span> 1<span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">int</span> DEFAULT_MASK <span style="color:#f92672">=</span> 0b1111_0111_1101<span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">int</span> DEFAULT_START <span style="color:#f92672">=</span> 0x4e00<span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">int</span> MAX_NUMERIC_LETTER_CHAR <span style="color:#f92672">=</span> 255<span style="color:#f92672">;</span>
+  
+    <span style="color:#a6e22e">@Getter</span>
+    <span style="color:#66d9ef">private</span> Properties props<span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">int</span> delta<span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">int</span> mask<span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">int</span> start<span style="color:#f92672">;</span>
+  
+    <span style="color:#66d9ef">private</span> Map<span style="color:#f92672">&lt;</span>Character<span style="color:#f92672">,</span> Integer<span style="color:#f92672">&gt;</span> charIndexes<span style="color:#f92672">;</span>
+  
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">init</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Properties props<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">this</span><span style="color:#f92672">.</span><span style="color:#a6e22e">props</span> <span style="color:#f92672">=</span> props<span style="color:#f92672">;</span>
+        delta <span style="color:#f92672">=</span> createDelta<span style="color:#f92672">(</span>props<span style="color:#f92672">);</span>
+        mask <span style="color:#f92672">=</span> createMask<span style="color:#f92672">(</span>props<span style="color:#f92672">);</span>
+        start <span style="color:#f92672">=</span> createStart<span style="color:#f92672">(</span>props<span style="color:#f92672">);</span>
+        charIndexes <span style="color:#f92672">=</span> createCharIndexes<span style="color:#f92672">(</span>props<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">createDelta</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Properties props<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>props<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>DELTA<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            String delta <span style="color:#f92672">=</span> props<span style="color:#f92672">.</span><span style="color:#a6e22e">getProperty</span><span style="color:#f92672">(</span>DELTA<span style="color:#f92672">);</span>
+            <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> Integer<span style="color:#f92672">.</span><span style="color:#a6e22e">parseInt</span><span style="color:#f92672">(</span>delta<span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span>NumberFormatException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> EncryptAlgorithmInitializationException<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;CHAR_DIGEST_LIKE&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;delta can only be a decimal number&#34;</span><span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> DEFAULT_DELTA<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">createMask</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Properties props<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>props<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>MASK<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            String mask <span style="color:#f92672">=</span> props<span style="color:#f92672">.</span><span style="color:#a6e22e">getProperty</span><span style="color:#f92672">(</span>MASK<span style="color:#f92672">);</span>
+            <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> Integer<span style="color:#f92672">.</span><span style="color:#a6e22e">parseInt</span><span style="color:#f92672">(</span>mask<span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span>NumberFormatException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> EncryptAlgorithmInitializationException<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;CHAR_DIGEST_LIKE&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;mask can only be a decimal number&#34;</span><span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> DEFAULT_MASK<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">int</span> <span style="color:#a6e22e">createStart</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Properties props<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>props<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>START<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            String start <span style="color:#f92672">=</span> props<span style="color:#f92672">.</span><span style="color:#a6e22e">getProperty</span><span style="color:#f92672">(</span>START<span style="color:#f92672">);</span>
+            <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> Integer<span style="color:#f92672">.</span><span style="color:#a6e22e">parseInt</span><span style="color:#f92672">(</span>start<span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span>NumberFormatException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> EncryptAlgorithmInitializationException<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;CHAR_DIGEST_LIKE&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;start can only be a decimal number&#34;</span><span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> DEFAULT_START<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#66d9ef">private</span> Map<span style="color:#f92672">&lt;</span>Character<span style="color:#f92672">,</span> Integer<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">createCharIndexes</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Properties props<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        String dictContent <span style="color:#f92672">=</span> props<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>DICT<span style="color:#f92672">)</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#f92672">!</span>Strings<span style="color:#f92672">.</span><span style="color:#a6e22e">isNullOrEmpty</span><span style="color:#f92672">(</span>props<span style="color:#f92672">.</span><span style="color:#a6e22e">getProperty</span><span style="color:#f92672">(</span>DICT<span style="color:#f92672">))</span> <span style="color:#f92672">?</span> props<span style="color:#f92672">.</span><span style="color:#a6e22e">getProperty</span><span style="color:#f92672">(</span>DICT<span style="color:#f92672">)</span> <span style="color:#f92672">:</span> initDefaultDict<span style="color:#f92672">();</span>
+        Map<span style="color:#f92672">&lt;</span>Character<span style="color:#f92672">,</span> Integer<span style="color:#f92672">&gt;</span> result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> HashMap<span style="color:#f92672">&lt;&gt;(</span>dictContent<span style="color:#f92672">.</span><span style="color:#a6e22e">length</span><span style="color:#f92672">(),</span> 1<span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">int</span> index <span style="color:#f92672">=</span> 0<span style="color:#f92672">;</span> index <span style="color:#f92672">&lt;</span> dictContent<span style="color:#f92672">.</span><span style="color:#a6e22e">length</span><span style="color:#f92672">();</span> index<span style="color:#f92672">++)</span> <span style="color:#f92672">{</span>
+            result<span style="color:#f92672">.</span><span style="color:#a6e22e">put</span><span style="color:#f92672">(</span>dictContent<span style="color:#f92672">.</span><span style="color:#a6e22e">charAt</span><span style="color:#f92672">(</span>index<span style="color:#f92672">),</span> index<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#a6e22e">@SneakyThrows</span>
+    <span style="color:#66d9ef">private</span> String <span style="color:#a6e22e">initDefaultDict</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        InputStream inputStream <span style="color:#f92672">=</span> CharDigestLikeEncryptAlgorithm<span style="color:#f92672">.</span><span style="color:#a6e22e">class</span><span style="color:#f92672">.</span><span style="color:#a6e22e">getClassLoader</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getResourceAsStream</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;algorithm/like/common_chinese_character.dict&#34;</span><span style="color:#f92672">);</span>
+        LineProcessor<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> lineProcessor <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> LineProcessor<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;()</span> <span style="color:#f92672">{</span>
+  
+            <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> StringBuilder builder <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> StringBuilder<span style="color:#f92672">();</span>
+  
+            <span style="color:#a6e22e">@Override</span>
+            <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">boolean</span> <span style="color:#a6e22e">processLine</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String line<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>line<span style="color:#f92672">.</span><span style="color:#a6e22e">startsWith</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;#&#34;</span><span style="color:#f92672">)</span> <span style="color:#f92672">||</span> 0 <span style="color:#f92672">==</span> line<span style="color:#f92672">.</span><span style="color:#a6e22e">length</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+                    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">true</span><span style="color:#f92672">;</span>
+                <span style="color:#f92672">}</span> <span style="color:#66d9ef">else</span> <span style="color:#f92672">{</span>
+                    builder<span style="color:#f92672">.</span><span style="color:#a6e22e">append</span><span style="color:#f92672">(</span>line<span style="color:#f92672">);</span>
+                    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">;</span>
+                <span style="color:#f92672">}</span>
+            <span style="color:#f92672">}</span>
+  
+            <span style="color:#a6e22e">@Override</span>
+            <span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">getResult</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+                <span style="color:#66d9ef">return</span> builder<span style="color:#f92672">.</span><span style="color:#a6e22e">toString</span><span style="color:#f92672">();</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">};</span>
+        <span style="color:#66d9ef">return</span> CharStreams<span style="color:#f92672">.</span><span style="color:#a6e22e">readLines</span><span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> InputStreamReader<span style="color:#f92672">(</span>inputStream<span style="color:#f92672">,</span> Charsets<span style="color:#f92672">.</span><span style="color:#a6e22e">UTF_8</span><span style="color:#f92672">),</span> lineProcessor<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">encrypt</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> Object plainValue<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> EncryptContext encryptContext<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">null</span> <span style="color:#f92672">==</span> plainValue <span style="color:#f92672">?</span> <span style="color:#66d9ef">null</span> <span style="color:#f92672">:</span> digest<span style="color:#f92672">(</span>String<span style="color:#f92672">.</span><span style="color:#a6e22e">valueOf</span><span style="color:#f92672">(</span>plainValue<span style="color:#f92672">));</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#66d9ef">private</span> String <span style="color:#a6e22e">digest</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String plainValue<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        StringBuilder result <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> StringBuilder<span style="color:#f92672">(</span>plainValue<span style="color:#f92672">.</span><span style="color:#a6e22e">length</span><span style="color:#f92672">());</span>
+        <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">char</span> each <span style="color:#f92672">:</span> plainValue<span style="color:#f92672">.</span><span style="color:#a6e22e">toCharArray</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">char</span> maskedChar <span style="color:#f92672">=</span> getMaskedChar<span style="color:#f92672">(</span>each<span style="color:#f92672">);</span>
+            <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#39;%&#39;</span> <span style="color:#f92672">==</span> maskedChar<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+                result<span style="color:#f92672">.</span><span style="color:#a6e22e">append</span><span style="color:#f92672">(</span>each<span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span> <span style="color:#66d9ef">else</span> <span style="color:#f92672">{</span>
+                result<span style="color:#f92672">.</span><span style="color:#a6e22e">append</span><span style="color:#f92672">(</span>maskedChar<span style="color:#f92672">);</span>
+            <span style="color:#f92672">}</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> result<span style="color:#f92672">.</span><span style="color:#a6e22e">toString</span><span style="color:#f92672">();</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">char</span> <span style="color:#a6e22e">getMaskedChar</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> <span style="color:#66d9ef">char</span> originalChar<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#e6db74">&#39;%&#39;</span> <span style="color:#f92672">==</span> originalChar<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> originalChar<span style="color:#f92672">;</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>originalChar <span style="color:#f92672">&lt;=</span> MAX_NUMERIC_LETTER_CHAR<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">char</span><span style="color:#f92672">)</span> <span style="color:#f92672">((</span>originalChar <span style="color:#f92672">+</span> delta<span style="color:#f92672">)</span> <span style="color:#f92672">&amp;</span> mask<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>charIndexes<span style="color:#f92672">.</span><span style="color:#a6e22e">containsKey</span><span style="color:#f92672">(</span>originalChar<span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">char</span><span style="color:#f92672">)</span> <span style="color:#f92672">(((</span>charIndexes<span style="color:#f92672">.</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(</span>originalChar<span style="color:#f92672">)</span> <span style="color:#f92672">+</span> delta<span style="color:#f92672">)</span> <span style="color:#f92672">&amp;</span> mask<span style="color:#f92672">)</span> <span style="color:#f92672">+</span> start<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">char</span><span style="color:#f92672">)</span> <span style="color:#f92672">(((</span>originalChar <span style="color:#f92672">+</span> delta<span style="color:#f92672">)</span> <span style="color:#f92672">&amp;</span> mask<span style="color:#f92672">)</span> <span style="color:#f92672">+</span> start<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+  
+    <span style="color:#a6e22e">@Override</span>
+    <span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">getType</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#e6db74">&#34;CHAR_DIGEST_LIKE&#34;</span><span style="color:#f92672">;</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><ul>
+<li>Define the binary <code>mask</code> code to lose precision <code>0b1111_0111_1101</code> (mask).</li>
+<li>Save common Chinese characters with disrupted order like a <code>map</code> dictionary.</li>
+<li>Obtain a single string of <code>Unicode</code> for digits, English, and Latin.</li>
+<li>Obtain <code>index</code> for a Chinese character belonging to a dictionary.</li>
+<li>Other characters fetch the <code>Unicode</code> of a single string.</li>
+<li>Add <code>1 (delta)</code> to the digits obtained by different types above to prevent any original text from appearing in the database.</li>
+<li>Then convert the offset <code>Unicode</code> into binary and perform the <code>AND</code> operation with <code>mask</code>, and carry out a 2-bit digit loss.</li>
+<li>Directly output digits, English, and Latin after the loss of precision.</li>
+<li>The remaining characters are converted to decimal and output with the common character <code>start</code> code after the loss of precision.</li>
+</ul>
+<h1 id="4-the-fuzzy-algorithm-development-progress"><strong>4. The fuzzy algorithm development progress</strong></h1>
+<h2 id="41-the-first-edition">4.1 The first edition</h2>
+<p>Simply use <code>Unicode</code> and <code>mask</code> code of common characters to perform the <code>AND</code> operation.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">Mask</span>: 0b11111111111001111101
+<span style="color:#66d9ef">The original character</span>: 0b1000101110101111讯
+<span style="color:#66d9ef">After encryption</span>: 0b1000101000101101設
+Assuming we know the key and encryption algorithm, the original string after a backward pass is:<span style="color:#ae81ff">1.</span>0b1000101100101101 謭
+<span style="color:#ae81ff">2.</span>0b1000101100101111 謯
+<span style="color:#ae81ff">3.</span>0b1000101110101101 训
+<span style="color:#ae81ff">4.</span>0b1000101110101111 讯
+<span style="color:#ae81ff">5.</span>0b1000101010101101 読
+<span style="color:#ae81ff">6.</span>0b1000101010101111 誯
+<span style="color:#ae81ff">7.</span>0b1000101000101111 訯
+<span style="color:#ae81ff">8.</span>0b1000101000101101 設
+</code></pre></div><p>We find that based on the missing bits, each string can be derived <code>2^n</code> Chinese characters backward. When the <code>Unicode</code> of common Chinese characters is decimal, their intervals are very large. Notice that the Chinese characters inferred backward are not common characters, and it&rsquo;s more likely to infer the original characters.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive2.png" alt="img"></p>
+<h2 id="42-the-second-edition">4.2 The second edition</h2>
+<p>Since the interval of common Chinese characters <code>Unicode</code> is irregular, we planned to leave the last few bits of Chinese characters <code>Unicode</code> and convert them into decimal as <code>index</code> to fetch some common Chinese characters. This way, when the algorithm is known, uncommon characters won&rsquo;t appear after a backward pass, and distractors are no longer easy to eliminate.</p>
+<p>If we leave the last few bits of Chinese characters <code>Unicode</code>, it has something to do with the relationship between the accuracy of fuzzy query and anti-decryption complexity. The higher the accuracy, the lower the decryption difficulty.</p>
+<p>Let&rsquo;s take a look at the collision degree of common Chinese characters under our algorithm:</p>
+<ol>
+<li>When <code>mask</code>=0b0011_1111_1111:</li>
+</ol>
+<p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive3.png" alt="img"></p>
+<ol start="2">
+<li>When <code>mask</code>=0b0001_1111_1111:</li>
+</ol>
+<p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive4.png" alt="img"></p>
+<p>For the mantissa of Chinese characters, leave 10 and 9 digits. The 10-digit query is more accurate because its collision is much weaker. Nevertheless, if the algorithm and the key are known, the original text of the 1:1 character can be derived backward.</p>
+<p>The 9-digit query is less accurate because 9-digit collisions are relatively stronger, but there are fewer 1:1 characters. We find that although we change the collisions regardless of whether we leave 10 or 9 digits, the distribution is very unbalanced due to the irregular Unicode of Chinese characters, and the overall collision probability cannot be controlled.</p>
+<h2 id="43-the-third-edition">4.3 The third edition</h2>
+<p>In response to the unevenly distributed problem found in the second edition, we take common characters with disrupted order as the dictionary table.</p>
+<ol>
+<li>The encrypted text first looks up the <code>index</code> in the out-of-order dictionary table. We use the <code>index</code> and subscript to replace the <code>Unicode</code> without rules.</li>
+</ol>
+<p>Use <code>Unicode</code> in case of uncommon characters. (Note: evenly distribute the code to be calculated as far as possible.)</p>
+<ol start="2">
+<li>The next step is to perform the <code>AND</code> operation with <code>mask</code> and lose 2-bit precision to increase the frequency of collisions.</li>
+</ol>
+<p>Let&rsquo;s take a look at the collision degree of common Chinese characters under our algorithm:</p>
+<ol>
+<li>When <code>mask</code>=0b1111_1011_1101:</li>
+</ol>
+<p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive5.png" alt="img"></p>
+<ol start="2">
+<li>When <code>mask</code>=0b0111_1011_1101:</li>
+</ol>
+<p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive6.png" alt="img"></p>
+<p>When the <code>mask</code> leaves 11 bits, you can see that the collision distribution is concentrated at 1:4. When <code>mask</code> leaves 10 bits, the number becomes 1:8. At this time, we only need to adjust the number of precision losses to control whether the collision is 1:2, 1:4 or 1:8.</p>
+<p>If <code>mask</code> is selected as 1, and the algorithm and key are known, there will be a 1:1 Chinese character, because what we calculate at this time is the collision degree of common characters. If we add the missing 4 bits before the 16-bit binary of Chinese characters, the situation becomes <code>2^5=32</code> cases.</p>
+<p>Since we encrypted the whole text, even if the individual character is inferred backwards, there will be little impact on overall security, and it will not cause mass data leaks. At the same time, the premise of backward pass is to know the algorithm, key, <code>delta</code> and dictionary, so it&rsquo;s impossible to achieve from the data in the database.</p>
+<h1 id="5-how-to-use-fuzzy-query"><strong>5. How to use fuzzy query</strong></h1>
+<p>Fuzzy query requires the configuration of <code>encryptors</code>(encryption algorithm configuration), <code>likeQueryColumn</code> (fuzzy query column name), and <code>likeQueryEncryptorName</code>(encryption algorithm name of fuzzy query column ) in the encryption configuration.</p>
+<p>Please refer to the following configuration. Add your own sharding algorithm and data source.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">dataSources</span>:
+  <span style="color:#66d9ef">ds_0</span>:
+    <span style="color:#66d9ef">dataSourceClassName</span>: com.zaxxer.hikari.HikariDataSource
+    <span style="color:#66d9ef">driverClassName</span>: com.mysql.jdbc.Driver
+    <span style="color:#66d9ef">jdbcUrl</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3306</span>/test?allowPublicKeyRetrieval=<span style="color:#66d9ef">true</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: root
+    
+<span style="color:#66d9ef">rules</span>:
+- !ENCRYPT
+  <span style="color:#66d9ef">encryptors</span>:
+    <span style="color:#66d9ef">like_encryptor</span>:
+      <span style="color:#66d9ef">type</span>: CHAR_DIGEST_LIKE
+    <span style="color:#66d9ef">aes_encryptor</span>:
+      <span style="color:#66d9ef">type</span>: AES
+      <span style="color:#66d9ef">props</span>:
+        <span style="color:#66d9ef">aes-key-value</span>: 123456abc
+  <span style="color:#66d9ef">tables</span>:
+    <span style="color:#66d9ef">user</span>:
+      <span style="color:#66d9ef">columns</span>:
+        <span style="color:#66d9ef">name</span>:
+          <span style="color:#66d9ef">cipherColumn</span>: name
+          <span style="color:#66d9ef">encryptorName</span>: aes_encryptor
+          <span style="color:#66d9ef">assistedQueryColumn</span>: name_ext
+          <span style="color:#66d9ef">assistedQueryEncryptorName</span>: aes_encryptor
+          <span style="color:#66d9ef">likeQueryColumn</span>: name_like
+          <span style="color:#66d9ef">likeQueryEncryptorName</span>: like_encryptor
+        <span style="color:#66d9ef">phone</span>:
+          <span style="color:#66d9ef">cipherColumn</span>: phone
+          <span style="color:#66d9ef">encryptorName</span>: aes_encryptor
+          <span style="color:#66d9ef">likeQueryColumn</span>: phone_like
+          <span style="color:#66d9ef">likeQueryEncryptorName</span>: like_encryptor
+  <span style="color:#66d9ef">queryWithCipherColumn</span>: <span style="color:#66d9ef">true</span>
+
+
+<span style="color:#66d9ef">props</span>:
+  <span style="color:#66d9ef">sql-show</span>: <span style="color:#66d9ef">true</span>
+</code></pre></div><p>Insert</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">Logic <span style="color:#66d9ef">SQL</span>: <span style="color:#66d9ef">insert</span> <span style="color:#66d9ef">into</span> <span style="color:#66d9ef">user</span> ( id, name, phone, sex) <span style="color:#66d9ef">values</span> ( <span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;熊高祥&#39;</span>, <span style="color:#e6db74">&#39;13012345678&#39;</span>, <span style="color:#e6db74">&#39;男&#39;</span>)
+Actual <span style="color:#66d9ef">SQL</span>: ds_0 ::: <span style="color:#66d9ef">insert</span> <span style="color:#66d9ef">into</span> <span style="color:#66d9ef">user</span> ( id, name, name_ext, name_like, phone, phone_like, sex) <span style="color:#66d9ef">values</span> (<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;gyVPLyhIzDIZaWDwTl3n4g==&#39;</span>, <span style="color:#e6db74">&#39;gyVPLyhIzDIZaWDwTl3n4g==&#39;</span>, <span style="color:#e6db74">&#39;佹堝偀&#39;</span>, <span style="color:#e6db74">&#39;qEmE7xRzW0d7EotlOAt6ww==&#39;</span>, <span style="color:#e6db74">&#39;04101454589&#39;</span>, <span style="color:#e6db74">&#39;男&#39;</span>)
+</code></pre></div><p>Update</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">Logic <span style="color:#66d9ef">SQL</span>: <span style="color:#66d9ef">update</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">set</span> name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;熊高祥123&#39;</span>, sex <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;男1&#39;</span> <span style="color:#66d9ef">where</span> sex <span style="color:#f92672">=</span><span style="color:#e6db74">&#39;男&#39;</span> <span style="color:#66d9ef">and</span> phone <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;130%&#39;</span>
+Actual <span style="color:#66d9ef">SQL</span>: ds_0 ::: <span style="color:#66d9ef">update</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">set</span> name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;K22HjufsPPy4rrf4PD046A==&#39;</span>, name_ext <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;K22HjufsPPy4rrf4PD046A==&#39;</span>, name_like <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;佹堝偀014&#39;</span>, sex <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;男1&#39;</span> <span style="color:#66d9ef">where</span> sex <span style="color:#f92672">=</span><span style="color:#e6db74">&#39;男&#39;</span> <span style="color:#66d9ef">and</span> phone_like <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;041%&#39;</span>
+</code></pre></div><p>Select</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">Logic <span style="color:#66d9ef">SQL</span>: <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">where</span> (id <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">or</span> phone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;13012345678&#39;</span>) <span style="color:#66d9ef">and</span> name <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;熊%&#39;</span>
+Actual <span style="color:#66d9ef">SQL</span>: ds_0 ::: <span style="color:#66d9ef">select</span> <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>name<span style="color:#f92672">`</span> <span style="color:#66d9ef">AS</span> <span style="color:#f92672">`</span>name<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>sex<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>phone<span style="color:#f92672">`</span> <span style="color:#66d9ef">AS</span> <span style="color:#f92672">`</span>phone<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>create_time<span style="color:#f92672">`</span> <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">where</span> (id <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">or</span> phone <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;qEmE7xRzW0d7EotlOAt6ww==&#39;</span>) <span style="color:#66d9ef">and</span> name_like <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;佹%&#39;</span>
+</code></pre></div><p>Select: federated table sub-query</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">Logic <span style="color:#66d9ef">SQL</span>: <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">LEFT</span> <span style="color:#66d9ef">JOIN</span> user_ext <span style="color:#66d9ef">on</span> <span style="color:#66d9ef">user</span>.id<span style="color:#f92672">=</span>user_ext.id <span style="color:#66d9ef">where</span> <span style="color:#66d9ef">user</span>.id <span style="color:#66d9ef">in</span> (<span style="color:#66d9ef">select</span> id <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">where</span> sex <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;男&#39;</span> <span style="color:#66d9ef">and</span> name <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;熊%&#39;</span>)
+Actual <span style="color:#66d9ef">SQL</span>: ds_0 ::: <span style="color:#66d9ef">select</span> <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>name<span style="color:#f92672">`</span> <span style="color:#66d9ef">AS</span> <span style="color:#f92672">`</span>name<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>sex<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>phone<span style="color:#f92672">`</span> <span style="color:#66d9ef">AS</span> <span style="color:#f92672">`</span>phone<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span><span style="color:#66d9ef">user</span><span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>create_time<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span>user_ext<span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>, <span style="color:#f92672">`</span>user_ext<span style="color:#f92672">`</span>.<span style="color:#f92672">`</span>address<span style="color:#f92672">`</span> <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">LEFT</span> <span style="color:#66d9ef">JOIN</span> user_ext <span style="color:#66d9ef">on</span> <span style="color:#66d9ef">user</span>.id<span style="color:#f92672">=</span>user_ext.id <span style="color:#66d9ef">where</span> <span style="color:#66d9ef">user</span>.id <span style="color:#66d9ef">in</span> (<span style="color:#66d9ef">select</span> id <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">where</span> sex <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;男&#39;</span> <span style="color:#66d9ef">and</span> name_like <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;佹%&#39;</span>)
+</code></pre></div><p>Delete</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">Logic <span style="color:#66d9ef">SQL</span>: <span style="color:#66d9ef">delete</span> <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">where</span> sex <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;男&#39;</span> <span style="color:#66d9ef">and</span> name <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;熊%&#39;</span>
+Actual <span style="color:#66d9ef">SQL</span>: ds_0 ::: <span style="color:#66d9ef">delete</span> <span style="color:#66d9ef">from</span> <span style="color:#66d9ef">user</span> <span style="color:#66d9ef">where</span> sex <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;男&#39;</span> <span style="color:#66d9ef">and</span> name_like <span style="color:#66d9ef">like</span> <span style="color:#e6db74">&#39;佹%&#39;</span>
+</code></pre></div><p>The above example demonstrates how fuzzy query columns rewrite SQL in different SQL syntaxes to support fuzzy queries.</p>
+<p>This blog post introduced you to the working principles of fuzzy query and used specific examples to demonstrate how to use it. We hope that through this article, you will have gained a basic understanding of fuzzy queries.</p>
+<h1 id="links">Links</h1>
+<p>🔗 <a href="https://shardingsphere.apache.org/document/current/en/downloads/">Download Link</a></p>
+<p>🔗 <a href="https://shardingsphere.apache.org/">Project Address</a></p>
+<p>🔗 <a href="https://github.com/apache/shardingsphere-on-cloud">ShardingSphere-on-Cloud</a></p>
+<h1 id="author">Author</h1>
+<p>Xiong Gaoxiang, an engineer at <a href="https://global.iflytek.com/">Iflytek</a> and a ShardingSphere Contributor, is responsible for the data encryption and data masking R&amp;D.</p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_12_13_use_aws_cloudformation_to_create_shardingsphere_ha_clusters/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

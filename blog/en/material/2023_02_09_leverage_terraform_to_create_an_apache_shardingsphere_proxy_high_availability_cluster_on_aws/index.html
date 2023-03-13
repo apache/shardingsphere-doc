@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Leverage Terraform to Create an [Apache ShardingSphere](https://medium.com/u/b9760a2e8a07?source=post_page-----45d27a114904--------------------------------) Proxy High Availability Cluster on AWS &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Leverage Terraform to Create an [Apache ShardingSphere](https://medium.com/u/b9760a2e8a07?source=post_page-----45d27a114904--------------------------------) Proxy High Availability Cluster on AWS</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>For this ShardingSphere blog entry, we want you to take advantage of the benefits of IaC (Infrastructure as Code) by deploying and managing a ShardingSphere Proxy cluster the IaC way.</p>
+<p>With this in mind, we plan to use Terraform to create a ShardingSphere-Proxy high availability cluster with multiple availability zones.</p>
+<h2 id="background"><strong>Background</strong></h2>
+<h2 id="terraform">Terraform</h2>
+<p><a href="https://www.terraform.io/">Terraform</a> is <a href="https://www.hashicorp.com/">Hashicorp</a>’s open source infrastructure automation orchestration tool that uses IaC philosophy to manage infrastructure changes.</p>
+<p>It’s supported by public cloud vendors such as AWS, GCP, AZURE and a variety of other providers from the community, and has become one of the most popular practices in the “Infrastructure as Code” space.</p>
+<p><strong>Terraform has the following advantages:</strong></p>
+<blockquote>
+<p>Support for multi-cloud deployments</p>
+</blockquote>
+<p>Terraform is suitable for multi-cloud scenarios, deploying similar infrastructures such as Alibaba Cloud, or other cloud providers and local data centres. Developers can use the same tools and similar profiles to manage resources from different cloud providers simultaneously.</p>
+<blockquote>
+<p>Automated management infrastructure</p>
+</blockquote>
+<p>Terraform’s ability to create reusable modules reduces human-induced deployment and management errors.</p>
+<blockquote>
+<p>Infrastructure as code</p>
+</blockquote>
+<p>Resources can be managed and maintained in code, allowing infrastructure state to be saved. This enables users to track changes made to different components of the system (infrastructure as code) and share these configurations with others.</p>
+<h2 id="shardingsphere-proxy">ShardingSphere-Proxy</h2>
+<p>Apache ShardingSphere is a distributed database ecosystem that transforms any database into a distributed database and enhances it with data sharding, elastic scaling, encryption and other capabilities.</p>
+<p>ShardingSphere-Proxy is positioned as a transparent database proxy that supports any client using MySQL, PostgreSQL, or openGauss protocols to manage data, and is more friendly to heterogeneous languages and DevOps scenarios.</p>
+<p>ShardingSphere-Proxy is non-intrusive to the application code: users only need to change the connection string of the database to achieve data sharding, read/write separation, etc. As part of the data infrastructure, its high availability will be key.</p>
+<h1 id="deployment-with-terraform">Deployment with Terraform</h1>
+<p>Before we start writing the Terraform configuration, we need to understand the basic architecture of the ShardingSphere-Proxy cluster</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_09_Leverage_Terraform_to_Create_an_Apache_ShardingSphere_Proxy_High_Availability_Cluster_on_AWS1.png" alt="img"></p>
+<p>We use ZooKeeper as the Governance Center.</p>
+<p>As you can see, ShardingSphere-Proxy itself is a stateless application, and in a real world scenario, load balancing is provided externally, and the load balancing is used to flexibly distribute traffic between the instances.</p>
+<p>To ensure high availability of the ZooKeeper and ShardingSphere-Proxy cluster, the following architecture will be used:</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_09_Leverage_Terraform_to_Create_an_Apache_ShardingSphere_Proxy_High_Availability_Cluster_on_AWS2.png" alt="img"></p>
+<h2 id="zookeeper-cluster">ZooKeeper Cluster</h2>
+<p><strong>Define Input Parameters</strong></p>
+<p>For the purpose of reusable configuration, a series of variables are defined, as follows:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">variable <span style="color:#e6db74">&#34;cluster_size&#34;</span> {
+  type        = number
+  description = <span style="color:#e6db74">&#34;The cluster size that same size as available_zones&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;key_name&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The ssh keypair for remote connection&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;instance_type&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The EC2 instance type&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;vpc_id&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The id of VPC&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;subnet_ids&#34;</span> {
+  type        = list(string)
+  description = <span style="color:#e6db74">&#34;List of subnets sorted by availability zone in your VPC&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;security_groups&#34;</span> {
+  type        = list(string)
+  default     = []
+  description = <span style="color:#e6db74">&#34;List of the Security Group, it must be allow access 2181, 2888, 3888 port&#34;</span>
+}
+
+
+variable <span style="color:#e6db74">&#34;hosted_zone_name&#34;</span> {
+  type        = string
+  default     = <span style="color:#e6db74">&#34;shardingsphere.org&#34;</span>
+  description = <span style="color:#e6db74">&#34;The name of the hosted private zone&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;tags&#34;</span> {
+  type        = map(any)
+  description = <span style="color:#e6db74">&#34;A map of zk instance resource, the default tag is Name=zk-$${count.idx}&#34;</span>
+  default     = {}
+}
+
+variable <span style="color:#e6db74">&#34;zk_version&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The zookeeper version&#34;</span>
+  default     = <span style="color:#e6db74">&#34;3.7.1&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;zk_config&#34;</span> {
+  default = {
+    client_port = <span style="color:#ae81ff">2181</span>
+    zk_heap     = <span style="color:#ae81ff">1024</span>
+  }
+
+  description = <span style="color:#e6db74">&#34;The default config of zookeeper server&#34;</span>
+}
+</code></pre></div><p>These variables can also be changed when installing the ShardingSphere-Proxy cluster below.</p>
+<p><strong>Configure ZooKeeper Cluster</strong></p>
+<p>For instance of the ZooKeeper service, we have used the AWS native <code>amzn2-ami-hvm</code> image.</p>
+<p>We used the <code>count</code> parameter to deploy the ZooKeeper service, which indicates the number of nodes in the ZooKeeper cluster created by Terraform as <code>var.cluster_size</code>.</p>
+<p>When creating a ZooKeeper instance, we use the <code>ignore_changes</code>parameter to ignore artificial changes to the <code>tag</code> to avoid the instance being recreated the next time Terraform is run.</p>
+<p>We use <code>cloud-init</code> to reboot the ZooKeeper-related configuration, as described in <a href="https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/zk/cloud-init.yml">here</a>.</p>
+<p>We create a domain name for each ZooKeeper service and the application only needs to use the domain name to avoid problems with changing the IP address when the ZooKeeper service is restarted.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">data <span style="color:#e6db74">&#34;aws_ami&#34;</span> <span style="color:#e6db74">&#34;base&#34;</span> {
+  owners = [<span style="color:#e6db74">&#34;amazon&#34;</span>]
+
+  filter {
+    name   = <span style="color:#e6db74">&#34;name&#34;</span>
+    values = [<span style="color:#e6db74">&#34;amzn2-ami-hvm-*-x86_64-ebs&#34;</span>]
+  }
+
+  most_recent = <span style="color:#66d9ef">true</span>
+}
+
+data <span style="color:#e6db74">&#34;aws_availability_zones&#34;</span> <span style="color:#e6db74">&#34;available&#34;</span> {
+  state = <span style="color:#e6db74">&#34;available&#34;</span>
+}
+
+resource <span style="color:#e6db74">&#34;aws_network_interface&#34;</span> <span style="color:#e6db74">&#34;zk&#34;</span> {
+  count           = var.cluster_size
+  subnet_id       = element(var.subnet_ids, count.index)
+  security_groups = var.security_groups
+}
+
+resource <span style="color:#e6db74">&#34;aws_instance&#34;</span> <span style="color:#e6db74">&#34;zk&#34;</span> {
+  count         = var.cluster_size
+  ami           = data.aws_ami.base.id
+  instance_type = var.instance_type
+  key_name      = var.key_name
+
+  network_interface {
+    delete_on_termination = <span style="color:#66d9ef">false</span>
+    device_index          = <span style="color:#ae81ff">0</span>
+    network_interface_id  = element(aws_network_interface.zk.<span style="color:#75715e">*.id,</span> count.index)
+  }
+
+  tags = merge(
+    var.tags,
+    {
+      Name = <span style="color:#e6db74">&#34;zk-${count.index}&#34;</span>
+    }
+  )
+
+  user_data = base64encode(templatefile(<span style="color:#e6db74">&#34;${path.module}/cloud-init.yml&#34;</span>, {
+    version     = var.zk_version
+    nodes       = range(<span style="color:#ae81ff">1</span>, var.cluster_size + <span style="color:#ae81ff">1</span>)
+    domain      = var.hosted_zone_name
+    index       = count.index + <span style="color:#ae81ff">1</span>
+    client_port = var.zk_config[<span style="color:#e6db74">&#34;client_port&#34;</span>]
+    zk_heap     = var.zk_config[<span style="color:#e6db74">&#34;zk_heap&#34;</span>]
+  }))
+
+  lifecycle {
+    ignore_changes = [
+      <span style="color:#75715e"># Ignore changes to tags.</span>
+      tags
+    ]
+  }
+}
+
+data <span style="color:#e6db74">&#34;aws_route53_zone&#34;</span> <span style="color:#e6db74">&#34;zone&#34;</span> {
+  name         = <span style="color:#e6db74">&#34;${var.hosted_zone_name}.&#34;</span>
+  private_zone = <span style="color:#66d9ef">true</span>
+}
+
+resource <span style="color:#e6db74">&#34;aws_route53_record&#34;</span> <span style="color:#e6db74">&#34;zk&#34;</span> {
+  count   = var.cluster_size
+  zone_id = data.aws_route53_zone.zone.zone_id
+  name    = <span style="color:#e6db74">&#34;zk-${count.index + 1}&#34;</span>
+  type    = <span style="color:#e6db74">&#34;A&#34;</span>
+  ttl     = <span style="color:#ae81ff">60</span>
+  records = element(aws_network_interface.zk.<span style="color:#75715e">*.private_ips,</span> count.index)
+}
+</code></pre></div><p><strong>Define Output</strong></p>
+<p>The IP of the ZooKeeper service instance and the corresponding domain name will be output after a successful run of <code>terraform apply</code>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">output <span style="color:#e6db74">&#34;zk_node_private_ip&#34;</span> {
+  value       = aws_instance.zk.<span style="color:#75715e">*.private_ip</span>
+  description = <span style="color:#e6db74">&#34;The private ips of zookeeper instances&#34;</span>
+}
+
+output <span style="color:#e6db74">&#34;zk_node_domain&#34;</span> {
+  <span style="color:#66d9ef">value       = [for v in aws_route53_record.zk.*.name </span>: format(<span style="color:#e6db74">&#34;%s.%s&#34;</span>, v, var.hosted_zone_name)]
+  description = <span style="color:#e6db74">&#34;The private domain names of zookeeper instances for use by ShardingSphere Proxy&#34;</span>
+}
+</code></pre></div><h2 id="shardingsphere-proxy-cluster">ShardingSphere-Proxy Cluster</h2>
+<p><strong>Define Input Parameters</strong></p>
+<p>The purpose of defining input parameters is also for the sake of configuration reusability.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">variable <span style="color:#e6db74">&#34;cluster_size&#34;</span> {
+  type        = number
+  description = <span style="color:#e6db74">&#34;The cluster size that same size as available_zones&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;shardingsphere_proxy_version&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The shardingsphere proxy version&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;shardingsphere_proxy_asg_desired_capacity&#34;</span> {
+  type        = string
+  default     = <span style="color:#e6db74">&#34;3&#34;</span>
+  description = <span style="color:#e6db74">&#34;The desired capacity is the initial capacity of the Auto Scaling group at the time of its creation and the capacity it attempts to maintain. see https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-as-group.html#cfn-as-group-desiredcapacitytype, The default value is 3&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;shardingsphere_proxy_asg_max_size&#34;</span> {
+  type        = string
+  default     = <span style="color:#e6db74">&#34;6&#34;</span>
+  description = <span style="color:#e6db74">&#34;The maximum size of ShardingSphere Proxy Auto Scaling Group. The default values is 6&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;shardingsphere_proxy_asg_healthcheck_grace_period&#34;</span> {
+  type        = number
+  default     = <span style="color:#ae81ff">120</span>
+  description = <span style="color:#e6db74">&#34;The amount of time, in seconds, that Amazon EC2 Auto Scaling waits before checking the health status of an EC2 instance that has come into service and marking it unhealthy due to a failed health check. see https://docs.aws.amazon.com/autoscaling/ec2/userguide/health-check-grace-period.html&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;image_id&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The AMI id&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;key_name&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;the ssh keypair for remote connection&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;instance_type&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The EC2 instance type&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;vpc_id&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;The id of your VPC&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;subnet_ids&#34;</span> {
+  type        = list(string)
+  description = <span style="color:#e6db74">&#34;List of subnets sorted by availability zone in your VPC&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;security_groups&#34;</span> {
+  type        = list(string)
+  default     = []
+  description = <span style="color:#e6db74">&#34;List of The Security group IDs&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;lb_listener_port&#34;</span> {
+  type        = string
+  description = <span style="color:#e6db74">&#34;lb listener port&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;hosted_zone_name&#34;</span> {
+  type        = string
+  default     = <span style="color:#e6db74">&#34;shardingsphere.org&#34;</span>
+  description = <span style="color:#e6db74">&#34;The name of the hosted private zone&#34;</span>
+}
+
+variable <span style="color:#e6db74">&#34;zk_servers&#34;</span> {
+  type        = list(string)
+  description = <span style="color:#e6db74">&#34;The Zookeeper servers&#34;</span>
+}
+</code></pre></div><h2 id="configure-shardingsphere-proxy-cluster">Configure ShardingSphere-Proxy Cluster</h2>
+<p><strong>Configure AutoScalingGroup</strong></p>
+<p>We’ll create an AutoScalingGroup to allow it to manage ShardingSphere-Proxy instances. The health check type of the AutoScalingGroup is changed to “ELB” to allow the AutoScalingGroup to move out bad nodes in time after load balancing fails to perform a health check on the instance.</p>
+<p>The changes to <code>load_balancers</code> and <code>target_group_arns</code> are ignored when creating the AutoScalingGroup.</p>
+<p>We also use <code>cloud-init</code> to configure the ShardingSphere-Proxy instance, as described <a href="https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/shardingsphere/cloud-init.yml">here</a>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">resource <span style="color:#e6db74">&#34;aws_launch_template&#34;</span> <span style="color:#e6db74">&#34;ss&#34;</span> {
+  name                                 = <span style="color:#e6db74">&#34;shardingsphere-proxy-launch-template&#34;</span>
+  image_id                             = var.image_id
+  instance_initiated_shutdown_behavior = <span style="color:#e6db74">&#34;terminate&#34;</span>
+  instance_type                        = var.instance_type
+  key_name                             = var.key_name
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ss.name
+  }
+
+  user_data = base64encode(templatefile(<span style="color:#e6db74">&#34;${path.module}/cloud-init.yml&#34;</span>, {
+    version    = var.shardingsphere_proxy_version
+    version_elems = split(<span style="color:#e6db74">&#34;.&#34;</span>, var.shardingsphere_proxy_version)
+    zk_servers = join(<span style="color:#e6db74">&#34;,&#34;</span>, var.zk_servers)
+  }))
+
+  metadata_options {
+    http_endpoint               = <span style="color:#e6db74">&#34;enabled&#34;</span>
+    http_tokens                 = <span style="color:#e6db74">&#34;required&#34;</span>
+    http_put_response_hop_limit = <span style="color:#ae81ff">1</span>
+    instance_metadata_tags      = <span style="color:#e6db74">&#34;enabled&#34;</span>
+  }
+
+  monitoring {
+    enabled = <span style="color:#66d9ef">true</span>
+  }
+
+  vpc_security_group_ids = var.security_groups
+
+  tag_specifications {
+    resource_type = <span style="color:#e6db74">&#34;instance&#34;</span>
+
+    tags = {
+      Name = <span style="color:#e6db74">&#34;shardingsphere-proxy&#34;</span>
+    }
+  }
+}
+
+resource <span style="color:#e6db74">&#34;aws_autoscaling_group&#34;</span> <span style="color:#e6db74">&#34;ss&#34;</span> {
+  name                      = <span style="color:#e6db74">&#34;shardingsphere-proxy-asg&#34;</span>
+  availability_zones        = data.aws_availability_zones.available.names
+  desired_capacity          = var.shardingsphere_proxy_asg_desired_capacity
+  min_size                  = <span style="color:#ae81ff">1</span>
+  max_size                  = var.shardingsphere_proxy_asg_max_size
+  health_check_grace_period = var.shardingsphere_proxy_asg_healthcheck_grace_period
+  health_check_type         = <span style="color:#e6db74">&#34;ELB&#34;</span>
+
+  launch_template {
+    id      = aws_launch_template.ss.id
+    version = <span style="color:#e6db74">&#34;$Latest&#34;</span>
+  }
+
+  lifecycle {
+    ignore_changes = [load_balancers, target_group_arns]
+  }
+}
+</code></pre></div><p><strong>Configure load balancing</strong></p>
+<p>The AutoScalingGroup created in the previous step is attached to the load balancing and traffic passing through the load balancing is automatically routed to the ShardingSphere-Proxy instance created by the AutoScalingGroup.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">resource <span style="color:#e6db74">&#34;aws_lb_target_group&#34;</span> <span style="color:#e6db74">&#34;ss_tg&#34;</span> {
+  name               = <span style="color:#e6db74">&#34;shardingsphere-proxy-lb-tg&#34;</span>
+  port               = var.lb_listener_port
+  protocol           = <span style="color:#e6db74">&#34;TCP&#34;</span>
+  vpc_id             = var.vpc_id
+  preserve_client_ip = <span style="color:#66d9ef">false</span>
+
+  health_check {
+    protocol = <span style="color:#e6db74">&#34;TCP&#34;</span>
+    healthy_threshold = <span style="color:#ae81ff">2</span>
+    unhealthy_threshold = <span style="color:#ae81ff">2</span>
+  }
+
+  tags = {
+    Name = <span style="color:#e6db74">&#34;shardingsphere-proxy&#34;</span>
+  }
+}
+
+resource <span style="color:#e6db74">&#34;aws_autoscaling_attachment&#34;</span> <span style="color:#e6db74">&#34;asg_attachment_lb&#34;</span> {
+  autoscaling_group_name = aws_autoscaling_group.ss.id
+  lb_target_group_arn    = aws_lb_target_group.ss_tg.arn
+}
+
+
+resource <span style="color:#e6db74">&#34;aws_lb_listener&#34;</span> <span style="color:#e6db74">&#34;ss&#34;</span> {
+  load_balancer_arn = aws_lb.ss.arn
+  port              = var.lb_listener_port
+  protocol          = <span style="color:#e6db74">&#34;TCP&#34;</span>
+
+  default_action {
+    type             = <span style="color:#e6db74">&#34;forward&#34;</span>
+    target_group_arn = aws_lb_target_group.ss_tg.arn
+  }
+
+  tags = {
+    Name = <span style="color:#e6db74">&#34;shardingsphere-proxy&#34;</span>
+  }
+}
+</code></pre></div><p><strong>Configure Domain Name</strong></p>
+<p>We will create an internal domain name that defaults to <code>proxy.shardingsphere.org</code>, which actually points internally to the load balancing created in the previous step.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">data <span style="color:#e6db74">&#34;aws_route53_zone&#34;</span> <span style="color:#e6db74">&#34;zone&#34;</span> {
+  name         = <span style="color:#e6db74">&#34;${var.hosted_zone_name}.&#34;</span>
+  private_zone = <span style="color:#66d9ef">true</span>
+}
+
+resource <span style="color:#e6db74">&#34;aws_route53_record&#34;</span> <span style="color:#e6db74">&#34;ss&#34;</span> {
+  zone_id = data.aws_route53_zone.zone.zone_id
+  name    = <span style="color:#e6db74">&#34;proxy&#34;</span>
+  type    = <span style="color:#e6db74">&#34;A&#34;</span>
+
+  alias {
+    name                   = aws_lb.ss.dns_name
+    zone_id                = aws_lb.ss.zone_id
+    evaluate_target_health = <span style="color:#66d9ef">true</span>
+  }
+</code></pre></div><p><strong>Configure CloudWatch</strong></p>
+<p>We will go through the STS to create a role with CloudWatch permissions, which will be attached to the ShardingSphere-Proxy instance created by AutoScalingGroup.</p>
+<p>The runtime logs of the ShardingSphere-Proxy will be captured by the CloudWatch Agent on CloudWatch. A <code>log_group</code> named <code>shardingsphere-proxy.log</code> is created by default.</p>
+<p>The specific configuration of CloudWatch is described <a href="https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/shardingsphere/cloudwatch-agent.json">here</a>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">resource <span style="color:#e6db74">&#34;aws_iam_role&#34;</span> <span style="color:#e6db74">&#34;sts&#34;</span> {
+  name = <span style="color:#e6db74">&#34;shardingsphere-proxy-sts-role&#34;</span>
+
+  assume_role_policy = &lt;&lt;EOF
+{
+  <span style="color:#66d9ef">&#34;Version&#34;: </span><span style="color:#e6db74">&#34;2012-10-17&#34;</span>,
+  <span style="color:#66d9ef">&#34;Statement&#34;: </span>[
+    {
+      <span style="color:#66d9ef">&#34;Action&#34;: </span><span style="color:#e6db74">&#34;sts:AssumeRole&#34;</span>,
+      <span style="color:#66d9ef">&#34;Principal&#34;: </span>{
+        <span style="color:#66d9ef">&#34;Service&#34;: </span><span style="color:#e6db74">&#34;ec2.amazonaws.com&#34;</span>
+      },
+      <span style="color:#66d9ef">&#34;Effect&#34;: </span><span style="color:#e6db74">&#34;Allow&#34;</span>,
+      <span style="color:#66d9ef">&#34;Sid&#34;: </span><span style="color:#e6db74">&#34;&#34;</span>
+    }
+  ]
+}
+EOF
+}
+
+resource <span style="color:#e6db74">&#34;aws_iam_role_policy&#34;</span> <span style="color:#e6db74">&#34;ss&#34;</span> {
+  name = <span style="color:#e6db74">&#34;sharidngsphere-proxy-policy&#34;</span>
+  role = aws_iam_role.sts.id
+
+  policy = &lt;&lt;EOF
+{
+  <span style="color:#66d9ef">&#34;Version&#34;: </span><span style="color:#e6db74">&#34;2012-10-17&#34;</span>,
+  <span style="color:#66d9ef">&#34;Statement&#34;: </span>[
+    {
+      <span style="color:#66d9ef">&#34;Action&#34;: </span>[
+        <span style="color:#e6db74">&#34;cloudwatch:PutMetricData&#34;</span>,
+        <span style="color:#e6db74">&#34;ec2:DescribeTags&#34;</span>,
+        <span style="color:#e6db74">&#34;logs:PutLogEvents&#34;</span>,
+        <span style="color:#e6db74">&#34;logs:DescribeLogStreams&#34;</span>,
+        <span style="color:#e6db74">&#34;logs:DescribeLogGroups&#34;</span>,
+        <span style="color:#e6db74">&#34;logs:CreateLogStream&#34;</span>,
+        <span style="color:#e6db74">&#34;logs:CreateLogGroup&#34;</span>
+      ],
+      <span style="color:#66d9ef">&#34;Effect&#34;: </span><span style="color:#e6db74">&#34;Allow&#34;</span>,
+      <span style="color:#66d9ef">&#34;Resource&#34;: </span><span style="color:#e6db74">&#34;*&#34;</span>
+    }
+  ]
+}
+EOF
+}
+
+resource <span style="color:#e6db74">&#34;aws_iam_instance_profile&#34;</span> <span style="color:#e6db74">&#34;ss&#34;</span> {
+  name = <span style="color:#e6db74">&#34;shardingsphere-proxy-instance-profile&#34;</span>
+  role = aws_iam_role.sts.name
+}
+</code></pre></div><h2 id="deployment">Deployment</h2>
+<p>Once all Terraform configurations have been created, you’ll be ready to deploy the ShardingSphere-Proxy cluster. Before actually deploying, it’s recommended that you use the following command to check that the configuration performs as expected.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-markdown" data-lang="markdown">terraform plan
+</code></pre></div><p>After confirming the plan, it’s time to go ahead and actually execute it by running the following command</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-markdown" data-lang="markdown">terraform apply
+</code></pre></div><p>The full code can be found <a href="https://github.com/apache/shardingsphere-on-cloud/tree/main/terraform/amazon">here</a>. Alternatively, check out our <a href="https://shardingsphere.apache.org/oncloud/current/en/overview/">website for more</a>.</p>
+<h2 id="test">Test</h2>
+<p>The goal of the test is to prove that the cluster created is usable. We use a simple case: we add two data sources and create a simple sharding rule using DistSQL, then insert the data and the query returns the correct result.</p>
+<p>By default, we create an internal domain <code>proxy.shardingsphere.org</code> and the username and password for the ShardingSphere-Proxy cluster are both root.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_09_Leverage_Terraform_to_Create_an_Apache_ShardingSphere_Proxy_High_Availability_Cluster_on_AWS3.png" alt="img"></p>
+<p><strong>Description:</strong></p>
+<p>DistSQL (Distributed SQL) is Apache ShardingSphere’s SQL-like operational language. It’s used in exactly the same way as standard SQL to provide SQL-level manipulation capabilities for incremental functionality, as described <a href="https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/distsql/">here</a>.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>Terraform is an excellent tool to help you implement IaC. Terraform will be very useful for iterating over ShardingSphere-Proxy clusters. I hope this article has helped anyone interested in ShardingSphere and Terraform.</p>
+<h1 id="relevant-links">Relevant Links:</h1>
+<p>🔗 <a href="https://github.com/apache/shardingsphere-on-cloud">ShardingSphere-on-Cloud Github</a></p>
+<p>🔗 <a href="https://shardingsphere.apache.org/oncloud/">ShardingSphere-on-Cloud Official Website</a></p>
+<p>🔗 <a href="https://github.com/apache/shardingsphere">Apache ShardingSphere GitHub</a></p>
+<p>🔗 <a href="https://shardingsphere.apache.org/">Apache ShardingSphere Official Website</a></p>
+<p>🔗 <a href="https://apacheshardingsphere.slack.com/">Apache ShardingSphere Slack Channel</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_01_04_refactoring_the_distsql_syntax__shardingsphere_5.3.0_deep_dive/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

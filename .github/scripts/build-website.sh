@@ -71,10 +71,10 @@ git checkout master
 git log -1 -p docs > new_version_ss
 diff ../old_version_ss new_version_ss > result_version
 
-# if  [ ! -s result_version ]  ; then
-#     echo "shardingsphere docs sources didn't change and nothing to do!"
-#     cd ..
-# else
+if  [ ! -s result_version ]  ; then
+    echo "shardingsphere docs sources didn't change and nothing to do!"
+    cd ..
+else
     count=2
     echo "check shardingsphere something new, launch a build..."
     cd ..
@@ -85,14 +85,7 @@ diff ../old_version_ss new_version_ss > result_version
     mv docs ssdocs
     
     echo build hugo ss documents
-    cd ssdocs
-    tree -L 2
-    echo $(pwd)
-    docker run --rm --volume /home/runner/work/shardingsphere-doc/shardingsphere-doc/ssdocs/community:/opt/input docker-hugo:latest
-    docker run --rm --volume /home/runner/work/shardingsphere-doc/shardingsphere-doc/ssdocs/blog:/opt/input docker-hugo:latest
-    docker run --rm --volume /home/runner/work/shardingsphere-doc/shardingsphere-doc/ssdocs/document:/opt/input docker-hugo:latest
-    # sh build-with-docker.sh
-    cd ..
+    sh ./ssdocs/build-with-docker.sh
     cp -rf ssdocs/target ./
     rm -rf ssdocs
     mv target sstarget
@@ -127,7 +120,7 @@ diff ../old_version_ss new_version_ss > result_version
     cp -fr sstarget/blog/* blog
     
     rm -rf sstarget
-# fi
+fi
 rm -rf _shardingsphere
 
 #######################################

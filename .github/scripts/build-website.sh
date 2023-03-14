@@ -85,6 +85,7 @@ else
     mv docs ssdocs
     
     echo build hugo ss documents
+    ls ./ssdocs/
     sh ./ssdocs/build-with-docker.sh
     cp -rf ssdocs/target ./
     rm -rf ssdocs

@@ -88,7 +88,8 @@ diff ../old_version_ss new_version_ss > result_version
     cd ssdocs
     echo $(pwd)
     tree -L 2
-    docker run --rm -it --volume /home/runner/work/shardingsphere-doc/shardingsphere-doc/ssdocs/document:/opt/input  docker-hugo:latest
+    ls /home/runner/work/shardingsphere-doc/shardingsphere-doc/ssdocs/document
+    docker run --volume /home/runner/work/shardingsphere-doc/shardingsphere-doc/ssdocs/document:/opt/input  docker-hugo:latest
     # sh build-with-docker.sh
     cd ..
     cp -rf ssdocs/target ./

@@ -18,6 +18,6 @@ RUN apk update \
 
 VOLUME /opt/input
 WORKDIR /opt/input
-ENTRYPOINT ["sh", "/build.sh"]
+ENTRYPOINT ["sh", "/hugo.sh"]
 
 EXPOSE 1313

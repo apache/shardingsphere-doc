@@ -71,10 +71,10 @@ git checkout master
 git log -1 -p docs > new_version_ss
 diff ../old_version_ss new_version_ss > result_version
 
-if  [ ! -s result_version ]  ; then
-    echo "shardingsphere docs sources didn't change and nothing to do!"
-    cd ..
-else
+# if  [ ! -s result_version ]  ; then
+#     echo "shardingsphere docs sources didn't change and nothing to do!"
+#     cd ..
+# else
     count=2
     echo "check shardingsphere something new, launch a build..."
     cd ..
@@ -121,7 +121,7 @@ else
     cp -fr sstarget/blog/* blog
     
     rm -rf sstarget
-fi
+# fi
 rm -rf _shardingsphere
 
 #######################################

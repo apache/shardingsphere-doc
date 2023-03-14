@@ -86,6 +86,7 @@ diff ../old_version_ss new_version_ss > result_version
     
     echo build hugo ss documents
     ls ./ssdocs/
+    cat ./ssdocs/build-with-docker.sh
     sh ./ssdocs/build-with-docker.sh
     cp -rf ssdocs/target ./
     rm -rf ssdocs

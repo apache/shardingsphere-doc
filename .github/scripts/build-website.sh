@@ -50,8 +50,7 @@ if [ ${#TAGS} -gt 0 ] ; then
         dir=$tag
         env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
           HUGO_PARAMS_EDITURL="" \
-          cp .github/docker/ss-build-with-docker.sh docs/
-          bash docs/ss-build-with-docker.sh
+          bash docs/build.sh
         find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
         mv docs/target/document/current/ ../document/$dir
       fi
@@ -72,12 +71,10 @@ git checkout master
 git log -1 -p docs > new_version_ss
 diff ../old_version_ss new_version_ss > result_version
 
-# if  [ ! -s result_version ]  ; then
-#     echo "shardingsphere docs sources didn't change and nothing to do!"
-#     cd ..
-# else
-    echo "show up directory : "
-    ls ./
+if  [ ! -s result_version ]  ; then
+    echo "shardingsphere docs sources didn't change and nothing to do!"
+    cd ..
+else
     count=2
     echo "check shardingsphere something new, launch a build..."
     cd ..
@@ -88,8 +85,7 @@ diff ../old_version_ss new_version_ss > result_version
     mv docs ssdocs
     
     echo build hugo ss documents
-    cp .github/docker/ss-build-with-docker.sh ./ssdocs/
-    sh ./ssdocs/ss-build-with-docker.sh
+    sh ./ssdocs/build-with-docker.sh
     cp -rf ssdocs/target ./
     rm -rf ssdocs
     mv target sstarget
@@ -124,7 +120,7 @@ diff ../old_version_ss new_version_ss > result_version
     cp -fr sstarget/blog/* blog
     
     rm -rf sstarget
-
+fi
 rm -rf _shardingsphere
 
 #######################################

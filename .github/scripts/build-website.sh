@@ -124,7 +124,7 @@ diff ../old_version_ss new_version_ss > result_version
     cp -fr sstarget/blog/* blog
     
     rm -rf sstarget
-fi
+
 rm -rf _shardingsphere
 
 #######################################

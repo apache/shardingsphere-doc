@@ -85,7 +85,9 @@ diff ../old_version_ss new_version_ss > result_version
     mv docs ssdocs
     
     echo build hugo ss documents
+    cd ssdocs
     tree -L 2
+    cd ..
     sh ./ssdocs/build.sh
     cp -rf ssdocs/target ./
     rm -rf ssdocs

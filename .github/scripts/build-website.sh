@@ -85,7 +85,7 @@ diff ../old_version_ss new_version_ss > result_version
     mv docs ssdocs
     
     echo build hugo ss documents
-    cd document && docker run --volume $(pwd):/opt/input  docker-hugo:latest
+    cd document && ls . && docker run --volume $(pwd):/opt/input  docker-hugo:latest
     cd ..
     sh ./ssdocs/build-with-docker.sh
     cp -rf ssdocs/target ./

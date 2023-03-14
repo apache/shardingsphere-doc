@@ -41,7 +41,7 @@ if [ ${#TAGS} -gt 0 ] ; then
   do
     echo "generate $tag documnet"
     git checkout $tag
-    if [ -d docs/document -a -f docs/build-with-docker.sh ] ; then
+    if [ -d docs/document -a -f docs/build.sh ] ; then
       # delete downloads of tag
       rm -rf docs/document/downloads
       VALID_TAGS=(${VALID_TAGS[@]} $tag)
@@ -50,7 +50,8 @@ if [ ${#TAGS} -gt 0 ] ; then
         dir=$tag
         env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
           HUGO_PARAMS_EDITURL="" \
-          bash docs/build-with-docker.sh
+          cp .github/docker/ss-build-with-docker.sh docs/
+          bash docs/ss-build-with-docker.sh
         find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
         mv docs/target/document/current/ ../document/$dir
       fi
@@ -85,7 +86,8 @@ else
     mv docs ssdocs
     
     echo build hugo ss documents
-    sh ./ssdocs/build-with-docker.sh
+    cp .github/docker/ss-build-with-docker.sh ./ssdocs/
+    sh ./ssdocs/ss-build-with-docker.sh
     cp -rf ssdocs/target ./
     rm -rf ssdocs
     mv target sstarget

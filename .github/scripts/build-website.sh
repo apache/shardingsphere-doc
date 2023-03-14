@@ -77,7 +77,7 @@ diff ../old_version_ss new_version_ss > result_version
 #     cd ..
 # else
     echo "show up directory : "
-    ll ./
+    ls ./
     count=2
     echo "check shardingsphere something new, launch a build..."
     cd ..

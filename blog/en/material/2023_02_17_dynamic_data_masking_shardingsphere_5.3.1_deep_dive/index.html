@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Dynamic Data Masking | ShardingSphere 5.3.1 Deep Dive &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Dynamic Data Masking | ShardingSphere 5.3.1 Deep Dive</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>With increased focus placed on user data protection and the introduction of privacy laws or data protection regulations such as <a href="https://gdpr-info.eu/">GDPR</a>, being compliant in terms of digital personal privacy is now of paramount importance.</p>
+<p>Traditional applications generally lack personal data protection. Data masking enables data returned by production databases to be specially masked, encrypted, hidden, and audited according to the users&rsquo; role, responsibility, and other defined rules without having to make any changes to the data.</p>
+<p>This allows you to ensure that employees, external users, operations, part-time employees, partners, data analysts, developers, testers, and consultants have the appropriate degree of access to sensitive data in production environments.</p>
+<p>Based on industry experience, there are two major types of data masking. One is static data masking and the other is dynamic data masking.</p>
+<p>Static data masking refers to masking, encrypting, or replacing sensitive data with a masking algorithm for database systems through the task. It saves the masked data to the target location.</p>
+<p>Dynamic data masking is more flexible. Dynamic data masking happens at runtime based on each query. This way, there doesn&rsquo;t need to be a second data source to store the masked data dynamically.</p>
+<p><a href="https://shardingsphere.apache.org/document/4.1.1/en/features/orchestration/encrypt/">ShardingSphere 5.3.1 provides a dynamic data masking function</a>. Users query data through ShardingSphere, while ShardingSphere processes data with a masking algorithm before returning results.</p>
+<p>The whole process is based on masking rules configured by users. The masked data is then delivered to users.</p>
+<h1 id="methods">Methods</h1>
+<h2 id="masking--microkernel">Masking &amp; Microkernel</h2>
+<p>On account of the ShardingSphere microkernel and pluggable architecture, the data masking function only needs to implement SPI, the resulting merger, to achieve the flexible extension of functions.</p>
+<p>As shown in the figure below, the ShardingSphere microkernelalready includes core logic like <code>SQL Parser</code>, <code>SQL router</code>, <code>SQL executor</code>. The dynamic data masking function provided by ShardingSphere 5.3.1 is only an enhancement of the query results of the other ShardingSphere components.</p>
+<p>This means that users only need to implement <code>ResultDecoratorEngine</code> and <code>ResultDecorator</code> in the merger to achieve the function.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_17_Dynamic_Data_Masking_ShardingSphere_5.3.1_Deep_Dive1.png" alt="img"></p>
+<p>In order to implement the data masking function, the <code>shardingsphere-mask</code> module is added to the features. This module contains <code>shardingsphere-mask-api</code>, <code>shardingsphere-mask-core</code> and <code>shardingsphere-mask-distsql</code>. The functions of each module are as follows:</p>
+<ul>
+<li><code>shardingsphere-mask-api</code>：data masking API module, including <code>Rule</code> configuration with data masking function and masking algorithm SPI interface.</li>
+<li><code>shardingsphere-mask-core</code>：the core data masking module, including <code>Rule</code> initialization logic, masking algorithm implementation, and resulting merger decorator implementation logic.</li>
+<li><code>shardingsphere-mask-distsql</code>：DistSQL module for data masking allowing users to dynamically modify masking rules through DistSQL.</li>
+</ul>
+<p>In addition to the kernel process, data masking&rsquo;s position in the ShardingSphere kernel also deserves mention.</p>
+<p>ShardingSphere&rsquo;s powerful pluggable architecture allows us to arbitrarily assemble kernel functions, including the newly added data masking function.</p>
+<p>Users can use the function alone, or with sharding, encryption, and other functions to achieve a more complete distributed database solution.</p>
+<p>The following figure shows the relationship between the current functions of the ShardingSphere kernel, which can be generally divided into three levels: Column Level, Table Level, and Database Level.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_17_Dynamic_Data_Masking_ShardingSphere_5.3.1_Deep_Dive2.png" alt="img"></p>
+<p>Column Level includes data encryption and data masking for improving columns. Table Level includes data sharding and built-in single table management.</p>
+<p>Functions at the Database Level represent the bulk of the ecosystem, including the dual write function provided by <a href="https://www.sphere-ex.com/">SphereEx</a>, as well as read/write splitting, high-availability database discovery, and shadow database provided by the open-source ShardingSphere. They&rsquo;re all related to database traffic governance.</p>
+<p>ShardingSphere processes according to the three levels levels, and within each level it processes according to the Order.</p>
+<p>For example: if you use both data encryption and data masking, the system preferentially processes the encryption logic, decrypts the ciphertext stored in the database, and then uses the masking algorithm to process data masking.</p>
+<h2 id="masking-yaml-api--distsql">Masking YAML API &amp; DistSQL</h2>
+<p>After introducing the relationship between masking and microkernel, let&rsquo;s draw our eyes to the masking API and DistSQL. Users can configure masking rules based on YAML or using DistSQL.</p>
+<p>First, let&rsquo;s take a look at how the YAML API is configured. The user just needs to configure the data masking column and algorithm in tables under <code>- !MASK</code>. The name of the algorithm defined by <code>maskAlgorithm</code> must be the same as the name in it.</p>
+<ul>
+<li><code>maskAlgorithm</code>: specifies the masking algorithm, and the mask feature performs data processing according to the masking algorithm.</li>
+</ul>
+<p>The YAML API configuration of the mask feature is as follows:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">databaseName</span>: mask_db
+
+<span style="color:#66d9ef">dataSources</span>:
+  <span style="color:#66d9ef">ds_0</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3306</span>/demo_ds_0?serverTimezone=UTC<span style="color:#75715e">&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: <span style="color:#ae81ff">123456</span>
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+  <span style="color:#66d9ef">ds_1</span>:
+    <span style="color:#66d9ef">url</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3306</span>/demo_ds_1?serverTimezone=UTC<span style="color:#75715e">&amp;useSSL=false</span>
+    <span style="color:#66d9ef">username</span>: root
+    <span style="color:#66d9ef">password</span>: <span style="color:#ae81ff">123456</span>
+    <span style="color:#66d9ef">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+    <span style="color:#66d9ef">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+    <span style="color:#66d9ef">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+    <span style="color:#66d9ef">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+    <span style="color:#66d9ef">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+        
+<span style="color:#75715e"># MASK rules configuration</span>
+<span style="color:#66d9ef">rules</span>:
+- !MASK
+  <span style="color:#66d9ef">tables</span>:
+    <span style="color:#66d9ef">t_user</span>:
+      <span style="color:#66d9ef">columns</span>:
+        <span style="color:#66d9ef">password</span>:
+          <span style="color:#66d9ef">maskAlgorithm</span>: md5_mask
+        <span style="color:#66d9ef">email</span>:
+          <span style="color:#66d9ef">maskAlgorithm</span>: mask_before_special_chars_mask
+        <span style="color:#66d9ef">telephone</span>:
+          <span style="color:#66d9ef">maskAlgorithm</span>: keep_first_n_last_m_mask
+
+  <span style="color:#66d9ef">maskAlgorithms</span>:
+    <span style="color:#66d9ef">md5_mask</span>:
+      <span style="color:#66d9ef">type</span>: MD5
+    <span style="color:#66d9ef">mask_before_special_chars_mask</span>:
+      <span style="color:#66d9ef">type</span>: MASK_BEFORE_SPECIAL_CHARS
+      <span style="color:#66d9ef">props</span>:
+        <span style="color:#66d9ef">special-chars</span>: <span style="color:#e6db74">&#39;@&#39;</span>
+        <span style="color:#66d9ef">replace-char</span>: <span style="color:#e6db74">&#39;*&#39;</span>
+    <span style="color:#66d9ef">keep_first_n_last_m_mask</span>:
+      <span style="color:#66d9ef">type</span>: KEEP_FIRST_N_LAST_M
+      <span style="color:#66d9ef">props</span>:
+        <span style="color:#66d9ef">first-n</span>: <span style="color:#ae81ff">3</span>
+        <span style="color:#66d9ef">last-m</span>: <span style="color:#ae81ff">4</span>
+        <span style="color:#66d9ef">replace-char</span>: <span style="color:#e6db74">&#39;*&#39;</span>
+</code></pre></div><p>In addition, ShardingSphere 5.3.1 also provides DistSQL related masking rules to meet users&rsquo; needs for dynamically updating masking rules during the running stage.</p>
+<p>The data masking DistSQL syntax is as follows, containing DistSQL statements that are commonly used to create, alter, drop, and show masking rules.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#75715e">-- Create masking rules
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">CREATE</span> MASK <span style="color:#66d9ef">RULE</span> t_user (
+    COLUMNS(
+        (NAME<span style="color:#f92672">=</span>password, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MD5&#39;</span>)),
+        (NAME<span style="color:#f92672">=</span>email, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MASK_BEFORE_SPECIAL_CHARS&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;special-chars&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;@&#34;</span>, <span style="color:#e6db74">&#34;replace-char&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;*&#34;</span>))),
+        (NAME<span style="color:#f92672">=</span>telephone, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;KEEP_FIRST_N_LAST_M&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;first-n&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#34;last-m&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">4</span>, <span style="color:#e6db74">&#34;replace-char&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;*&#34;</span>)))
+    )
+);
+
+<span style="color:#75715e">-- Alter masking rules
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">ALTER</span> MASK <span style="color:#66d9ef">RULE</span> t_user (
+    COLUMNS(
+        (NAME<span style="color:#f92672">=</span>password, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MD5&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;salt&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;123abc&#34;</span>))),
+        (NAME<span style="color:#f92672">=</span>email, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MASK_BEFORE_SPECIAL_CHARS&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;special-chars&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;@&#34;</span>, <span style="color:#e6db74">&#34;replace-char&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;*&#34;</span>))),
+        (NAME<span style="color:#f92672">=</span>telephone, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;TELEPHONE_RANDOM_REPLACE&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;network-numbers&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;123,180&#34;</span>)))
+    )
+);
+
+<span style="color:#75715e">-- Drop masking rule
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">DROP</span> MASK <span style="color:#66d9ef">RULE</span> t_user;
+
+<span style="color:#75715e">-- Show masking rule
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">SHOW</span> MASK RULES <span style="color:#66d9ef">FROM</span> mask_db;
+</code></pre></div><p>For detailed DistSQL syntax, see <a href="https://shardingsphere.apache.org/document/5.3.1/en/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/mask/create-mask-rule/">DistSQL Documentation — Data Masking</a>.</p>
+<h2 id="built-in-masking-algorithm">Built-in Masking Algorithm</h2>
+<p>The ShardingSphere 5.3.1 release also includes a large number of built-in masking algorithms, which are implemented based on the <code>MaskAlgorithm</code> SPI interface, and users can flexibly extend the algorithm according to their business requirements.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#75715e">/**
+</span><span style="color:#75715e"> * Mask algorithm.
+</span><span style="color:#75715e"> * 
+</span><span style="color:#75715e"> * @param &lt;I&gt; type of plain value
+</span><span style="color:#75715e"> * @param &lt;O&gt; type of mask value
+</span><span style="color:#75715e"> */</span>
+<span style="color:#66d9ef">public</span> <span style="color:#66d9ef">interface</span> <span style="color:#a6e22e">MaskAlgorithm</span><span style="color:#f92672">&lt;</span>I<span style="color:#f92672">,</span> O<span style="color:#f92672">&gt;</span> <span style="color:#f92672">{</span>
+    
+    <span style="color:#75715e">/**
+</span><span style="color:#75715e">     * Mask.
+</span><span style="color:#75715e">     *
+</span><span style="color:#75715e">     * @param plainValue plain value
+</span><span style="color:#75715e">     * @return mask value
+</span><span style="color:#75715e">     */</span>
+    O <span style="color:#a6e22e">mask</span><span style="color:#f92672">(</span>I plainValue<span style="color:#f92672">);</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Built-in masking algorithms can be mainly divided into three types, hash mask, cover mask, and replace mask. The specific algorithms are listed as follows：</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_17_Dynamic_Data_Masking_ShardingSphere_5.3.1_Deep_Dive3.png" alt="img"></p>
+<p>The data masking algorithm is still in continuous improvement. For more about the algorithm parameters, please refer to <a href="https://shardingsphere.apache.org/document/5.3.1/en/user-manual/common-config/builtin-algorithm/mask/">Data Masking Algorithm</a>.</p>
+<p>We welcome everyone to participate and contribute to improving the data masking algorithm together.</p>
+<h1 id="data-masking-in-practice">Data Masking in Practice</h1>
+<p>In the last section, we will take a practical look at data masking.</p>
+<p>For a company&rsquo;s internal sensitive data, data masking and data encryption are used together. The database stores data with data encryption to avoid security problems caused by loss of data.</p>
+<p>During the data query, data decryption and data masking are run according to the rules to avoid the direct display of sensitive data.</p>
+<p>This post showcases a scenario where data masking and data encryption are performed together and uses DistSQL for a dynamic update to show the actual effect of data masking.</p>
+<p>First, download ShardingSphere Proxy 5.3.1, and configure <code>server.yaml</code> for the first operation, and connect to the Proxy with <code>mysql -u root -h 127.0.0.1 -P 3307 -p c-A</code>, and run <code>CREATE DATABASE mask_db</code> to create a data masking logic database.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#75715e">-- Create a data masking logic database
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> mask_db;
+<span style="color:#75715e">-- Switch to mask_db
+</span><span style="color:#75715e"></span>USE mask_db;
+</code></pre></div><p>After creating the logic database, DistSQL can be used to register the storage resource and initialize the masking and encryption rules.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#75715e">-- Register storage resource
+</span><span style="color:#75715e"></span>REGISTER <span style="color:#66d9ef">STORAGE</span> UNIT ds_0 (
+    <span style="color:#66d9ef">HOST</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;127.0.0.1&#34;</span>,
+    PORT<span style="color:#f92672">=</span><span style="color:#ae81ff">3306</span>,
+    DB<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;demo_ds_0&#34;</span>,
+    <span style="color:#66d9ef">USER</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;root&#34;</span>,
+    PASSWORD<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;123456&#34;</span>,
+    PROPERTIES(<span style="color:#e6db74">&#34;maximumPoolSize&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">10</span>)
+), ds_1 (
+    <span style="color:#66d9ef">HOST</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;127.0.0.1&#34;</span>,
+    PORT<span style="color:#f92672">=</span><span style="color:#ae81ff">3306</span>,
+    DB<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;demo_ds_1&#34;</span>,
+    <span style="color:#66d9ef">USER</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;root&#34;</span>,
+    PASSWORD<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;123456&#34;</span>,
+    PROPERTIES(<span style="color:#e6db74">&#34;maximumPoolSize&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">10</span>)
+);
+
+<span style="color:#75715e">-- Create masking rules
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">CREATE</span> MASK <span style="color:#66d9ef">RULE</span> t_user (
+    COLUMNS(
+        (NAME<span style="color:#f92672">=</span>password, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MD5&#39;</span>)),
+        (NAME<span style="color:#f92672">=</span>email, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MASK_BEFORE_SPECIAL_CHARS&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;special-chars&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;@&#34;</span>, <span style="color:#e6db74">&#34;replace-char&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;*&#34;</span>))),
+        (NAME<span style="color:#f92672">=</span>telephone, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;KEEP_FIRST_N_LAST_M&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;first-n&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#34;last-m&#34;</span><span style="color:#f92672">=</span><span style="color:#ae81ff">4</span>, <span style="color:#e6db74">&#34;replace-char&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;*&#34;</span>)))
+    )
+);
+
+<span style="color:#75715e">-- Create encryption rules
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">CREATE</span> ENCRYPT <span style="color:#66d9ef">RULE</span> t_user (
+    COLUMNS(
+        (NAME<span style="color:#f92672">=</span>user_name, CIPHER<span style="color:#f92672">=</span>user_name_cipher, ENCRYPT_ALGORITHM(<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;AES&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#39;aes-key-value&#39;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#39;123456abc&#39;</span>)))),
+        (NAME<span style="color:#f92672">=</span>password, CIPHER <span style="color:#f92672">=</span>password_cipher, ENCRYPT_ALGORITHM(<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;AES&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#39;aes-key-value&#39;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#39;123456abc&#39;</span>)))),
+        (NAME<span style="color:#f92672">=</span>email, CIPHER <span style="color:#f92672">=</span>email_cipher, ENCRYPT_ALGORITHM(<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;AES&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#39;aes-key-value&#39;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#39;123456abc&#39;</span>)))),
+        (NAME<span style="color:#f92672">=</span>telephone, CIPHER <span style="color:#f92672">=</span>telephone_cipher, ENCRYPT_ALGORITHM(<span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;AES&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#39;aes-key-value&#39;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#39;123456abc&#39;</span>))))
+    )
+);
+</code></pre></div><p>After the masking and encryption rules are created, run the <code>SHOW</code> statement in DistSQL to view the masking and encryption rules:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-mysql" data-lang="mysql"><span style="color:#75715e">-- Show masking rules
+</span><span style="color:#75715e"></span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SHOW</span> MASK RULES <span style="color:#66d9ef">FROM</span> mask_db;
+<span style="color:#f92672">+--------+-----------+---------------------------+-----------------------------------+</span>
+<span style="color:#f92672">|</span> <span style="color:#66d9ef">table</span>  <span style="color:#f92672">|</span> <span style="color:#66d9ef">column</span>    <span style="color:#f92672">|</span> algorithm_type            <span style="color:#f92672">|</span> algorithm_props                   <span style="color:#f92672">|</span>
+<span style="color:#f92672">+--------+-----------+---------------------------+-----------------------------------+</span>
+<span style="color:#f92672">|</span> t_user <span style="color:#f92672">|</span> password  <span style="color:#f92672">|</span> MD5                       <span style="color:#f92672">|</span>                                   <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span> t_user <span style="color:#f92672">|</span> email     <span style="color:#f92672">|</span> MASK_BEFORE_SPECIAL_CHARS <span style="color:#f92672">|</span> <span style="color:#66d9ef">replace</span><span style="color:#f92672">-</span><span style="color:#66d9ef">char</span><span style="color:#f92672">=*</span>,special<span style="color:#f92672">-</span>chars<span style="color:#f92672">=@</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span> t_user <span style="color:#f92672">|</span> telephone <span style="color:#f92672">|</span> KEEP_FIRST_N_LAST_M       <span style="color:#f92672">|</span> first<span style="color:#f92672">-</span>n<span style="color:#f92672">=</span><span style="color:#ae81ff">3</span>,<span style="color:#66d9ef">replace</span><span style="color:#f92672">-</span><span style="color:#66d9ef">char</span><span style="color:#f92672">=*</span>,last<span style="color:#f92672">-</span>m<span style="color:#f92672">=</span><span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span>
+<span style="color:#f92672">+--------+-----------+---------------------------+-----------------------------------+</span>
+<span style="color:#ae81ff">3</span> rows <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">01</span> sec)
+
+<span style="color:#75715e">-- Show encryption rules
+</span><span style="color:#75715e"></span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SHOW</span> ENCRYPT RULES <span style="color:#66d9ef">FROM</span> mask_db;
+<span style="color:#f92672">+--------+--------------+------------------+--------------+-----------------------+-------------------+----------------+-------------------------+---------------------+----------------------+-----------------+------------------+--------------------------+</span>
+<span style="color:#f92672">|</span> <span style="color:#66d9ef">table</span>  <span style="color:#f92672">|</span> logic_column <span style="color:#f92672">|</span> cipher_column    <span style="color:#f92672">|</span> plain_column <span style="color:#f92672">|</span> assisted_query_column <span style="color:#f92672">|</span> like_query_column <span style="color:#f92672">|</span> encryptor_type <span style="color:#f92672">|</span> encryptor_props         <span style="color:#f92672">|</span> assisted_query_type <span style="color:#f92672">|</span> assisted_query_props <span style="color:#f92672">|</span> like_query_type <span style="color:#f92672">|</span> like_query_props <span style="color:#f92672">|</span> query_with_cipher_column <span style="color:#f92672">|</span>
+<span style="color:#f92672">+--------+--------------+------------------+--------------+-----------------------+-------------------+----------------+-------------------------+---------------------+----------------------+-----------------+------------------+--------------------------+</span>
+<span style="color:#f92672">|</span> t_user <span style="color:#f92672">|</span> user_name    <span style="color:#f92672">|</span> user_name_cipher <span style="color:#f92672">|</span>              <span style="color:#f92672">|</span>                       <span style="color:#f92672">|</span>                   <span style="color:#f92672">|</span> AES            <span style="color:#f92672">|</span> aes<span style="color:#f92672">-</span><span style="color:#66d9ef">key</span><span style="color:#f92672">-</span>value<span style="color:#f92672">=</span><span style="color:#ae81ff">123456</span>abc <span style="color:#f92672">|</span>                     <span style="color:#f92672">|</span>                      <span style="color:#f92672">|</span>                 <span style="color:#f92672">|</span>                  <span style="color:#f92672">|</span> <span style="color:#66d9ef">true</span>                     <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span> t_user <span style="color:#f92672">|</span> password     <span style="color:#f92672">|</span> password_cipher  <span style="color:#f92672">|</span>              <span style="color:#f92672">|</span>                       <span style="color:#f92672">|</span>                   <span style="color:#f92672">|</span> AES            <span style="color:#f92672">|</span> aes<span style="color:#f92672">-</span><span style="color:#66d9ef">key</span><span style="color:#f92672">-</span>value<span style="color:#f92672">=</span><span style="color:#ae81ff">123456</span>abc <span style="color:#f92672">|</span>                     <span style="color:#f92672">|</span>                      <span style="color:#f92672">|</span>                 <span style="color:#f92672">|</span>                  <span style="color:#f92672">|</span> <span style="color:#66d9ef">true</span>                     <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span> t_user <span style="color:#f92672">|</span> email        <span style="color:#f92672">|</span> email_cipher     <span style="color:#f92672">|</span>              <span style="color:#f92672">|</span>                       <span style="color:#f92672">|</span>                   <span style="color:#f92672">|</span> AES            <span style="color:#f92672">|</span> aes<span style="color:#f92672">-</span><span style="color:#66d9ef">key</span><span style="color:#f92672">-</span>value<span style="color:#f92672">=</span><span style="color:#ae81ff">123456</span>abc <span style="color:#f92672">|</span>                     <span style="color:#f92672">|</span>                      <span style="color:#f92672">|</span>                 <span style="color:#f92672">|</span>                  <span style="color:#f92672">|</span> <span style="color:#66d9ef">true</span>                     <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span> t_user <span style="color:#f92672">|</span> telephone    <span style="color:#f92672">|</span> telephone_cipher <span style="color:#f92672">|</span>              <span style="color:#f92672">|</span>                       <span style="color:#f92672">|</span>                   <span style="color:#f92672">|</span> AES            <span style="color:#f92672">|</span> aes<span style="color:#f92672">-</span><span style="color:#66d9ef">key</span><span style="color:#f92672">-</span>value<span style="color:#f92672">=</span><span style="color:#ae81ff">123456</span>abc <span style="color:#f92672">|</span>                     <span style="color:#f92672">|</span>                      <span style="color:#f92672">|</span>                 <span style="color:#f92672">|</span>                  <span style="color:#f92672">|</span> <span style="color:#66d9ef">true</span>                     <span style="color:#f92672">|</span>
+<span style="color:#f92672">+--------+--------------+------------------+--------------+-----------------------+-------------------+----------------+-------------------------+---------------------+----------------------+-----------------+------------------+--------------------------+</span>
+<span style="color:#ae81ff">4</span> rows <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">01</span> sec)
+</code></pre></div><p>After creating the rules, we create the following <code>t_user</code> table and perform data initialization:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">DROP</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#66d9ef">IF</span> <span style="color:#66d9ef">EXISTS</span> t_user;
+
+<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> t_user (user_id INT <span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span>, user_name VARCHAR(<span style="color:#ae81ff">50</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>, password VARCHAR(<span style="color:#ae81ff">50</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>, email VARCHAR(<span style="color:#ae81ff">50</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>, telephone CHAR(<span style="color:#ae81ff">50</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>, creation_date DATE <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>);
+
+<span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_user(user_id, user_name, password, email, telephone, creation_date) <span style="color:#66d9ef">values</span>(<span style="color:#ae81ff">10</span>, <span style="color:#e6db74">&#39;zhangsan&#39;</span>, <span style="color:#e6db74">&#39;111111&#39;</span>, <span style="color:#e6db74">&#39;zhangsan@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678900&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">11</span>, <span style="color:#e6db74">&#39;lisi&#39;</span>, <span style="color:#e6db74">&#39;222222&#39;</span>, <span style="color:#e6db74">&#39;lisi@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678901&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">12</span>, <span style="color:#e6db74">&#39;wangwu&#39;</span>, <span style="color:#e6db74">&#39;333333&#39;</span>, <span style="color:#e6db74">&#39;wangwu@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678902&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">13</span>, <span style="color:#e6db74">&#39;zhaoliu&#39;</span>, <span style="color:#e6db74">&#39;444444&#39;</span>, <span style="color:#e6db74">&#39;zhaoliu@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678903&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">14</span>, <span style="color:#e6db74">&#39;zhuqi&#39;</span>, <span style="color:#e6db74">&#39;555555&#39;</span>, <span style="color:#e6db74">&#39;zhuqi@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678904&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">15</span>, <span style="color:#e6db74">&#39;liba&#39;</span>, <span style="color:#e6db74">&#39;666666&#39;</span>, <span style="color:#e6db74">&#39;liba@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678905&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">16</span>, <span style="color:#e6db74">&#39;wangjiu&#39;</span>, <span style="color:#e6db74">&#39;777777&#39;</span>, <span style="color:#e6db74">&#39;wangjiu@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678906&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">17</span>, <span style="color:#e6db74">&#39;zhuda&#39;</span>, <span style="color:#e6db74">&#39;888888&#39;</span>, <span style="color:#e6db74">&#39;zhuda@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678907&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">18</span>, <span style="color:#e6db74">&#39;suner&#39;</span>, <span style="color:#e6db74">&#39;999999&#39;</span>, <span style="color:#e6db74">&#39;suner@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678908&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">19</span>, <span style="color:#e6db74">&#39;zhousan&#39;</span>, <span style="color:#e6db74">&#39;123456&#39;</span>, <span style="color:#e6db74">&#39;zhousan@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678909&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">20</span>, <span style="color:#e6db74">&#39;tom&#39;</span>, <span style="color:#e6db74">&#39;234567&#39;</span>, <span style="color:#e6db74">&#39;tom@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678910&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">21</span>, <span style="color:#e6db74">&#39;kobe&#39;</span>, <span style="color:#e6db74">&#39;345678&#39;</span>, <span style="color:#e6db74">&#39;kobe@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678911&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">22</span>, <span style="color:#e6db74">&#39;jerry&#39;</span>, <span style="color:#e6db74">&#39;456789&#39;</span>, <span style="color:#e6db74">&#39;jerry@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678912&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">23</span>, <span style="color:#e6db74">&#39;james&#39;</span>, <span style="color:#e6db74">&#39;567890&#39;</span>, <span style="color:#e6db74">&#39;james@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678913&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">24</span>, <span style="color:#e6db74">&#39;wade&#39;</span>, <span style="color:#e6db74">&#39;012345&#39;</span>, <span style="color:#e6db74">&#39;wade@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678914&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">25</span>, <span style="color:#e6db74">&#39;rose&#39;</span>, <span style="color:#e6db74">&#39;000000&#39;</span>, <span style="color:#e6db74">&#39;rose@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678915&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">26</span>, <span style="color:#e6db74">&#39;bosh&#39;</span>, <span style="color:#e6db74">&#39;111222&#39;</span>, <span style="color:#e6db74">&#39;bosh@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678916&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">27</span>, <span style="color:#e6db74">&#39;jack&#39;</span>, <span style="color:#e6db74">&#39;222333&#39;</span>, <span style="color:#e6db74">&#39;jack@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678917&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">28</span>, <span style="color:#e6db74">&#39;jordan&#39;</span>, <span style="color:#e6db74">&#39;333444&#39;</span>, <span style="color:#e6db74">&#39;jordan@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678918&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>),
+(<span style="color:#ae81ff">29</span>, <span style="color:#e6db74">&#39;julie&#39;</span>, <span style="color:#e6db74">&#39;444555&#39;</span>, <span style="color:#e6db74">&#39;julie@gmail.com&#39;</span>, <span style="color:#e6db74">&#39;12345678919&#39;</span>, <span style="color:#e6db74">&#39;2017-08-08&#39;</span>);
+</code></pre></div><p>After data initialization, we can directly connect to the MySQL database through <code>MySQL -u root -h 127.0.0.1 -P 3306 -p c-A</code> to check the data stored in the table <code>t_user</code> of the underlying database.</p>
+<p>It can be seen that MySQL stores encrypted data, and sensitive data is effectively protected in the database storage layer.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-mysql" data-lang="mysql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_user;
+<span style="color:#f92672">+---------+--------------------------+--------------------------+----------------------------------------------+--------------------------+---------------+</span>
+<span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> user_name_cipher         <span style="color:#f92672">|</span> password_cipher          <span style="color:#f92672">|</span> email_cipher                                 <span style="color:#f92672">|</span> telephone_cipher         <span style="color:#f92672">|</span> creation_date <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+--------------------------+--------------------------+----------------------------------------------+--------------------------+---------------+</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> sVq8Lmm<span style="color:#f92672">+</span>j6bZE5EKSilJEQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> aQol0b6th65d0aXe<span style="color:#f92672">+</span>zFPsQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> WM0fHOH91JNWnHTkiqBdyNmzk4uJ7CCz4mB1va9Ya1M<span style="color:#f92672">=</span> <span style="color:#f92672">|</span> kLjLJIMnfyHT2nA<span style="color:#f92672">+</span>viaoaQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">11</span> <span style="color:#f92672">|</span> fQ7IzBxKVuNHtUF6h6WSBg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> wuhmEKgdgrWQYt<span style="color:#f92672">+</span>Ev0hgGA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> svATu3uWv9KfiloWJeWx3A<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> <span style="color:#ae81ff">0</span>kDFxndQdzauFwL<span style="color:#f92672">/</span>wyCsNQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">12</span> <span style="color:#f92672">|</span> AQRWSlufQPog<span style="color:#f92672">/</span>b64YRhu6Q<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> x7A<span style="color:#f92672">+</span><span style="color:#ae81ff">2</span>jq9B6DSOSFtSOibdA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> nHJv9e6NiClIuGHOjHLvCAq2ZLhWcqfQ8<span style="color:#f92672">/</span>EQnIqMx<span style="color:#f92672">+</span>g<span style="color:#f92672">=</span> <span style="color:#f92672">|</span> a<span style="color:#f92672">/</span>SzSJLapt5iBXvF2c9ycw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">13</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">5</span>NqS4YvpT<span style="color:#f92672">+</span>mHBFqZOZ3QDA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> zi6b4xYRjjV<span style="color:#f92672">+</span>bBk2R4wB<span style="color:#f92672">+</span>w<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> MLBZczLjriUXvg3aM5QPTxMJbLjNh8yeNrSNBek<span style="color:#f92672">/</span>VTw<span style="color:#f92672">=</span> <span style="color:#f92672">|</span> b6VVhG<span style="color:#f92672">+</span>F6ujG8IMUZJAIFg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">14</span> <span style="color:#f92672">|</span> qeIY9od3u1KwhjihzLQUTQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">51</span>UmlLAC<span style="color:#f92672">+</span>tUvdOAj8CjWfQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> JCmeNdPyrKO5BW5zvhAA<span style="color:#f92672">+</span>g<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> f995xinpZdKMVU5J5<span style="color:#f92672">/</span>yv3w<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">15</span> <span style="color:#f92672">|</span> VbNUtguwtpeGhHGnPJ3aXg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#f92672">+</span><span style="color:#ae81ff">3</span><span style="color:#f92672">/</span><span style="color:#ae81ff">5</span>CVbqoKhg3sqznKTFFQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> T<span style="color:#f92672">+</span>X<span style="color:#f92672">+</span>e3Q3<span style="color:#f92672">+</span>ZNIXXmg<span style="color:#f92672">/</span><span style="color:#ae81ff">80</span>uxg<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> GETj<span style="color:#f92672">+</span>S6DrO042E7NuBXLBQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">16</span> <span style="color:#f92672">|</span> U0<span style="color:#f92672">/</span>Ao<span style="color:#f92672">/</span>w1u7L5avR3fAH2Og<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> jFfFMYxv02DjaFRuAoCDGw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> RNW<span style="color:#f92672">/</span>KRq5HeL2YTfAdXSyARMJbLjNh8yeNrSNBek<span style="color:#f92672">/</span>VTw<span style="color:#f92672">=</span> <span style="color:#f92672">|</span> <span style="color:#f92672">+</span>lbvjJwO7VO4HUKc0Mw0NA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">17</span> <span style="color:#f92672">|</span> zb1sgBigoMi7JPSoY4bAVw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> VFIjocgjujJCJc6waWXqJA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">1</span>vF<span style="color:#f92672">/</span>ET3nBxt7T7vVfAndZQ<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> wFvs5BH6OikgveBeTEBwsQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">18</span> <span style="color:#f92672">|</span> rJzNIrFEnx296kW<span style="color:#f92672">+</span>N1YmMw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> LaODSKGyR7vZ1IvmBOe9vA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">5</span>u4GIQkJsWRmnJHWaHNSjg<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> uwqm2O1Lv2tNTraJX1ym7Q<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">19</span> <span style="color:#f92672">|</span> qHwpQ9kteL8VX6iTUhNdbQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> MyOShk4kjRnds7CZfU5NCw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> HmYCo7QBfJ2E0EvaGHBCOBMJbLjNh8yeNrSNBek<span style="color:#f92672">/</span>VTw<span style="color:#f92672">=</span> <span style="color:#f92672">|</span> YLNQuuUPMGA21nhKWPzzsg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">20</span> <span style="color:#f92672">|</span> qCCmvf7OWRxbVbtLb0az1g<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> fzdTMkzpBvgNYmKSQAp8Fg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> gOoP4Mf0P4ISOJp6A4sRmg<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> l4xa4HwOfs<span style="color:#f92672">/</span>jusoJon9Wzw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">21</span> <span style="color:#f92672">|</span> IYJ1COaRQ0gSjWMC<span style="color:#f92672">/</span>UAeMg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">1</span>uEDMeYh2jstbOf6kx<span style="color:#f92672">/</span>cqw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> tikMAFiQ37u2VgWqUT38Eg<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> rGpr30UXfczXjCjdvPN<span style="color:#f92672">+</span>BA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">22</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">7</span>wvZZ7NVHgk6m1vB<span style="color:#f92672">/</span>sTC1Q<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> OirN3gvz9uBnrq88nfa1wQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> T7K<span style="color:#f92672">/</span>Uz1O2m<span style="color:#f92672">+</span><span style="color:#ae81ff">3</span>xvB0<span style="color:#f92672">+</span>c4nGQ<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> <span style="color:#ae81ff">7</span><span style="color:#f92672">+</span>fCU<span style="color:#f92672">+</span>VbQZKgLJXZPTTegA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">23</span> <span style="color:#f92672">|</span> SbVQWl8JbnxflCfGJ7KZdA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> hWVVYdkdTUTgm08haeq<span style="color:#f92672">+</span>tw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> Uk3ju6GteCD1qEHns5ZhKA<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> DpnV86FZefwBRmIAVBh2gg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">24</span> <span style="color:#f92672">|</span> fx7OfSAYqVpjNa7LoKhXvw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> N2W9ijAXNkBxhkvJiIwp0A<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> lAAGItVLmb1H69<span style="color:#f92672">++</span><span style="color:#ae81ff">1</span>MDrIA<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> QrE62wAb8B<span style="color:#f92672">+</span><span style="color:#ae81ff">2</span>cEPcs4Lm1Q<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">25</span> <span style="color:#f92672">|</span> wH3<span style="color:#f92672">/</span>LdWShD9aCb8eCIm3Tg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> GDixtt6NzPOVv6H0dmov5g<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> T1yfJSyVxumZUfkDnmUQxA<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> iU<span style="color:#f92672">+</span>AsGczboCRfU<span style="color:#f92672">+</span>Zr7mcpw<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">26</span> <span style="color:#f92672">|</span> GgJQTndbxyBZ2tECS8SmqQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> gLgVFLFIyyKwdQCXaw78Ag<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> O<span style="color:#f92672">+</span>JIn9XZ3yq6RnKElHuqlA<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> kwYlbu9aF7ndvMTcj8QBSg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">27</span> <span style="color:#f92672">|</span> lv8w8g32kuTXNvSUUypOig<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">8</span>i0YH2mn6kXSyvBjM5p<span style="color:#f92672">+</span>Yg<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> gqRoJF5S66SvBalc2RCo1A<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> <span style="color:#ae81ff">2</span>ob<span style="color:#f92672">/</span><span style="color:#ae81ff">3</span>UYqRsZA5VdScnaWxQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">28</span> <span style="color:#f92672">|</span> P9YCbFvWCIhcS99KyKH2zA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> PRrI4z4FrWwLvcHPx9g4og<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> y8q31Jj4PFSyZHiLVIxKEQq2ZLhWcqfQ8<span style="color:#f92672">/</span>EQnIqMx<span style="color:#f92672">+</span>g<span style="color:#f92672">=</span> <span style="color:#f92672">|</span> kDF2za26uOerlNYWYHRT2Q<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">29</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">5</span>wu9XvlJAVtjKijhxt6SQQ<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> O4pgkLgz34N<span style="color:#f92672">+</span>C4bIUOQVnA<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> UH7ihg16J61Np<span style="color:#f92672">/</span>EYMQnXIA<span style="color:#f92672">==</span>                     <span style="color:#f92672">|</span> z2hbJQD4dRkVVITNxAac5Q<span style="color:#f92672">==</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+--------------------------+--------------------------+----------------------------------------------+--------------------------+---------------+</span>
+<span style="color:#ae81ff">20</span> rows <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">00</span> sec)
+</code></pre></div><p>After confirming the effect of data encryption, we conduct a simple test on the data masking function.</p>
+<p>The following <code>CASE</code> includes <code>simple SELECT query</code>, <code>join query</code>, <code>subquery</code> and other daily used operation statements. It can be seen that the password is masked with MD5 hash, email is masked with <code>MASK_BEFORE_SPECIAL_CHARS</code> and telephone is masked with <code>KEEP_FIRST_N_LAST_M</code>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-mysql" data-lang="mysql"><span style="color:#75715e">-- Simple SELECT query
+</span><span style="color:#75715e"></span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_user <span style="color:#66d9ef">WHERE</span> user_id <span style="color:#f92672">=</span> <span style="color:#ae81ff">10</span>;
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> user_name <span style="color:#f92672">|</span> password                         <span style="color:#f92672">|</span> email              <span style="color:#f92672">|</span> telephone   <span style="color:#f92672">|</span> creation_date <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> zhangsan  <span style="color:#f92672">|</span> <span style="color:#ae81ff">96</span>e79218965eb72c92a549dd5a330112 <span style="color:#f92672">|</span> <span style="color:#f92672">********@</span>gmail.com <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8900</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#ae81ff">1</span> row <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">01</span> sec)
+
+<span style="color:#75715e">-- Join query
+</span><span style="color:#75715e"></span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SELECT</span> u1.<span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_user u1 <span style="color:#66d9ef">INNER</span> <span style="color:#66d9ef">JOIN</span> t_user u2 <span style="color:#66d9ef">ON</span> u1.user_id <span style="color:#f92672">=</span> u2.user_id <span style="color:#66d9ef">WHERE</span> u1.user_id <span style="color:#f92672">=</span> <span style="color:#ae81ff">10</span>;
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> user_name <span style="color:#f92672">|</span> password                         <span style="color:#f92672">|</span> email              <span style="color:#f92672">|</span> telephone   <span style="color:#f92672">|</span> creation_date <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> zhangsan  <span style="color:#f92672">|</span> <span style="color:#ae81ff">96</span>e79218965eb72c92a549dd5a330112 <span style="color:#f92672">|</span> <span style="color:#f92672">********@</span>gmail.com <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8900</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#ae81ff">1</span> row <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">05</span> sec)
+
+<span style="color:#75715e">-- Subquery
+</span><span style="color:#75715e"></span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> (<span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_user) temp <span style="color:#66d9ef">WHERE</span> temp.user_id <span style="color:#f92672">=</span> <span style="color:#ae81ff">10</span>;
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> user_name <span style="color:#f92672">|</span> password                         <span style="color:#f92672">|</span> email              <span style="color:#f92672">|</span> telephone   <span style="color:#f92672">|</span> creation_date <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> zhangsan  <span style="color:#f92672">|</span> <span style="color:#ae81ff">96</span>e79218965eb72c92a549dd5a330112 <span style="color:#f92672">|</span> <span style="color:#f92672">********@</span>gmail.com <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8900</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#ae81ff">1</span> row <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">03</span> sec)
+
+<span style="color:#75715e">-- Subquery with join
+</span><span style="color:#75715e"></span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> (<span style="color:#66d9ef">SELECT</span> u1.<span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_user u1 <span style="color:#66d9ef">INNER</span> <span style="color:#66d9ef">JOIN</span> t_user u2 <span style="color:#66d9ef">ON</span> u1.user_id <span style="color:#f92672">=</span> u2.user_id) temp <span style="color:#66d9ef">WHERE</span> temp.user_id <span style="color:#f92672">&lt;</span> <span style="color:#ae81ff">15</span>;
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> user_name <span style="color:#f92672">|</span> password                         <span style="color:#f92672">|</span> email              <span style="color:#f92672">|</span> telephone   <span style="color:#f92672">|</span> creation_date <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> zhangsan  <span style="color:#f92672">|</span> <span style="color:#ae81ff">96</span>e79218965eb72c92a549dd5a330112 <span style="color:#f92672">|</span> <span style="color:#f92672">********@</span>gmail.com <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8900</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">11</span> <span style="color:#f92672">|</span> lisi      <span style="color:#f92672">|</span> e3ceb5881a0a1fdaad01296d7554868d <span style="color:#f92672">|</span> <span style="color:#f92672">****@</span>gmail.com     <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8901</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">12</span> <span style="color:#f92672">|</span> wangwu    <span style="color:#f92672">|</span> <span style="color:#ae81ff">1</span>a100d2c0dab19c4430e7d73762b3423 <span style="color:#f92672">|</span> <span style="color:#f92672">******@</span>gmail.com   <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8902</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">13</span> <span style="color:#f92672">|</span> zhaoliu   <span style="color:#f92672">|</span> <span style="color:#ae81ff">73882</span>ab1fa529d7273da0db6b49cc4f3 <span style="color:#f92672">|</span> <span style="color:#f92672">*******@</span>gmail.com  <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8903</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">14</span> <span style="color:#f92672">|</span> zhuqi     <span style="color:#f92672">|</span> <span style="color:#ae81ff">5</span>b1b68a9abf4d2cd155c81a9225fd158 <span style="color:#f92672">|</span> <span style="color:#f92672">*****@</span>gmail.com    <span style="color:#f92672">|</span> <span style="color:#ae81ff">123</span><span style="color:#f92672">****</span><span style="color:#ae81ff">8904</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#ae81ff">5</span> rows <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">03</span> sec)
+</code></pre></div><p>We modify the masking rules using DistSQL, adding the optional parameter salt to the MD5 hash masking used for the password, and changing the algorithm for the telephone field to the <code>TELEPHONE_RANDOM_REPLACE</code> data masking algorithm.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">ALTER</span> MASK <span style="color:#66d9ef">RULE</span> t_user (
+    COLUMNS(
+        (NAME<span style="color:#f92672">=</span>password, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MD5&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;salt&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;123abc&#34;</span>))),
+        (NAME<span style="color:#f92672">=</span>email, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;MASK_BEFORE_SPECIAL_CHARS&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;special-chars&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;@&#34;</span>, <span style="color:#e6db74">&#34;replace-char&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;*&#34;</span>))),
+        (NAME<span style="color:#f92672">=</span>telephone, <span style="color:#66d9ef">TYPE</span>(NAME<span style="color:#f92672">=</span><span style="color:#e6db74">&#39;TELEPHONE_RANDOM_REPLACE&#39;</span>, PROPERTIES(<span style="color:#e6db74">&#34;network-numbers&#34;</span><span style="color:#f92672">=</span><span style="color:#e6db74">&#34;123,180&#34;</span>)))
+    )
+);
+</code></pre></div><p>After the modification, we conduct the query again. We can see that due to the change of password salting, the result of the MD5 hash masking of the password field was changed.</p>
+<p>While the telephone random replace data masking algorithm is used in the telephone field, the masking result is also randomly generated after the number segment.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-mysql" data-lang="mysql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_user <span style="color:#66d9ef">WHERE</span> user_id <span style="color:#f92672">=</span> <span style="color:#ae81ff">10</span>;
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> user_name <span style="color:#f92672">|</span> password                         <span style="color:#f92672">|</span> email              <span style="color:#f92672">|</span> telephone   <span style="color:#f92672">|</span> creation_date <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> zhangsan  <span style="color:#f92672">|</span> <span style="color:#ae81ff">554555</span>c0eaca7aeecada758122efd640 <span style="color:#f92672">|</span> <span style="color:#f92672">********@</span>gmail.com <span style="color:#f92672">|</span> <span style="color:#ae81ff">12383015546</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------------------------------+--------------------+-------------+---------------+</span>
+<span style="color:#ae81ff">1</span> row <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">01</span> sec)
+</code></pre></div><p>Finally, we run <code>DROP MASK RULE t_user;</code> to delete the masking rule. The original plaintext can be seen if we query again.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-mysql" data-lang="mysql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">SELECT</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">FROM</span> t_user <span style="color:#66d9ef">WHERE</span> user_id <span style="color:#f92672">=</span> <span style="color:#ae81ff">10</span>;
+<span style="color:#f92672">+---------+-----------+----------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> user_name <span style="color:#f92672">|</span> password <span style="color:#f92672">|</span> email              <span style="color:#f92672">|</span> telephone   <span style="color:#f92672">|</span> creation_date <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------+--------------------+-------------+---------------+</span>
+<span style="color:#f92672">|</span>      <span style="color:#ae81ff">10</span> <span style="color:#f92672">|</span> zhangsan  <span style="color:#f92672">|</span> <span style="color:#ae81ff">111111</span>   <span style="color:#f92672">|</span> zhangsan<span style="color:#f92672">@</span>gmail.com <span style="color:#f92672">|</span> <span style="color:#ae81ff">12345678900</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2017</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span><span style="color:#f92672">-</span><span style="color:#ae81ff">08</span>    <span style="color:#f92672">|</span>
+<span style="color:#f92672">+---------+-----------+----------+--------------------+-------------+---------------+</span>
+<span style="color:#ae81ff">1</span> row <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">00</span> sec)
+</code></pre></div><h1 id="conclusion">Conclusion</h1>
+<p>The newly added dynamic data masking function of Apache ShardingSphere 5.3.1 is a further enhancement to ShardingSphere&rsquo;s data security approach.</p>
+<p>In the future, our community data masking is considering combining data masking with user rights, SQL audit, and other functions.</p>
+<p>We welcome interested readers to join our community to contribute to improving the data masking function of Apache ShardingSphere.</p>
+<h2 id="author">Author</h2>
+<p>Duan Zhengqiang, is a senior middleware engineer at SphereEx &amp; Apache ShardingSphere PMC.</p>
+<p>Zhengqiang started to contribute to Apache ShardingSphere middleware in 2018 and played a leading role in sharding practices dealing with massive amounts data.</p>
+<p>With rich practical experience, he loves open-source and is willing to contribute to a variety of projects. He currently focuses on the development of Apache ShardingSphere kernel module.</p>
+<h2 id="relevant-links">Relevant Links</h2>
+<p>🔗 <a href="https://shardingsphere.apache.org/">ShardingSphere Official Website</a></p>
+<p>🔗 <a href="https://github.com/apache/shardingsphere">ShardingSphere Official Project Repo</a></p>
+<p>🔗 <a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p>🔗 <a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_02_15_a_distributed_database_load_balancing_architecture_based_on_shardingsphere_demo__user_case/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>A Distributed Database Load Balancing Architecture Based on ShardingSphere: Demo and User Case &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">A Distributed Database Load Balancing Architecture Based on ShardingSphere: Demo and User Case</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>This post introduces how to build a distributed database load-balancing architecture based on ShardingSphere, and the impact of introducing load balancing with a user case.</p>
+<p>Finally, a one-stop solution for Apache ShardingSphere distributed databases on the cloud will be presented and demonstrated at the end.</p>
+<h1 id="shardingsphere-based-distributed-database-load-balancing-architecture">ShardingSphere-based distributed database load balancing architecture</h1>
+<h2 id="shardingsphere-load-balancing-architecture-essentials">ShardingSphere Load Balancing Architecture Essentials</h2>
+<p>As many of our readers may already know, Apache ShardingSphere is a distributed database ecosystem that transforms any database into a distributed database and enhances it with data sharding, elastic scaling, encryption, and other capabilities.</p>
+<p>It consists of two products, ShardingSphere-JDBC and ShardingSphere-Proxy, which can be deployed independently and support hybrid deployments for use with each other. The following figure illustrates the hybrid deployment architecture:</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case1.png" alt="img"></p>
+<p><strong>ShardingSphere-JDBC Load Balancing Solution</strong></p>
+<p>ShardingSphere-JDBC is a lightweight Java framework with additional services provided in the JDBC layer. ShardingSphere-JDBC simply adds computational operations before the application performs database operations, and the application process still connects directly to the database via the database driver.</p>
+<p>As a result, users don’t have to worry about load balancing with ShardingSphere-JDBC, and can focus on how their application is load balanced.</p>
+<p><strong>SharidngSphere-Proxy Load Balancing Solution</strong></p>
+<p><em><strong>Deployment Structure</strong></em></p>
+<p>ShardingSphere-Proxy is a transparent database proxy that provides services to database clients via the database protocol. The following figure shows the for ShardingSphere-Proxy as a standalone deployed process with load balancing on top of it:</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case2.png" alt="img"></p>
+<p><em><strong>Load Balancing Solution Essentials</strong></em></p>
+<p>Some of our community contributors have discussed in detail how to build a ShardingSphere-Proxy cluster, and some have asked about the inconsistent behavior of ShardingSphere-Proxy after load balancing:</p>
+<ul>
+<li>How to build a ShardingSphere-Proxy cluster? <a href="https://github.com/apache/shardingsphere/discussions/12593">https://github.com/apache/shardingsphere/discussions/12593</a></li>
+<li>Requests sent by clients through HA-Proxy do not poll multiple instances of ShardingSphere-Proxy: <a href="https://github.com/apache/shardingsphere/issues/20016">https://github.com/apache/shardingsphere/issues/20016</a></li>
+</ul>
+<p>The key point of ShardingSphere-Proxy cluster load balancing is that the database protocol itself is designed to be stateful. For example, connection authentication status, transaction status, Prepared Statement, etc.</p>
+<p>If the load balancing on top of the ShardingSphere-Proxy is unable to understand the database protocol, the only option is to select a four-tier load balancing proxy ShardingSphere-Proxy cluster. In this case, the state of the database connection between the client and ShardingSphere-Proxy is maintained by a specific Proxy instance.</p>
+<p>Because the state of the connection itself is maintained in a specific Proxy instance, four-tier load balancing can only achieve connection-level load balancing. Multiple requests for the same database connection cannot be polled to multiple Proxy instances, i.e. request-level load balancing is not possible.</p>
+<p><strong>Note:</strong> This article does not cover the details of four-tier load balancing and seven-tier load balancing.</p>
+<p><em><strong>Recommendations for the application layer</strong></em></p>
+<p>Theoretically, there is no functional difference between a client connecting directly to a single ShardingSphere-Proxy or to a ShardingSphere-Proxy cluster via a load-balancing portal. However, there are some differences in the technical implementation and configuration of the different load balancers.</p>
+<p>For example, in the case of a direct connection to ShardingSphere-Proxy with no limit on the maximum time a database connection session can be held, some ELB products have a maximum session hold time of 60 minutes at Layer 4. If an idle database connection is closed by a load balancing timeout, but the client is not aware of the passive TCP connection closure, this may cause the application to report an error.</p>
+<p>Therefore, in addition to considerations at the load balancing level, there are also measures that the client itself can consider to avoid the impact of introducing load balancing.</p>
+<p><em><strong>Consider on-demand connection creation for scenarios with long execution intervals</strong></em></p>
+<p>For example, if a connection’s single instance is created and used continuously, the database connection will be idle most of the time when executing a timed job with a 1-hour interval and a short execution time.</p>
+<p>If the client itself is not aware of changes in the connection state, the long idle time increases the uncertainty of the connection state.</p>
+<p>For scenarios with long execution intervals, consider creating connections on demand and releasing them after use.</p>
+<p><em><strong>Consider managing database connections through connection pooling</strong></em></p>
+<p>General database connection pools have the ability to maintain valid connections, reject failed connections, etc.</p>
+<p>Managing database connections through connection pools can reduce the cost of maintaining connections yourself.</p>
+<p><em><strong>The client considers enabling TCP KeepAlive</strong></em></p>
+<p>TCP <code>KeepAlive</code> configuration is generally supported by clients, e.g:</p>
+<ul>
+<li>MySQL Connector/J supports the configuration of <code>autoReconnect</code> or <code>tcpKeepAlive</code>, which are not enabled by default.</li>
+<li>The PostgreSQL JDBC Driver supports the configuration of <code>tcpKeepAlive</code>, which is not enabled by default.</li>
+</ul>
+<p>Nevertheless, there are some limitations to the way TCP <code>KeepAlive</code> can be enabled:</p>
+<ul>
+<li>The client does not necessarily support the configuration of TCP <code>KeepAlive</code> or automatic reconnection.</li>
+<li>The client does not intend to make any code or configuration adjustments.</li>
+<li>TCP <code>KeepAlive</code> is dependent on the operating system implementation and configuration.</li>
+</ul>
+<h1 id="user-case-connection-outage-due-to-improper-load-balancing-configuration">User Case: connection outage due to improper load balancing configuration</h1>
+<p>A while back, a community user provided feedback that the ShardingSphere-Proxy cluster they deployed was providing services to the public via upper-layer load balancing, and in the process, they found problems with the stability of the connection between their application and ShardingSphere-Proxy.</p>
+<h2 id="problem-description">Problem Description</h2>
+<p>For the sake of our case, let’s consider that a user’s production environment uses a 3-node ShardingSphere-Proxy cluster, which serves applications through a cloud vendor’s ELB.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case3.png" alt="img"></p>
+<p>One of the applications is a resident process that executes timed jobs, which are executed hourly and have database operations in the job logic. User feedback is that each time a timed job is triggered, an error is reported in the application log:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-markdown" data-lang="markdown">send of 115 bytes failed with errno=104 Connection reset by peer
+</code></pre></div><p>Checking the ShardingSphere-Proxy logs, there are no abnormal messages.</p>
+<p>The issue only occurs with timed jobs that execute on an hourly basis, and all other applications access ShardingSphere-Proxy normally.</p>
+<p>As the job logic has a retry mechanism, the job executes successfully after each retry, with no impact on the original business.</p>
+<h2 id="problem-analysis">Problem Analysis</h2>
+<p>The reason why the application shows an error is clear: the client is sending data to a closed TCP connection.</p>
+<p>Therefore, the troubleshooting goal is to identify the exact reason why the TCP connection was closed.</p>
+<p>If you encounter any of the three reasons listed below, we recommend that you perform a network packet capture on both the application and the ShardingSphere-Proxy side within a few minutes before and after the point at which the problem occurs:</p>
+<ul>
+<li>The problem will recur on an hourly basis.</li>
+<li>The issue is network related.</li>
+<li>The issue does not affect the user’s real-time operations.</li>
+</ul>
+<p><strong>Packet Capture Phenomenon I</strong></p>
+<p>ShardingSphere-Proxy receives a TCP connection establishment request from the client every 15 seconds, but the client sends an RST to the Proxy immediately after the connection is established with three handshakes.</p>
+<p>The client sends an RST to the Proxy without any response after receiving the Server Greeting, or even before the Proxy has sent the Server Greeting.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case4.png" alt="img"></p>
+<p>However, no traffic matching the above behavior was found in the application-side packet capture results.</p>
+<p>By consulting the documentation of the ELB used by the user, we found that the above network interaction is how the four-layer health check mechanism of that ELB is implemented. Therefore, this phenomenon is not relevant to the problem in this case.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case5.png" alt="img"></p>
+<p><strong>Packet Capture Phenomenon II</strong></p>
+<p>The MySQL connection is established between the client and the ShardingSphere-Proxy and the client sends an RST to the Proxy during the TCP connection disconnection phase.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case6.png" alt="img"></p>
+<p>The above packet capture results show that the client first initiated the <code>COM_QUIT</code> command to ShardingSphere-Proxy, i.e. the MySQL connection was disconnected by the client, including but not limited to the following possible scenarios:</p>
+<ul>
+<li>The application has finished using the MySQL connection and closed the database connection normally.</li>
+<li>The application’s database connection to ShardingSphere-Proxy is managed by a connection pool, which performs a release operation for idle connections that have timed out or have exceeded their maximum lifetime.</li>
+</ul>
+<p>As the connection is actively closed on the application side, it does not theoretically affect other business operations, unless there is a problem with the application’s logic.</p>
+<p>After several rounds of packet analysis, no RSTs were found to have been sent to the client by the ShardingSphere-Proxy in the minutes before and after the problem resurfaced.</p>
+<p>Based on the available information, it is possible that the connection between the client and ShardingSphere-Proxy was disconnected earlier, but the packet capture time was limited and did not capture the moment of disconnection.</p>
+<p>Since the ShardingSphere-Proxy itself does not have the logic to actively disconnect the client, the problem is being investigated at both the client and ELB levels.</p>
+<p><strong>Client application and ELB configuration check</strong></p>
+<p>Based on user feedback:</p>
+<ul>
+<li>The application&rsquo;s timed jobs are executed hourly, the application does not use a database connection pool, and a database connection is manually maintained and provided for ongoing use by the timed jobs.</li>
+<li>The ELB is configured with four levels of session hold and a session idle timeout of 40 minutes.</li>
+</ul>
+<p>Considering the frequency of execution of timed jobs, we recommend that users modify the ELB session idle timeout to be greater than the execution interval of timed jobs. After the user modifies the ELB timeout to 66 minutes, the Connection reset problem no longer occurs.</p>
+<p>If packet capturing is continued during troubleshooting, it is highly likely that the ELB will capture traffic that disconnects the TCP connection at the 40th minute of each hour.</p>
+<h2 id="problem-conclusion"><strong>Problem Conclusion</strong></h2>
+<p>The client reported an error Connection reset by peer Root cause:</p>
+<p>The ELB idle timeout was less than the timed task execution interval and the client was idle for longer than the ELB session hold timeout, resulting in the connection between the client and ShardingSphere-Proxy being disconnected by the ELB timeout.</p>
+<p>The client sends data to a TCP connection that has been closed by the ELB, resulting in the error Connection reset by peer.</p>
+<p><em><strong>Timeout simulation experiment</strong></em></p>
+<p>In this paper, we conduct a simple experiment to verify the performance of the client after a load balancing session timeout, and perform packet capture during the experiment to analyse network traffic to observe the behaviour of load balancing.</p>
+<p><em><strong>Build a load-balanced ShardingSphere-Proxy clustered environment</strong></em></p>
+<p>Theoretically, any four-tier load balancing implementation can be the subject of this article, so this article uses <code>nginx</code> as a four-tier load balancing technology implementation.</p>
+<p><em><strong>Configure nginx stream</strong></em></p>
+<p>The idle timeout is set to 1 minute, i.e. the TCP session is held for a maximum of 1 minute.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">user</span>  nginx;
+worker_processes  auto;
+
+error_log  <span style="color:#f92672">/</span>var<span style="color:#f92672">/</span>log<span style="color:#f92672">/</span>nginx<span style="color:#f92672">/</span>error.log notice;
+pid        <span style="color:#f92672">/</span>var<span style="color:#f92672">/</span>run<span style="color:#f92672">/</span>nginx.pid;
+
+events <span style="color:#960050;background-color:#1e0010">{</span>
+    worker_connections  <span style="color:#ae81ff">1024</span>;
+<span style="color:#960050;background-color:#1e0010">}</span>
+
+stream <span style="color:#960050;background-color:#1e0010">{</span>
+    upstream shardingsphere <span style="color:#960050;background-color:#1e0010">{</span>
+        hash <span style="color:#960050;background-color:#1e0010">$</span>remote_addr consistent;
+
+        server proxy0:<span style="color:#ae81ff">3307</span>;
+        server proxy1:<span style="color:#ae81ff">3307</span>;
+    <span style="color:#960050;background-color:#1e0010">}</span>
+
+    server <span style="color:#960050;background-color:#1e0010">{</span>
+        <span style="color:#66d9ef">listen</span> <span style="color:#ae81ff">3306</span>;
+        proxy_timeout <span style="color:#ae81ff">1</span>m;
+        proxy_pass shardingsphere;
+    <span style="color:#960050;background-color:#1e0010">}</span>
+<span style="color:#960050;background-color:#1e0010">}</span>
+</code></pre></div><p><em><strong>Construct Docker compose</strong></em></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">version</span>: <span style="color:#e6db74">&#34;3.9&#34;</span>
+<span style="color:#66d9ef">services</span>:
+
+  <span style="color:#66d9ef">nginx</span>:
+    <span style="color:#66d9ef">image</span>: nginx:<span style="color:#ae81ff">1.22.0</span>
+    <span style="color:#66d9ef">ports</span>:
+      - <span style="color:#ae81ff">3306</span>:<span style="color:#ae81ff">3306</span>
+    <span style="color:#66d9ef">volumes</span>:
+      - /path/to/nginx.conf:/etc/nginx/nginx.conf
+
+  <span style="color:#66d9ef">proxy0</span>:
+    <span style="color:#66d9ef">image</span>: apache/shardingsphere-proxy:<span style="color:#ae81ff">5.3.0</span>
+    <span style="color:#66d9ef">hostname</span>: proxy0
+    <span style="color:#66d9ef">ports</span>:
+      - <span style="color:#ae81ff">3307</span>
+
+  <span style="color:#66d9ef">proxy1</span>:
+    <span style="color:#66d9ef">image</span>: apache/shardingsphere-proxy:<span style="color:#ae81ff">5.3.0</span>
+    <span style="color:#66d9ef">hostname</span>: proxy1
+    <span style="color:#66d9ef">ports</span>:
+      - <span style="color:#ae81ff">3307</span>
+</code></pre></div><p><em><strong>Startup environment</strong></em></p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"> $ docker compose up -d 
+<span style="color:#f92672">[</span>+<span style="color:#f92672">]</span> Running 4/4
+ ⠿ Network lb_default     Created                                                                                                      0.0s
+ ⠿ Container lb-proxy1-1  Started                                                                                                      0.5s
+ ⠿ Container lb-proxy0-1  Started                                                                                                      0.6s
+ ⠿ Container lb-nginx-1   Started            
+</code></pre></div><p><em><strong>Simulation of client-side same-connection based timed tasks</strong></em></p>
+<p><em>Construct client-side deferred SQL execution</em></p>
+<p>Here the ShardingSphere-Proxy is accessed via Java and MySQL Connector/J.</p>
+<p>The logic is roughly as follows:</p>
+<ol>
+<li>Establish a connection to the ShardingSphere-Proxy and execute a query to the Proxy.</li>
+<li>Wait 55 seconds and then execute another query to the Proxy.</li>
+<li>Wait 65 seconds and then execute another query to the Proxy.</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">main</span><span style="color:#f92672">(</span>String<span style="color:#f92672">[]</span> args<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>Connection connection <span style="color:#f92672">=</span> DriverManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getConnection</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;jdbc:mysql://127.0.0.1:3306?useSSL=false&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;root&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;root&#34;</span><span style="color:#f92672">);</span> Statement statement <span style="color:#f92672">=</span> connection<span style="color:#f92672">.</span><span style="color:#a6e22e">createStatement</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        log<span style="color:#f92672">.</span><span style="color:#a6e22e">info</span><span style="color:#f92672">(</span>getProxyVersion<span style="color:#f92672">(</span>statement<span style="color:#f92672">));</span>
+        TimeUnit<span style="color:#f92672">.</span><span style="color:#a6e22e">SECONDS</span><span style="color:#f92672">.</span><span style="color:#a6e22e">sleep</span><span style="color:#f92672">(</span>55<span style="color:#f92672">);</span>
+        log<span style="color:#f92672">.</span><span style="color:#a6e22e">info</span><span style="color:#f92672">(</span>getProxyVersion<span style="color:#f92672">(</span>statement<span style="color:#f92672">));</span>
+        TimeUnit<span style="color:#f92672">.</span><span style="color:#a6e22e">SECONDS</span><span style="color:#f92672">.</span><span style="color:#a6e22e">sleep</span><span style="color:#f92672">(</span>65<span style="color:#f92672">);</span>
+        log<span style="color:#f92672">.</span><span style="color:#a6e22e">info</span><span style="color:#f92672">(</span>getProxyVersion<span style="color:#f92672">(</span>statement<span style="color:#f92672">));</span>
+    <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span>Exception e<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        log<span style="color:#f92672">.</span><span style="color:#a6e22e">error</span><span style="color:#f92672">(</span>e<span style="color:#f92672">.</span><span style="color:#a6e22e">getMessage</span><span style="color:#f92672">(),</span> e<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+
+<span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> String <span style="color:#a6e22e">getProxyVersion</span><span style="color:#f92672">(</span>Statement statement<span style="color:#f92672">)</span> <span style="color:#66d9ef">throws</span> SQLException <span style="color:#f92672">{</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">(</span>ResultSet resultSet <span style="color:#f92672">=</span> statement<span style="color:#f92672">.</span><span style="color:#a6e22e">executeQuery</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;select version()&#34;</span><span style="color:#f92672">))</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>resultSet<span style="color:#f92672">.</span><span style="color:#a6e22e">next</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> resultSet<span style="color:#f92672">.</span><span style="color:#a6e22e">getString</span><span style="color:#f92672">(</span>1<span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> UnsupportedOperationException<span style="color:#f92672">();</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p><em><strong>Expected and client-side run results</strong></em></p>
+<p>Expected results:</p>
+<ol>
+<li>A client connection to the ShardingSphere-Proxy is established and the first query is successful.</li>
+<li>The client’s second query is successful.</li>
+<li>The client’s third query results in an error due to a broken TCP connection, as the nginx idle timeout is set to 1 minute.</li>
+</ol>
+<p>The execution results are as expected. Due to differences between the programming language and the database driver, the error messages behave differently, but the underlying cause is the same: both are TCP connections have been disconnected.</p>
+<p>The logs are shown below:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#ae81ff">15</span>:<span style="color:#ae81ff">29</span>:<span style="color:#ae81ff">12</span>.<span style="color:#ae81ff">734</span> [main] INFO icu.wwj.hello.jdbc.ConnectToLBProxy <span style="color:#f92672">-</span> <span style="color:#ae81ff">5</span>.<span style="color:#ae81ff">7</span>.<span style="color:#ae81ff">22</span><span style="color:#f92672">-</span>ShardingSphere<span style="color:#f92672">-</span>Proxy <span style="color:#ae81ff">5</span>.<span style="color:#ae81ff">1</span>.<span style="color:#ae81ff">1</span>
+<span style="color:#ae81ff">15</span>:<span style="color:#ae81ff">30</span>:<span style="color:#ae81ff">07</span>.<span style="color:#ae81ff">745</span> [main] INFO icu.wwj.hello.jdbc.ConnectToLBProxy <span style="color:#f92672">-</span> <span style="color:#ae81ff">5</span>.<span style="color:#ae81ff">7</span>.<span style="color:#ae81ff">22</span><span style="color:#f92672">-</span>ShardingSphere<span style="color:#f92672">-</span>Proxy <span style="color:#ae81ff">5</span>.<span style="color:#ae81ff">1</span>.<span style="color:#ae81ff">1</span>
+<span style="color:#ae81ff">15</span>:<span style="color:#ae81ff">31</span>:<span style="color:#ae81ff">12</span>.<span style="color:#ae81ff">764</span> [main] ERROR icu.wwj.hello.jdbc.ConnectToLBProxy <span style="color:#f92672">-</span> Communications link failure
+The <span style="color:#66d9ef">last</span> packet successfully received <span style="color:#66d9ef">from</span> the server was <span style="color:#ae81ff">65</span>,<span style="color:#ae81ff">016</span> milliseconds ago. The <span style="color:#66d9ef">last</span> packet sent successfully <span style="color:#66d9ef">to</span> the server was <span style="color:#ae81ff">65</span>,<span style="color:#ae81ff">024</span> milliseconds ago.
+        <span style="color:#66d9ef">at</span> com.mysql.cj.jdbc.exceptions.<span style="color:#66d9ef">SQLError</span>.createCommunicationsException(<span style="color:#66d9ef">SQLError</span>.java:<span style="color:#ae81ff">174</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:<span style="color:#ae81ff">64</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.jdbc.StatementImpl.executeQuery(StatementImpl.java:<span style="color:#ae81ff">1201</span>)
+        <span style="color:#66d9ef">at</span> icu.wwj.hello.jdbc.ConnectToLBProxy.getProxyVersion(ConnectToLBProxy.java:<span style="color:#ae81ff">28</span>)
+        <span style="color:#66d9ef">at</span> icu.wwj.hello.jdbc.ConnectToLBProxy.main(ConnectToLBProxy.java:<span style="color:#ae81ff">21</span>)
+Caused <span style="color:#66d9ef">by</span>: com.mysql.cj.exceptions.CJCommunicationsException: Communications link failure
+
+The <span style="color:#66d9ef">last</span> packet successfully received <span style="color:#66d9ef">from</span> the server was <span style="color:#ae81ff">65</span>,<span style="color:#ae81ff">016</span> milliseconds ago. The <span style="color:#66d9ef">last</span> packet sent successfully <span style="color:#66d9ef">to</span> the server was <span style="color:#ae81ff">65</span>,<span style="color:#ae81ff">024</span> milliseconds ago.
+        <span style="color:#66d9ef">at</span> java.base<span style="color:#f92672">/</span>jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance0(Native <span style="color:#66d9ef">Method</span>)
+        <span style="color:#66d9ef">at</span> java.base<span style="color:#f92672">/</span>jdk.internal.reflect.NativeConstructorAccessorImpl.newInstance(NativeConstructorAccessorImpl.java:<span style="color:#ae81ff">77</span>)
+        <span style="color:#66d9ef">at</span> java.base<span style="color:#f92672">/</span>jdk.internal.reflect.DelegatingConstructorAccessorImpl.newInstance(DelegatingConstructorAccessorImpl.java:<span style="color:#ae81ff">45</span>)
+        <span style="color:#66d9ef">at</span> java.base<span style="color:#f92672">/</span>java.lang.reflect.<span style="color:#66d9ef">Constructor</span>.newInstanceWithCaller(<span style="color:#66d9ef">Constructor</span>.java:<span style="color:#ae81ff">499</span>)
+        <span style="color:#66d9ef">at</span> java.base<span style="color:#f92672">/</span>java.lang.reflect.<span style="color:#66d9ef">Constructor</span>.newInstance(<span style="color:#66d9ef">Constructor</span>.java:<span style="color:#ae81ff">480</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:<span style="color:#ae81ff">61</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:<span style="color:#ae81ff">105</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.exceptions.ExceptionFactory.createException(ExceptionFactory.java:<span style="color:#ae81ff">151</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.exceptions.ExceptionFactory.createCommunicationsException(ExceptionFactory.java:<span style="color:#ae81ff">167</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:<span style="color:#ae81ff">581</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.NativeProtocol.checkErrorMessage(NativeProtocol.java:<span style="color:#ae81ff">761</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.NativeProtocol.sendCommand(NativeProtocol.java:<span style="color:#ae81ff">700</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.NativeProtocol.sendQueryPacket(NativeProtocol.java:<span style="color:#ae81ff">1051</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.NativeProtocol.sendQueryString(NativeProtocol.java:<span style="color:#ae81ff">997</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.NativeSession.execSQL(NativeSession.java:<span style="color:#ae81ff">663</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.jdbc.StatementImpl.executeQuery(StatementImpl.java:<span style="color:#ae81ff">1169</span>)
+        ... <span style="color:#ae81ff">2</span> common frames omitted
+Caused <span style="color:#66d9ef">by</span>: java.io.EOFException: Can <span style="color:#66d9ef">not</span> <span style="color:#66d9ef">read</span> response <span style="color:#66d9ef">from</span> server. Expected <span style="color:#66d9ef">to</span> <span style="color:#66d9ef">read</span> <span style="color:#ae81ff">4</span> bytes, <span style="color:#66d9ef">read</span> <span style="color:#ae81ff">0</span> bytes <span style="color:#66d9ef">before</span> <span style="color:#66d9ef">connection</span> was unexpectedly lost.
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.FullReadInputStream.readFully(FullReadInputStream.java:<span style="color:#ae81ff">67</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.SimplePacketReader.readHeaderLocal(SimplePacketReader.java:<span style="color:#ae81ff">81</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:<span style="color:#ae81ff">63</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.SimplePacketReader.readHeader(SimplePacketReader.java:<span style="color:#ae81ff">45</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:<span style="color:#ae81ff">52</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.TimeTrackingPacketReader.readHeader(TimeTrackingPacketReader.java:<span style="color:#ae81ff">41</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:<span style="color:#ae81ff">54</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.MultiPacketReader.readHeader(MultiPacketReader.java:<span style="color:#ae81ff">44</span>)
+        <span style="color:#66d9ef">at</span> com.mysql.cj.protocol.a.NativeProtocol.readMessage(NativeProtocol.java:<span style="color:#ae81ff">575</span>)
+        ... <span style="color:#ae81ff">8</span> common frames omitted
+</code></pre></div><p><em><strong>Analysis of packet capture results</strong></em></p>
+<p>The packet capture results show that after the connection idle timeout, nginx simultaneously disconnects from the client and the Proxy over TCP. However, as the client is not aware of this, nginx returns an RST after sending the command.</p>
+<p>After the <code>nginx</code> connection idle timeout, the TCP disconnection process with the Proxy is completed normally, and the Proxy is completely unaware when the client sends subsequent requests using the disconnected connection.</p>
+<p>Analyze the following packet capture results:</p>
+<ul>
+<li>Numbers 1–44 are the interaction between the client and the ShardingSphere-Proxy to establish a MySQL connection.</li>
+<li>Numbers 45–50 are the first queries performed by the client.</li>
+<li>Numbers 55–60 are the second query executed 55 seconds after the first query is executed by the client.</li>
+<li>Numbers 73–77 are the TCP connection disconnection processes initiated by nginx to both the client and ShardingSphere-Proxy after the session times out.</li>
+<li>Numbers 78–79 are the third query executed 65 seconds after the client executes the second query, and Connection Reset occurs.</li>
+</ul>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case7.png" alt="img"></p>
+<h1 id="shardingsphere-on-cloud-one-stop-solution">ShardingSphere on Cloud One-Stop Solution</h1>
+<p>Deploying and maintaining ShardingSphere-Proxy clusters and load balancing manually can be labor intensive and time consuming. To address this issue, Apache ShardingSphere has launched ShardingSphere on Cloud, a collection of cloud-based solutions.</p>
+<p>ShardingSphere-on-Cloud includes automated deployment scripts to virtual machines in cloud environments such as AWS, GCP and Alibaba Cloud, such as CloudFormation Stack templates, Terraform one-click deployment scripts, Helm Charts in Kubernetes cloud-native environments, Operator.</p>
+<p>ShardingSphere-on-Cloud includes the following tools: Helm Charts, Operator, automatic horizontal scaling, and other tools in a Kubernetes cloud-native environment, as well as a variety of hands-on content on high availability, observability, security compliance, and more.</p>
+<p>The new cloud project provides the following capabilities:</p>
+<ul>
+<li>Helm Charts-based ShardingSphere-Proxy for one-click deployment in Kubernetes environments.</li>
+<li>Operator-based ShardingSphere-Proxy for one-click deployment and automated maintenance in Kubernetes environments.</li>
+<li>AWS CloudFormation-based ShardingSphere-Proxy for rapid deployment.</li>
+<li>Terraform-based rapid deployment of ShardingSphere-Proxy in AWS environments.</li>
+</ul>
+<p>This post briefly demonstrates one of the fundamental capabilities of ShardingSphere on Cloud: one-click deployment of ShardingSphere-Proxy clusters in Kubernetes using Helm Charts.</p>
+<ol>
+<li>Use the following 3 line command to create a 3-node ShardingSphere-Proxy cluster within a Kubernetes cluster with the default configuration and serve it through the Service.</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">helm repo add shardingsphere https://apache.github.io/shardingsphere-on-cloud
+helm repo update
+helm install shardingsphere-proxy shardingsphere/apache-shardingsphere-proxy-charts -n shardingsphere
+</code></pre></div><p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case8.png" alt="img"></p>
+<ol start="2">
+<li>The application can access the ShardingSphere-Proxy cluster via the svc domain.</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">kubectl run mysql-client --image<span style="color:#f92672">=</span>mysql:5.7.36 --image-pull-policy<span style="color:#f92672">=</span>IfNotPresent -- sleep <span style="color:#ae81ff">300</span>
+kubectl exec -i -t mysql-client -- mysql -h shardingsphere-proxy-apache-shardingsphere-proxy.shardingsphere.svc.cluster.local -P3307 -uroot -proot
+</code></pre></div><p><img src="https://shardingsphere.apache.org/blog/img/2023_02_15_A_Distributed_Database_Load_Balancing_Architecture_Based_on_ShardingSphere_Demo_&amp;_User_Case9.png" alt="img"></p>
+<p>This is just a demonstration of one of the basic capabilities of ShardingSphere on Cloud.</p>
+<p>For more advanced features that are available in production environments, please refer to the official ShardingSphere-on-Cloud <a href="https://shardingsphere.apache.org/oncloud/current/cn/overview/">documentation</a>.</p>
+<h1 id="relevant-links">Relevant Links</h1>
+<p><strong>🔗</strong> <a href="https://shardingsphere.apache.org/"><strong>ShardingSphere Official Website</strong></a></p>
+<p><strong>🔗</strong> <a href="https://github.com/apache/shardingsphere"><strong>ShardingSphere Official Project Repo</strong></a></p>
+<p><strong>🔗</strong> <a href="https://shardingsphere.apache.org/oncloud/"><strong>ShardingSphere-on-Cloud Official Website</strong></a></p>
+<p><strong>🔗</strong><a href="https://github.com/apache/shardingsphere-on-cloud"> <strong>ShardingSphere-on-Cloud Project Repo</strong></a></p>
+<p><strong>🔗</strong> <a href="https://twitter.com/ShardingSphere"><strong>ShardingSphere Twitter</strong></a></p>
+<p><strong>🔗</strong> <a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg"><strong>ShardingSphere Slack</strong></a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_02_17_dynamic_data_masking_shardingsphere_5.3.1_deep_dive/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_02_09_leverage_terraform_to_create_an_apache_shardingsphere_proxy_high_availability_cluster_on_aws/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

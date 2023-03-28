@@ -1,355 +1,569 @@
-commit a7cebf0df900ff996d5aa01df515db62978aeb88
-Author: FPokerFace <112867462+FPokerFace@users.noreply.github.com>
-Date:   Mon Mar 27 16:00:27 2023 +0800
+commit c7011c1ff54aaf54ca32ceab00b25d0bcf696473
+Author: Zhengqiang Duan <duanzhengqiang@apache.org>
+Date:   Tue Mar 28 21:27:23 2023 +0800
 
-    3.27 some small fixes to recent blogs (#24857)
-    
-    * Some small fixes to recent Blogs and upload another 2
-    
-    * fixes to recent 2 Blogs
+    Add new sql hint document and move sharding, readwrite-splitting sql hint document to new document (#24885)
 
-diff --git a/docs/blog/content/material/2023_02_09_Leverage_Terraform_to_Create_an_Apache_ShardingSphere_Proxy_High_Availability_Cluster_on_AWS.en.md b/docs/blog/content/material/2023_02_09_Leverage_Terraform_to_Create_an_Apache_ShardingSphere_Proxy_High_Availability_Cluster_on_AWS.en.md
-index 5b91df7c439..dcc17b4ac35 100644
---- a/docs/blog/content/material/2023_02_09_Leverage_Terraform_to_Create_an_Apache_ShardingSphere_Proxy_High_Availability_Cluster_on_AWS.en.md
-+++ b/docs/blog/content/material/2023_02_09_Leverage_Terraform_to_Create_an_Apache_ShardingSphere_Proxy_High_Availability_Cluster_on_AWS.en.md
-@@ -129,7 +129,7 @@ We used the `count` parameter to deploy the ZooKeeper service, which indicates t
- 
- When creating a ZooKeeper instance, we use the `ignore_changes`parameter to ignore artificial changes to the `tag` to avoid the instance being recreated the next time Terraform is run.
- 
--We use `cloud-init` to reboot the ZooKeeper-related configuration, as described in [here](https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/zk/cloud-init.yml).
-+We use `cloud-init` to reboot the ZooKeeper-related configuration, as described in [here](https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/modules/zk/cloud-init.yml).
- 
- We create a domain name for each ZooKeeper service and the application only needs to use the domain name to avoid problems with changing the IP address when the ZooKeeper service is restarted.
- 
-@@ -313,7 +313,7 @@ We'll create an AutoScalingGroup to allow it to manage ShardingSphere-Proxy inst
- 
- The changes to `load_balancers` and `target_group_arns` are ignored when creating the AutoScalingGroup.
- 
--We also use `cloud-init` to configure the ShardingSphere-Proxy instance, as described [here](https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/shardingsphere/cloud-init.yml).
-+We also use `cloud-init` to configure the ShardingSphere-Proxy instance, as described [here](https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/modules/shardingsphere/cloud-init.yml).
- 
- ```yaml
- resource "aws_launch_template" "ss" {
-@@ -447,7 +447,7 @@ We will go through the STS to create a role with CloudWatch permissions, which w
- 
- The runtime logs of the ShardingSphere-Proxy will be captured by the CloudWatch Agent on CloudWatch. A `log_group` named `shardingsphere-proxy.log` is created by default.
- 
--The specific configuration of CloudWatch is described [here](https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/shardingsphere/cloudwatch-agent.json).
-+The specific configuration of CloudWatch is described [here](https://raw.githubusercontent.com/apache/shardingsphere-on-cloud/main/terraform/amazon/modules/shardingsphere/cloudwatch-agent.json).
- 
- ```yaml
- resource "aws_iam_role" "sts" {
-diff --git a/docs/blog/content/material/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained.en.md b/docs/blog/content/material/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained.en.md
+diff --git a/docs/document/content/user-manual/common-config/sql-hint.cn.md b/docs/document/content/user-manual/common-config/sql-hint.cn.md
 new file mode 100644
-index 00000000000..8dbcad54e8c
+index 00000000000..90362ccaec7
 --- /dev/null
-+++ b/docs/blog/content/material/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained.en.md
-@@ -0,0 +1,251 @@
++++ b/docs/document/content/user-manual/common-config/sql-hint.cn.md
+@@ -0,0 +1,103 @@
 ++++
-+title = "ShardingSphere-Proxy Database Protocol Interaction Explained"
-+weight = 89
-+chapter = true 
-+
++title = "SQL Hint"
++weight = 3
++chapter = true
 ++++
 +
-+Database protocols are considered relatively unknown knowledge for most developers. Generally, users and developers use databases through off-the-shelf database clients and drivers, without manipulating database protocols directly.
++## 背景信息
 +
-+However, having some basic understanding of the features and processes of database protocols can help developers provide some ideas to identify troubleshooting problems when it comes to database functionality and performance issues.
++目前，主流的关系型数据库基本都提供了 SQL Hint 作为 SQL 语法的补充，SQL Hint 允许用户通过数据库内置的 Hint 语法来干预 SQL 的执行过程，从而完成一些特殊的功能，或实现对 SQL 执行的优化。
++ShardingSphere 同样提供了丰富的 SQL Hint 语法，允许用户进行数据分片、读写分离的强制路由以及数据源透传等灵活控制。
 +
-+In this post, we will introduce the features of commonly used open source database protocols such as MySQL and PostgreSQL, and explain how ShardingSphere-Proxy interacts with clients at the database protocol level.
++## 使用规范
 +
-+# Introduction to the ShardingSphere Access Side
++ShardingSphere 的 SQL Hint 语法需要以注释的形式编写在 SQL 中，SQL Hint 语法格式暂时只支持 `/* */`，Hint 内容需要以 `SHARDINGSPHERE_HINT:` 为起始，然后定义不同功能所对应的属性键值对，当存在多个属性时使用逗号分隔。
++ShardingSphere 的 SQL Hint 语法格式如下：
 +
-+The Apache ShardingSphere ecosystem includes ShardingSphere-JDBC and ShardingSphere-Proxy, deployable independently or in a hybrid deployment.
-+
-+They both provide standardised incremental functionality based on databases as storage nodes for a variety of application scenarios such as Java homogeneous, heterogeneous languages, cloud native and more.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained1.png)
-+
-+ShardingSphere-JDBC is a Java-based SDK that implements the standard JDBC and is lightweight and high performance, but also has obvious limitations. Nevertheless, the limitations of ShardingSphere-JDBC in terms of access are addressed by ShardingSphere-Proxy on the access side.
-+
-+- ShardingSphere-Proxy supports connections via any database client, database driver, and is not limited to JVM-based languages such as Java.
-+- Simplifies data management. In particular, in scenarios where data sharding or encryption is used, ShardingSphere-Proxy can be used as a unified portal to manipulate data without having to consider the actual node where the data is stored or to manually decrypt it, etc.
-+- Provides unified operation and maintenance control capabilities. In cluster mode, ShardingSphere-Proxy can be used to unify the management of ShardingSphere rules and configurations.
-+- Heavyweight operations can be performed. ShardingSphere-JDBC is in the same process as the application, where heavyweight computation and I/O operations may impact application performance, while ShardingSphere-Proxy starts as a separate process and supports horizontal scaling, and performing heavyweight operations without impacting application performance.
-+
-+# Database Protocol Features
-+
-+There are already a number of specific interpretations of MySQL or PostgreSQL protocols on the Internet, so we won't go into detail in this article.
-+
-+This section focuses on the features of each database protocol, such as its support for Pipelining and how bulk operations are represented in the protocol.
-+
-+## MySQL Protocol
-+
-+The MySQL protocol is typically a “one question, one answer" protocol, e.g. to execute SQL using Prepared Statement. At the protocol level, you need to execute `COM_STMT_PREPARE` and `COM_STMT_EXECUTE` respectively.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained2.png)
-+
-+**Image source:** [MySQL documentation](https://dev.mysql.com/doc/dev/mysql-server/latest/mysqlx_protocol_use_cases.html).
-+
-+MySQL has added an X Plugin since 5.7.12, which allows MySQL to add support for document type stores while maintaining the original relational store.
-+
-+The X Plugin uses a new communication protocol, X Protocol, which uses port 33060 by default and supports pipelining, i.e. the client can send a batch of commands to the client at a time, reducing the RTT (Round-trip time) associated with the “one question, one answer" model (Round-trip time).
-+
-+For example, if a SQL is executed using `Prepared Statement`, at the protocol level there are `Prepare` and `Execute` steps, but at the network transport level, these two steps can be combined and sent. This can theoretically reduce the RTT by one compared to the original protocol.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained3.png)
-+
-+**Image source:** [MySQL documentation](https://dev.mysql.com/doc/dev/mysql-server/latest/mysqlx_protocol_use_cases.html).
-+
-+However, the X Plugin for MySQL does not seem to be catching on at the moment, and most scenarios are still based on the original MySQL protocol for client and server communication.
-+
-+In the case of batch operations, the MySQL protocol command `COM_STMT_EXECUTE`, which executes the `Prepared Statement `statement, can only send one set of parameters at a time, making the "one question, one answer" approach somewhat inefficient:
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained4.png)
-+
-+**Image source:** [MySQL documentation](https://dev.mysql.com/doc/dev/mysql-server/latest/mysqlx_protocol_use_cases.html).
-+
-+The protocol itself is not designed to support batch operations, so they can only be optimised at the client level.
-+
-+In the case of MySQL Connector/J, for example, when the parameter `rewriteBatchedStatements` is enabled, MySQL Connector/J will internally take the multiple sets of parameters set by the `addBatch` method, combine insert values or compose update/delete into multiple statements, and send them at the protocol level sent in one go.
-+
-+This is a small increase in CPU overhead in exchange for a reduction in RTT. For example, for a Prepared Statement insert statement, add multiple parameters to execute:
-+
-+```Mysql
-+INSERT INTO tbl VALUES (?, ?, ?);
-+addBatch [1, "foo", "bar"]
-+addBatch [2, "baz", "fuz"]
++```sql
++/* SHARDINGSPHERE_HINT: {key} = {value}, {key} = {value} */ SELECT * FROM t_order;
 +```
 +
-+MySQL Connector/J Actual Execution Statement:
++使用 SQL Hint 功能，需要将 ShardingSphere SQL Parser 规则中的 `sqlCommentParseEnabled` 设置为 true，开启 SQL 注释解析功能。此外，如果使用 MySQL 客户端连接，需要添加 `-c` 选项保留注释，客户端默认是 `--skip-comments` 过滤注释。
 +
-+```Mysql
-+INSERT INTO tbl VALUES (1, "foo", "bar"),(2, "baz", "fuz");
++## 参数解释
++
++ShardingSphere SQL Hint 中可以定义如下的属性，为了兼容低版本 SQL Hint 语法，也可以使用别名中定义的属性： 
++
++| *名称*                       | *别名*                | *数据类型*  | *说明*                                  | *默认值* |
++|-----------------------------|-----------------------|------------|---------------------------------------|-------|
++| SHARDING_DATABASE_VALUE (?) | shardingDatabaseValue | Comparable | 数据分片分库值，和 Hint 分片策略配合使用               | -     |
++| SHARDING_TABLE_VALUE (?)    | shardingTableValue    | Comparable | 数据分片分表值，和 Hint 分片策略配合使用               | -     |
++| WRITE_ROUTE_ONLY (?)        | writeRouteOnly        | boolean    | 读写分离强制路由到主库执行                         | false |
++| DATA_SOURCE_NAME (?)        | dataSourceName        | String     | 数据源透传，将 SQL 直接路由到指定数据源                | -     |
++| SKIP_SQL_REWRITE (?)        | skipSQLRewrite        | boolean    | 跳过 SQL 改写阶段                           | false |
++| DISABLE_AUDIT_NAMES (?)     | disableAuditNames     | String     | 禁用指定 SQL 审计算法                         | -     |
++| SHADOW (?)                  | shadow                | boolean    | 影子库强制路由到影子库数据源执行，和影子库 SQL_HINT 算法配合使用 | false |
++
++
++## SQL Hint
++
++### 数据分片
++
++数据分片 SQL Hint 功能的可选属性包括：
++
++- `{table}.SHARDING_DATABASE_VALUE`：用于添加 `{table}` 表对应的数据源分片键值，多个属性使用逗号分隔；
++- `{table}.SHARDING_TABLE_VALUE`：用于添加 `{table}` 表对应的表分片键值，多个属性使用逗号分隔。
++
++> 分库不分表情况下，强制路由至某一个分库时，可使用 `SHARDING_DATABASE_VALUE` 方式设置分片，无需指定 `{table}`。
++
++数据分片 SQL Hint 功能的使用示例：
++
++```sql
++/* SHARDINGSPHERE_HINT: t_order.SHARDING_DATABASE_VALUE=1, t_order.SHARDING_TABLE_VALUE=1 */ SELECT * FROM t_order;
 +```
 +
-+For bulk update / delete, MySQL Connector/J will execute multiple statements via `COM_QUERY`, e.g:
++### 读写分离
 +
-+```Mysql
-+UPDATE tbl SET name = ? WHERE id = ?;
-+addBatch ["foo", 1]
-+addBatch ["bar", 2]
++读写分离 SQL Hint 功能的可选属性为 `WRITE_ROUTE_ONLY`，`true` 表示将当前 SQL 强制路由到主库执行。
++
++读写分离 SQL Hint 功能的使用示例：
++
++```sql
++/* SHARDINGSPHERE_HINT: WRITE_ROUTE_ONLY=true */ SELECT * FROM t_order;
 +```
 +
-+MySQL Connector/J Actual Execution Statement:
++### 数据源透传
 +
-+```Mysql
-+UPDATE tbl SET name = "foo" WHERE id = 1;UPDATE tbl SET name = "bar" WHERE id = 2;
++数据源透传 SQL Hint 功能可选属性为 `DATA_SOURCE_NAME`，需要指定注册在 ShardingSphere 逻辑库中的数据源名称。
++
++数据源透传 SQL Hint 功能的使用示例：
++
++```sql
++/* SHARDINGSPHERE_HINT: DATA_SOURCE_NAME=ds_0 */ SELECT * FROM t_order;
 +```
 +
-+## PostgreSQL Protocol
++### 跳过 SQL 改写
 +
-+Compared to the MySQL protocol, the PostgreSQL protocol definition looks simpler and the PostgreSQL protocol supports Pipelining:
++跳过 SQL 改写 SQL Hint 功能可选属性为 `SKIP_SQL_REWRITE`，`true` 表示跳过当前 SQL 的改写阶段。
 +
-+PostgreSQL's Extended Query breaks up SQL execution into multiple steps, with the following common operations.
++跳过 SQL 改写 SQL Hint 功能的使用示例：
 +
-+- **Parse:** parses the SQL into a `Prepared Statement`.
-+- **Describe:** Get the metadata of a `Prepared Statement` or `Portal`.
-+- **Bind:** Bind the actual parameters of the `Prepared Statement` to produce an executable `Portal`; `Bind: Bind `the actual parameters of the `Prepared Statement` to produce an executable `Portal`.
-+- **Execute:** executing the `Portal`.
-+- **Close:** closes the `Prepared Statement` or `Portal`.
-+
-+An example of the PostgreSQL JDBC protocol interaction with the database is as follows:
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained5.png)
-+
-+In a bulk operation scenario, the client can send multiple sets of parameters in one continuous `Bind`, `Execute`, which is multiple packets at the protocol level, but at the TCP transport level, one batch of packets can be sent out at a time.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained6.png)
-+
-+Pipelining-enabled protocols, combined with I/O multiplexing, offer certain advantages in terms of throughput. For example, Vert.x PostgreSQL, a database driver based on multiplexed I/O, scored first place in the TechEmpower Benchmark Round 15 test in the Single Query scenario (database spotting).
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained7.png)
-+
-+Image source: [Tech Empower](https://www.techempower.com/benchmarks/#section=data-r15&test=db).
-+
-+## openGauss Protocol
-+
-+openGauss adds a Batch Bind message to the PostgreSQL Protocol 3.0, which only sends one set of parameters at a time.
-+
-+openGauss adds a Batch Bind message to support sending multiple sets of parameters at the same time.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained8.png)
-+
-+Additionally, openGauss has been enhanced in terms of authentication security. The general flow of the protocol is identical to that of PostgreSQL.
-+
-+# ShardingSphere-Proxy Front-End Interaction Flow Explained
-+
-+## Relationship between ShardingSphere-Proxy and Database Protocol
-+
-+Database protocols, like HTTP and other protocols, are the standard for communication between the client and the server. Each database defines its own protocol.
-+
-+For example, the MySQL database defines its own set of protocols, as well as the Protobuf-based X Protocol; PostgreSQL also defines its own set of protocols and etc.
-+
-+The average user or developer uses an off-the-shelf client or corresponding driver and the protocol is relatively transparent to them. Therefore, ShardingSphere-Proxy implements the database protocol and serves it to the public, so that users can use ShardingSphere-Proxy as if it were a database.
-+
-+The specific database protocol versions currently supported by ShardingSphere-Proxy are:
-+
-+- MySQL Protocol 4.1 (since MySQL 4.1)
-+- PostgreSQL Protocol 3.0 (since PostgreSQL 7.4)
-+- openGauss Protocol 3.00 / 3.50 / 3.51
-+
-+## Overall Process for the Access Side
-+
-+ShardingSphere-Proxy and ShardingSphere-JDBC share the ShardingSphere kernel module and provide different access to users.
-+
-+ShardingSphere-Proxy exists as a standalone process and provides services to the outside world as a database protocol. ShardingSphere-JDBC is a set of SDKs that can be called directly by users through code.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained9.png)
-+
-+## ShardingSphere-Proxy Front-end Process
-+
-+The ShardingSphere-Proxy front-end uses Netty to implement the database protocol. The Netty event-driven approach to front-end connections allows the ShardingSphere-Proxy front-end to maintain a large number of client connections.
-+
-+The protocol unwrapping and encoding logic is mainly performed in the Netty `EventLoop` thread. As the ShardingSphere-Proxy backend still uses JDBC to interact with the database, a dedicated thread pool is used to execute the ShardingSphere kernel logic and database interaction after the protocol data has been unpacked to avoid blocking in the Netty `EventLoop` thread.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained10.png)
-+
-+`PacketCodecs` are mainly used for unpacking and encoding data. As mentioned earlier in the introduction to database protocols, the PostgreSQL protocol supports pipelining and can send a batch of packets at a time.
-+
-+## Example:
-+
-+The following diagram shows the request protocol for a PostgreSQL client to execute the `select current_schema()` statement using `Prepared Statement`, where the SQL parsing and execution steps of `Prepared Statement` are sent by the client to the server for execution in one go.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained11.png)
-+
-+What the server receives is a stream of bytes. How can this stream be split into multiple protocol packets?
-+
-+Taking the PostgreSQL protocol format as an example, except for the Startup Message, the format of each protocol packet is 1 byte of message type + 4 bytes of data length (including the length itself) + data, with the following structure:
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained12.png)
-+
-+The MySQL protocol packet format is similar.
-+
-+The `PacketCodec` simply follows the protocol format definition and splits the incoming byte stream correctly.
-+
-+After the byte stream has been split, the remaining steps are to parse the data according to the database protocol and get the SQL and parameters to be executed.
-+
-+Once the SQL and parameters are available, the rest of the execution process is essentially the same as executing SQL via ShardingSphere-JDBC.
-+
-+After the ShardingSphere-Proxy backend executes SQL via JDBC, the result set is a Java object and the `PacketCodec` calls the specific encoding logic to convert the Java object into a byte stream according to the database protocol, assembles it into a packet and responds to the client.
-+
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained13.png)
-+
-+This is the general flow of the ShardingSphere-Proxy front-end database protocol interaction.
-+
-+## How to Feedback Suspected Proxy Protocol Issues to the ShardingSphere Community?
-+
-+Due to the differences in computing power between ShardingSphere-Proxy and databases, the Proxy does not yet have 100% support for database protocols, and there are inevitably some unsupported cases in the process.
-+
-+This article gives some suggestions for feedback when users encounter problems with Proxy that are suspected to be caused by imperfect implementation of the Proxy protocol.
-+
-+## Demo Available for Simple Problem Replication
-+
-+If you have a problem that can be reproduced by constructing simple code (e.g. just using Python and installing a few simple dependencies), you can provide the code and steps to reproduce the problem directly in the Github issue.
-+
-+**Case:** a community member has submitted a problem with aDjango.db [transaction to ShardingSphere-Proxy MySQL](https://github.com/apache/shardingsphere/issues/18461).
-+
-+The author provided a reproduction in the issue to help the ShardingSphere team fix the problem.
-+
-+## Directly Submit a Problem Fix PR
-+
-+For relatively simple issues, the ShardingSphere team can provide ideas for fixing them, and community members who are in a position to do so can consider submitting a PR to fix them directly.
-+
-+**Case:** a community member gave feedback on an issue with ShardingSphere-Proxy that was reporting an error[ when connecting to it via Python asyncpg](https://github.com/apache/shardingsphere/issues/23885).
-+
-+The problem is that the Python asyncpg database driver adds quotes to the encoding name when sending `client_encoding` to ShardingSphere-Proxy. The ShardingSphere-Proxy PostgreSQL does not take into account that the encoding name contains quotes (which is supported by the PostgreSQL database), resulting in an encoding recognition error.
-+
-+The issue's author was already in a position to reproduce the problem, and submitted a PR to fix the problem directly under the guidance of the ShardingSphere team.
-+
-+## Capture the Traffic Between the Client and the Proxy Using a Packet Capture Tool
-+
-+Some heterogeneous languages users may encounter issues with ShardingSphere-Proxy that are not related to a specific functionality and are suspected to be at the protocol level.
-+
-+Due to differences in the technology stack between the user and the ShardingSphere team, the ShardingSphere team may not be able to quickly reproduce the issue locally. In this case, consider feeding back to the ShardingSphere community by capturing network traffic between the client and the ShardingSphere-Proxy.
-+
-+There is a lot of information available on the Internet on how to use this tool, so we won't mention them here.
-+
-+**Case:** A .NET MySqlConnector using ShardingSphere-Proxy issue was submitted by a community member some time ago [with the following problem](https://github.com/apache/shardingsphere/issues/23857).
-+
-+There is an error about the .NET connection to ShardingSphere-Proxy reported in the Issue. According to the stack, the error is caused during `TryResetConnectionAsync` and the last exception is thrown under the Protocol-related code, so this could be a ShardingSphere-Proxy protocol implementation does not behave the same way as MySQL.
-+
-+```plaintext
-+An error occurred using the connection to database .....
-+
-+ MySqlConnector.MySqlProtocolException: Packet received out-of-order. Expected 1; got 2.
-+         at MySqlConnector.Protocol.Serialization.ProtocolUtility.<DoReadPayloadAsync>g__AddContinuation|5_0(ValueTask`1 readPacketTask, BufferedByteReader bufferedByteReader, IByteHandler byteHandler, F
-+unc`1 getNextSequenceNumber, ArraySegmentHolder`1 previousPayloads, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior) in /_/src/MySqlConnector/Protocol/Serialization/ProtocolUtility.cs:
-+line 476
-+         at MySqlConnector.Core.ServerSession.ReceiveReplyAsyncAwaited(ValueTask`1 task) in /_/src/MySqlConnector/Core/ServerSession.cs:line 943
-+         at MySqlConnector.Core.ServerSession.TryResetConnectionAsync(ConnectionSettings cs, MySqlConnection connection, IOBehavior ioBehavior, CancellationToken cancellationToken) in /_/src/MySqlConnect
-+or/Core/ServerSession.cs:line 616
++```sql
++/* SHARDINGSPHERE_HINT: SKIP_SQL_REWRITE=true */ SELECT * FROM t_order;
 +```
 +
-+As this issue is costly to reproduce, it's not easy for the ShardingSphere team to reproduce the issue locally, and the community has provided protocol traffic between the client and the Proxy.
++### 禁用 SQL 审计
 +
-+![img](https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained14.png)
++禁用 SQL 审计 SQL Hint 功能可选属性为 `DISABLE_AUDIT_NAMES`，需要指定需要禁用的 SQL 审计算法名称，多个 SQL 审计算法需要使用逗号分隔。
 +
-+Based on the protocol packet capture results, the ShardingSphere team immediately identified the issue as a problem with the implementation of the ShardingSphere-Proxy MySQL packet encoding logic.
++禁用 SQL 审计 SQL Hint 功能的使用示例：
 +
-+## Relevant Links:
++```sql
++/* SHARDINGSPHERE_HINT: DISABLE_AUDIT_NAMES=sharding_key_required_auditor */ SELECT * FROM t_order;
++```
 +
-+**🔗** [**ShardingSphere Official Website**](https://shardingsphere.apache.org/)
++### 影子库压测
 +
-+**🔗** [**ShardingSphere Official Project Repo**](https://github.com/apache/shardingsphere)
++影子库压测 SQL Hint 功能可选属性为 `SHADOW`，`true` 表示将当前 SQL 路由至影子库数据源执行。
 +
-+**🔗** [**ShardingSphere Twitter**](https://twitter.com/ShardingSphere)
++影子库压测 SQL Hint 功能的使用示例：
 +
-+**🔗** [**ShardingSphere Slack**](https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg)
-\ No newline at end of file
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained1.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained1.png
++```sql
++/* SHARDINGSPHERE_HINT: SHADOW=true */ SELECT * FROM t_order;
++```
+diff --git a/docs/document/content/user-manual/common-config/sql-hint.en.md b/docs/document/content/user-manual/common-config/sql-hint.en.md
 new file mode 100644
-index 00000000000..9d16df7aa13
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained1.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained10.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained10.png
-new file mode 100644
-index 00000000000..37ad5518c0c
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained10.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained11.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained11.png
-new file mode 100644
-index 00000000000..2d7968aacb8
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained11.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained12.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained12.png
-new file mode 100644
-index 00000000000..c3c8a947a8f
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained12.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained13.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained13.png
-new file mode 100644
-index 00000000000..a9767ad4e42
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained13.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained14.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained14.png
-new file mode 100644
-index 00000000000..d7e8377d860
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained14.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained2.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained2.png
-new file mode 100644
-index 00000000000..94ba79264f7
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained2.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained3.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained3.png
-new file mode 100644
-index 00000000000..30f957465dd
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained3.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained4.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained4.png
-new file mode 100644
-index 00000000000..6c93fc0ebff
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained4.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained5.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained5.png
-new file mode 100644
-index 00000000000..38d24f6c7f1
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained5.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained6.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained6.png
-new file mode 100644
-index 00000000000..78a6ad4fbb7
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained6.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained7.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained7.png
-new file mode 100644
-index 00000000000..b2ca628bed3
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained7.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained8.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained8.png
-new file mode 100644
-index 00000000000..b06ca17a59a
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained8.png differ
-diff --git a/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained9.png b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained9.png
-new file mode 100644
-index 00000000000..55cb87d224f
-Binary files /dev/null and b/docs/blog/static/img/2023_02_23_ShardingSphere-Proxy_Database_Protocol_Interaction_Explained9.png differ
+index 00000000000..3f1a174bd5e
+--- /dev/null
++++ b/docs/document/content/user-manual/common-config/sql-hint.en.md
+@@ -0,0 +1,103 @@
+++++
++title = "SQL Hint"
++weight = 3
++chapter = true
+++++
++
++## Background
++
++At present, most relational databases basically provide SQL Hint as a supplement to SQL syntax. SQL Hint allows users to intervene in the execution process of SQL through the built-in Hint syntax of the database, to complete some special functions or realize optimization of SQL execution.
++ShardingSphere also provides SQL Hint syntax, allowing users to perform force route for sharding and read-write splitting, and data source pass through.
++
++## Use specification
++
++The SQL Hint syntax of ShardingSphere needs to be written in SQL in the form of comments. The SQL Hint syntax format only supports `/* */` temporarily, and the Hint content needs to start with `SHARDINGSPHERE_HINT:`, and then define the attribute key/value pairs corresponding to different features, separated by commas when there are multiple attributes.
++The SQL Hint syntax format of ShardingSphere is as follows:
++
++```sql
++/* SHARDINGSPHERE_HINT: {key} = {value}, {key} = {value} */ SELECT * FROM t_order;
++```
++
++To use the SQL Hint, you need to set `sqlCommentParseEnabled` in ShardingSphere SQL Parser rule to `true` to enable the SQL comment parsing. In addition, if you use the MySQL client to connect, you need to add the `-c` option to retain comments, and the client defaults to `--skip-comments` to filter comments.
++
++## Parameters
++
++The following attributes can be defined in ShardingSphere SQL Hint. In order to be compatible with the lower version SQL Hint syntax, the attributes defined in the alias can also be used:
++
++| *Name*                      | *Alias*               | *Data Type*  | *Description*                                                             | *Default Value* |
++|-----------------------------|-----------------------|------------|---------------------------------------------------------------------------|-------|
++| SHARDING_DATABASE_VALUE (?) | shardingDatabaseValue | Comparable | Database sharding value, used when config Hint sharding strategy          | -     |
++| SHARDING_TABLE_VALUE (?)    | shardingTableValue    | Comparable | Table sharding value, used when config Hint sharding strategy             | -     |
++| WRITE_ROUTE_ONLY (?)        | writeRouteOnly        | boolean    | Route to the write datasource when use readwrite-splitting                | false |
++| DATA_SOURCE_NAME (?)        | dataSourceName        | String     | Data source pass through, route SQL directly to the specified data source | -     |
++| SKIP_SQL_REWRITE (?)        | skipSQLRewrite        | boolean    | Skip the SQL rewrite phase                                                | false |
++| DISABLE_AUDIT_NAMES (?)     | disableAuditNames     | String     | Disable the specified SQL audit algorithm                                 | -     |
++| SHADOW (?)                  | shadow                | boolean    | Route to the shadow datasource when use shadow                            | false |
++
++
++## SQL Hint
++
++### Sharding
++
++The optional attributes of sharding SQL Hint include:
++
++- `{table}.SHARDING_DATABASE_VALUE`: used to add data source sharding value corresponding to the `{table}` table, multiple attributes are separated by commas;
++- `{table}.SHARDING_TABLE_VALUE`: used to add table sharding value corresponding to the `{table}` table, multiple attributes are separated by commas.
++
++> In the case of only database sharding, when forcing routing to a certain datasource, you can use the `SHARDING_DATABASE_VALUE` method to set the sharding value without specifying `{table}`.
++
++An example of using the SQL Hint of sharding:
++
++```sql
++/* SHARDINGSPHERE_HINT: t_order.SHARDING_DATABASE_VALUE=1, t_order.SHARDING_TABLE_VALUE=1 */ SELECT * FROM t_order;
++```
++
++### ReadwriteSplitting
++
++The optional attribute of read-write splitting SQL Hint is `WRITE_ROUTE_ONLY`, and `true` means that the current SQL is forced to be routed to write datasource for execution.
++
++An example of using the SQL Hint for read-write splitting:
++
++```sql
++/* SHARDINGSPHERE_HINT: WRITE_ROUTE_ONLY=true */ SELECT * FROM t_order;
++```
++
++### DataSource Pass Through
++
++The optional attribute of datasource pass through SQL Hint is `DATA_SOURCE_NAME`, which needs to specify the name of the data source registered in the ShardingSphere logic database.
++
++An example of using the SQL Hint of data source pass through:
++
++```sql
++/* SHARDINGSPHERE_HINT: DATA_SOURCE_NAME=ds_0 */ SELECT * FROM t_order;
++```
++
++### SKIP SQL REWRITE
++
++The optional attribute of skip SQL rewriting SQL Hint is `SKIP_SQL_REWRITE`, and `true` means skipping the current SQL rewriting stage.
++
++An example of skipping SQL rewrite SQL Hint:
++
++```sql
++/* SHARDINGSPHERE_HINT: SKIP_SQL_REWRITE=true */ SELECT * FROM t_order;
++```
++
++### DISABLE SQL AUDIT
++
++The optional attribute of disable SQL audit is `DISABLE_AUDIT_NAMES`, you need to specify names of SQL audit algorithm that needs to be disabled, and multiple SQL audit algorithms need to be separated by commas.
++
++An example of disable sql audit SQL Hint:
++
++```sql
++/* SHARDINGSPHERE_HINT: DISABLE_AUDIT_NAMES=sharding_key_required_auditor */ SELECT * FROM t_order;
++```
++
++### SHADOW
++
++The optional attribute of the shadow database pressure test SQL Hint is `SHADOW`, and `true` means that the current SQL will be routed to the shadow database data source for execution.
++
++An example of using shadow SQL Hint:
++
++```sql
++/* SHARDINGSPHERE_HINT: SHADOW=true */ SELECT * FROM t_order;
++```
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.cn.md
+index 0110cb270a4..54b112b3f8f 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.cn.md
+@@ -6,7 +6,6 @@ weight = 1
+ ## 背景信息
+ 
+ Apache ShardingSphere 使用 ThreadLocal 管理主库路由标记进行强制路由。 可以通过编程的方式向 HintManager 中添加主库路由标记，该值仅在当前线程内生效。
+-Apache ShardingSphere 还可以通过 SQL 中增加注释的方式进行主库路由。
+ 
+ Hint 在读写分离场景下，主要用于强制在主库进行某些数据操作。
+ 
+@@ -21,21 +20,19 @@ Hint 在读写分离场景下，主要用于强制在主库进行某些数据操
+ 
+ ### 使用 Hint 强制主库路由
+ 
+-#### 使用手动编程的方式
+-
+-##### 获取 HintManager
++#### 获取 HintManager
+ 
+ 与基于 Hint 的数据分片相同。
+ 
+-##### 设置主库路由
++#### 设置主库路由
+ 
+ 使用 hintManager.setWriteRouteOnly 设置主库路由。
+ 
+-##### 清除分片键值
++#### 清除分片键值
+ 
+ 与基于 Hint 的数据分片相同。
+ 
+-##### 完整代码示例
++#### 完整代码示例
+ 
+ ```java
+ String sql = "SELECT * FROM t_order";
+@@ -50,32 +47,17 @@ try (HintManager hintManager = HintManager.getInstance();
+ }
+ ```
+ 
+-#### 使用 SQL 注释的方式
+-
+-##### 使用规范
+-
+-SQL Hint 功能的注释格式暂时只支持 `/* */`，内容需要以 `SHARDINGSPHERE_HINT:` 开始，属性名为 `WRITE_ROUTE_ONLY`。
+-
+-##### 完整示例
+-
+-```java
+-/* SHARDINGSPHERE_HINT: WRITE_ROUTE_ONLY=true */
+-SELECT * FROM t_order;
+-```
+-
+ ### 使用 Hint 路由至指定数据库
+ 
+-#### 使用手动编程的方式
+-
+-##### 获取 HintManager
++#### 获取 HintManager
+ 
+ 与基于 Hint 的数据分片相同。
+ 
+-##### 设置路由至指定数据库
++#### 设置路由至指定数据库
+ 
+ - 使用 `hintManager.setDataSourceName` 设置数据库名称。
+ 
+-##### 完整代码示例
++#### 完整代码示例
+ 
+ ```java
+ String sql = "SELECT * FROM t_order";
+@@ -91,18 +73,5 @@ try (HintManager hintManager = HintManager.getInstance();
+ }
+ ```
+ 
+-#### 使用 SQL 注释的方式
+-
+-##### 使用规范
+-
+-SQL Hint 功能目前只支持路由至一个数据源。 注释格式暂时只支持 `/* */`，内容需要以 `SHARDINGSPHERE_HINT:` 开始，属性名为 `DATA_SOURCE_NAME`。
+-如果使用 `MySQL` 客户端连接需要添加 `-c` 选项保留注释，客户端默认是 `--skip-comments` 过滤注释。
+-
+-##### 完整示例
+-```sql
+-/* SHARDINGSPHERE_HINT: DATA_SOURCE_NAME=ds_0 */
+-SELECT * FROM t_order;
+-```
+-
+ - [核心特性：读写分离](/cn/features/readwrite-splitting/)
+ - [开发者指南：读写分离](/cn/dev-manual/readwrite-splitting/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.en.md
+index bd404b18eb7..3aedaf796c7 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/readwrite-splitting/hint.en.md
+@@ -6,7 +6,6 @@ weight = 1
+ ## Background
+ 
+ Apache ShardingSphere uses `ThreadLocal` to manage primary database routing marks for mandatory routing. A primary database routing mark can be added to `HintManager` through programming, and this value is valid only in the current thread.
+-Apache ShardingSphere can also route the primary database by adding comments to SQL.
+ 
+ `Hint` is mainly used to perform mandatory data operations in the primary database for read/write splitting scenarios.
+ 
+@@ -21,21 +20,19 @@ Apache ShardingSphere can also route the primary database by adding comments to
+ 
+ ### Primary Route with Hint
+ 
+-#### Use manual programming
+-
+-##### Get HintManager
++#### Get HintManager
+ 
+ The same as sharding based on hint.
+ 
+-##### Configure Primary Database Route
++#### Configure Primary Database Route
+ 
+ - Use `hintManager.setWriteRouteOnly` to configure primary database route.
+ 
+-##### Clean Hint Value
++#### Clean Hint Value
+ 
+ The same as data sharding based on hint.
+ 
+-##### Code:
++#### Code:
+ 
+ ```java
+ String sql = "SELECT * FROM t_order";
+@@ -51,31 +48,17 @@ try (HintManager hintManager = HintManager.getInstance();
+ }
+ ```
+ 
+-#### Use special SQL comments
+-
+-##### Terms of Use
+-
+-For the SQL Hint function, the comment format only supports `/* */` for now. The content needs to start with `SHARDINGSPHERE_HINT:`, and the attribute name needs to be `WRITE_ROUTE_ONLY`.
+-
+-##### Code:
+-```sql
+-/* SHARDINGSPHERE_HINT: WRITE_ROUTE_ONLY=true */
+-SELECT * FROM t_order;
+-```
+-
+ ### Route to the specified database with Hint
+ 
+-#### Use manual programming
+-
+-##### Get HintManager
++#### Get HintManager
+ 
+ The same as sharding based on hint.
+ 
+-##### Configure Database Route
++#### Configure Database Route
+ 
+ - Use `hintManager.setDataSourceName` to configure database route.
+ 
+-##### Code:
++#### Code:
+ 
+ ```java
+ String sql = "SELECT * FROM t_order";
+@@ -91,20 +74,6 @@ try (HintManager hintManager = HintManager.getInstance();
+ }
+ ```
+ 
+-#### Use special SQL comments
+-
+-##### Terms of Use:
+-
+-Currently, the SQL Hint function only supports routing to one data source.
+-The comment format only supports `/* */` for now. The content needs to start with `SHARDINGSPHERE_HINT:`, and the attribute name needs to be `DATA_SOURCE_NAME`.
+-Client connections using `MySQL` need to add the `-c` option to preserve comments, because the client defaults to `--skip-comments` to filter comments.
+-
+-##### Code:
+-```sql
+-/* SHARDINGSPHERE_HINT: DATA_SOURCE_NAME=ds_0 */
+-SELECT * FROM t_order;
+-```
+-
+ ## Related References
+ 
+ - [Core Feature: Read/write Splitting](/en/features/readwrite-splitting/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md
+index 0cf22c5bc34..bffd38f6389 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.cn.md
+@@ -6,7 +6,6 @@ weight = 1
+ ## 背景信息
+ 
+ Apache ShardingSphere 使用 ThreadLocal 管理分片键值进行强制路由。 可以通过编程的方式向 HintManager 中添加分片值，该分片值仅在当前线程内生效。
+-Apache ShardingSphere 还可以通过 SQL 中增加注释的方式进行强制路由。
+ 
+ Hint 的主要使用场景：
+ - 分片字段不存在 SQL 和数据库表结构中，而存在于外部业务逻辑。
+@@ -21,9 +20,7 @@ Hint 的主要使用场景：
+ 
+ ## 配置示例
+ 
+-### 使用 Hint 分片
+-
+-#### 规则配置
++### 规则配置
+ 
+ Hint 分片算法需要用户实现 `org.apache.shardingsphere.sharding.api.sharding.hint.HintShardingAlgorithm` 接口。
+ Apache ShardingSphere 在进行路由时，将会从 HintManager 中获取分片值进行路由操作。
+@@ -52,26 +49,26 @@ props:
+     sql-show: true
+ ```
+ 
+-#### 获取 HintManager
++### 获取 HintManager
+ 
+ ```java
+ HintManager hintManager = HintManager.getInstance();
+ ```
+ 
+-#### 添加分片键值
++### 添加分片键值
+ 
+ - 使用 `hintManager.addDatabaseShardingValue` 来添加数据源分片键值。
+ - 使用 `hintManager.addTableShardingValue` 来添加表分片键值。
+ 
+ > 分库不分表情况下，强制路由至某一个分库时，可使用 `hintManager.setDatabaseShardingValue` 方式设置分片值。
+ 
+-#### 清除分片键值
++### 清除分片键值
+ 
+ 分片键值保存在 ThreadLocal 中，所以需要在操作结束时调用 `hintManager.close()` 来清除 ThreadLocal 中的内容。
+ 
+ __hintManager 实现了 AutoCloseable 接口，可推荐使用 try with resource 自动关闭。__
+ 
+-#### 完整代码示例
++### 完整代码示例
+ 
+ ```java
+ // Sharding database and table with using HintManager
+@@ -102,24 +99,6 @@ try (HintManager hintManager = HintManager.getInstance();
+ }
+ ```
+ 
+-#### 使用 SQL 注释的方式
+-
+-##### 使用规范
+-
+-SQL Hint 功能的注释格式暂时只支持 `/* */`，内容需要以 `SHARDINGSPHERE_HINT:` 开始，可选的属性包括：
+-
+-- `{table}.SHARDING_DATABASE_VALUE`：用于添加 `{table}` 表对应的数据源分片键值，多个属性使用逗号分隔；
+-- `{table}.SHARDING_TABLE_VALUE`：用于添加 `{table}` 表对应的表分片键值，多个属性使用逗号分隔。
+-
+-> 分库不分表情况下，强制路由至某一个分库时，可使用 `SHARDING_DATABASE_VALUE` 方式设置分片，无需指定 `{table}`。
+-
+-##### 完整示例
+-
+-```sql
+-/* SHARDINGSPHERE_HINT: t_order.SHARDING_DATABASE_VALUE=1, t_order.SHARDING_TABLE_VALUE=1 */
+-SELECT * FROM t_order;
+-```
+-
+ ## 相关参考
+ 
+ - [核心特性：数据分片](/cn/features/sharding/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md
+index 591557dba87..2f70ca3011a 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/sharding/hint.en.md
+@@ -6,7 +6,6 @@ weight = 1
+ ## Background
+ 
+ Apache ShardingSphere uses ThreadLocal to manage sharding key values for mandatory routing. A sharding value can be added by programming to the HintManager that takes effect only within the current thread.
+-Apache ShardingSphere can also do mandatory routing by adding comments to SQL.
+ 
+ Main application scenarios for Hint:
+ - The sharding fields do not exist in the SQL and database table structure but in the external business logic.
+@@ -21,9 +20,7 @@ Main application scenarios for Hint:
+ 
+ ## Sample
+ 
+-### Sharding with Hint
+-
+-#### Hint Configuration
++### Hint Configuration
+ 
+ Hint algorithms require users to implement the interface of `org.apache.shardingsphere.api.sharding.hint.HintShardingAlgorithm`. 
+ Apache ShardingSphere will acquire sharding values from HintManager to route.
+@@ -52,26 +49,26 @@ props:
+     sql-show: true
+ ```
+ 
+-#### Get HintManager
++### Get HintManager
+ 
+ ```java
+ HintManager hintManager = HintManager.getInstance();
+ ```
+ 
+-#### Add Sharding Value
++### Add Sharding Value
+ 
+ - Use `hintManager.addDatabaseShardingValue` to add sharding key value of data source.
+ - Use `hintManager.addTableShardingValue` to add sharding key value of table.
+ 
+ > Users can use `hintManager.setDatabaseShardingValue` to set sharding value in hint route to some certain sharding database without sharding tables.
+ 
+-#### Clean Hint Values
++### Clean Hint Values
+ 
+ Sharding values are saved in `ThreadLocal`, so it is necessary to use `hintManager.close()` to clean `ThreadLocal`.
+ 
+ **`HintManager` has implemented `AutoCloseable`. We recommend to close it automatically with `try with resource`.**
+ 
+-#### Codes:
++### Codes:
+ 
+ ```java
+ // Sharding database and table with HintManager
+@@ -102,24 +99,6 @@ try (HintManager hintManager = HintManager.getInstance();
+ }
+ ```
+ 
+-#### Use special SQL comments
+-
+-##### Terms of Use
+-
+-For the SQL Hint function, the comment format only supports `/* */` for now. The content needs to start with `SHARDINGSPHERE_HINT:`, and optional attributes include:
+-
+-- `{table}.SHARDING_DATABASE_VALUE`: used to add the data source sharding value corresponding to `{table}` table, multiple attributes are separated by commas;
+-- `{table}.SHARDING_TABLE_VALUE`: used to add the table sharding value corresponding to `{table}` table, multiple attributes are separated by commas.
+-
+-> Users can use `SHARDING_DATABASE_VALUE` to set sharding value in hint route to some certain sharding database without sharding tables.
+-
+-##### Codes:
+-
+-```sql
+-/* SHARDINGSPHERE_HINT: t_order.SHARDING_DATABASE_VALUE=1, t_order.SHARDING_TABLE_VALUE=1 */
+-SELECT * FROM t_order;
+-```
+-
+ ## Related References
+ 
+ - [Core Feature: Data Sharding](/en/features/sharding/)

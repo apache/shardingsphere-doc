@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.apache.shardingsphere.sqltranslator.api.config","h":"","u":""},{"l":"org.apache.shardingsphere.sqltranslator.exception","h":"","u":""},{"l":"org.apache.shardingsphere.sqltranslator.exception.syntax","h":"","u":""},{"l":"org.apache.shardingsphere.sqltranslator.spi","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]

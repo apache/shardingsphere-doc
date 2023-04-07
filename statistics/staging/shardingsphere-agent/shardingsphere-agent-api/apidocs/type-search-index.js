@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"AgentAdvice","h":"","u":""},{"l":"ConstructorAdvice","h":"","u":""},{"l":"InstanceMethodAdvice","h":"","u":""},{"l":"PluginConfiguration","h":"","u":""},{"l":"PluginLifecycleService","h":"","u":""},{"l":"StaticMethodAdvice","h":"","u":""},{"l":"TargetAdviceObject","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

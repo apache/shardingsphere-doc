@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"JDBCRepository","h":"","u":""},{"l":"JDBCRepositoryProperties","h":"","u":""},{"l":"JDBCRepositoryPropertyKey","h":"","u":""},{"l":"JDBCRepositoryProvider","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

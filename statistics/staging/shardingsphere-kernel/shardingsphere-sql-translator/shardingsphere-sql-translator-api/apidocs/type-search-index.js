@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"SQLTranslationException","h":"","u":""},{"l":"SQLTranslator","h":"","u":""},{"l":"SQLTranslatorRuleConfiguration","h":"","u":""},{"l":"UnsupportedTranslatedDatabaseException","h":"","u":""},{"l":"UnsupportedTranslatedSQLException","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

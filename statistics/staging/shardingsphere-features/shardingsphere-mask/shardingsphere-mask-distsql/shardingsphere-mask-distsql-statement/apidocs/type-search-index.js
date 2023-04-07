@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"AlterMaskRuleStatement","h":"","u":""},{"l":"CountMaskRuleStatement","h":"","u":""},{"l":"CreateMaskRuleStatement","h":"","u":""},{"l":"DropMaskRuleStatement","h":"","u":""},{"l":"MaskColumnSegment","h":"","u":""},{"l":"MaskRuleSegment","h":"","u":""},{"l":"ShowMaskRulesStatement","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

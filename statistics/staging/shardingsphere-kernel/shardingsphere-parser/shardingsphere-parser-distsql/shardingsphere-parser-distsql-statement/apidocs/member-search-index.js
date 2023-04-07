@@ -1,0 +1,1 @@
+memberSearchIndex = [{"l":"AlterSQLParserRuleStatement()","h":"","u":"%3Cinit%3E()"},{"l":"CacheOptionSegment()","h":"","u":"%3Cinit%3E()"},{"l":"ShowSQLParserRuleStatement()","h":"","u":"%3Cinit%3E()"}]

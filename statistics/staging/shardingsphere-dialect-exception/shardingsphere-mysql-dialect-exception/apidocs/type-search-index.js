@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"MySQLDialectExceptionMapper","h":"","u":""},{"l":"MySQLVendorError","h":"","u":""},{"l":"UnknownCharsetException","h":"","u":""},{"l":"UnknownCollationException","h":"","u":""},{"l":"UnsupportedPreparedStatementException","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

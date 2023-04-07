@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"AlterTrafficRuleStatement","h":"","u":""},{"l":"ShowTrafficRulesStatement","h":"","u":""},{"l":"TrafficRuleSegment","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

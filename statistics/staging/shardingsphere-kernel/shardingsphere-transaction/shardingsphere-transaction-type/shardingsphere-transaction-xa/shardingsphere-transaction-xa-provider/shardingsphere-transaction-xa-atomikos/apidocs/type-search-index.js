@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"AtomikosTransactionManagerProvider","h":"","u":""},{"l":"AtomikosXARecoverableResource","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

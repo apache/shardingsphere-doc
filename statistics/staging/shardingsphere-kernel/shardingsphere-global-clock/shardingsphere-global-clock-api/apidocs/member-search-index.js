@@ -1,0 +1,1 @@
+memberSearchIndex = [{"l":"GlobalClockRuleConfiguration()","h":"","u":"%3Cinit%3E()"}]

@@ -1,0 +1,1 @@
+memberSearchIndex = [{"l":"StandalonePersistRepositoryConfiguration()","h":"","u":"%3Cinit%3E()"}]

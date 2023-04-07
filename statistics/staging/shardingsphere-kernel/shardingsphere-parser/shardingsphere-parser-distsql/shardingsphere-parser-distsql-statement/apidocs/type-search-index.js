@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"AlterSQLParserRuleStatement","h":"","u":""},{"l":"CacheOptionSegment","h":"","u":""},{"l":"ShowSQLParserRuleStatement","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"AlterTransactionRuleStatement","h":"","u":""},{"l":"ShowTransactionRuleStatement","h":"","u":""},{"l":"TransactionProviderSegment","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

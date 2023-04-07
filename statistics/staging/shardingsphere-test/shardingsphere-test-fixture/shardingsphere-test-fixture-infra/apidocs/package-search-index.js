@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.apache.shardingsphere.test.fixture.infra.database.type","h":"","u":""},{"l":"org.apache.shardingsphere.test.fixture.infra.datasource.pool.metadata","h":"","u":""},{"l":"org.apache.shardingsphere.test.fixture.infra.rule","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]

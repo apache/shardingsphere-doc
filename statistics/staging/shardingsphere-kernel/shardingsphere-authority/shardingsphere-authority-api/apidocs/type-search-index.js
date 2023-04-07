@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"AccessSubject","h":"","u":""},{"l":"AuthorityProvider","h":"","u":""},{"l":"AuthorityRegistry","h":"","u":""},{"l":"AuthorityRuleConfiguration","h":"","u":""},{"l":"PrivilegeType","h":"","u":""},{"l":"ShardingSpherePrivileges","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"MaskAlgorithm","h":"","u":""},{"l":"MaskColumnRuleConfiguration","h":"","u":""},{"l":"MaskRuleConfiguration","h":"","u":""},{"l":"MaskTableRuleConfiguration","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]

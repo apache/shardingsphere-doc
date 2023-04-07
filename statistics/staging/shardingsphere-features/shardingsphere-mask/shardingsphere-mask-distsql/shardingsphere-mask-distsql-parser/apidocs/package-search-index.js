@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.apache.shardingsphere.distsql.parser.autogen","h":"","u":""},{"l":"org.apache.shardingsphere.mask.distsql.parser.core","h":"","u":""},{"l":"org.apache.shardingsphere.mask.distsql.parser.facade","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]

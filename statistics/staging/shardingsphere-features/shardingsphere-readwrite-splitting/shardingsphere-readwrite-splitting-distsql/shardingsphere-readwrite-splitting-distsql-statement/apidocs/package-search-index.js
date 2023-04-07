@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.apache.shardingsphere.readwritesplitting.distsql.parser.segment","h":"","u":""},{"l":"org.apache.shardingsphere.readwritesplitting.distsql.parser.statement","h":"","u":""},{"l":"org.apache.shardingsphere.readwritesplitting.distsql.parser.statement.status","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]

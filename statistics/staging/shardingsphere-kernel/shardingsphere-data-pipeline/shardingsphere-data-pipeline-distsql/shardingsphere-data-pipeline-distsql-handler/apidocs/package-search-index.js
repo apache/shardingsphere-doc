@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.apache.shardingsphere.cdc.distsql.handler.query","h":"","u":""},{"l":"org.apache.shardingsphere.migration.distsql.handler.query","h":"","u":""},{"l":"org.apache.shardingsphere.migration.distsql.handler.update","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]

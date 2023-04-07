@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.apache.shardingsphere.traffic.distsql.parser.segment","h":"","u":""},{"l":"org.apache.shardingsphere.traffic.distsql.parser.statement.queryable","h":"","u":""},{"l":"org.apache.shardingsphere.traffic.distsql.parser.statement.updatable","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]

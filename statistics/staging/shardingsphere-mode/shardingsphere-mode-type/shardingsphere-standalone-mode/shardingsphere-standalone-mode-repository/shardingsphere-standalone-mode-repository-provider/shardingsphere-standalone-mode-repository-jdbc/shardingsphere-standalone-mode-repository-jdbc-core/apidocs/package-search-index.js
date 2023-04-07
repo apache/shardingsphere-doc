@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"org.apache.shardingsphere.mode.repository.standalone.jdbc","h":"","u":""},{"l":"org.apache.shardingsphere.mode.repository.standalone.jdbc.props","h":"","u":""},{"l":"org.apache.shardingsphere.mode.repository.standalone.jdbc.provider","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]

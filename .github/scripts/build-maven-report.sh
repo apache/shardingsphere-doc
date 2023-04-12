@@ -36,4 +36,9 @@ rm -rf ${SHARDINGSPHERE_DOC_PATH}/statistics/staging
 mv target/staging  ${SHARDINGSPHERE_DOC_PATH}/statistics/
 git config --global user.email "dev@shardingsphere.apache.org"
 git config --global user.name "shardingsphere"
-# git push
+cd ${SHARDINGSPHERE_DOC_PATH}
+git add .
+export TZ="Asia/Shanghai"
+dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
+git commit -m  "Update shardingsphere maven report at $dateStr."
+git push

@@ -15,6 +15,24 @@
 # limitations under the License.
 #
 
-echo start to init maven site environment
+SHARDINGSPHERE_DOC_PATH=$1
+
 echo "1. start to clone shardingsphere"
 echo git clone https://github.com/apache/shardingsphere
+cd shardingsphere
+
+echo "2. build project"
+./mvnw clean install
+
+echo "3. process maven site"
+./mvnw site:site
+
+echo "4. process maven stage"
+./mvnw site:stage
+
+echo "5. upload the maven report"
+rm -rf ${SHARDINGSPHERE_DOC_PATH}/statistics/staging
+mv target/staging  ${SHARDINGSPHERE_DOC_PATH}/statistics/
+git config --global user.email "dev@shardingsphere.apache.org"
+git config --global user.name "shardingsphere"
+# git push

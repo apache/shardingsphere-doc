@@ -16,3 +16,8 @@
 #
 
 echo start to init maven site environment
+echo "1. start to clone shardingsphere"
+echo git clone https://github.com/apache/shardingsphere
+cd shardingsphere
+
+

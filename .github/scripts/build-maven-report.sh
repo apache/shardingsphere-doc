@@ -23,7 +23,7 @@ git clone https://github.com/apache/shardingsphere
 cd shardingsphere
 
 echo "2. build project"
-./mvnw clean install
+./mvnw clean install -DskipITs -DskipTests -Dcheckstyle.skip=true
 
 echo "3. process maven site"
 ./mvnw site:site

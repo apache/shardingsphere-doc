@@ -41,3 +41,4 @@ git add .
 export TZ="Asia/Shanghai"
 dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
 git commit -m  "Update shardingsphere maven report at $dateStr."
+git push

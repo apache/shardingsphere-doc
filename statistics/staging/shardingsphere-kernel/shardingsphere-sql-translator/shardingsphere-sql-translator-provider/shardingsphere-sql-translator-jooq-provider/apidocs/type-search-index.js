@@ -1,1 +1,1 @@
-typeSearchIndex = [{"l":"JooQDialectRegistry","h":"","u":""},{"l":"JooQSQLTranslator","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.sqltranslator.jooq","l":"JooQDialectRegistry"},{"p":"org.apache.shardingsphere.sqltranslator.jooq","l":"JooQSQLTranslator"}]

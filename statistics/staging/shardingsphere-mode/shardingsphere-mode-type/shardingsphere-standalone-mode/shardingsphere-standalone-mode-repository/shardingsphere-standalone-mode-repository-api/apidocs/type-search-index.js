@@ -1,1 +1,1 @@
-typeSearchIndex = [{"l":"StandalonePersistRepository","h":"","u":""},{"l":"StandalonePersistRepositoryConfiguration","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.mode.repository.standalone","l":"StandalonePersistRepository"},{"p":"org.apache.shardingsphere.mode.repository.standalone","l":"StandalonePersistRepositoryConfiguration"}]

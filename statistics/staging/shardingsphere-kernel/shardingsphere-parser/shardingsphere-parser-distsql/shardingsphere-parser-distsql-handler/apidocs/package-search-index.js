@@ -1,1 +1,1 @@
-packageSearchIndex = [{"l":"org.apache.shardingsphere.parser.distsql.handler.query","h":"","u":""},{"l":"org.apache.shardingsphere.parser.distsql.handler.update","h":"","u":""},{"l":"所有程序包","h":"","u":"allpackages-index.html"}]
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.parser.distsql.handler.query"},{"l":"org.apache.shardingsphere.parser.distsql.handler.update"}]

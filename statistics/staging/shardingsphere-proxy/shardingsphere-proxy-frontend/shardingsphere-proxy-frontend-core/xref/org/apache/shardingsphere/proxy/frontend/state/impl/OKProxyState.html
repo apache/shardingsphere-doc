@@ -46,35 +46,28 @@
 <a class="jxr_linenumber" name="L38" href="#L38">38</a>      
 <a class="jxr_linenumber" name="L39" href="#L39">39</a>      @Override
 <a class="jxr_linenumber" name="L40" href="#L40">40</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> execute(<strong class="jxr_keyword">final</strong> ChannelHandlerContext context, <strong class="jxr_keyword">final</strong> Object message, <strong class="jxr_keyword">final</strong> DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine, <strong class="jxr_keyword">final</strong> ConnectionSession connectionSession) {
-<a class="jxr_linenumber" name="L41" href="#L41">41</a>          <a name="CommandExecutorTask" href="../../../../../../../org/apache/shardingsphere/proxy/frontend/command/CommandExecutorTask.html#CommandExecutorTask">CommandExecutorTask</a> commandExecutorTask = <strong class="jxr_keyword">new</strong> <a name="CommandExecutorTask" href="../../../../../../../org/apache/shardingsphere/proxy/frontend/command/CommandExecutorTask.html#CommandExecutorTask">CommandExecutorTask</a>(databaseProtocolFrontendEngine, connectionSession, context, message);
-<a class="jxr_linenumber" name="L42" href="#L42">42</a>          ExecutorService executorService = determineSuitableExecutorService(context, message, databaseProtocolFrontendEngine, connectionSession);
-<a class="jxr_linenumber" name="L43" href="#L43">43</a>          executorService.execute(commandExecutorTask);
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>          ExecutorService executorService = determineSuitableExecutorService(context, connectionSession);
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>          context.channel().config().setAutoRead(false);
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>          executorService.execute(<strong class="jxr_keyword">new</strong> <a name="CommandExecutorTask" href="../../../../../../../org/apache/shardingsphere/proxy/frontend/command/CommandExecutorTask.html#CommandExecutorTask">CommandExecutorTask</a>(databaseProtocolFrontendEngine, connectionSession, context, message));
 <a class="jxr_linenumber" name="L44" href="#L44">44</a>      }
 <a class="jxr_linenumber" name="L45" href="#L45">45</a>      
-<a class="jxr_linenumber" name="L46" href="#L46">46</a>      <strong class="jxr_keyword">private</strong> ExecutorService determineSuitableExecutorService(<strong class="jxr_keyword">final</strong> ChannelHandlerContext context, <strong class="jxr_keyword">final</strong> Object message, <strong class="jxr_keyword">final</strong> DatabaseProtocolFrontendEngine databaseProtocolFrontendEngine,
-<a class="jxr_linenumber" name="L47" href="#L47">47</a>                                                               <strong class="jxr_keyword">final</strong> ConnectionSession connectionSession) {
-<a class="jxr_linenumber" name="L48" href="#L48">48</a>          <strong class="jxr_keyword">if</strong> (requireOccupyThreadForConnection(connectionSession)) {
-<a class="jxr_linenumber" name="L49" href="#L49">49</a>              <strong class="jxr_keyword">return</strong> ConnectionThreadExecutorGroup.getInstance().get(connectionSession.getConnectionId());
-<a class="jxr_linenumber" name="L50" href="#L50">50</a>          }
-<a class="jxr_linenumber" name="L51" href="#L51">51</a>          <strong class="jxr_keyword">if</strong> (isPreferNettyEventLoop()) {
-<a class="jxr_linenumber" name="L52" href="#L52">52</a>              <strong class="jxr_keyword">return</strong> context.executor();
-<a class="jxr_linenumber" name="L53" href="#L53">53</a>          }
-<a class="jxr_linenumber" name="L54" href="#L54">54</a>          <strong class="jxr_keyword">if</strong> (databaseProtocolFrontendEngine.getFrontendContext().isRequiredSameThreadForConnection(message)) {
-<a class="jxr_linenumber" name="L55" href="#L55">55</a>              <strong class="jxr_keyword">return</strong> ConnectionThreadExecutorGroup.getInstance().get(connectionSession.getConnectionId());
-<a class="jxr_linenumber" name="L56" href="#L56">56</a>          }
-<a class="jxr_linenumber" name="L57" href="#L57">57</a>          <strong class="jxr_keyword">return</strong> UserExecutorGroup.getInstance().getExecutorService();
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>      }
-<a class="jxr_linenumber" name="L59" href="#L59">59</a>      
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> requireOccupyThreadForConnection(<strong class="jxr_keyword">final</strong> ConnectionSession connectionSession) {
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>          <strong class="jxr_keyword">return</strong> ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaData().getProps().&lt;Boolean&gt;getValue(ConfigurationPropertyKey.PROXY_HINT_ENABLED)
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>                  || TransactionType.isDistributedTransaction(connectionSession.getTransactionStatus().getTransactionType());
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>      }
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>      
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> isPreferNettyEventLoop() {
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>          <strong class="jxr_keyword">return</strong> BackendExecutorType.OLTP == ProxyContext.getInstance()
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>                  .getContextManager().getMetaDataContexts().getMetaData().getProps().&lt;BackendExecutorType&gt;getValue(ConfigurationPropertyKey.PROXY_BACKEND_EXECUTOR_SUITABLE);
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>      }
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>  }
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>      <strong class="jxr_keyword">private</strong> ExecutorService determineSuitableExecutorService(<strong class="jxr_keyword">final</strong> ChannelHandlerContext context, <strong class="jxr_keyword">final</strong> ConnectionSession connectionSession) {
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>          <strong class="jxr_keyword">if</strong> (requireOccupyThreadForConnection(connectionSession)) {
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>              <strong class="jxr_keyword">return</strong> ConnectionThreadExecutorGroup.getInstance().get(connectionSession.getConnectionId());
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>          }
+<a class="jxr_linenumber" name="L50" href="#L50">50</a>          <strong class="jxr_keyword">return</strong> isPreferNettyEventLoop() ? context.executor() : UserExecutorGroup.getInstance().getExecutorService();
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>      }
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>      
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> requireOccupyThreadForConnection(<strong class="jxr_keyword">final</strong> ConnectionSession connectionSession) {
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>          <strong class="jxr_keyword">return</strong> ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaData().getProps().&lt;Boolean&gt;getValue(ConfigurationPropertyKey.PROXY_HINT_ENABLED)
+<a class="jxr_linenumber" name="L55" href="#L55">55</a>                  || TransactionType.isDistributedTransaction(connectionSession.getTransactionStatus().getTransactionType());
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>      }
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>      
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> isPreferNettyEventLoop() {
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>          <strong class="jxr_keyword">return</strong> BackendExecutorType.OLTP == ProxyContext.getInstance()
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>                  .getContextManager().getMetaDataContexts().getMetaData().getProps().&lt;BackendExecutorType&gt;getValue(ConfigurationPropertyKey.PROXY_BACKEND_EXECUTOR_SUITABLE);
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>      }
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2023 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

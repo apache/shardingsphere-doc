@@ -1,1 +1,1 @@
-typeSearchIndex = [{"l":"ShowSQLTranslatorRuleStatement","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.sqltranslator.distsql.parser.statement","l":"ShowSQLTranslatorRuleStatement"}]

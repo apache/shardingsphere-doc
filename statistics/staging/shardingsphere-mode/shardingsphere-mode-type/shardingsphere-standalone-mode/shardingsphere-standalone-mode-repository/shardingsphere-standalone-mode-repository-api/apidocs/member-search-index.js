@@ -1,1 +1,1 @@
-memberSearchIndex = [{"l":"StandalonePersistRepositoryConfiguration()","h":"","u":"%3Cinit%3E()"}]
+memberSearchIndex = [{"p":"org.apache.shardingsphere.mode.repository.standalone","c":"StandalonePersistRepositoryConfiguration","l":"StandalonePersistRepositoryConfiguration()","url":"%3Cinit%3E()"}]

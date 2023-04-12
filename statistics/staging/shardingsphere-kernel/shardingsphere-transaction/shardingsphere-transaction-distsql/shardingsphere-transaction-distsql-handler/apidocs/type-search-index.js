@@ -1,1 +1,1 @@
-typeSearchIndex = [{"l":"AlterTransactionRuleStatementUpdater","h":"","u":""},{"l":"ShowTransactionRuleExecutor","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.transaction.distsql.handler.update","l":"AlterTransactionRuleStatementUpdater"},{"p":"org.apache.shardingsphere.transaction.distsql.handler.query","l":"ShowTransactionRuleExecutor"}]

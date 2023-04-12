@@ -1,1 +1,1 @@
-typeSearchIndex = [{"l":"FileLoggingPluginLifecycleService","h":"","u":""},{"l":"MetaDataContextsFactoryAdvice","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.agent.plugin.logging.file","l":"FileLoggingPluginLifecycleService"},{"p":"org.apache.shardingsphere.agent.plugin.logging.file.advice","l":"MetaDataContextsFactoryAdvice"}]

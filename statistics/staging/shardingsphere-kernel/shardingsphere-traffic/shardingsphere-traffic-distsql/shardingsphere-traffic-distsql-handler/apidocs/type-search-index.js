@@ -1,1 +1,1 @@
-typeSearchIndex = [{"l":"AlterTrafficRuleStatementUpdater","h":"","u":""},{"l":"ShowTrafficRuleExecutor","h":"","u":""},{"l":"TrafficRuleConverter","h":"","u":""},{"l":"所有类","h":"","u":"allclasses-index.html"}]
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.traffic.distsql.handler.update","l":"AlterTrafficRuleStatementUpdater"},{"p":"org.apache.shardingsphere.traffic.distsql.handler.query","l":"ShowTrafficRuleExecutor"},{"p":"org.apache.shardingsphere.traffic.distsql.handler.convert","l":"TrafficRuleConverter"}]

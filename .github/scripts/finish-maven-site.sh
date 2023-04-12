@@ -19,4 +19,5 @@ echo finish maven site action
 git config --global user.email "dev@shardingsphere.apache.org"
 git config --global user.name "shardingsphere"
 
+echo current path is : `pwd`
 # git push

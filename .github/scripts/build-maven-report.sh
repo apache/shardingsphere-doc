@@ -17,8 +17,9 @@
 
 SHARDINGSPHERE_DOC_PATH=$1
 
+echo "current path is ${SHARDINGSPHERE_DOC_PATH}"
 echo "1. start to clone shardingsphere"
-echo git clone https://github.com/apache/shardingsphere
+git clone https://github.com/apache/shardingsphere
 cd shardingsphere
 
 echo "2. build project"

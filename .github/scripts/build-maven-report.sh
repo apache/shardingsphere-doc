@@ -22,6 +22,9 @@ echo "1. start to clone shardingsphere"
 git clone https://github.com/apache/shardingsphere
 cd shardingsphere
 
+echo "1.1 prepare the config for checkstyle"
+sed -i 's/<property name="severity" value="error" \/>/<property name="severity" value="warning" \/>/g' src/resources/checkstyle.xml
+
 echo "2. build project"
 ./mvnw clean install -DskipITs -DskipTests -Dcheckstyle.skip=true
 

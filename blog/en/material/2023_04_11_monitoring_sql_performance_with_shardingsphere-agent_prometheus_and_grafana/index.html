@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Monitoring SQL Performance with ShardingSphere-Agent, Prometheus and Grafana &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Monitoring SQL Performance with ShardingSphere-Agent, Prometheus and Grafana</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p><img src="https://shardingsphere.apache.org/blog/img/2023_04_11_Monitoring_SQL_Performance_with_ShardingSphere-Agent,_Prometheus_and_Grafana1.png" alt="img"></p>
+<p>As business systems become more complex, users are increasingly concerned about system performance and the need to monitor relevant metrics during system operation. This includes obtaining real-time monitoring metric information, monitoring and warning of relevant issues, and combining business analysis to locate anomalies.</p>
+<p>Application Performance Monitoring (APM) monitors and diagnoses system performance by collecting, storing, and analyzing system data that can be observed. Its main functions include performance metric monitoring, call chain analysis, and application topology maps. Generally, system operation status performance data is obtained through Metrics, Tracing, and Logging.</p>
+<p>This article will explain how ShardingSphere-Agent collects ShardingSphere-JDBC monitoring metrics and how to display them visually.</p>
+<h1 id="implementation">Implementation</h1>
+<p>There are two methods that are generally considered when collecting metrics: manually tracking events in business methods and using Java Agent for non-intrusive event tracking. Method one has too much business intrusion and is not a good choice for including non-business logic in the business. Therefore, it is generally a better choice to use Java Agent for non-intrusive event tracking.</p>
+<p>Depending on the Java Agent, modifying the bytecode of the target for data collection is also called probe technology. ShardingSphere-Agent uses Java Agent to add an agent proxy when JVM starts and use Byte Buddy to modify the target bytecode to implant data collection logic.</p>
+<h1 id="module-introduction">Module Introduction</h1>
+<p><code>shardingsphere-agent-api</code>: Defines enhanced interfaces, plugin configurations, and more.</p>
+<p><code>shardingsphere-agent-core</code>: Defines plugin loading processes and agent entry.</p>
+<p><code>shardingsphere-agent-plugins</code>: Defines plugins.</p>
+<p>This article mainly introduces the indicator plugin under the <code>shardingsphere-agent-plugins</code> module. Under this module, the indicator plugin mainly has the following modules.</p>
+<ul>
+<li><code>shardingsphere-agent-metrics-core</code>: Indicator collection definition module</li>
+<li><code>shardingsphere-agent-metrics-prometheus</code>: Indicator data exposure module</li>
+</ul>
+<h1 id="event-tracking-setting">Event Tracking Setting</h1>
+<p>Meaningful classes should be considered for tracking. For example, in ShardingSphere-JDBC, the most commonly used and important are the <code>ShardingSphereStatement</code> and <code>ShardingSpherePreparedStatement</code>. We often use the execute, <code>executeQuery</code>, and <code>executeUpdate</code> methods of these two classes to run SQL, so these methods are also the most important places we should pay attention to. The relevant metrics can be collected through these methods too.</p>
+<p>For example, the execution time counts of these methods can be tracked. The existing indicator <code>jdbc_statement_execute_latency_millis logs the execute</code>, <code>executeQuery</code>, and <code>executeUpdate</code> methods of <code>ShardingSphereStatement</code> and <code>ShardingSpherePreparedStatement</code> and tracks the execution time of methods.</p>
+<h1 id="metrics">Metrics</h1>
+<h2 id="shardingsphere-jdbc-monitoring-metrics">ShardingSphere-JDBC Monitoring Metrics</h2>
+<p>The monitoring metrics collected by ShardingSphere-Agent comply with the <strong>OpenMetrics</strong> standard. The following table describes the metrics:</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_04_11_Monitoring_SQL_Performance_with_ShardingSphere-Agent,_Prometheus_and_Grafana2.png" alt="img"></p>
+<p>These metrics can be used to monitor the performance of ShardingSphere-JDBC and identify any issues that may arise. The metrics are collected and displayed visually using the indicator plugin under the shardingsphere-agent-plugins module.</p>
+<h2 id="jvm-monitoring-metrics">JVM Monitoring Metrics</h2>
+<p>In addition to collecting metrics for ShardingSphere-JDBC, ShardingSphere-Agent also exposes relevant metrics for the JVM. The following table describes these metrics:</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_04_11_Monitoring_SQL_Performance_with_ShardingSphere-Agent,_Prometheus_and_Grafana3.png" alt="img"></p>
+<p>These metrics can be used to monitor the performance of the JVM and identify any issues that may arise. The metrics are collected and displayed visually using the indicator plugin under the shardingsphere-agent-plugins module.</p>
+<p>Metric Type Explanation:</p>
+<ul>
+<li>GAUGE-type metrics indicate that the metric value can increase or decrease.</li>
+<li>COUNTER-type metrics indicate that the metric value can only increase and never decrease.</li>
+<li>HISTOGRAM-type metrics represent a histogram that is mainly used for the distribution of metric values, such as the method execution time.</li>
+</ul>
+<h1 id="user-guide">User Guide</h1>
+<p>Example using a Spring Boot project integrated with ShardingSphere-JDBC: To demonstrate how to collect and display metrics using ShardingSphere-Agent, we will use a Spring Boot project that integrates with ShardingSphere-JDBC. Follow the steps below to set up the project:</p>
+<ol>
+<li>Download the spring-boot-shardingsphere-jdbc-test.jar file. You can find instructions on how to configure it from the official ShardingSphere <a href="https://shardingsphere.apache.org/document/current/en/downloads/">documentation</a> [1].</li>
+<li>Download ShardingSphere-Agent from the <a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-jdbc/">official website</a> [2]. Note that ShardingSphere-JDBC and ShardingSphere-Agent must be of the same version and supported from version 5.3.2.</li>
+<li>Set up the ShardingSphere-Agent directory structure as follows:</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-Bash" data-lang="Bash">cd agent
+tree 
+├── LICENSE
+├── NOTICE
+├── conf
+│   └── agent.yaml
+├── plugins
+│   ├── lib
+│   │   ├── shardingsphere-agent-metrics-core-<span style="color:#e6db74">${</span>latest.release.version<span style="color:#e6db74">}</span>.jar
+│   │   └── shardingsphere-agent-plugin-core-<span style="color:#e6db74">${</span>latest.release.version<span style="color:#e6db74">}</span>.jar
+│   ├── logging
+│   │   └── shardingsphere-agent-logging-file-<span style="color:#e6db74">${</span>latest.release.version<span style="color:#e6db74">}</span>.jar
+│   ├── metrics
+│   │   └── shardingsphere-agent-metrics-prometheus-<span style="color:#e6db74">${</span>latest.release.version<span style="color:#e6db74">}</span>.jar
+│   └── tracing
+│       ├── shardingsphere-agent-tracing-opentelemetry-<span style="color:#e6db74">${</span>latest.release.version<span style="color:#e6db74">}</span>.jar
+└── shardingsphere-agent-<span style="color:#e6db74">${</span>latest.release.version<span style="color:#e6db74">}</span>.jar
+</code></pre></div><ul>
+<li>Configure the <code>agent.yaml</code> file to enable monitoring.</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-YAML" data-lang="YAML"><span style="color:#66d9ef">plugins</span>:
+  <span style="color:#66d9ef">metrics</span>:
+    <span style="color:#66d9ef">Prometheus</span>:
+      <span style="color:#66d9ef">host</span>:  <span style="color:#e6db74">&#34;localhost&#34;</span>
+      <span style="color:#66d9ef">port</span>: <span style="color:#ae81ff">39090</span>
+      <span style="color:#66d9ef">props</span>:
+        <span style="color:#66d9ef">jvm-information-collector-enabled</span>: <span style="color:#e6db74">&#34;true&#34;</span>
+</code></pre></div><p>Configuration details:</p>
+<ul>
+<li><code>host</code> represents the IP address at which the metrics are exposed on the local machine. The default is <code>localhost</code>.</li>
+<li><code>port</code> represents the port on which the metrics are exposed.</li>
+<li><code>jvm-information-collector-enabled</code> represents whether JVM-related metric information is collected. The default is <code>true</code>.</li>
+</ul>
+<p>Start the project</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-Shell" data-lang="Shell">java -javaagent:<span style="color:#e6db74">${</span>agentPath<span style="color:#e6db74">}</span>/agent/shardingsphere-agent-<span style="color:#e6db74">${</span>latest.release.version<span style="color:#e6db74">}</span>.jar -jar spring-boot-shardingsphere-jdbc-test.jar
+</code></pre></div><p>Note: The <code>javaagent</code> should be configured with the absolute path of the jar file.</p>
+<p>After the project is started, make requests to the relevant business interfaces in the project to trigger the related tracking and generate metric data.</p>
+<p>Next, visit <a href="http://127.0.0.1:39090,/">http://127.0.0.1:39090,</a> where the exposed metrics data is located, to obtain data information. The following is the screenshot of some metrics:</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_04_11_Monitoring_SQL_Performance_with_ShardingSphere-Agent,_Prometheus_and_Grafana4.png" alt="img"></p>
+<p>Note:</p>
+<p>The <code>jdbc_statement_execute_latency_millis_bucket</code>, <code>jdbc_statement_execute_latency_millis_count</code>, and <code>jdbc_statement_execute_latency_millis_sum</code> in the above screenshot are derived from the <code>jdbc_statement_execute_latency_millis</code> metric.</p>
+<p>According to the metric specification, when a HISTOGRAM-type metric is generated, metrics with the suffix <code>_bucket</code>, <code>_count</code>, and <code>_sum</code> are automatically generated. We will discuss how to use them later.</p>
+<p>In production scenarios, Prometheus is often used for metric collection and storage, and Grafana is used for visualization. Next, we will configure Prometheus and Grafana.</p>
+<p><strong>Prometheus</strong></p>
+<p>Add the following configuration to the <code>prometheus.yml</code> file to collect monitoring data. For detailed usage of Prometheus, please refer to the <a href="https://prometheus.io/">Prometheus official website</a> [3].</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-YAML" data-lang="YAML"><span style="color:#66d9ef">scrape_configs</span>:
+  - <span style="color:#66d9ef">job_name</span>: <span style="color:#e6db74">&#34;jdbc&#34;</span>
+    <span style="color:#66d9ef">static_configs</span>:
+      - <span style="color:#66d9ef">targets</span>: [<span style="color:#e6db74">&#34;127.0.0.1:39090&#34;</span>]
+</code></pre></div><p><strong>Grafana</strong></p>
+<p>To visualize the collected monitoring data in Grafana, we need to set up a Prometheus data source and write PromQL queries to extract the desired metric data. For more information on using Grafana, please refer to the <a href="https://grafana.com/">official website</a> [4]. To learn how to use PromQL, please refer to the <a href="https://prometheus.io/">official documentation</a> [5].</p>
+<p>As an example, we can use the <code>jdbc_statement_execute_total</code> metric to display the average number of SQL statements executed per minute. Here is an example of how to achieve this:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-SQL" data-lang="SQL">rate(jdbc_statement_execute_total<span style="color:#960050;background-color:#1e0010">{</span>instance<span style="color:#f92672">=~</span><span style="color:#e6db74">&#39;192.168.65.2:39090&#39;</span><span style="color:#960050;background-color:#1e0010">}</span>[<span style="color:#ae81ff">1</span>m])
+</code></pre></div><p><img src="https://shardingsphere.apache.org/blog/img/2023_04_11_Monitoring_SQL_Performance_with_ShardingSphere-Agent,_Prometheus_and_Grafana5.png" alt="img"></p>
+<p>To view SQL metrics routed to the backend database, the <code>routed_sql_total</code> metric can be used for display. This metric uses the <code>type</code> tag to separate SQL statements by their types (INSERT, UPDATE, DELETE, and SELECT), making it easier to analyze the statistics of different types of SQL.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-SQL" data-lang="SQL">rate(routed_sql_total<span style="color:#960050;background-color:#1e0010">{</span>instance<span style="color:#f92672">=~</span><span style="color:#e6db74">&#39;192.168.65.2:39090&#39;</span><span style="color:#960050;background-color:#1e0010">}</span>[<span style="color:#ae81ff">1</span>m])
+</code></pre></div><p><img src="https://shardingsphere.apache.org/blog/img/2023_04_11_Monitoring_SQL_Performance_with_ShardingSphere-Agent,_Prometheus_and_Grafana6.png" alt="img"></p>
+<p>Other COUNTER-type metrics can be obtained using a similar PromSQL statement. We encourage you to try them out yourself.</p>
+<p>Often, we are more concerned about the time it takes to execute SQL statements. In this case, the <code>jdbc_statement_execute_latency_millis</code> metric is exactly what we need. The format and meaning of the exposed original metric are explained below:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-HTML" data-lang="HTML"># HELP jdbc_statement_execute_latency_millis Statement execute latency millis histogram
+# TYPE jdbc_statement_execute_latency_millis histogram
+jdbc_statement_execute_latency_millis_bucket{le=&#34;1.0&#34;,} 0.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;2.0&#34;,} 898.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;4.0&#34;,} 5065.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;8.0&#34;,} 5291.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;16.0&#34;,} 5319.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;32.0&#34;,} 5365.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;64.0&#34;,} 5404.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;128.0&#34;,} 5405.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;256.0&#34;,} 5458.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;512.0&#34;,} 5459.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;1024.0&#34;,} 5459.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;2048.0&#34;,} 5459.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;4096.0&#34;,} 5459.0
+jdbc_statement_execute_latency_millis_bucket{le=&#34;+Inf&#34;,} 5459.0
+jdbc_statement_execute_latency_millis_count 5459.0
+jdbc_statement_execute_latency_millis_sum 27828.0
+</code></pre></div><ul>
+<li>The <code>jdbc_statement_execute_latency_millis_bucket{le=&quot;1.0&quot;,} 0.0</code> indicates the number of times the execution time is within 1 millisecond, which is 0 in this case.</li>
+<li>The <code>jdbc_statement_execute_latency_millis_bucket{le=&quot;2.0&quot;,} 898.0</code> indicates the number of times the execution time is within 2 milliseconds, which is 898 in this case.</li>
+<li>The <code>jdbc_statement_execute_latency_millis_bucket{le=&quot;4.0&quot;,} 5065.0</code> indicates the number of times the execution time is within 4 milliseconds, which is 5065 in this case.</li>
+<li>In line 16, “+Inf” represents statistics beyond the maximum execution time, which in this case represents statistics beyond 4096 milliseconds.</li>
+<li>The <code>jdbc_statement_execute_latency_millis_count 5459.0</code> represents the total number of executions, which is 5459 in this case.</li>
+<li>The <code>jdbc_statement_execute_latency_millis_sum 27828.0</code> represents the total execution time, which is 27828 milliseconds in this case.</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-SQL" data-lang="SQL">ceil(<span style="color:#66d9ef">sum</span>(increase(jdbc_statement_execute_latency_millis_bucket<span style="color:#960050;background-color:#1e0010">{</span>instance<span style="color:#f92672">=~</span><span style="color:#e6db74">&#39;192.168.65.2:39090&#39;</span>, le<span style="color:#f92672">!=</span><span style="color:#e6db74">&#39;+Inf&#39;</span><span style="color:#960050;background-color:#1e0010">}</span>[<span style="color:#ae81ff">1</span>m])) <span style="color:#66d9ef">by</span> (le))
+</code></pre></div><p><img src="https://shardingsphere.apache.org/blog/img/2023_04_11_Monitoring_SQL_Performance_with_ShardingSphere-Agent,_Prometheus_and_Grafana7.png" alt="img"></p>
+<p>The heat map effectively visualizes the distribution of execution time, providing valuable insights into the performance of the system.</p>
+<p>Many metrics can be collected and analyzed using Prometheus and Grafana. By monitoring these metrics and identifying patterns and trends in the data, users can gain valuable insights into the performance and health of their systems, and take proactive measures to optimize performance and prevent issues before they occur.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>We welcome you to actively participate in enriching and improving the monitoring indicators of ShardingSphere-JDBC. If you have any questions or suggestions, please feel free to raise them in the <a href="https://github.com/apache/shardingsphere/issues">GitHub issue</a> [6], or join our <a href="https://apacheshardingsphere.slack.com/ssb/redirect">Slack community</a> [7] for discussions.</p>
+<h1 id="related-links">Related Links</h1>
+<p>[1] <a href="https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-jdbc/">ShardingSphere-JDBC official website documentation</a></p>
+<p>[2] <a href="https://shardingsphere.apache.org/document/current/en/downloads/">ShardingSphere-Agent download address</a></p>
+<p>[3] <a href="https://prometheus.io/">Prometheus official website</a></p>
+<p>[4] <a href="https://grafana.com/">Grafana official website</a></p>
+<p>[5] <a href="https://prometheus.io/docs/prometheus/latest/querying/basics/">PromSQL official documentation</a></p>
+<p>[6] <a href="https://github.com/apache/shardingsphere/issues">GitHub issues</a></p>
+<p>[7] <a href="https://apacheshardingsphere.slack.com/ssb/redirect">Slack community</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_04_03_shardingsphere_5.3.2_release_apollo_integration_better_data_migration_and_stronger_encryption/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

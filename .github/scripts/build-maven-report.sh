@@ -32,7 +32,7 @@ echo "4. process maven stage"
 ./mvnw site:stage
 
 echo "5. upload the maven report"
-if [ -d "$directory" ] && [ -n "$(ls -A "$directory")" ]; then
+if [ -d "target/staging" ] && [ -n "$(ls -A "target/staging")" ]; then
   rm -rf ${SHARDINGSPHERE_DOC_PATH}/statistics/staging
   mv target/staging  ${SHARDINGSPHERE_DOC_PATH}/statistics/
   git config --global user.email "dev@shardingsphere.apache.org"

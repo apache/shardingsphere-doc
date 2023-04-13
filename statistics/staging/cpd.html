@@ -1427,7 +1427,7 @@ Apache ShardingSphere
 <tr class="b">
 <td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L137">137</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L138">138</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
@@ -1436,7 +1436,7 @@ Apache ShardingSphere
 <div>
 <pre>SqlString sqlString = createSQLString(table, (FilterableScanNodeExecutorContext) scanContext, SQLDialectFactory.getSQLDialect(databaseType));
         SQLFederationExecutorContext federationContext = executorContext.getFederationContext();
-        QueryContext queryContext = createQueryContext(federationContext.getMetaData(), sqlString, databaseType);
+        QueryContext queryContext = createQueryContext(federationContext.getMetaData(), sqlString, databaseType, federationContext.getQueryContext().isUseCache());
         ShardingSphereDatabase database = federationContext.getMetaData().getDatabase(databaseName);
         // TODO need to get session context
         ExecutionContext context = new KernelProcessor().generateExecutionContext(queryContext, database, globalRuleMetaData, executorContext.getProps(), new ConnectionContext());
@@ -1748,6 +1748,87 @@ Apache ShardingSphere
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
+<td>shardingsphere-sql-federation-executor-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L243">243</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
+<td>shardingsphere-sql-federation-executor-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L360">360</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>return builder.build();
+    }
+    
+    private Collection&lt;RexNode&gt; createProjections(final int[] projects, final RelBuilder relBuilder, final List&lt;String&gt; columnNames) {
+        Collection&lt;RexNode&gt; result = new LinkedList&lt;&gt;();
+        for (int each : projects) {
+            result.add(relBuilder.field(columnNames.get(each)));
+        }
+        return result;
+    }
+    
+    private AbstractEnumerable&lt;Object[]&gt; createEnumerable(final MergedResult mergedResult, final QueryResultMetaData metaData, final Collection&lt;Statement&gt; statements) throws SQLException {
+        // TODO remove getRows when mergedResult support JDBC first method
+        Collection&lt;Object[]&gt; rows = getRows(mergedResult, metaData);
+        return new AbstractEnumerable&lt;Object[]&gt;() {
+            
+            @Override
+            public Enumerator&lt;Object[]&gt; enumerator() {
+                return new SQLFederationRowEnumerator&lt;&gt;(rows, statements);
+            }
+        };
+    }
+    
+    private Collection&lt;Object[]&gt; getRows(final MergedResult mergedResult, final QueryResultMetaData metaData) throws SQLException {
+        Collection&lt;Object[]&gt; result = new LinkedList&lt;&gt;();
+        while (mergedResult.next()) {
+            Object[] currentRow = new Object[metaData.getColumnCount()];
+            for (int i = 0; i &lt; metaData.getColumnCount(); i++) {
+                currentRow[i] = mergedResult.getValue(i + 1, Object.class);
+            }
+            result.add(currentRow);
+        }
+        return result;
+    }
+    
+    private QueryContext createQueryContext(final ShardingSphereMetaData metaData, final SqlString sqlString, final DatabaseType databaseType, final boolean useCache) {
+        String sql = sqlString.getSql().replace(&quot;\n&quot;, &quot; &quot;);
+        SQLStatement sqlStatement = new SQLStatementParserEngine(databaseType.getType(),
+                optimizerContext.getSqlParserRule().getSqlStatementCache(), optimizerContext.getSqlParserRule().getParseTreeCache(),
+                optimizerContext.getSqlParserRule().isSqlCommentParseEnabled()).parse(sql, useCache);
+        List&lt;Object&gt; params = getParameters(sqlString.getDynamicParameters());
+        SQLStatementContext&lt;?&gt; sqlStatementContext = SQLStatementContextFactory.newInstance(metaData, params, sqlStatement, executorContext.getDatabaseName());
+        return new QueryContext(sqlStatementContext, sql, params, new HintValueContext(), useCache);
+    }
+    
+    private List&lt;Object&gt; getParameters(final List&lt;Integer&gt; paramIndexes) {
+        if (null == paramIndexes) {
+            return Collections.emptyList();
+        }
+        List&lt;Object&gt; result = new ArrayList&lt;&gt;();
+        for (Integer each : paramIndexes) {
+            result.add(executorContext.getFederationContext().getQueryContext().getParameters().get(each));
+        }
+        return result;
+    }
+    
+    private AbstractEnumerable&lt;Object[]&gt; createEmptyEnumerable() {
+        return new AbstractEnumerable&lt;Object[]&gt;() {
+            
+            @Override
+            public Enumerator&lt;Object[]&gt; enumerator() {
+                return new EmptyRowEnumerator&lt;&gt;();
+            }
+        };
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/impl/SQL92StatementSQLVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/sql92/visitor/statement/impl/SQL92StatementSQLVisitor.html#L340">340</a></td></tr>
@@ -1804,87 +1885,6 @@ Apache ShardingSphere
         }
         if (astNode instanceof OtherLiteralValue) {
             return new CommonExpressionSegment(context.getStart().getStartIndex(), context.getStop().getStopIndex(), ((OtherLiteralValue) astNode).getValue());</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
-<td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L242">242</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
-<td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L361">361</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>return builder.build();
-    }
-    
-    private Collection&lt;RexNode&gt; createProjections(final int[] projects, final RelBuilder relBuilder, final List&lt;String&gt; columnNames) {
-        Collection&lt;RexNode&gt; result = new LinkedList&lt;&gt;();
-        for (int each : projects) {
-            result.add(relBuilder.field(columnNames.get(each)));
-        }
-        return result;
-    }
-    
-    private AbstractEnumerable&lt;Object[]&gt; createEnumerable(final MergedResult mergedResult, final QueryResultMetaData metaData, final Collection&lt;Statement&gt; statements) throws SQLException {
-        // TODO remove getRows when mergedResult support JDBC first method
-        Collection&lt;Object[]&gt; rows = getRows(mergedResult, metaData);
-        return new AbstractEnumerable&lt;Object[]&gt;() {
-            
-            @Override
-            public Enumerator&lt;Object[]&gt; enumerator() {
-                return new SQLFederationRowEnumerator&lt;&gt;(rows, statements);
-            }
-        };
-    }
-    
-    private Collection&lt;Object[]&gt; getRows(final MergedResult mergedResult, final QueryResultMetaData metaData) throws SQLException {
-        Collection&lt;Object[]&gt; result = new LinkedList&lt;&gt;();
-        while (mergedResult.next()) {
-            Object[] currentRow = new Object[metaData.getColumnCount()];
-            for (int i = 0; i &lt; metaData.getColumnCount(); i++) {
-                currentRow[i] = mergedResult.getValue(i + 1, Object.class);
-            }
-            result.add(currentRow);
-        }
-        return result;
-    }
-    
-    private QueryContext createQueryContext(final ShardingSphereMetaData metaData, final SqlString sqlString, final DatabaseType databaseType) {
-        String sql = sqlString.getSql().replace(&quot;\n&quot;, &quot; &quot;);
-        SQLStatement sqlStatement = new SQLStatementParserEngine(databaseType.getType(),
-                optimizerContext.getSqlParserRule().getSqlStatementCache(), optimizerContext.getSqlParserRule().getParseTreeCache(),
-                optimizerContext.getSqlParserRule().isSqlCommentParseEnabled()).parse(sql, false);
-        List&lt;Object&gt; params = getParameters(sqlString.getDynamicParameters());
-        SQLStatementContext&lt;?&gt; sqlStatementContext = SQLStatementContextFactory.newInstance(metaData, params, sqlStatement, executorContext.getDatabaseName());
-        return new QueryContext(sqlStatementContext, sql, params);
-    }
-    
-    private List&lt;Object&gt; getParameters(final List&lt;Integer&gt; paramIndexes) {
-        if (null == paramIndexes) {
-            return Collections.emptyList();
-        }
-        List&lt;Object&gt; result = new ArrayList&lt;&gt;();
-        for (Integer each : paramIndexes) {
-            result.add(executorContext.getFederationContext().getQueryContext().getParameters().get(each));
-        }
-        return result;
-    }
-    
-    private AbstractEnumerable&lt;Object[]&gt; createEmptyEnumerable() {
-        return new AbstractEnumerable&lt;Object[]&gt;() {
-            
-            @Override
-            public Enumerator&lt;Object[]&gt; enumerator() {
-                return new EmptyRowEnumerator&lt;&gt;();
-            }
-        };
-    }
-}</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -6020,11 +6020,11 @@ Apache ShardingSphere
 <tr class="b">
 <td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L209">209</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L210">210</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L298">298</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L297">297</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>return new RelToSqlConverter(sqlDialect).visitRoot(createRelNode(table, scanContext)).asStatement().toSqlString(sqlDialect);
@@ -6585,7 +6585,7 @@ Apache ShardingSphere
 <tr class="b">
 <td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L150">150</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L151">151</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
@@ -6593,7 +6593,7 @@ Apache ShardingSphere
 <tr class="b">
 <td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L238">238</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L237">237</a></td></tr>
 <tr class="a"><td colspan='3'>
 <div>
 <pre>private AbstractEnumerable&lt;Object[]&gt; execute(final DatabaseType databaseType, final QueryContext queryContext, final ShardingSphereDatabase database, final ExecutionContext context) {
@@ -6621,7 +6621,7 @@ Apache ShardingSphere
 <tr class="a">
 <td>org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.java</td>
 <td>shardingsphere-sharding-distsql-handler</td>
-<td><a href="./xref/org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#L429">429</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#L293">293</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>private Optional&lt;String&gt; getAlgorithmExpression(final TableRule tableRule, final boolean databaseAlgorithm, final BindingTableCheckedConfiguration checkedConfig) {
@@ -6828,7 +6828,7 @@ Apache ShardingSphere
 <tr class="a">
 <td>org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.java</td>
 <td>shardingsphere-sharding-distsql-handler</td>
-<td><a href="./xref/org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#L412">412</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#L275">275</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>private boolean isValidActualTableName(final TableRule sampleTableRule, final TableRule tableRule) {
@@ -7405,11 +7405,11 @@ Apache ShardingSphere
 <tr class="b">
 <td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L230">230</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L231">231</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L319">319</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L318">318</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>private RelNode createRelNode(final ShardingSphereTable table, final FilterableScanNodeExecutorContext scanContext) {
@@ -7617,6 +7617,31 @@ Apache ShardingSphere
             return getMergedResult().next();
         }
         return rowNumber++ &lt; pagination.getActualRowCount().get() &amp;&amp; getMergedResult().next();</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
+<td>shardingsphere-sql-federation-executor-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L136">136</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
+<td>shardingsphere-sql-federation-executor-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L223">223</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>return executeByScalarShardingSphereData(databaseName, schemaName, table);
+        }
+        SqlString sqlString = createSQLString(table, (TranslatableScanNodeExecutorContext) scanContext, SQLDialectFactory.getSQLDialect(databaseType));
+        SQLFederationExecutorContext federationContext = executorContext.getFederationContext();
+        QueryContext queryContext = createQueryContext(federationContext.getMetaData(), sqlString, databaseType, federationContext.getQueryContext().isUseCache());
+        ShardingSphereDatabase database = federationContext.getMetaData().getDatabase(databaseName);
+        ExecutionContext context = new KernelProcessor().generateExecutionContext(queryContext, database, globalRuleMetaData, executorContext.getProps(), new ConnectionContext());
+        if (federationContext.isPreview()) {
+            federationContext.getExecutionUnits().addAll(context.getExecutionUnits());
+            return createEmptyScalarEnumerable();</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -8016,7 +8041,7 @@ Apache ShardingSphere
 <tr class="a">
 <td>org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.java</td>
 <td>shardingsphere-sharding-distsql-handler</td>
-<td><a href="./xref/org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#L188">188</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#L179">179</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>private Collection&lt;String&gt; getDataSourceNames(final Collection&lt;ShardingTableRuleConfiguration&gt; tableRuleConfigs,
@@ -8628,32 +8653,6 @@ Apache ShardingSphere
      * @return literal value
      */
     public Optional&lt;Object&gt; getLiteralValue(final int index) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
-<td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L135">135</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
-<td>shardingsphere-sql-federation-executor-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L223">223</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>return executeByScalarShardingSphereData(databaseName, schemaName, table);
-        }
-        SqlString sqlString = createSQLString(table, (TranslatableScanNodeExecutorContext) scanContext, SQLDialectFactory.getSQLDialect(databaseType));
-        // TODO replace sql parse with sql convert
-        SQLFederationExecutorContext federationContext = executorContext.getFederationContext();
-        QueryContext queryContext = createQueryContext(federationContext.getMetaData(), sqlString, databaseType);
-        ShardingSphereDatabase database = federationContext.getMetaData().getDatabase(databaseName);
-        ExecutionContext context = new KernelProcessor().generateExecutionContext(queryContext, database, globalRuleMetaData, executorContext.getProps(), new ConnectionContext());
-        if (federationContext.isPreview()) {
-            federationContext.getExecutionUnits().addAll(context.getExecutionUnits());
-            return createEmptyScalarEnumerable();</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -9421,6 +9420,30 @@ Apache ShardingSphere
         return new QueryResponseRow(cells);
     }
 }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
+<td>shardingsphere-sql-federation-executor-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L138">138</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
+<td>shardingsphere-sql-federation-executor-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L138">138</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>SqlString sqlString = createSQLString(table, (FilterableScanNodeExecutorContext) scanContext, SQLDialectFactory.getSQLDialect(databaseType));
+        SQLFederationExecutorContext federationContext = executorContext.getFederationContext();
+        QueryContext queryContext = createQueryContext(federationContext.getMetaData(), sqlString, databaseType, federationContext.getQueryContext().isUseCache());
+        ShardingSphereDatabase database = federationContext.getMetaData().getDatabase(databaseName);
+        // TODO need to get session context
+        ExecutionContext context = new KernelProcessor().generateExecutionContext(queryContext, database, globalRuleMetaData, executorContext.getProps(), new ConnectionContext());
+        if (federationContext.isPreview()) {
+            federationContext.getExecutionUnits().addAll(context.getExecutionUnits());
+            return createEmptyEnumerable();</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

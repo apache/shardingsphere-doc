@@ -1,552 +1,104 @@
-commit d65ebe903e0dd4191c8cd5a7e2453c621dac9dc1
+commit 915f2f86380aa33e4a704217f5b144d5ae035363
 Author: zhaojinchao <zhaojinchao@apache.org>
-Date:   Thu Apr 13 11:09:44 2023 +0800
+Date:   Thu Apr 13 18:15:07 2023 +0800
 
-    Refactor readwrite-splitting configuration remove staticStrategy configuration (#25141)
+    Rename ReadwriteSplittingStrategy to ReadwriteSplittingGroup (#25153)
     
-    * Refactor readwrite-splitting configuration remove staticStrategy configuration
+    * Update document
     
-    * Update readwrite configuration
-    
-    * Adjustment document
-    
-    * Update document for mix rule
+    * Rename ReadwriteSplittingStrategy to ReadwriteSplittingGroup
 
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.cn.md b/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.cn.md
-index 1b958280b1c..e0153422c28 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.cn.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.cn.md
-@@ -38,11 +38,10 @@ rules:
- - !READWRITE_SPLITTING
-   dataSources:
-     readwrite_ds:
--      staticStrategy:
--        writeDataSourceName: write_ds
--        readDataSourceNames:
--          - read_ds_0
--          - read_ds_1
-+      writeDataSourceName: write_ds
-+      readDataSourceNames:
-+        - read_ds_0
-+        - read_ds_1
-       loadBalancerName: random
-       transactionalReadQueryStrategy: PRIMARY
-   loadBalancers:
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.en.md b/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.en.md
-index d51d142d0a5..2fca3eb1cf9 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.en.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/load-balance.en.md
-@@ -40,11 +40,10 @@ rules:
- - !READWRITE_SPLITTING
-   dataSources:
-     readwrite_ds:
--      staticStrategy:
--        writeDataSourceName: write_ds
--        readDataSourceNames:
--          - read_ds_0
--          - read_ds_1
-+      writeDataSourceName: write_ds
-+      readDataSourceNames:
-+        - read_ds_0
-+        - read_ds_1
-       transactionalReadQueryStrategy: PRIMARY
-       loadBalancerName: random
-   loadBalancers:
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-index 9fbc0ae3203..54c044336f0 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-@@ -5,7 +5,7 @@ weight = 9
- 
- ## 背景信息
- 
--ShardingSphere 涵盖了很多功能，例如，分库分片、读写分离、高可用、数据加密等。这些功能用户可以单独进行使用，也可以配合一起使用，下面是基于 JAVA API 的配置示例。
-+ShardingSphere 涵盖了很多功能，例如，分库分片、读写分离、数据加密等。这些功能用户可以单独进行使用，也可以配合一起使用，下面是基于 JAVA API 的配置示例。
- 
- ## 配置示例
- 
-@@ -30,47 +30,16 @@ private ShardingTableRuleConfiguration getOrderTableRuleConfiguration() {
-     return result;
- }
- 
--// 动态读写分离配置
-+// 读写分离配置
- private static ReadwriteSplittingRuleConfiguration createReadwriteSplittingConfiguration() {
--    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_0", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_0", true), "");
--    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_1", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_1", true), "");
-+    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_0", Arrays.asList("readwrite_ds_0"), true), "");
-+    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_1", Arrays.asList("readwrite_ds_1"), true), "");
-     Collection<ReadwriteSplittingDataSourceRuleConfiguration> dataSources = new LinkedList<>();
-     dataSources.add(dataSourceRuleConfiguration1);
-     dataSources.add(dataSourceRuleConfiguration2);
-     return new ReadwriteSplittingRuleConfiguration(dataSources, Collections.emptyMap());
- }
- 
--// 数据库发现配置
--private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
--    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration1 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_0", Arrays.asList("ds_0, ds_1, ds_2"), "mgr-heartbeat", "mgr");
--    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration2 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
--    Collection<DatabaseDiscoveryDataSourceRuleConfiguration> dataSources = new LinkedList<>();    
--    dataSources.add(dataSourceRuleConfiguration1);
--    dataSources.add(dataSourceRuleConfiguration2);
--    return new DatabaseDiscoveryRuleConfiguration(configs, createDiscoveryHeartbeats(), createDiscoveryTypes());
--}
--
--private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
--    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
--    return new DatabaseDiscoveryRuleConfiguration(Collections.singleton(dataSourceRuleConfiguration), createDiscoveryHeartbeats(), createDiscoveryTypes());
--}
--
--private static Map<String, AlgorithmConfiguration> createDiscoveryTypes() {
--    Map<String, AlgorithmConfiguration> result = new HashMap<>(1， 1);
--    Properties props = new Properties();
--    props.put("group-name", "558edd3c-02ec-11ea-9bb3-080027e39bd2");
--    discoveryTypes.put("mgr", new AlgorithmConfiguration("MGR", props));
--    return result;
--}
--
--private static Map<String, DatabaseDiscoveryHeartBeatConfiguration> createDiscoveryHeartbeats() {
--    Map<String, DatabaseDiscoveryHeartBeatConfiguration> result = new HashMap<>(1， 1);
--    Properties props = new Properties();
--    props.put("keep-alive-cron", "0/5 * * * * ?");
--    discoveryHeartBeatConfiguration.put("mgr-heartbeat", new DatabaseDiscoveryHeartBeatConfiguration(props));
--    return result;
--}
--
- // 数据加密配置
- public EncryptRuleConfiguration createEncryptRuleConfiguration() {
-     Properties props = new Properties();
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-index 216359c5ef3..e7df0471a5e 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-@@ -31,47 +31,16 @@ private ShardingTableRuleConfiguration getOrderTableRuleConfiguration() {
-     return result;
- }
- 
--// Dynamic read/write splitting configuration
-+// Read/write splitting configuration
- private static ReadwriteSplittingRuleConfiguration createReadwriteSplittingConfiguration() {
--    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_0", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_0", true), "");
--    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_1", new DynamicReadwriteSplittingStrategyConfiguration("readwrite_ds_1", true), "");
-+    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration1 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_0", Arrays.asList("readwrite_ds_0"), true), "");
-+    ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfiguration2 = new ReadwriteSplittingDataSourceRuleConfiguration("replica_ds_1", Arrays.asList("readwrite_ds_1"), true), "");
-     Collection<ReadwriteSplittingDataSourceRuleConfiguration> dataSources = new LinkedList<>();
-     dataSources.add(dataSourceRuleConfiguration1);
-     dataSources.add(dataSourceRuleConfiguration2);
-     return new ReadwriteSplittingRuleConfiguration(dataSources, Collections.emptyMap());
- }
- 
--// Database discovery configuration
--private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
--    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration1 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_0", Arrays.asList("ds_0, ds_1, ds_2"), "mgr-heartbeat", "mgr");
--    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration2 = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
--    Collection<DatabaseDiscoveryDataSourceRuleConfiguration> dataSources = new LinkedList<>();    
--    dataSources.add(dataSourceRuleConfiguration1);
--    dataSources.add(dataSourceRuleConfiguration2);
--    return new DatabaseDiscoveryRuleConfiguration(configs, createDiscoveryHeartbeats(), createDiscoveryTypes());
--}
--
--private static DatabaseDiscoveryRuleConfiguration createDatabaseDiscoveryConfiguration() {
--    DatabaseDiscoveryDataSourceRuleConfiguration dataSourceRuleConfiguration = new DatabaseDiscoveryDataSourceRuleConfiguration("readwrite_ds_1", Arrays.asList("ds_3, ds_4, ds_5"), "mgr-heartbeat", "mgr");
--    return new DatabaseDiscoveryRuleConfiguration(Collections.singleton(dataSourceRuleConfiguration), createDiscoveryHeartbeats(), createDiscoveryTypes());
--}
--
--private static Map<String, AlgorithmConfiguration> createDiscoveryTypes() {
--    Map<String, AlgorithmConfiguration> result = new HashMap<>(1， 1);
--    Properties props = new Properties();
--    props.put("group-name", "558edd3c-02ec-11ea-9bb3-080027e39bd2");
--    discoveryTypes.put("mgr", new AlgorithmConfiguration("MGR", props));
--    return result;
--}
--
--private static Map<String, DatabaseDiscoveryHeartBeatConfiguration> createDiscoveryHeartbeats() {
--    Map<String, DatabaseDiscoveryHeartBeatConfiguration> result = new HashMap<>(1， 1);
--    Properties props = new Properties();
--    props.put("keep-alive-cron", "0/5 * * * * ?");
--    discoveryHeartBeatConfiguration.put("mgr-heartbeat", new DatabaseDiscoveryHeartBeatConfiguration(props));
--    return result;
--}
--
- // Data encryption configuration
- public EncryptRuleConfiguration createEncryptRuleConfiguration() {
-     Properties props = new Properties();
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md
-index 5e3ca275d73..591c7e6025a 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.cn.md
-@@ -26,22 +26,13 @@ Java API 形式配置的读写分离可以方便的适用于各种场景，不
- 
- 可配置属性：
- 
--| *名称*                               | *数据类型*                                         | *说明*                                                                        | *默认值*    |
--|------------------------------------|------------------------------------------------|-----------------------------------------------------------------------------|----------|
--| name                               | String                                         | 读写分离数据源名称                                                                   | -        |
--| staticStrategy                     | StaticReadwriteSplittingStrategyConfiguration  | 静态读写分离配置                                                                    | -        |
--| dynamicStrategy                    | DynamicReadwriteSplittingStrategyConfiguration | 动态读写分离配置                                                                    | -        |
--| transactionalReadQueryStrategy (?) | TransactionalReadQueryStrategy                 | 事务内读请求的路由策略，可选值：PRIMARY（路由至主库）、FIXED（同一事务内路由至固定数据源）、DYNAMIC（同一事务内路由至非固定数据源） | DYNAMIC  |
--| loadBalancerName (?)               | String                                         | 读库负载均衡算法名称                                                                  | 轮询负载均衡算法 |
--
--类名称：org.apache.shardingsphere.readwritesplitting.api.strategy.StaticReadwriteSplittingStrategyConfiguration
--
--可配置属性：
--
--| *名称*                | *数据类型*         | *说明*    |
--|---------------------|----------------|---------|
--| writeDataSourceName | String         | 写库数据源名称 |
--| readDataSourceNames | List\<String\> | 读库数据源列表 |
-+| *名称*                               | *数据类型*                                 | *说明*                                                                        | *默认值*    |
-+|------------------------------------|--------------------------------------------|-----------------------------------------------------------------------------|----------|
-+| name                               | String                                     | 读写分离数据源名称                                                                   | -        |
-+| writeDataSourceName                | String                                     | 写库数据源名称                                                                    | -        |
-+| readDataSourceNames                | List\<String\>                             | 写库数据源名称                                                                    | -        |
-+| transactionalReadQueryStrategy (?) | TransactionalReadQueryStrategy             | 事务内读请求的路由策略，可选值：PRIMARY（路由至主库）、FIXED（同一事务内路由至固定数据源）、DYNAMIC（同一事务内路由至非固定数据源） | DYNAMIC  |
-+| loadBalancerName (?)               | String                                     | 读库负载均衡算法名称                                                                  | 轮询负载均衡算法 |
- 
- 算法类型的详情，请参见[内置负载均衡算法列表](/cn/user-manual/common-config/builtin-algorithm/load-balance)。
- 查询一致性路由的详情，请参见[核心特性：读写分离](/cn/features/readwrite-splitting/)。
-@@ -57,8 +48,7 @@ Java API 形式配置的读写分离可以方便的适用于各种场景，不
- ```java
- public DataSource getDataSource() throws SQLException {
-         ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfig = new ReadwriteSplittingDataSourceRuleConfiguration(
--                "demo_read_query_ds", new StaticReadwriteSplittingStrategyConfiguration("demo_write_ds",
--                Arrays.asList("demo_read_ds_0", "demo_read_ds_1")), null,"demo_weight_lb");
-+                "demo_read_query_ds", "demo_write_ds", Arrays.asList("demo_read_ds_0", "demo_read_ds_1"), "demo_weight_lb");
-         Properties algorithmProps = new Properties();
-         algorithmProps.setProperty("demo_read_ds_0", "2");
-         algorithmProps.setProperty("demo_read_ds_1", "1");
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.en.md
-index 2fc327dbfed..94d0bc95bda 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/readwrite-splitting.en.md
-@@ -29,20 +29,11 @@ Configurable Properties:
- | *Name*                             | *DataType*                     | *Description*                                                                                                                                          | *Default Value*                    |
- |------------------------------------|--------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------|
- | name                               | String                         | Readwrite-splitting data source name                                                                                                                   | -                                  |
--| staticStrategy                     | String                         | Static Readwrite-splitting configuration                                                                                                               | -                                  |
--| dynamicStrategy                    | Properties                     | Dynamic Readwrite-splitting configuration                                                                                                              | -                                  |
-+| writeDataSourceName                 | String                        | Write data source name                                                                                                                                 | -                                  |
-+| readDataSourceNames                 | List\<String\>                | Read data sources list                                                                                                                                 | -                                  |
- | transactionalReadQueryStrategy (?) | TransactionalReadQueryStrategy | Routing strategy for read query within a transaction, values include: PRIMARY (to primary), FIXED (to fixed data source), DYNAMIC (to any data source) | DYNAMIC                            |
- | loadBalancerName (?)               | String                         | Load balance algorithm name of replica sources                                                                                                         | Round robin load balance algorithm |
- 
--Class name：org.apache.shardingsphere.readwritesplitting.api.strategy.StaticReadwriteSplittingStrategyConfiguration
--
--Configurable Properties:
--
--| *Name*              | *DataType*     | *Description*          |
--|---------------------|----------------|------------------------|
--| writeDataSourceName | String         | Write data source name |
--| readDataSourceNames | List\<String\> | Read data sources list |
--
- Please refer to [Built-in Load Balance Algorithm List](/en/user-manual/common-config/builtin-algorithm/load-balance) for details on algorithm types.
- Please refer to [Read-write splitting-Core features](/en/features/readwrite-splitting/) for more details about query consistent routing.
- 
-@@ -57,8 +48,7 @@ Please refer to [Read-write splitting-Core features](/en/features/readwrite-spli
- ```java
- public DataSource getDataSource() throws SQLException {
-         ReadwriteSplittingDataSourceRuleConfiguration dataSourceConfig = new ReadwriteSplittingDataSourceRuleConfiguration(
--                "demo_read_query_ds", new StaticReadwriteSplittingStrategyConfiguration("demo_write_ds",
--                Arrays.asList("demo_read_ds_0", "demo_read_ds_1")), null,"demo_weight_lb");
-+                "demo_read_query_ds", "demo_write_ds", Arrays.asList("demo_read_ds_0", "demo_read_ds_1"), "demo_weight_lb");
-         Properties algorithmProps = new Properties();
-         algorithmProps.setProperty("demo_read_ds_0", "2");
-         algorithmProps.setProperty("demo_read_ds_1", "1");
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.cn.md
-index 4c96f3ccf9b..2f409591091 100644
+index 2f409591091..7b509383f5d 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.cn.md
-@@ -63,11 +63,10 @@ rules:
+@@ -9,16 +9,15 @@ weight = 2
+ 
+ ## 参数解释
+ 
+-### 静态读写分离
++### 读写分离
+ 
+ ```yaml
+ rules:
  - !READWRITE_SPLITTING
    dataSources:
-     readwrite_ds:
--      staticStrategy:
--        writeDataSourceName: write_ds
--        readDataSourceNames:
--          - read_ds_0
--          - read_ds_1
-+      writeDataSourceName: write_ds
-+      readDataSourceNames:
-+        - read_ds_0
-+        - read_ds_1
-       transactionalReadQueryStrategy: PRIMARY
-       loadBalancerName: random
-   loadBalancers:
+     <data_source_name> (+): # 读写分离逻辑数据源名称
+-       static_strategy: # 读写分离类型
+-         write_data_source_name: # 写库数据源名称
+-         read_data_source_names: # 读库数据源名称，多个从数据源用逗号分隔
++       write_data_source_name: # 写库数据源名称
++       read_data_source_names: # 读库数据源名称，多个从数据源用逗号分隔
+        transactionalReadQueryStrategy (?): # 事务内读请求的路由策略，可选值：PRIMARY（路由至主库）、FIXED（同一事务内路由至固定数据源）、DYNAMIC（同一事务内路由至非固定数据源）。默认值：DYNAMIC
+        loadBalancerName: # 负载均衡算法名称
+   
+@@ -30,25 +29,6 @@ rules:
+         # ...
+ ```
+ 
+-### 动态读写分离
+-
+-```yaml
+-rules:
+-- !READWRITE_SPLITTING
+-  dataSources:
+-    <data_source_name> (+): # 读写分离逻辑数据源名称
+-       dynamic_strategy: # 读写分离类型
+-         auto_aware_data_source_name: # 数据库发现逻辑数据源名称
+-       transactionalReadQueryStrategy (?): # 事务内读请求的路由策略，可选值：PRIMARY（路由至主库）、FIXED（同一事务内路由至固定数据源）、DYNAMIC（同一事务内路由至非固定数据源）。默认值：DYNAMIC
+-       loadBalancerName: # 负载均衡算法名称
+-  
+-  # 负载均衡算法配置
+-  loadBalancers:
+-    <load_balancer_name> (+): # 负载均衡算法名称
+-      type: # 负载均衡算法类型
+-      props: # 负载均衡算法属性配置
+-        # ...
+-```
+ 算法类型的详情，请参见[内置负载均衡算法列表](/cn/user-manual/common-config/builtin-algorithm/load-balance)。
+ 查询一致性路由的详情，请参见[核心特性：读写分离](/cn/features/readwrite-splitting/)。
+ 
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.en.md
-index c560fdf1b92..506d0595a76 100644
+index 506d0595a76..252711e4a7f 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/readwrite-splitting.en.md
-@@ -63,11 +63,10 @@ rules:
+@@ -8,36 +8,15 @@ Read/write splitting YAML configuration is highly readable. The YAML format enab
+ 
+ ## Parameters
+ 
+-### Static Readwrite-splitting
++### Readwrite-splitting
+ 
+ ```yaml
+ rules:
  - !READWRITE_SPLITTING
    dataSources:
-     readwrite_ds:
--      staticStrategy:
--        writeDataSourceName: write_ds
--        readDataSourceNames:
--          - read_ds_0
--          - read_ds_1
-+      writeDataSourceName: write_ds
-+      readDataSourceNames:
-+        - read_ds_0
-+        - read_ds_1
-       transactionalReadQueryStrategy: PRIMARY
-       loadBalancerName: random
-   loadBalancers:
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.cn.md
-index f183607ee0b..a3d2495c6f3 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.cn.md
-@@ -16,13 +16,7 @@ AlterReadwriteSplittingRule ::=
-   'ALTER' 'READWRITE_SPLITTING' 'RULE' readwriteSplittingDefinition (',' readwriteSplittingDefinition)*
- 
- readwriteSplittingDefinition ::=
--  ruleName '(' (staticReadwriteSplittingDefinition | dynamicReadwriteSplittingDefinition) (',' loadBalancerDefinition)? ')'
--
--staticReadwriteSplittingDefinition ::=
--    'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')'
--
--dynamicReadwriteSplittingDefinition ::=
--    'AUTO_AWARE_RESOURCE' '=' resourceName
-+  ruleName '(' 'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')' (',' loadBalancerDefinition)? ')'
- 
- loadBalancerDefinition ::=
-     'TYPE' '(' 'NAME' '=' loadBalancerType (',' propertiesDefinition)? ')'
-@@ -59,12 +53,11 @@ value ::=
- 
- ### 补充说明
- 
--- 动态读写分离规则依赖于数据库发现规则；
- - `loadBalancerType` 指定负载均衡算法类型，请参考[负载均衡算法]((/cn/user-manual/common-config/builtin-algorithm/load-balance/))；
- 
- ### 示例
- 
--#### 修改静态读写分离规则
-+#### 修改读写分离规则
- 
- ```sql
- ALTER READWRITE_SPLITTING RULE ms_group_0 (
-@@ -74,18 +67,9 @@ ALTER READWRITE_SPLITTING RULE ms_group_0 (
- );
- ```
- 
--#### 修改动态读写分离规则
--
--```sql
--ALTER READWRITE_SPLITTING RULE ms_group_1 (
--    AUTO_AWARE_RESOURCE=group_0
--    TYPE(NAME="random")
--);
+     <data_source_name> (+): # Logic data source name of readwrite-splitting
+-      static_strategy: # Readwrite-splitting type
+-        write_data_source_name: # Write data source name
+-        read_data_source_names: # Read data source names, multiple data source names separated with comma
+-      transactionalReadQueryStrategy (?): # Routing strategy for read query within a transaction, values include: PRIMARY (to primary), FIXED (to fixed data source), DYNAMIC (to any data source), default value: DYNAMIC
+-      loadBalancerName: # Load balance algorithm name
+-  
+-  # Load balance algorithm configuration
+-  loadBalancers:
+-    <load_balancer_name> (+): # Load balance algorithm name
+-      type: # Load balance algorithm type
+-      props: # Load balance algorithm properties
+-        # ...
 -```
 -
- ### 保留字
- 
--`ALTER`、`READWRITE_SPLITTING`、`RULE`、`WRITE_STORAGE_UNIT`、`READ_STORAGE_UNITS`、`AUTO_AWARE_RESOURCE`
-+`ALTER`、`READWRITE_SPLITTING`、`RULE`、`WRITE_STORAGE_UNIT`、`READ_STORAGE_UNITS`
- 、`TYPE`、`NAME`、`PROPERTIES`、`TRUE`、`FALSE`
- 
- ### 相关链接
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.en.md
-index 3ebbad734d1..6611be0445b 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/alter-readwrite-splitting-rule.en.md
-@@ -16,13 +16,7 @@ AlterReadwriteSplittingRule ::=
-   'ALTER' 'READWRITE_SPLITTING' 'RULE' readwriteSplittingDefinition (',' readwriteSplittingDefinition)*
- 
- readwriteSplittingDefinition ::=
--  ruleName '(' (staticReadwriteSplittingDefinition | dynamicReadwriteSplittingDefinition) (',' loadBalancerDefinition)? ')'
+-### Dynamic Readwrite-splitting
 -
--staticReadwriteSplittingDefinition ::=
--    'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')'
--
--dynamicReadwriteSplittingDefinition ::=
--    'AUTO_AWARE_RESOURCE' '=' resourceName
-+  ruleName '(' 'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')' (',' loadBalancerDefinition)? ')'
- 
- loadBalancerDefinition ::=
-     'TYPE' '(' 'NAME' '=' loadBalancerType (',' propertiesDefinition)? ')'
-@@ -59,12 +53,11 @@ value ::=
- 
- ### Supplement
- 
--- Dynamic readwrite-splitting rules rely on database discovery rules;
- - `loadBalancerType` specifies the load balancing algorithm type, please refer to [Load Balance Algorithm]((/en/user-manual/common-config/builtin-algorithm/load-balance/));
- 
- ### Example
- 
--#### Alter a statics readwrite-splitting rule
-+#### Alter a readwrite-splitting rule
- 
- ```sql
- ALTER READWRITE_SPLITTING RULE ms_group_0 (
-@@ -74,18 +67,9 @@ ALTER READWRITE_SPLITTING RULE ms_group_0 (
- );
- ```
- 
--#### Alter a dynamic readwrite-splitting rule
--
--```sql
--ALTER READWRITE_SPLITTING RULE ms_group_1 (
--    AUTO_AWARE_RESOURCE=group_0,
--    TYPE(NAME="random")
--);
--```
--
- ### Reserved word
- 
--`ALTER`, `READWRITE_SPLITTING`, `RULE`, `WRITE_STORAGE_UNIT`, `READ_STORAGE_UNITS`, `AUTO_AWARE_RESOURCE`
-+`ALTER`, `READWRITE_SPLITTING`, `RULE`, `WRITE_STORAGE_UNIT`, `READ_STORAGE_UNITS`
- , `TYPE`, `NAME`, `PROPERTIES`, `TRUE`, `FALSE`
- 
- ### Related links
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-index f9be8bd5b5a..f21c1c59edf 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.cn.md
-@@ -19,13 +19,7 @@ ifNotExists ::=
-   'IF' 'NOT' 'EXISTS'
- 
- readwriteSplittingDefinition ::=
--  ruleName '(' (staticReadwriteSplittingDefinition | dynamicReadwriteSplittingDefinition) (',' loadBalancerDefinition)? ')'
--
--staticReadwriteSplittingDefinition ::=
--    'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')'
--
--dynamicReadwriteSplittingDefinition ::=
--    'AUTO_AWARE_RESOURCE' '=' resourceName
-+  ruleName '(' 'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')' (',' loadBalancerDefinition)? ')'
- 
- loadBalancerDefinition ::=
-     'TYPE' '(' 'NAME' '=' loadBalancerType (',' propertiesDefinition)? ')'
-@@ -62,15 +56,13 @@ value ::=
- 
- ### 补充说明
- 
--- 支持创建静态读写分离规则和动态读写分离规则；
--- 动态读写分离规则依赖于数据库发现规则；
- - `loadBalancerType` 指定负载均衡算法类型，请参考[负载均衡算法](/cn/user-manual/common-config/builtin-algorithm/load-balance/)；
- - 重复的 `ruleName` 将无法被创建；
- - `ifNotExists` 子句用于避免出现 `Duplicate readwrite_splitting rule` 错误。
- 
- ### 示例
- 
--#### 创建静态读写分离规则
-+#### 创建读写分离规则
- 
- ```sql
- CREATE READWRITE_SPLITTING RULE ms_group_0 (
-@@ -80,18 +72,9 @@ CREATE READWRITE_SPLITTING RULE ms_group_0 (
- );
- ```
- 
--#### 创建动态读写分离规则
--
--```sql
--CREATE READWRITE_SPLITTING RULE ms_group_1 (
--    AUTO_AWARE_RESOURCE=group_0
--    TYPE(NAME="random")
--);
--```
--
- #### 使用 `ifNotExists` 子句创建读写分离规则
- 
--- 静态读写分离规则
-+- 读写分离规则
- 
- ```sql
- CREATE READWRITE_SPLITTING RULE IF NOT EXISTS ms_group_0 (
-@@ -101,18 +84,9 @@ CREATE READWRITE_SPLITTING RULE IF NOT EXISTS ms_group_0 (
- );
- ```
- 
--- 动态读写分离规则
--
--```sql
--CREATE READWRITE_SPLITTING RULE IF NOT EXISTS ms_group_1 (
--    AUTO_AWARE_RESOURCE=group_0
--    TYPE(NAME="random")
--);
--```
--
- ### 保留字
- 
--`CREATE`、`READWRITE_SPLITTING`、`RULE`、`WRITE_STORAGE_UNIT`、`READ_STORAGE_UNITS`、`AUTO_AWARE_RESOURCE`
-+`CREATE`、`READWRITE_SPLITTING`、`RULE`、`WRITE_STORAGE_UNIT`、`READ_STORAGE_UNITS`
- 、`TYPE`、`NAME`、`PROPERTIES`、`TRUE`、`FALSE`
- 
- ### 相关链接
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-index 7d997518ec8..6c34e5c81e8 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/readwrite-splitting/create-readwrite-splitting-rule.en.md
-@@ -19,13 +19,7 @@ ifNotExists ::=
-   'IF' 'NOT' 'EXISTS'
- 
- readwriteSplittingDefinition ::=
--  ruleName '(' (staticReadwriteSplittingDefinition | dynamicReadwriteSplittingDefinition) (',' loadBalancerDefinition)? ')'
--
--staticReadwriteSplittingDefinition ::=
--    'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')'
--
--dynamicReadwriteSplittingDefinition ::=
--    'AUTO_AWARE_RESOURCE' '=' resourceName
-+  ruleName '(' 'WRITE_STORAGE_UNIT' '=' writeStorageUnitName ',' 'READ_STORAGE_UNITS' '(' storageUnitName (',' storageUnitName)* ')' (',' loadBalancerDefinition)? ')'
- 
- loadBalancerDefinition ::=
-     'TYPE' '(' 'NAME' '=' loadBalancerType (',' propertiesDefinition)? ')'
-@@ -62,15 +56,13 @@ value ::=
- 
- ### Supplement
- 
--- Support the creation of static readwrite-splitting rules and dynamic readwrite-splitting rules;
--- Dynamic readwrite-splitting rules rely on database discovery rules;
- - `loadBalancerType` specifies the load balancing algorithm type, please refer to [Load Balance Algorithm](/en/user-manual/common-config/builtin-algorithm/load-balance/);
- - Duplicate `ruleName` will not be created;
- - `ifNotExists` clause used for avoid `Duplicate readwrite_splitting rule` error.
- 
- ### Example
- 
--#### Create a statics readwrite-splitting rule
-+#### Create a readwrite-splitting rule
- 
- ```sql
- CREATE READWRITE_SPLITTING RULE ms_group_0 (
-@@ -80,18 +72,9 @@ CREATE READWRITE_SPLITTING RULE ms_group_0 (
- );
- ```
- 
--#### Create a dynamic readwrite-splitting rule
--
--```sql
--CREATE READWRITE_SPLITTING RULE ms_group_1 (
--    AUTO_AWARE_RESOURCE=group_0
--    TYPE(NAME="random")
--);
--```
--
- #### Create readwrite-splitting rule with `ifNotExists` clause
- 
--- Statics readwrite-splitting rule
-+- readwrite-splitting rule
- 
- ```sql
- CREATE READWRITE_SPLITTING RULE IF NOT EXISTS ms_group_0 (
-@@ -101,18 +84,9 @@ CREATE READWRITE_SPLITTING RULE IF NOT EXISTS ms_group_0 (
- );
- ```
- 
--- Dynamic readwrite-splitting rule
--
--```sql
--CREATE READWRITE_SPLITTING RULE IF NOT EXISTS ms_group_1 (
--    AUTO_AWARE_RESOURCE=group_0
--    TYPE(NAME="random")
--);
--```
--
- ### Reserved word
- 
--`CREATE`, `READWRITE_SPLITTING`, `RULE`, `WRITE_STORAGE_UNIT`, `READ_STORAGE_UNITS`, `AUTO_AWARE_RESOURCE`
-+`CREATE`, `READWRITE_SPLITTING`, `RULE`, `WRITE_STORAGE_UNIT`, `READ_STORAGE_UNITS`
- , `TYPE`, `NAME`, `PROPERTIES`, `TRUE`, `FALSE`
- 
- ### Related links
+-```yaml
+-rules:
+-- !READWRITE_SPLITTING
+-  dataSources:
+-    <data_source_name> (+): # Logic data source name of readwrite-splitting
+-      dynamic_strategy: # Readwrite-splitting type
+-        auto_aware_data_source_name: # Database discovery logic data source name
++      write_data_source_name: # Write data source name
++      read_data_source_names: # Read data source names, multiple data source names separated with comma
+       transactionalReadQueryStrategy (?): # Routing strategy for read query within a transaction, values include: PRIMARY (to primary), FIXED (to fixed data source), DYNAMIC (to any data source), default value: DYNAMIC
+       loadBalancerName: # Load balance algorithm name
+   

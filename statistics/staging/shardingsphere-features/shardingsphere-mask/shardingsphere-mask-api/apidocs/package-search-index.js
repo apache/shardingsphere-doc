@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.mask.api.config"},{"l":"org.apache.shardingsphere.mask.api.config.rule"},{"l":"org.apache.shardingsphere.mask.spi"}]

@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.globalclock.type.tso.provider","l":"LocalTSOProvider"},{"p":"org.apache.shardingsphere.globalclock.type.tso.provider","l":"TSOProvider"}]

@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.transaction.xa.bitronix.manager","l":"BitronixRecoveryResource"},{"p":"org.apache.shardingsphere.transaction.xa.bitronix.manager","l":"BitronixXATransactionManagerProvider"},{"p":"org.apache.shardingsphere.transaction.xa.bitronix.manager","l":"SingleXAResourceHolder"}]

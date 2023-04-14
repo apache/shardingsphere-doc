@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.proxy.frontend.authentication"},{"l":"org.apache.shardingsphere.proxy.frontend.command"},{"l":"org.apache.shardingsphere.proxy.frontend.command.executor"},{"l":"org.apache.shardingsphere.proxy.frontend.spi"}]

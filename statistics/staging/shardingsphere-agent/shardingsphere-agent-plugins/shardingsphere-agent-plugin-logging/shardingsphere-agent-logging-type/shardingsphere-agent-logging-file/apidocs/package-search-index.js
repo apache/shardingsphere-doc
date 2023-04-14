@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.agent.plugin.logging.file"},{"l":"org.apache.shardingsphere.agent.plugin.logging.file.advice"}]

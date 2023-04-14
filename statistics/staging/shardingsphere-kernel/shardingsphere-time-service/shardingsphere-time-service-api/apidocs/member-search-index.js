@@ -1,1 +1,0 @@
-memberSearchIndex = [{"p":"org.apache.shardingsphere.timeservice.spi","c":"ShardingSphereTimeService","l":"getDatetime()"},{"p":"org.apache.shardingsphere.timeservice.api.config","c":"TimeServiceRuleConfiguration","l":"TimeServiceRuleConfiguration()","url":"%3Cinit%3E()"}]

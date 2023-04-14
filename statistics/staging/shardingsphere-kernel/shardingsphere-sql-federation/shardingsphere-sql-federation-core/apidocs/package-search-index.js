@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.sqlfederation.constant"},{"l":"org.apache.shardingsphere.sqlfederation.enums"},{"l":"org.apache.shardingsphere.sqlfederation.rule"},{"l":"org.apache.shardingsphere.sqlfederation.rule.builder"}]

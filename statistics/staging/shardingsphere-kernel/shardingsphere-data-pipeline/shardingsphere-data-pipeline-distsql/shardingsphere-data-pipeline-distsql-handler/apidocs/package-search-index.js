@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.cdc.distsql.handler.query"},{"l":"org.apache.shardingsphere.migration.distsql.handler.query"},{"l":"org.apache.shardingsphere.migration.distsql.handler.update"}]

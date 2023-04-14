@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.transaction.xa.spi","l":"SingleXAResource"},{"p":"org.apache.shardingsphere.transaction.xa.spi","l":"XATransactionManagerProvider"}]

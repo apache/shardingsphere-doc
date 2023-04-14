@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.transaction.xa.atomikos.manager","l":"AtomikosTransactionManagerProvider"},{"p":"org.apache.shardingsphere.transaction.xa.atomikos.manager","l":"AtomikosXARecoverableResource"}]

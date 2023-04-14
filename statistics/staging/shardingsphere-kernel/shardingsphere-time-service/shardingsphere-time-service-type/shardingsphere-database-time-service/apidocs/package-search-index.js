@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.timeservice.type.database"},{"l":"org.apache.shardingsphere.timeservice.type.database.exception"},{"l":"org.apache.shardingsphere.timeservice.type.database.provider"},{"l":"org.apache.shardingsphere.timeservice.type.database.provider.dialect"}]

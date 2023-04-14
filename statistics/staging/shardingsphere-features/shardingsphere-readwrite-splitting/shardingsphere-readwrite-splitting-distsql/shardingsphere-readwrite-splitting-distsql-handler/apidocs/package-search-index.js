@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.readwritesplitting.distsql.handler.checker"},{"l":"org.apache.shardingsphere.readwritesplitting.distsql.handler.converter"},{"l":"org.apache.shardingsphere.readwritesplitting.distsql.handler.query"},{"l":"org.apache.shardingsphere.readwritesplitting.distsql.handler.update"}]

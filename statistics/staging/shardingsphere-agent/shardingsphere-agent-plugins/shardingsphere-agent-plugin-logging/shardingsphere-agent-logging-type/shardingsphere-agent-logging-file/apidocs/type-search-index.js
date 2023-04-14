@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.agent.plugin.logging.file","l":"FileLoggingPluginLifecycleService"},{"p":"org.apache.shardingsphere.agent.plugin.logging.file.advice","l":"MetaDataContextsFactoryAdvice"}]

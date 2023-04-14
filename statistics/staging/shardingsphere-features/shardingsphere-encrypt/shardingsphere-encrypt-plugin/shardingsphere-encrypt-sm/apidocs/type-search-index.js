@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.encrypt.sm.algorithm","l":"SM3EncryptAlgorithm"},{"p":"org.apache.shardingsphere.encrypt.sm.algorithm","l":"SM4EncryptAlgorithm"}]

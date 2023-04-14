@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.sharding.cosid.algorithm"},{"l":"org.apache.shardingsphere.sharding.cosid.algorithm.keygen"},{"l":"org.apache.shardingsphere.sharding.cosid.algorithm.sharding.interval"},{"l":"org.apache.shardingsphere.sharding.cosid.algorithm.sharding.mod"}]

@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.transaction.base.seata.at"},{"l":"org.apache.shardingsphere.transaction.base.seata.at.exception"}]

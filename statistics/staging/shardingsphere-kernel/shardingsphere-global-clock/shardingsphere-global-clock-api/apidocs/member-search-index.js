@@ -1,1 +1,0 @@
-memberSearchIndex = [{"p":"org.apache.shardingsphere.globalclock.api.config","c":"GlobalClockRuleConfiguration","l":"GlobalClockRuleConfiguration()","url":"%3Cinit%3E()"}]

@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.agent.plugin.metrics.prometheus"},{"l":"org.apache.shardingsphere.agent.plugin.metrics.prometheus.collector"},{"l":"org.apache.shardingsphere.agent.plugin.metrics.prometheus.collector.type"},{"l":"org.apache.shardingsphere.agent.plugin.metrics.prometheus.exoprter"}]

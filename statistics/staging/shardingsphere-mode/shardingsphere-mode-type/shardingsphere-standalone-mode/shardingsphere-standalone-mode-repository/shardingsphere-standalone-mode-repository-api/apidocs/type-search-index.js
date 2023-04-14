@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.mode.repository.standalone","l":"StandalonePersistRepository"},{"p":"org.apache.shardingsphere.mode.repository.standalone","l":"StandalonePersistRepositoryConfiguration"}]

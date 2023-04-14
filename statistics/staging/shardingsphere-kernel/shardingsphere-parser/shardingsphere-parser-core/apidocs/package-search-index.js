@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.parser.constant"},{"l":"org.apache.shardingsphere.parser.rule"},{"l":"org.apache.shardingsphere.parser.rule.builder"},{"l":"org.apache.shardingsphere.parser.yaml.config"},{"l":"org.apache.shardingsphere.parser.yaml.swapper"}]

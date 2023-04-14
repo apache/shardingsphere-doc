@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.mode.repository.cluster.consul"},{"l":"org.apache.shardingsphere.mode.repository.cluster.consul.lock"},{"l":"org.apache.shardingsphere.mode.repository.cluster.consul.props"}]

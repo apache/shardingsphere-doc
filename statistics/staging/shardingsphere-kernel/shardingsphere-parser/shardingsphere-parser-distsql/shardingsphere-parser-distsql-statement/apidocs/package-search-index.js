@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.parser.distsql.parser.segment"},{"l":"org.apache.shardingsphere.parser.distsql.parser.statement.queryable"},{"l":"org.apache.shardingsphere.parser.distsql.parser.statement.updatable"}]

@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.logging.config","l":"LoggingRuleConfiguration"},{"p":"org.apache.shardingsphere.logging.logger","l":"ShardingSphereAppender"},{"p":"org.apache.shardingsphere.logging.logger","l":"ShardingSphereLogger"}]

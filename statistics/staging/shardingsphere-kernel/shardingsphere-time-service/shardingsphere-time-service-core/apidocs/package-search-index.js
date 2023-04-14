@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.timeservice.core.rule"},{"l":"org.apache.shardingsphere.timeservice.core.rule.builder"},{"l":"org.apache.shardingsphere.timeservice.core.rule.constant"}]

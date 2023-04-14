@@ -1,1 +1,0 @@
-memberSearchIndex = [{"p":"org.apache.shardingsphere.sqltranslator.distsql.parser.statement","c":"ShowSQLTranslatorRuleStatement","l":"ShowSQLTranslatorRuleStatement()","url":"%3Cinit%3E()"}]

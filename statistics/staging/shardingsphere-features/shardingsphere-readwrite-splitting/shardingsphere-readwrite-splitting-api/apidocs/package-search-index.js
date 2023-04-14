@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.readwritesplitting.api"},{"l":"org.apache.shardingsphere.readwritesplitting.api.rule"},{"l":"org.apache.shardingsphere.readwritesplitting.api.transaction"},{"l":"org.apache.shardingsphere.readwritesplitting.spi"}]

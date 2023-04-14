@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.mode.manager.standalone"},{"l":"org.apache.shardingsphere.mode.manager.standalone.subscriber"},{"l":"org.apache.shardingsphere.mode.manager.standalone.workerid.generator"},{"l":"org.apache.shardingsphere.mode.manager.standalone.yaml"}]

@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.timeservice.api.config"},{"l":"org.apache.shardingsphere.timeservice.spi"}]

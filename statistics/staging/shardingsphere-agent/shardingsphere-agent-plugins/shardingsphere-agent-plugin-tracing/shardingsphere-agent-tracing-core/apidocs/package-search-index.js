@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.agent.plugin.tracing.core"},{"l":"org.apache.shardingsphere.agent.plugin.tracing.core.advice"},{"l":"org.apache.shardingsphere.agent.plugin.tracing.core.constant"}]

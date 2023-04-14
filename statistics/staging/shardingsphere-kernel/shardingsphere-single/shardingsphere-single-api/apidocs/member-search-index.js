@@ -1,1 +1,0 @@
-memberSearchIndex = [{"p":"org.apache.shardingsphere.single.api.config","c":"SingleRuleConfiguration","l":"getDefaultDataSource()"},{"p":"org.apache.shardingsphere.single.api.config","c":"SingleRuleConfiguration","l":"SingleRuleConfiguration()","url":"%3Cinit%3E()"}]

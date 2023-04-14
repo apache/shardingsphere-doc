@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.agent.plugin.tracing.opentelemetry"},{"l":"org.apache.shardingsphere.agent.plugin.tracing.opentelemetry.advice"},{"l":"org.apache.shardingsphere.agent.plugin.tracing.opentelemetry.constant"}]

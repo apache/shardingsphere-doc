@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.traffic.distsql.parser.statement.updatable","l":"AlterTrafficRuleStatement"},{"p":"org.apache.shardingsphere.traffic.distsql.parser.statement.queryable","l":"ShowTrafficRulesStatement"},{"p":"org.apache.shardingsphere.traffic.distsql.parser.segment","l":"TrafficRuleSegment"}]

@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.mode.repository.standalone.jdbc"},{"l":"org.apache.shardingsphere.mode.repository.standalone.jdbc.props"},{"l":"org.apache.shardingsphere.mode.repository.standalone.jdbc.provider"}]

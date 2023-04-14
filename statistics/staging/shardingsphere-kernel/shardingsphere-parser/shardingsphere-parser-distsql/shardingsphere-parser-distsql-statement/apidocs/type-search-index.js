@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.parser.distsql.parser.statement.updatable","l":"AlterSQLParserRuleStatement"},{"p":"org.apache.shardingsphere.parser.distsql.parser.segment","l":"CacheOptionSegment"},{"p":"org.apache.shardingsphere.parser.distsql.parser.statement.queryable","l":"ShowSQLParserRuleStatement"}]

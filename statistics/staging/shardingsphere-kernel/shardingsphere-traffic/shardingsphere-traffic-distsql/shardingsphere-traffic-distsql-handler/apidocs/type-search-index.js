@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.traffic.distsql.handler.update","l":"AlterTrafficRuleStatementUpdater"},{"p":"org.apache.shardingsphere.traffic.distsql.handler.query","l":"ShowTrafficRuleExecutor"},{"p":"org.apache.shardingsphere.traffic.distsql.handler.convert","l":"TrafficRuleConverter"}]

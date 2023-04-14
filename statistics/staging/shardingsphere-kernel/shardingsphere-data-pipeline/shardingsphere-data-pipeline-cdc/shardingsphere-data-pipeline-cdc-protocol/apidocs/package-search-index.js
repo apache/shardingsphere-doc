@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.data.pipeline.cdc.protocol.request"},{"l":"org.apache.shardingsphere.data.pipeline.cdc.protocol.response"}]

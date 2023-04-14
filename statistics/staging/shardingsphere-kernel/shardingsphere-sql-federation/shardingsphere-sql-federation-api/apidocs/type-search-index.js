@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.sqlfederation.spi","l":"SQLFederationExecutor"},{"p":"org.apache.shardingsphere.sqlfederation.spi","l":"SQLFederationExecutorContext"},{"p":"org.apache.shardingsphere.sqlfederation.api.config","l":"SQLFederationRuleConfiguration"}]

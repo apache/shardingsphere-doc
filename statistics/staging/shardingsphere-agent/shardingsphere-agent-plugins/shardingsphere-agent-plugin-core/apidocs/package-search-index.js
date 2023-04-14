@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.agent.plugin.core.config.validator"},{"l":"org.apache.shardingsphere.agent.plugin.core.recorder"},{"l":"org.apache.shardingsphere.agent.plugin.core.spi"},{"l":"org.apache.shardingsphere.agent.plugin.core.util"}]

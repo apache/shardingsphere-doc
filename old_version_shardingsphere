@@ -1,30 +1,143 @@
-commit 37adda4c7415687a5db3e525d0c3aa081452eef8
-Author: 吴伟杰 <wuweijie@apache.org>
-Date:   Wed Apr 19 09:23:46 2023 +0800
+commit 5cf6928dc1a6b7e7508bb3571e9104ee21c6b2c7
+Author: ZhangCheng <flyingzc@outlook.com>
+Date:   Wed Apr 19 11:11:45 2023 +0800
 
-    Remove property proxy-backend-executor-suitable (#25212)
+    Add unwrap mysql connection exception doc (#25221)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md
-index 59b5dfa95a0..4c25bfc8b71 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.cn.md
-@@ -22,7 +22,6 @@ Apache ShardingSphere 提供了丰富的系统配置属性，用户可通过 `se
- | proxy-hint-enabled (?)                    | boolean | 是否允许在 ShardingSphere-Proxy 中使用 Hint。使用 Hint 会将 Proxy 的线程处理模型由 IO 多路复用变更为每个请求一个独立的线程，会降低 Proxy 的吞吐量。                                    | false    | 是      |
- | proxy-backend-query-fetch-size (?)        | int     | Proxy 后端与数据库交互的每次获取数据行数（使用游标的情况下）。数值增大可能会增加 ShardingSphere Proxy 的内存使用。默认值为 -1，代表设置为 JDBC 驱动的最小值。                                      | -1       | 是      |
- | proxy-frontend-executor-size (?)          | int     | Proxy 前端 Netty 线程池线程数量，默认值 0 代表使用 Netty 默认值。                                                                                           | 0        | 否      |
--| proxy-backend-executor-suitable (?)       | String  | 可选选项：OLAP、OLTP。OLTP 选项可能会减少向客户端写入数据包的时间开销，但如果客户端连接数超过 `proxy-frontend-executor-size`，尤其是执行慢 SQL 时，它可能会增加 SQL 执行的延迟甚至阻塞其他客户端的连接。        | OLAP     | 是      |
- | proxy-frontend-max-connections (?)        | int     | 允许连接 Proxy 的最大客户端数量，默认值 0 代表不限制。                                                                                                       | 0        | 是      |
- | sql-federation-type (?)                   | String  | 联邦查询执行器类型，包括：NONE，ORIGINAL，ADVANCED。                                                                                                   | NONE     | 是      |
- | proxy-mysql-default-version (?)           | String  | Proxy 通过配置文件指定 MySQL 的版本号，默认版本：5.7.22。                                                                                                 | 5.7.22   | 否      |
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md
-index bcbcf0dd29d..48329460650 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/yaml-config/props.en.md
-@@ -22,7 +22,6 @@ Apache ShardingSphere provides a wealth of system configuration properties, whic
- | proxy-hint-enabled (?)                    | boolean     | Whether Hint is allowed in ShardingSphere-Proxy. Using Hint changes the Proxy's threading model from IO multiplexing to a separate thread per request, reducing Proxy's throughput.                                                                                                                          | false     | True             |
- | proxy-backend-query-fetch-size (?)        | int         | The number of rows of data obtained when the backend Proxy interacts with databases (using a cursor). A larger number may increase the occupied memory of ShardingSphere-Proxy. The default value of -1 indicates the minimum value for JDBC driver.                                                         | -1        | True             |
- | proxy-frontend-executor-size (?)          | int         | The number of threads in the Netty thread pool of front-end Proxy.                                                                                                                                                                                                                                           | 0         | False            |
--| proxy-backend-executor-suitable (?)       | String      | Options: OLAP and OLTP. The OLTP option may reduce the time overhead when writing packets to the client, but if the number of client connections exceeds `proxy-frontend-executor-size`, especially with slow SQL, it can cause a longer delay to SQL execution and even block connections to other clients. | OLAP      | True             |
- | proxy-frontend-max-connections (?)        | int         | The maximum number of clients that can be connected to Proxy. The default value of 0 indicates that there's no limit.                                                                                                                                                                                        | 0         | True             |
- | sql-federation-type (?)                   | String      | SQL federation executor type, including: NONE, ORIGINAL, ADVANCED.                                                                                                                                                                                                                                           | NONE      | True             |
- | proxy-mysql-default-version (?)           | String      | Proxy specifies the MySQL version through configuration files, and the default verison is 5.7.22.                                                                                                                                                                                                            | 5.7.22    | False            |
+diff --git a/docs/document/content/faq/_index.cn.md b/docs/document/content/faq/_index.cn.md
+index 5a16e99fe06..de4c6bec63c 100644
+--- a/docs/document/content/faq/_index.cn.md
++++ b/docs/document/content/faq/_index.cn.md
+@@ -15,24 +15,47 @@ chapter = true
+ ### [JDBC] Oracle 表名、字段名配置大小写在加载 `metadata` 元数据时结果不正确？
+ 回答：
+ 需要注意，Oracle 表名和字段名，默认元数据都是大写，除非建表语句中带双引号，如 `CREATE TABLE "TableName"("Id" number)` 元数据为双引号中内容，可参考以下SQL查看元数据的具体情况：
+-```
++```sql
+ SELECT OWNER, TABLE_NAME, COLUMN_NAME, DATA_TYPE FROM ALL_TAB_COLUMNS WHERE TABLE_NAME IN ('TableName') 
+ ```
+ ShardingSphere 使用 `OracleTableMetaDataLoader` 对 Oracle 元数据进行加载，配置时需确保表名、字段名的大小写配置与数据库中的一致。
+ ShardingSphere 查询元数据关键SQL:
++```java
++ private String getTableMetaDataSQL(final Collection<String> tables, final DatabaseMetaData metaData) throws SQLException {
++     StringBuilder stringBuilder = new StringBuilder(28);
++     if (versionContainsIdentityColumn(metaData)) {
++         stringBuilder.append(", IDENTITY_COLUMN");
++     }
++     if (versionContainsCollation(metaData)) {
++         stringBuilder.append(", COLLATION");
++     }
++     String collation = stringBuilder.toString();
++     return tables.isEmpty() ? String.format(TABLE_META_DATA_SQL, collation)
++             : String.format(TABLE_META_DATA_SQL_IN_TABLES, collation, tables.stream().map(each -> String.format("'%s'", each)).collect(Collectors.joining(",")));
++ }
+ ```
+-    private String getTableMetaDataSQL(final Collection<String> tables, final DatabaseMetaData metaData) throws SQLException {
+-        StringBuilder stringBuilder = new StringBuilder(28);
+-        if (versionContainsIdentityColumn(metaData)) {
+-            stringBuilder.append(", IDENTITY_COLUMN");
+-        }
+-        if (versionContainsCollation(metaData)) {
+-            stringBuilder.append(", COLLATION");
+-        }
+-        String collation = stringBuilder.toString();
+-        return tables.isEmpty() ? String.format(TABLE_META_DATA_SQL, collation)
+-                : String.format(TABLE_META_DATA_SQL_IN_TABLES, collation, tables.stream().map(each -> String.format("'%s'", each)).collect(Collectors.joining(",")));
+-    }
++
++### [JDBC] 使用 MySQL XA 事务时报 `SQLException: Unable to unwrap to interface com.mysql.jdbc.Connection` 异常
++
++回答：
++
++多个 MySQL 驱动之间不兼容。由于优先加载了类路径下 MySQL5 版本的驱动类，当试图调用 MySQL8 驱动里的 `unwrap` 方法时，类型转换异常。
++
++解决方案：
++检查类路径下是否同时存在 MySQL5 和 MySQL8 的驱动，只保留对应版本的一个驱动包即可。
++
++异常堆栈如下：
++```
++Caused by: java.sql.SQLException: Unable to unwrap to interface com.mysql.jdbc.Connection
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:129)
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:97)
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:89)
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:63)
++	at com.mysql.cj.jdbc.ConnectionImpl.unwrap(ConnectionImpl.java:2650)
++	at com.zaxxer.hikari.pool.ProxyConnection.unwrap(ProxyConnection.java:481)
++	at org.apache.shardingsphere.transaction.xa.jta.connection.dialect.MySQLXAConnectionWrapper.wrap(MySQLXAConnectionWrapper.java:46)
++	at org.apache.shardingsphere.transaction.xa.jta.datasource.XATransactionDataSource.getConnection(XATransactionDataSource.java:89)
++	at org.apache.shardingsphere.transaction.xa.XAShardingSphereTransactionManager.getConnection(XAShardingSphereTransactionManager.java:96
+ ```
+ 
+ ## Proxy
+diff --git a/docs/document/content/faq/_index.en.md b/docs/document/content/faq/_index.en.md
+index 1bca465fd2e..ce422fbdcc4 100644
+--- a/docs/document/content/faq/_index.en.md
++++ b/docs/document/content/faq/_index.en.md
+@@ -15,28 +15,52 @@ Answer:
+ 
+ ### [JDBC] The tableName and columnName configured in yaml or properties leading incorrect result when loading Oracle metadata？
+ 
+-Answer：
++Answer:
+ 
+ Note that, in Oracle's metadata, the tableName and columnName is default UPPERCASE, while double-quoted such as `CREATE TABLE "TableName"("Id" number)` the tableName and columnName is the actual content double-quoted, refer to the following SQL for the reality in metadata:
+-```
++```sql
+ SELECT OWNER, TABLE_NAME, COLUMN_NAME, DATA_TYPE FROM ALL_TAB_COLUMNS WHERE TABLE_NAME IN ('TableName') 
+ ```
+ ShardingSphere uses the `OracleTableMetaDataLoader` to load the metadata, keep the tableName and columnName in the yaml or properties consistent with the metadata.
+ ShardingSphere assembled the SQL using the following code:
+-```
+-    private String getTableMetaDataSQL(final Collection<String> tables, final DatabaseMetaData metaData) throws SQLException {
+-        StringBuilder stringBuilder = new StringBuilder(28);
+-        if (versionContainsIdentityColumn(metaData)) {
+-            stringBuilder.append(", IDENTITY_COLUMN");
+-        }
+-        if (versionContainsCollation(metaData)) {
+-            stringBuilder.append(", COLLATION");
+-        }
+-        String collation = stringBuilder.toString();
+-        return tables.isEmpty() ? String.format(TABLE_META_DATA_SQL, collation)
+-                : String.format(TABLE_META_DATA_SQL_IN_TABLES, collation, tables.stream().map(each -> String.format("'%s'", each)).collect(Collectors.joining(",")));
+-    }
++```java
++ private String getTableMetaDataSQL(final Collection<String> tables, final DatabaseMetaData metaData) throws SQLException {
++     StringBuilder stringBuilder = new StringBuilder(28);
++     if (versionContainsIdentityColumn(metaData)) {
++         stringBuilder.append(", IDENTITY_COLUMN");
++     }
++     if (versionContainsCollation(metaData)) {
++         stringBuilder.append(", COLLATION");
++     }
++     String collation = stringBuilder.toString();
++     return tables.isEmpty() ? String.format(TABLE_META_DATA_SQL, collation)
++             : String.format(TABLE_META_DATA_SQL_IN_TABLES, collation, tables.stream().map(each -> String.format("'%s'", each)).collect(Collectors.joining(",")));
++ }
+ ``` 
++
++### [JDBC] `SQLException: Unable to unwrap to interface com.mysql.jdbc.Connection` exception thrown when using MySQL XA transaction
++
++Answer:
++
++Incompatibility between multiple MySQL drivers. Because the MySQL5 version of the driver class under the class path is loaded first, when trying to call the `unwrap` method in the MySQL8 driver, the type conversion exception occurs.
++
++The solutions:
++Check whether there are both MySQL5 and MySQL8 drivers in the class path, and only keep one driver package of the corresponding version.
++
++The exception stack is as follows:
++```
++Caused by: java.sql.SQLException: Unable to unwrap to interface com.mysql.jdbc.Connection
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:129)
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:97)
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:89)
++	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:63)
++	at com.mysql.cj.jdbc.ConnectionImpl.unwrap(ConnectionImpl.java:2650)
++	at com.zaxxer.hikari.pool.ProxyConnection.unwrap(ProxyConnection.java:481)
++	at org.apache.shardingsphere.transaction.xa.jta.connection.dialect.MySQLXAConnectionWrapper.wrap(MySQLXAConnectionWrapper.java:46)
++	at org.apache.shardingsphere.transaction.xa.jta.datasource.XATransactionDataSource.getConnection(XATransactionDataSource.java:89)
++	at org.apache.shardingsphere.transaction.xa.XAShardingSphereTransactionManager.getConnection(XAShardingSphereTransactionManager.java:96
++```
++
+ ## Proxy
+ 
+ ### [Proxy] In Windows environment, could not find or load main class org.apache.shardingsphere.proxy.Bootstrap, how to solve it?

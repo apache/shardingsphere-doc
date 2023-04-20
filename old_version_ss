@@ -1,80 +1,36 @@
-commit da37d461e1b5e3b0e3a3096b8ca9cd306e9c826e
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Wed Apr 19 21:02:07 2023 +0800
+commit 6860c2e405ffef859a2385224e4247e50e05bb59
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Thu Apr 20 23:51:59 2023 +0800
 
-    Update document for MySQL load data & load xml statement (#25237)
+    Refactor SQLFormatVisitor (#25252)
 
-diff --git a/docs/document/content/features/sharding/limitation.cn.md b/docs/document/content/features/sharding/limitation.cn.md
-index cbfeac93463..5b497e3ab23 100644
---- a/docs/document/content/features/sharding/limitation.cn.md
-+++ b/docs/document/content/features/sharding/limitation.cn.md
-@@ -7,7 +7,8 @@ weight = 2
+diff --git a/docs/document/content/reference/sharding/parse.cn.md b/docs/document/content/reference/sharding/parse.cn.md
+index 8edf9651e6a..3c5aadb4534 100644
+--- a/docs/document/content/reference/sharding/parse.cn.md
++++ b/docs/document/content/reference/sharding/parse.cn.md
+@@ -99,9 +99,7 @@ SQLStatement sqlStatement = sqlVisitorEngine.visit(parseASTNode);
+ - SQL 格式化
  
- ## 稳定支持
- 
--全面支持 DML、DDL、DCL、TCL 和常用 DAL。 支持分页、去重、排序、分组、聚合、表关联等复杂查询。 支持 PostgreSQL 和 openGauss 数据库 SCHEMA DDL 和 DML 语句。
-+全面支持 DML、DDL、DCL、TCL 和常用 DAL。 支持分页、去重、排序、分组、聚合、表关联等复杂查询。
-+支持 PostgreSQL 和 openGauss 数据库的 schema DDL 和 DML 语句，当 SQL 中不指定 schema 时，默认访问 `public` schema，其他 schema 则需要在表名前显示声明，暂不支持 `SEARCH_PATH` 修改 schema 搜索路径。
- 
- ### 常规查询
- 
-@@ -99,6 +100,10 @@ SELECT * FROM t_order o ORDER BY id LIMIT ? OFFSET ?
- SELECT * FROM t_order WHERE to_date(create_time, 'yyyy-mm-dd') = '2019-01-01';
+ ```java
+-ParseASTNode parseASTNode = parserEngine.parse(sql, useCache);
+-SQLVisitorEngine sqlVisitorEngine = new SQLVisitorEngine(sql, "FORMAT", useCache, new Properties());
+-String result = sqlVisitorEngine.visit(parseASTNode);
++new SQLFormatEngine(databaseType, cacheOption).format(sql, useCache, props);
  ```
  
-+### LOAD DATA / LOAD XML
-+
-+支持 MySQL `LOAD DATA` 和 `LOAD XML` 语句加载数据到单表和广播表。
-+
- ## 实验性支持
+ 例子：
+diff --git a/docs/document/content/reference/sharding/parse.en.md b/docs/document/content/reference/sharding/parse.en.md
+index 6fcfabce703..7eb7e81c81f 100644
+--- a/docs/document/content/reference/sharding/parse.en.md
++++ b/docs/document/content/reference/sharding/parse.en.md
+@@ -96,9 +96,7 @@ SQLStatement sqlStatement = sqlVisitorEngine.visit(parseASTNode);
+ - SQL Formatting
  
- 实验性支持特指使用 Federation 执行引擎提供支持。 该引擎处于快速开发中，用户虽基本可用，但仍需大量优化，是实验性产品。
-@@ -140,6 +145,7 @@ SELECT * FROM t_user u RIGHT JOIN t_user_role r ON u.user_id = r.user_id WHERE u
- ## 不支持
- 
- ### CASE WHEN
-+
- 以下 CASE WHEN 语句不支持：
- 
- - CASE WHEN 中包含子查询
-@@ -156,3 +162,7 @@ Oracle 和 SQLServer 由于分页查询较为复杂，目前有部分分页查
- - SQLServer
- 
- 目前不支持使用 WITH xxx AS (SELECT …) 的方式进行分页。由于 Hibernate 自动生成的 SQLServer 分页语句使用了 WITH 语句，因此目前并不支持基于 Hibernate 的 SQLServer 分页。 目前也不支持使用两个 TOP + 子查询的方式实现分页。
-+
-+### LOAD DATA / LOAD XML
-+
-+不支持 MySQL `LOAD DATA` 和 `LOAD XML` 语句加载数据到分片表。
-diff --git a/docs/document/content/features/sharding/limitation.en.md b/docs/document/content/features/sharding/limitation.en.md
-index c270432b50c..abb09e7a609 100644
---- a/docs/document/content/features/sharding/limitation.en.md
-+++ b/docs/document/content/features/sharding/limitation.en.md
-@@ -7,7 +7,8 @@ Compatible with all commonly used SQL that routes to single data nodes; SQL rout
- 
- ## Stable Support
- 
--Full support for DML, DDL, DCL, TCL, and common DALs. Support for complex queries such as paging, de-duplication, sorting, grouping, aggregation, table association, etc. Support SCHEMA DDL and DML statements of PostgreSQL and openGauss database.
-+Full support for DML, DDL, DCL, TCL, and common DALs. Support for complex queries such as paging, de-duplication, sorting, grouping, aggregation, table association, etc.
-+Support SCHEMA DDL and DML statements of PostgreSQL and openGauss database. When no schema is specified in SQL, default access to 'public' schema. Other schemas need to declare before the table name, and do not support 'SEARCH_PATH' to modify the schema search path.
- 
- ### Normal Queries
- 
-@@ -94,6 +95,10 @@ For example, assume `create_time` is a sharding key.
- SELECT * FROM t_order WHERE to_date(create_time, 'yyyy-mm-dd') = '2019-01-01';
+ ```java
+-ParseASTNode parseASTNode = parserEngine.parse(sql, useCache);
+-SQLVisitorEngine sqlVisitorEngine = new SQLVisitorEngine(sql, "FORMAT", useCache, new Properties());
+-String result = sqlVisitorEngine.visit(parseASTNode);
++new SQLFormatEngine(databaseType, cacheOption).format(sql, useCache, props);
  ```
  
-+### LOAD DATA / LOAD XML
-+
-+Support MySQL `LOAD DATA` and `LOAD XML` statements to load data to single table and broadcast table.
-+
- ## Experimental Support 
- 
- Experimental support refers specifically to support provided by implementing Federation execution engine, an experimental product that is still under development. Although largely available to users, it still requires significant optimization.
-@@ -148,3 +153,7 @@ The paging method of rownum + BETWEEN is not supported at present
- 
- - SQLServer
- Currently, pagination with WITH xxx AS (SELECT ...) is not supported. Since the SQLServer paging statement automatically generated by Hibernate uses the WITH statement, Hibernate-based SQLServer paging is not supported at this moment. Pagination using two TOP + subquery also cannot be supported at this time.
-+
-+### LOAD DATA / LOAD XML
-+
-+Not support MySQL `LOAD DATA` and `LOAD XML` statements to load data to sharding table.
+ Example：

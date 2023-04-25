@@ -81,9 +81,9 @@
 <a class="jxr_linenumber" name="L73" href="#L73">73</a>          Collection&lt;String&gt; databaseNames = getDatabaseNames(connectionSession);
 <a class="jxr_linenumber" name="L74" href="#L74">74</a>          <strong class="jxr_keyword">for</strong> (String databaseName : databaseNames) {
 <a class="jxr_linenumber" name="L75" href="#L75">75</a>              initDatabaseData(databaseName);
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>              getSourceData(databaseName, resultSet -&gt; handleResultSet(databaseName, resultSet));
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>              processMetaData(databaseName, resultSet -&gt; handleResultSet(databaseName, resultSet));
 <a class="jxr_linenumber" name="L77" href="#L77">77</a>          }
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>          createPreProcessing();
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>          postProcess();
 <a class="jxr_linenumber" name="L79" href="#L79">79</a>          queryResultMetaData = createQueryResultMetaData();
 <a class="jxr_linenumber" name="L80" href="#L80">80</a>          mergedResult = createMergedResult();
 <a class="jxr_linenumber" name="L81" href="#L81">81</a>      }
@@ -98,7 +98,7 @@
 <a class="jxr_linenumber" name="L90" href="#L90">90</a>                  aliasMap.put(metaData.getColumnName(i), metaData.getColumnLabel(i));
 <a class="jxr_linenumber" name="L91" href="#L91">91</a>                  rowMap.put(metaData.getColumnLabel(i), resultSet.getString(i));
 <a class="jxr_linenumber" name="L92" href="#L92">92</a>              }
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>              rowPostProcessing(databaseName, rowMap, aliasMap);
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>              preProcess(databaseName, rowMap, aliasMap);
 <a class="jxr_linenumber" name="L94" href="#L94">94</a>              <strong class="jxr_keyword">if</strong> (!rowMap.isEmpty()) {
 <a class="jxr_linenumber" name="L95" href="#L95">95</a>                  rows.add(rowMap);
 <a class="jxr_linenumber" name="L96" href="#L96">96</a>              }
@@ -114,11 +114,11 @@
 <a class="jxr_linenumber" name="L106" href="#L106">106</a>     
 <a class="jxr_linenumber" name="L107" href="#L107">107</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">abstract</strong> Collection&lt;String&gt; getDatabaseNames(<a name="ConnectionSession" href="../../../../../../../../org/apache/shardingsphere/proxy/backend/session/ConnectionSession.html#ConnectionSession">ConnectionSession</a> connectionSession);
 <a class="jxr_linenumber" name="L108" href="#L108">108</a>     
-<a class="jxr_linenumber" name="L109" href="#L109">109</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">abstract</strong> <strong class="jxr_keyword">void</strong> createPreProcessing();
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">abstract</strong> <strong class="jxr_keyword">void</strong> preProcess(String databaseName, Map&lt;String, Object&gt; rows, Map&lt;String, String&gt; alias);
 <a class="jxr_linenumber" name="L110" href="#L110">110</a>     
-<a class="jxr_linenumber" name="L111" href="#L111">111</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">abstract</strong> <strong class="jxr_keyword">void</strong> getSourceData(String databaseName, Consumer&lt;ResultSet&gt; callback) <strong class="jxr_keyword">throws</strong> SQLException;
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">abstract</strong> <strong class="jxr_keyword">void</strong> postProcess();
 <a class="jxr_linenumber" name="L112" href="#L112">112</a>     
-<a class="jxr_linenumber" name="L113" href="#L113">113</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">abstract</strong> <strong class="jxr_keyword">void</strong> rowPostProcessing(String databaseName, Map&lt;String, Object&gt; rowMap, Map&lt;String, String&gt; aliasMap);
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">abstract</strong> <strong class="jxr_keyword">void</strong> processMetaData(String databaseName, Consumer&lt;ResultSet&gt; callback) <strong class="jxr_keyword">throws</strong> SQLException;
 <a class="jxr_linenumber" name="L114" href="#L114">114</a>     
 <a class="jxr_linenumber" name="L115" href="#L115">115</a>     <strong class="jxr_keyword">private</strong> <a name="MergedResult" href="../../../../../../../../org/apache/shardingsphere/infra/merge/result/MergedResult.html#MergedResult">MergedResult</a> createMergedResult() {
 <a class="jxr_linenumber" name="L116" href="#L116">116</a>         List&lt;MemoryQueryResultDataRow&gt; resultDataRows = rows.stream().map(each -&gt; <strong class="jxr_keyword">new</strong> <a name="MemoryQueryResultDataRow" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/execute/result/query/type/memory/row/MemoryQueryResultDataRow.html#MemoryQueryResultDataRow">MemoryQueryResultDataRow</a>(<strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;(each.values()))).collect(Collectors.toList());
@@ -167,7 +167,7 @@
 <a class="jxr_linenumber" name="L159" href="#L159">159</a>         }
 <a class="jxr_linenumber" name="L160" href="#L160">160</a>         
 <a class="jxr_linenumber" name="L161" href="#L161">161</a>         @Override
-<a class="jxr_linenumber" name="L162" href="#L162">162</a>         <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> getSourceData(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Consumer&lt;ResultSet&gt; callback) <strong class="jxr_keyword">throws</strong> SQLException {
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>         <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> processMetaData(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Consumer&lt;ResultSet&gt; callback) <strong class="jxr_keyword">throws</strong> SQLException {
 <a class="jxr_linenumber" name="L163" href="#L163">163</a>             <a name="ShardingSphereResourceMetaData" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/database/resource/ShardingSphereResourceMetaData.html#ShardingSphereResourceMetaData">ShardingSphereResourceMetaData</a> resourceMetaData = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaData().getDatabase(databaseName).getResourceMetaData();
 <a class="jxr_linenumber" name="L164" href="#L164">164</a>             Optional&lt;Entry&lt;String, DataSource&gt;&gt; dataSourceEntry = resourceMetaData.getDataSources().entrySet().stream().findFirst();
 <a class="jxr_linenumber" name="L165" href="#L165">165</a>             <strong class="jxr_keyword">if</strong> (!dataSourceEntry.isPresent()) {
@@ -186,11 +186,11 @@
 <a class="jxr_linenumber" name="L178" href="#L178">178</a>         }
 <a class="jxr_linenumber" name="L179" href="#L179">179</a>         
 <a class="jxr_linenumber" name="L180" href="#L180">180</a>         @Override
-<a class="jxr_linenumber" name="L181" href="#L181">181</a>         <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> rowPostProcessing(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Map&lt;String, Object&gt; rowMap, <strong class="jxr_keyword">final</strong> Map&lt;String, String&gt; aliasMap) {
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>         <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> preProcess(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Map&lt;String, Object&gt; rows, <strong class="jxr_keyword">final</strong> Map&lt;String, String&gt; alias) {
 <a class="jxr_linenumber" name="L182" href="#L182">182</a>         }
 <a class="jxr_linenumber" name="L183" href="#L183">183</a>         
 <a class="jxr_linenumber" name="L184" href="#L184">184</a>         @Override
-<a class="jxr_linenumber" name="L185" href="#L185">185</a>         <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> createPreProcessing() {
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>         <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> postProcess() {
 <a class="jxr_linenumber" name="L186" href="#L186">186</a>         }
 <a class="jxr_linenumber" name="L187" href="#L187">187</a>     }
 <a class="jxr_linenumber" name="L188" href="#L188">188</a> }

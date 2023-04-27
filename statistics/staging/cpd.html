@@ -2414,7 +2414,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L811">811</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L814">814</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -2734,6 +2734,53 @@
         } else if (null != ctx.RIGHT()) {
             return JoinType.RIGHT.name();
         } else if (null != ctx.INNER()) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/proxy/frontend/opengauss/authentication/OpenGaussAuthenticationEngine.java</td>
+<td>shardingsphere-proxy-frontend-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/opengauss/authentication/OpenGaussAuthenticationEngine.html#L89">89</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/proxy/frontend/postgresql/authentication/PostgreSQLAuthenticationEngine.java</td>
+<td>shardingsphere-proxy-frontend-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/postgresql/authentication/PostgreSQLAuthenticationEngine.html#L77">77</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>private byte[] md5Salt;
+    
+    private AuthenticationResult currentAuthResult;
+    
+    @Override
+    public int handshake(final ChannelHandlerContext context) {
+        return ConnectionIdGenerator.getInstance().nextId();
+    }
+    
+    @Override
+    public AuthenticationResult authenticate(final ChannelHandlerContext context, final PacketPayload payload) {
+        if (SSL_REQUEST_PAYLOAD_LENGTH == payload.getByteBuf().markReaderIndex().readInt() &amp;&amp; SSL_REQUEST_CODE == payload.getByteBuf().readInt()) {
+            if (ProxySSLContext.getInstance().isSSLEnabled()) {
+                SslHandler sslHandler = new SslHandler(ProxySSLContext.getInstance().newSSLEngine(context.alloc()), true);
+                context.pipeline().addFirst(SslHandler.class.getSimpleName(), sslHandler);
+                context.writeAndFlush(new PostgreSQLSSLWillingPacket());
+            } else {
+                context.writeAndFlush(new PostgreSQLSSLUnwillingPacket());
+            }
+            return AuthenticationResultBuilder.continued();
+        }
+        payload.getByteBuf().resetReaderIndex();
+        AuthorityRule rule = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaData().getGlobalRuleMetaData().getSingleRule(AuthorityRule.class);
+        return startupMessageReceived ? processPasswordMessage(context, (PostgreSQLPacketPayload) payload, rule) : processStartupMessage(context, (PostgreSQLPacketPayload) payload, rule);
+    }
+    
+    private AuthenticationResult processPasswordMessage(final ChannelHandlerContext context, final PostgreSQLPacketPayload payload, final AuthorityRule rule) {
+        char messageType = (char) payload.readInt1();
+        ShardingSpherePreconditions.checkState(PostgreSQLMessagePacketType.PASSWORD_MESSAGE.getValue() == messageType,
+                () -&gt; new ProtocolViolationException(&quot;password&quot;, Character.toString(messageType)));
+        PostgreSQLPasswordMessagePacket passwordMessagePacket = new PostgreSQLPasswordMessagePacket(payload);
+        login(rule, passwordMessagePacket.getDigest());</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -3460,47 +3507,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/proxy/frontend/opengauss/authentication/OpenGaussAuthenticationEngine.java</td>
-<td>shardingsphere-proxy-frontend-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/opengauss/authentication/OpenGaussAuthenticationEngine.html#L86">86</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/proxy/frontend/postgresql/authentication/PostgreSQLAuthenticationEngine.java</td>
-<td>shardingsphere-proxy-frontend-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/postgresql/authentication/PostgreSQLAuthenticationEngine.html#L74">74</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>private byte[] md5Salt;
-    
-    private AuthenticationResult currentAuthResult;
-    
-    @Override
-    public int handshake(final ChannelHandlerContext context) {
-        return ConnectionIdGenerator.getInstance().nextId();
-    }
-    
-    @Override
-    public AuthenticationResult authenticate(final ChannelHandlerContext context, final PacketPayload payload) {
-        if (SSL_REQUEST_PAYLOAD_LENGTH == payload.getByteBuf().markReaderIndex().readInt() &amp;&amp; SSL_REQUEST_CODE == payload.getByteBuf().readInt()) {
-            context.writeAndFlush(new PostgreSQLSSLNegativePacket());
-            return AuthenticationResultBuilder.continued();
-        }
-        payload.getByteBuf().resetReaderIndex();
-        AuthorityRule rule = ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaData().getGlobalRuleMetaData().getSingleRule(AuthorityRule.class);
-        return startupMessageReceived ? processPasswordMessage(context, (PostgreSQLPacketPayload) payload, rule) : processStartupMessage(context, (PostgreSQLPacketPayload) payload, rule);
-    }
-    
-    private AuthenticationResult processPasswordMessage(final ChannelHandlerContext context, final PostgreSQLPacketPayload payload, final AuthorityRule rule) {
-        char messageType = (char) payload.readInt1();
-        ShardingSpherePreconditions.checkState(PostgreSQLMessagePacketType.PASSWORD_MESSAGE.getValue() == messageType,
-                () -&gt; new ProtocolViolationException(&quot;password&quot;, Character.toString(messageType)));
-        PostgreSQLPasswordMessagePacket passwordMessagePacket = new PostgreSQLPasswordMessagePacket(payload);
-        login(rule, passwordMessagePacket.getDigest());</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-oracle</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/oracle/visitor/statement/OracleStatementVisitor.html#L302">302</a></td></tr>
@@ -3954,7 +3960,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1672">1672</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1675">1675</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -3996,7 +4002,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1351">1351</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1354">1354</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -4733,11 +4739,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1236">1236</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1239">1239</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1307">1307</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1310">1310</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>public ASTNode visitInsertValuesClause(final InsertValuesClauseContext ctx) {
@@ -4880,11 +4886,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1215">1215</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1218">1218</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1286">1286</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1289">1289</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>public ASTNode visitInsertSelectClause(final InsertSelectClauseContext ctx) {
@@ -4944,19 +4950,19 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1215">1215</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1218">1218</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1236">1236</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1239">1239</a></td></tr>
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1286">1286</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1289">1289</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1307">1307</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1310">1310</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>public ASTNode visitInsertSelectClause(final InsertSelectClauseContext ctx) {
@@ -5208,7 +5214,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1491">1491</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1494">1494</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -5543,7 +5549,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1566">1566</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1569">1569</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -6348,7 +6354,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1491">1491</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1494">1494</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -7290,7 +7296,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1610">1610</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1613">1613</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -7964,7 +7970,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1418">1418</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sqlserver</td>
@@ -8093,11 +8099,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1769">1769</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1772">1772</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1785">1785</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1788">1788</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>public ASTNode visitLimitRowCount(final LimitRowCountContext ctx) {
@@ -8700,7 +8706,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1244">1244</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1247">1247</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sql92</td>
@@ -8878,7 +8884,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1610">1610</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1613">1613</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-sqlserver</td>
@@ -9011,36 +9017,6 @@
     
     @Override
     protected void preProcess(final String databaseName, final Map&lt;String, Object&gt; rows, final Map&lt;String, String&gt; alias) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L768">768</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.java</td>
-<td>shardingsphere-sql-parser-sql92</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.html#L412">412</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>calculateParameterCount(Collections.singleton(ctx.intervalValue().expr()));
-        return new ExpressionProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx));
-    }
-    
-    @Override
-    public final ASTNode visitFunctionCall(final FunctionCallContext ctx) {
-        if (null != ctx.aggregationFunction()) {
-            return visit(ctx.aggregationFunction());
-        }
-        if (null != ctx.specialFunction()) {
-            return visit(ctx.specialFunction());
-        }
-        if (null != ctx.regularFunction()) {
-            return visit(ctx.regularFunction());
-        }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -9844,11 +9820,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1344">1344</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1347">1347</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1411">1411</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1414">1414</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>if (null != ctx.whereClause()) {
@@ -9985,7 +9961,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L817">817</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L820">820</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-sql-parser-oracle</td>

@@ -1,148 +1,36 @@
-commit b47e6a8ef7750cfbb36087580339967397ff875b
+commit c7191f6187d99b356430c65e25d7008383eead25
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Sat Apr 29 23:36:30 2023 +0800
+Date:   Sun Apr 30 22:27:38 2023 +0800
 
-    Rename processlist id to process id (#25415)
+    Rename ShowProcessListLock (#25421)
 
-diff --git a/docs/blog/content/material/2022_09_08_Apache_ShardingSphere_5.2.0_is_Released,_Bringing_New_Cloud_Native_Possibilities.en.md b/docs/blog/content/material/2022_09_08_Apache_ShardingSphere_5.2.0_is_Released,_Bringing_New_Cloud_Native_Possibilities.en.md
-index 79bfa7daf22..b435b7c8675 100644
---- a/docs/blog/content/material/2022_09_08_Apache_ShardingSphere_5.2.0_is_Released,_Bringing_New_Cloud_Native_Possibilities.en.md
-+++ b/docs/blog/content/material/2022_09_08_Apache_ShardingSphere_5.2.0_is_Released,_Bringing_New_Cloud_Native_Possibilities.en.md
-@@ -134,7 +134,7 @@ Below are all the update logs of ShardingSphere 5.2.0. To deliver a better user
- 
- - Kernel: Support SQL audit for sharding feature
- 
--- Kernel: Support MySQL show processlist and kill process list id feature
-+- Kernel: Support MySQL show processlist and kill process id feature
- 
- - Scaling: Add dedicated DistSQL for data migration
- 
 diff --git "a/docs/blog/content/material/2022_09_22_How_does_ShardingSphere\342\200\231s_Show_processlist_&_Kill_Work.en.md" "b/docs/blog/content/material/2022_09_22_How_does_ShardingSphere\342\200\231s_Show_processlist_&_Kill_Work.en.md"
-index b96732fa25f..25a791bb0ca 100644
+index 25a791bb0ca..e676b2ec1d0 100644
 --- "a/docs/blog/content/material/2022_09_22_How_does_ShardingSphere\342\200\231s_Show_processlist_&_Kill_Work.en.md"
 +++ "b/docs/blog/content/material/2022_09_22_How_does_ShardingSphere\342\200\231s_Show_processlist_&_Kill_Work.en.md"
-@@ -217,20 +217,20 @@ This method is the core to implementing `Show processlist`. Next, we'll introduc
- public final class ProcessRegistrySubscriber {    
+@@ -330,9 +330,9 @@ public final class ClusterContextManagerCoordinator {
+     
      @Subscribe
-     public void loadShowProcessListData(final ShowProcessListRequestEvent event) {
--        String processListId = new UUID(ThreadLocalRandom.current().nextLong(), ThreadLocalRandom.current().nextLong()).toString().replace("-", "");
-+        String processId = new UUID(ThreadLocalRandom.current().nextLong(), ThreadLocalRandom.current().nextLong()).toString().replace("-", "");
-         boolean triggerIsComplete = false;
-         // 1. Obtain the Process List path of all existing proxy nodes in cluster mode
--        Collection<String> triggerPaths = getTriggerPaths(processListId);
-+        Collection<String> triggerPaths = getTriggerPaths(processId);
-         try {
-             // 2. Iterate through the path and write an empty string to the node, to trigger the node monitoring.
-             triggerPaths.forEach(each -> repository.persist(each, ""));
-             // 3. Lock and wait 5 seconds for each node to write the information of currently running SQL to the persistence layer. 
--            triggerIsComplete = waitAllNodeDataReady(processListId, triggerPaths);
-+            triggerIsComplete = waitAllNodeDataReady(processId, triggerPaths);
-             // 4. Fetch and aggregate the data written by each proxy node from the persistence layer. Then EventBus will post a ShowProcessListResponseEvent command, which means the operation is completed.
--            sendShowProcessList(processListId);
-+            sendShowProcessList(processId);
-         } finally {
-             // 5. Delete resources
--            repository.delete(ProcessNode.getProcessListIdPath(processListId));
-+            repository.delete(ProcessNode.getProcessIdPath(processId));
-             if (!triggerIsComplete) {
-                 triggerPaths.forEach(repository::delete);
-             }
-@@ -243,7 +243,7 @@ It contains five steps and steps 2 & 3 are the focus.
- 
- ### 2.2.1 Step 2: the cluster obtains the data implementation
- 
--In this step, an empty string will be written to the node `/nodes/compute_nodes/process_trigger/<instanceId>:<processlistId>`, which will trigger ShardingSphere's monitoring logic.
-+In this step, an empty string will be written to the node `/nodes/compute_nodes/process_trigger/<instanceId>:<processId>`, which will trigger ShardingSphere's monitoring logic.
- 
- When ShardingSphere is started, the persistence layer will `watch` to monitor a series of path changes, such as the addition, deletion, and modification operations of the path `/nodes/compute_nodes`.
- 
-@@ -275,9 +275,9 @@ public final class ComputeNodeStateChangedWatcher implements GovernanceWatcher<G
-             // show processlist
-         } else if (event.getKey().startsWith(ComputeNode.getProcessTriggerNodePatch())) {
-             return createShowProcessListTriggerEvent(event);
--            // kill processlistId
-+            // kill processId
-         } else if (event.getKey().startsWith(ComputeNode.getProcessKillNodePatch())) {
--            return createKillProcessListIdEvent(event);
-+            return createKillProcessIdEvent(event);
+     public synchronized void completeUnitShowProcessList(final ShowProcessListUnitCompleteEvent event) {
+-        ShowProcessListSimpleLock simpleLock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessId());
+-        if (null != simpleLock) {
+-            simpleLock.doNotify();
++        ShowProcessListLock lock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessId());
++        if (null != lock) {
++            lock.doNotify();
          }
-         return Optional.empty();
-     }
-@@ -313,15 +313,15 @@ public final class ClusterContextManagerCoordinator {    @Subscribe
-         }
-         Collection<ExecuteProcessContext> processContexts = ShowProcessListManager.getInstance().getAllProcessContext();
-         if (!processContexts.isEmpty()) {
--            registryCenter.getRepository().persist(ProcessNode.getProcessListInstancePath(event.getProcessListId(), event.getInstanceId()),
-+            registryCenter.getRepository().persist(ProcessNode.getProcessListInstancePath(event.getProcessId(), event.getInstanceId()),
-                     YamlEngine.marshal(new BatchYamlExecuteProcessContext(processContexts)));
-         }
--        registryCenter.getRepository().delete(ComputeNode.getProcessTriggerInstanceIdNodePath(event.getInstanceId(), event.getProcessListId()));
-+        registryCenter.getRepository().delete(ComputeNode.getProcessTriggerInstanceIdNodePath(event.getInstanceId(), event.getProcessId()));
      }
  }
- ```
- 
--`ClusterContextManagerCoordinator#triggerShowProcessList` will subscribe to `ShowProcessListTriggerEvent`, in which `processContext` data is processed by itself. `ShowProcessListManager.getInstance().getAllProcessContext()` retrieves the `processContext` that is currently running (here the data refers to the SQL information that ShardingSphere stores in the Map before each SQL execution, which is described at the beginning of the article) and transfers it to the persistence layer. If the `/nodes/compute_nodes/process_trigger/<instanceId>:<processlistId>` node is deleted, the processing is completed.
-+`ClusterContextManagerCoordinator#triggerShowProcessList` will subscribe to `ShowProcessListTriggerEvent`, in which `processContext` data is processed by itself. `ShowProcessListManager.getInstance().getAllProcessContext()` retrieves the `processContext` that is currently running (here the data refers to the SQL information that ShardingSphere stores in the Map before each SQL execution, which is described at the beginning of the article) and transfers it to the persistence layer. If the `/nodes/compute_nodes/process_trigger/<instanceId>:<processId>` node is deleted, the processing is completed.
- 
- When you delete the node, monitoring will also be triggered and `ShowProcessListUnitCompleteEvent` will be posted. This event will finally awake the pending lock.
- 
-@@ -330,7 +330,7 @@ public final class ClusterContextManagerCoordinator {
+@@ -349,9 +349,9 @@ public final class ClusterContextManagerCoordinator {
      
      @Subscribe
      public synchronized void completeUnitShowProcessList(final ShowProcessListUnitCompleteEvent event) {
--        ShowProcessListSimpleLock simpleLock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessListId());
-+        ShowProcessListSimpleLock simpleLock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessId());
-         if (null != simpleLock) {
-             simpleLock.doNotify();
+-        ShowProcessListSimpleLock simpleLock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessId());
+-        if (null != simpleLock) {
+-            simpleLock.doNotify();
++        ShowProcessListLock lock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessId());
++        if (null != lock) {
++            lock.doNotify();
          }
-@@ -349,7 +349,7 @@ public final class ClusterContextManagerCoordinator {
-     
-     @Subscribe
-     public synchronized void completeUnitShowProcessList(final ShowProcessListUnitCompleteEvent event) {
--        ShowProcessListSimpleLock simpleLock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessListId());
-+        ShowProcessListSimpleLock simpleLock = ShowProcessListManager.getInstance().getLocks().get(event.getProcessId());
-         if (null != simpleLock) {
-             simpleLock.doNotify();
-         }
-@@ -364,11 +364,11 @@ After each instance processed the data, the instance that received the `Show pro
- ```java
- public final class ProcessRegistrySubscriber {  
-     
--    private void sendShowProcessList(final String processListId) {
--        List<String> childrenKeys = repository.getChildrenKeys(ProcessNode.getProcessListIdPath(processListId));
-+    private void sendShowProcessList(final String processId) {
-+        List<String> childrenKeys = repository.getChildrenKeys(ProcessNode.getProcessIdPath(processId));
-         Collection<String> batchProcessContexts = new LinkedList<>();
-         for (String each : childrenKeys) {
--            batchProcessContexts.add(repository.get(ProcessNode.getProcessListInstancePath(processListId, each)));
-+            batchProcessContexts.add(repository.get(ProcessNode.getProcessListInstancePath(processId, each)));
-         }
-         eventBusContext.post(new ShowProcessListResponseEvent(batchProcessContexts));
      }
-diff --git a/docs/document/content/reference/management/_index.cn.md b/docs/document/content/reference/management/_index.cn.md
-index 6074ed33fc6..bd626b99516 100644
---- a/docs/document/content/reference/management/_index.cn.md
-+++ b/docs/document/content/reference/management/_index.cn.md
-@@ -48,7 +48,7 @@ namespace
-    ├    ├     ├     ├──UUID
-    ├    ├     ├     ├──....
-    ├    ├     ├──process_trigger
--   ├    ├     ├     ├──process_list_id:UUID
-+   ├    ├     ├     ├──process_id:UUID
-    ├    ├     ├     ├──....
-    ├    ├     ├──labels                      
-    ├    ├     ├     ├──UUID
-diff --git a/docs/document/content/reference/management/_index.en.md b/docs/document/content/reference/management/_index.en.md
-index d80972414dc..ac6c452894d 100644
---- a/docs/document/content/reference/management/_index.en.md
-+++ b/docs/document/content/reference/management/_index.en.md
-@@ -48,7 +48,7 @@ namespace
-    ├    ├     ├     ├──UUID
-    ├    ├     ├     ├──....
-    ├    ├     ├──process_trigger
--   ├    ├     ├     ├──process_list_id:UUID
-+   ├    ├     ├     ├──process_id:UUID
-    ├    ├     ├     ├──....
-    ├    ├     ├──labels                      
-    ├    ├     ├     ├──UUID
+ }

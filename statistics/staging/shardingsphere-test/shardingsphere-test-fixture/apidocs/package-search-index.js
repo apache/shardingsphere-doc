@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.test.fixture.infra.database.type"},{"l":"org.apache.shardingsphere.test.fixture.infra.datasource.pool.metadata"},{"l":"org.apache.shardingsphere.test.fixture.infra.rule"},{"l":"org.apache.shardingsphere.test.fixture.jdbc"}]

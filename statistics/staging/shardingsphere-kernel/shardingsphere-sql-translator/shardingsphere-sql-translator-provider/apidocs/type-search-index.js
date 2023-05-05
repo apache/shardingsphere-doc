@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.sqltranslator.jooq","l":"JooQDialectRegistry"},{"p":"org.apache.shardingsphere.sqltranslator.jooq","l":"JooQSQLTranslator"},{"p":"org.apache.shardingsphere.sqltranslator.natived","l":"NativeSQLTranslator"}]

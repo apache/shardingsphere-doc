@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.dialect.mysql.exception"},{"l":"org.apache.shardingsphere.dialect.mysql.mapper"},{"l":"org.apache.shardingsphere.dialect.mysql.vendor"}]

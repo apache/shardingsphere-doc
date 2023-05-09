@@ -1,271 +1,104 @@
-commit 93606ea3b2754ba3e52f65625ccc9871c61dc3c4
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Tue May 9 09:16:17 2023 +0800
+commit 5ff7f29e414e09b25b3e39b476c9df86fe182473
+Author: 吴伟杰 <wuweijie@apache.org>
+Date:   Tue May 9 11:13:51 2023 +0800
 
-    Merge like encryptor spi to encryptor spi (#25528)
+    Merge ShardingCacheRule into ShardingRule (#25520)
+    
+    * Merge sharding cache plugin into sharding modules
+    
+    * Refactor CachedShardingSQLRouter
+    
+    * Fix checkstyle in CachedShardingSQLRouter
+    
+    * Complete ShardingRuleConfigurationYamlIT
+    
+    * Update documents for sharding cache
+    
+    * Complete YamlShardingRuleConfigurationSwapper
+    
+    * Remove usage of shardingsphere-sharding-cache
+    
+    * Update documents about optional plugins
 
-diff --git a/docs/blog/content/material/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive.en.md b/docs/blog/content/material/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive.en.md
-index 2b26d4d051b..0d6976c54de 100644
---- a/docs/blog/content/material/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive.en.md
-+++ b/docs/blog/content/material/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive.en.md
-@@ -317,13 +317,12 @@ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md
+index 703c1d6dab7..9c5f6398d37 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md
+@@ -23,7 +23,6 @@ ShardingSphere 默认情况下仅包含核心 SPI 的实现，在 Git Source 存
+ - `org.apache.shardingsphere:shardingsphere-postgresql-dialect-exception`，数据库网关的 PostgreSQL 实现
+ - `org.apache.shardingsphere:shardingsphere-readwrite-splitting-core`，读写分离核心
+ - `org.apache.shardingsphere:shardingsphere-shadow-core`，影子库核心
+-- `org.apache.shardingsphere:shardingsphere-sharding-cache`，分片缓存，参考未关闭的 https://github.com/apache/shardingsphere/issues/21223
+ - `org.apache.shardingsphere:shardingsphere-sharding-core`，数据分片核心
+ - `org.apache.shardingsphere:shardingsphere-single-core`，单表（所有的分片数据源中仅唯一存在的表）核心
+ - `org.apache.shardingsphere:shardingsphere-sql-federation-core`，联邦查询执行器核心
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md
+index 01bf4b7b1f2..e4779fc2912 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md
+@@ -23,7 +23,6 @@ All the built-in plugins for ShardingSphere-JDBC are listed below in the form of
+ - `org.apache.shardingsphere:shardingsphere-postgresql-dialect-exception`, PostgreSQL implementation of database
+ - `org.apache.shardingsphere:shardingsphere-readwrite-splitting-core`, read-write splitting core
+ - `org.apache.shardingsphere:shardingsphere-shadow-core`, shadow library core
+-- `org.apache.shardingsphere:shardingsphere-sharding-cache`, sharding cache,refer to https://github.com/apache/shardingsphere/issues/21223
+ - `org.apache.shardingsphere:shardingsphere-sharding-core`, data sharding core
+ - `org.apache.shardingsphere:shardingsphere-single-core`, single-table (only the only table that exists in all sharded data sources) core
+ - `org.apache.shardingsphere:shardingsphere-sql-federation-core`, federation query executor core
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.cn.md
+index 34c61620283..f587c1c7093 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.cn.md
+@@ -20,7 +20,11 @@ weight = 10
+ 
+ ```yaml
  rules:
- - !ENCRYPT
-   encryptors:
-+    like_encryptor:
-+      type: CHAR_DIGEST_LIKE
-     aes_encryptor:
-       type: AES
-       props:
-         aes-key-value: 123456abc
--  likeEncryptors:
--    like_encryptor:
--      type: CHAR_DIGEST_LIKE
-   tables:
-     user:
-       columns:
-diff --git a/docs/document/content/dev-manual/encrypt.cn.md b/docs/document/content/dev-manual/encrypt.cn.md
-index 2230c59e16f..f8060033b7e 100644
---- a/docs/document/content/dev-manual/encrypt.cn.md
-+++ b/docs/document/content/dev-manual/encrypt.cn.md
-@@ -24,19 +24,4 @@ chapter = true
- | RC4              | 基于 RC4 的数据加密算法 | [`org.apache.shardingsphere.encrypt.algorithm.encrypt.RC4EncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/core/src/main/java/org/apache/shardingsphere/encrypt/algorithm/encrypt/RC4EncryptAlgorithm.java)                 |
- | SM3              | 基于 SM3 的数据加密算法 | [`org.apache.shardingsphere.encrypt.sm.algorithm.SM3EncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/plugin/sm/src/main/java/org/apache/shardingsphere/encrypt/sm/algorithm/SM3EncryptAlgorithm.java)                      |
- | SM4              | 基于 SM4 的数据加密算法 | [`org.apache.shardingsphere.encrypt.sm.algorithm.SM4EncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/plugin/sm/src/main/java/org/apache/shardingsphere/encrypt/sm/algorithm/SM4EncryptAlgorithm.java)                      |
--
--## LikeEncryptAlgorithm
--
--### 全限定类名
--
--[`org.apache.shardingsphere.encrypt.spi.LikeEncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/api/src/main/java/org/apache/shardingsphere/encrypt/spi/LikeEncryptAlgorithm.java)
--
--### 定义
--
--数据模糊查询辅助算法
--
--### 已知实现
--
--| *配置标识*           | *详细说明*         | *全限定类名*                                                                                                                                                                                                                                                            |
--|------------------|----------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
--| CHAR_DIGEST_LIKE | 用于模糊查询的数据加密算法  | [`org.apache.shardingsphere.encrypt.algorithm.like.CharDigestLikeEncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/core/src/main/java/org/apache/shardingsphere/encrypt/algorithm/like/CharDigestLikeEncryptAlgorithm.java) |
-\ No newline at end of file
-+| CHAR_DIGEST_LIKE | 用于模糊查询的数据加密算法  | [`org.apache.shardingsphere.encrypt.algorithm.like.CharDigestLikeEncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/core/src/main/java/org/apache/shardingsphere/encrypt/algorithm/like/CharDigestLikeEncryptAlgorithm.java) |
-diff --git a/docs/document/content/dev-manual/encrypt.en.md b/docs/document/content/dev-manual/encrypt.en.md
-index 053fb4ee7fd..25a8cad37f4 100644
---- a/docs/document/content/dev-manual/encrypt.en.md
-+++ b/docs/document/content/dev-manual/encrypt.en.md
-@@ -24,19 +24,4 @@ Data encrypt algorithm definition
- | RC4                  | RC4 data encrypt algorithm                  | [`org.apache.shardingsphere.encrypt.algorithm.encrypt.RC4EncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/core/src/main/java/org/apache/shardingsphere/encrypt/algorithm/encrypt/RC4EncryptAlgorithm.java)                 |
- | SM3                  | SM3 data encrypt algorithm                  | [`org.apache.shardingsphere.encrypt.sm.algorithm.SM3EncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/plugin/sm/src/main/java/org/apache/shardingsphere/encrypt/sm/algorithm/SM3EncryptAlgorithm.java)                      |
- | SM4                  | SM4 data encrypt algorithm                  | [`org.apache.shardingsphere.encrypt.sm.algorithm.SM4EncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/plugin/sm/src/main/java/org/apache/shardingsphere/encrypt/sm/algorithm/SM4EncryptAlgorithm.java)                      |
--
--## LikeEncryptAlgorithm
--
--### Fully-qualified class name
--
--[`org.apache.shardingsphere.encrypt.spi.LikeEncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/api/src/main/java/org/apache/shardingsphere/encrypt/spi/LikeEncryptAlgorithm.java)
--
--### Definition
--
--Data like assist query algorithm definition
--
--### Implementation classes
--
--| *Configuration Type* | *Description*                               | *Fully-qualified class name*                                                                                                                                                                                                                                       |
--|----------------------|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
- | CHAR_DIGEST_LIKE     | Data encryption algorithms for like queries | [`org.apache.shardingsphere.encrypt.algorithm.like.CharDigestLikeEncryptAlgorithm`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/core/src/main/java/org/apache/shardingsphere/encrypt/algorithm/like/CharDigestLikeEncryptAlgorithm.java) |
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-index 85961c6080b..5481105fa0c 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-@@ -64,9 +64,9 @@ weight = 5
- | sm4-iv      | String | SM4 使用的 IV （MODE 为 CBC 时需指定，16 Bytes）                        |
- | sm4-padding | String | SM4 使用的 PADDING （PKCS5Padding 或 PKCS7Padding，暂不支持 NoPadding） |
+-  - !SHARDING_CACHE
++- !SHARDING
++  tables:
++  shardingAlgorithms:
++  # ...
++  shardingCache:    
+     allowedMaxSqlLength: 512 # 允许缓存的 SQL 长度限制
+     routeCache:
+       initialCapacity: 65536 # 缓存初始容量
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.en.md
+index a189a31ae29..92a5dd4a403 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/sharding-cache.en.md
+@@ -20,7 +20,11 @@ If the above conditions are not met, the execution delay of SQL may not be signi
  
--### 模糊查询辅助算法
-+### 模糊加密算法
+ ```yaml
+ rules:
+-  - !SHARDING_CACHE
++- !SHARDING
++  tables:
++  shardingAlgorithms:
++  # ...
++  shardingCache:
+     allowedMaxSqlLength: 512 # Allow cached SQL length limit
+     routeCache:
+       initialCapacity: 65536 # Initial capacity
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md
+index fdd993d79ba..c4f89977dec 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md
+@@ -22,7 +22,6 @@ ShardingSphere 默认情况下仅包含核心 SPI 的实现，在 Git Source 存
+ - `org.apache.shardingsphere:shardingsphere-proxy-frontend-postgresql`，用于 ShardingSphere-Proxy 解析与适配访问数据库的协议的 PostgreSQL 实现
+ - `org.apache.shardingsphere:shardingsphere-proxy-frontend-opengauss`，用于 ShardingSphere-Proxy 解析与适配访问数据库的协议的 openGauss 实现
+ - `org.apache.shardingsphere:shardingsphere-proxy-backend-core`， ShardingSphere Proxy 的后端核心模块
+-- `org.apache.shardingsphere:shardingsphere-sharding-cache`， 分片缓存，参考未关闭的 https://github.com/apache/shardingsphere/issues/21223
+ - `org.apache.shardingsphere:shardingsphere-standalone-mode-core`，单机模式配置信息持久化定义核心
  
--#### 单字符摘要模糊查询辅助算法
-+#### 单字符摘要模糊加密算法
+ 对于核心的 `org.apache.shardingsphere:shardingsphere-jdbc-core`，其内置插件参考[ShardingSphere-JDBC 可选插件](/cn/user-manual/shardingsphere-jdbc/optional-plugins/)。
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md
+index 3870a310619..dd23b7f8d39 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md
+@@ -22,7 +22,6 @@ All the built-in plugins for ShardingSphere-Proxy are listed below in the form o
+ - `org.apache.shardingsphere:shardingsphere-proxy-frontend-postgresql`, a PostgreSQL implementation for ShardingSphere-Proxy to parse and adapt the protocol for accessing the database
+ - `org.apache.shardingsphere:shardingsphere-proxy-frontend-opengauss`, an openGauss implementation for ShardingSphere-Proxy to parse and adapt the protocol for accessing the database
+ - `org.apache.shardingsphere:shardingsphere-proxy-backend-core`, the backend core for ShardingSphere Proxy
+-- `org.apache.shardingsphere:shardingsphere-sharding-cache`, sharding cache, refer to https://github.com/apache/shardingsphere/issues/21223
+ - `org.apache.shardingsphere:shardingsphere-standalone-mode-core`, the persistence definition core of single-machine mode configuration information
  
- 类型：CHAR_DIGEST_LIKE
- 
-@@ -97,13 +97,12 @@ rules:
-           likeQueryColumn: name_like
-           likeQueryEncryptorName: like_encryptor
-   encryptors:
-+    like_encryptor:
-+      type: CHAR_DIGEST_LIKE
-     name_encryptor:
-       type: AES
-       props:
-         aes-key-value: 123456abc
--  likeEncryptors:
--    like_encryptor:
--      type: CHAR_DIGEST_LIKE
- ```
- 
- ## 相关参考
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-index 937112e503c..003453af8b4 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-@@ -64,9 +64,9 @@ Attributes:
- | sm4-iv      | String     | SM4 IV (should be specified on CBC, 16 bytes long)                       |
- | sm4-padding | String     | SM4 PADDING (should be PKCS5Padding or PKCS7Padding, NoPadding excepted) |
- 
--### Like Assist Query Algorithm
-+### Like Encrypt Algorithm
- 
--#### CharDigestLike Like Assist Query Algorithm
-+#### CharDigestLike Encrypt Algorithm
- 
- Type：CHAR_DIGEST_LIKE
- 
-@@ -97,13 +97,12 @@ rules:
-           likeQueryColumn: name_like
-           likeQueryEncryptorName: like_encryptor
-   encryptors:
-+    like_encryptor:
-+      type: CHAR_DIGEST_LIKE
-     name_encryptor:
-       type: AES
-       props:
-         aes-key-value: 123456abc
--  likeEncryptors:
--    like_encryptor:
--      type: CHAR_DIGEST_LIKE
- ```
- 
- ## Related References
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
-index 7b698b45774..c669843e010 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
-@@ -81,9 +81,8 @@ public final class EncryptDatabasesConfiguration {
-         Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
-         encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-         encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
--        Map<String, AlgorithmConfiguration> likeEncryptAlgorithmConfigs = new HashMap<>();
--        likeEncryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
--        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs, likeEncryptAlgorithmConfigs);
-+        encryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
-+        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
-         return ShardingSphereDataSourceFactory.createDataSource(DataSourceUtil.createDataSource("demo_ds"), Collections.singleton(encryptRuleConfig), props);
-     }
- }
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
-index e95bd87e389..caee7caa475 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
-@@ -81,9 +81,8 @@ public final class EncryptDatabasesConfiguration {
-         Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
-         encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-         encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
--        Map<String, AlgorithmConfiguration> likeEncryptAlgorithmConfigs = new HashMap<>();
--        likeEncryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
--        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs, likeEncryptAlgorithmConfigs);
-+        encryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
-+        EncryptRuleConfiguration encryptRuleConfig = new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
-         return ShardingSphereDataSourceFactory.createDataSource(DataSourceUtil.createDataSource("demo_ds"), Collections.singleton(encryptRuleConfig), props);
-     }
- }
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-index 54c044336f0..e667cc471da 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
-@@ -44,14 +44,13 @@ private static ReadwriteSplittingRuleConfiguration createReadwriteSplittingConfi
- public EncryptRuleConfiguration createEncryptRuleConfiguration() {
-     Properties props = new Properties();
-     props.setProperty("aes-key-value", "123456");
--    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "username_plain", "name_encryptor", null);
--    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "like_pwd", "", "pwd_encryptor", null);
--    EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
-+    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "name_encryptor");
-+    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "like_pwd", "pwd_encryptor");
-+    EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
-     Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
-     encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-     encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
--    Map<String, AlgorithmConfiguration> likeEncryptAlgorithmConfigs = new HashMap<>();
--    likeEncryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
--    return new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs, likeEncryptAlgorithmConfigs);
-+    encryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
-+    return new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
- }
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-index e7df0471a5e..d235242074b 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
-@@ -51,8 +51,7 @@ public EncryptRuleConfiguration createEncryptRuleConfiguration() {
-     Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
-     encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
-     encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
--    Map<String, AlgorithmConfiguration> likeEncryptAlgorithmConfigs = new HashMap<>();
--    likeEncryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
--    return new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs, likeEncryptAlgorithmConfigs);
-+    encryptAlgorithmConfigs.put("like_encryptor", new AlgorithmConfiguration("CHAR_DIGEST_LIKE", new Properties()));
-+    return new EncryptRuleConfiguration(Collections.singleton(encryptTableRuleConfig), encryptAlgorithmConfigs);
- }
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
-index 0ea60e1f03c..b940e932e2c 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
-@@ -77,11 +77,10 @@ rules:
-       type: AES
-       props:
-         aes-key-value: 123456abc
--    pwd_encryptor:
--      type: MD5
--  likeEncryptors:
-     like_encryptor:
-       type: CHAR_DIGEST_LIKE
-+    pwd_encryptor:
-+      type: MD5
- ```
- 
- 然后通过 YamlShardingSphereDataSourceFactory 的 createDataSource 方法创建数据源。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
-index 43366b66f19..bdd187c5dae 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
-@@ -78,11 +78,10 @@ rules:
-       type: AES
-       props:
-         aes-key-value: 123456abc
--    pwd_encryptor:
--      type: MD5
--  likeEncryptors:
-     like_encryptor:
-       type: CHAR_DIGEST_LIKE
-+    pwd_encryptor:
-+      type: MD5
- ```
- 
- Read the YAML configuration to create a data source according to the createDataSource method of YamlShardingSphereDataSourceFactory.
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
-index e67b8ef7ca9..e7490a159ed 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
-@@ -101,7 +101,6 @@ rules:
-         aes-key-value: 123456abc
-     md5_encryptor:
-       type: MD5
--  likeEncryptors:
-     like_encryptor:
-       type: CHAR_DIGEST_LIKE
-   tables:
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
-index 7cd822fd3ed..56c0eb789f7 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
-@@ -102,7 +102,6 @@ rules:
-         aes-key-value: 123456abc
-     md5_encryptor:
-       type: MD5
--  likeEncryptors:
-     like_encryptor:
-       type: CHAR_DIGEST_LIKE
-   tables:
+ For the core `org.apache.shardingsphere:shardingsphere-jdbc-core`,Its built-in plugins reference[ShardingSphere-JDBC Optional Plugins](/en/user-manual/shardingsphere-jdbc/optional-plugins/).

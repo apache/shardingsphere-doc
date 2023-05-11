@@ -1,342 +1,250 @@
-commit 4808fa65b812f5fd4771a5ae9b804d2f1d89dd97
+commit 6ccce04ea5e697b3fa608f5502035934260b89f2
 Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Thu May 11 09:36:21 2023 +0800
+Date:   Thu May 11 11:08:26 2023 +0800
 
-    Add new encrypt yaml api and rename old api tag to COMPATIBLE_ENCRYPT (#25553)
-    
-    * Add new encrypt yaml api and rename old api tag to COMPATIBLE_ENCRYPT
-    
-    * Add new encrypt yaml api and rename old api tag to COMPATIBLE_ENCRYPT
-    
-    * fix build error
-    
-    * fix build error
-    
-    * fix unit test
-    
-    * correct wrong encrypt e2e config
+    Update encrypt document for new api and compatible api (#25571)
 
-diff --git a/docs/document/content/reference/encrypt/_index.cn.md b/docs/document/content/reference/encrypt/_index.cn.md
-index 273b4533e19..2d25ee4b110 100644
---- a/docs/document/content/reference/encrypt/_index.cn.md
-+++ b/docs/document/content/reference/encrypt/_index.cn.md
-@@ -76,10 +76,12 @@ Apache ShardingSphere 接收到该 SQL，通过用户提供的加密配置，发
-     t_user:
-       columns:
-         pwd:
--          cipherColumn: pwd_cipher
--          encryptorName: aes_encryptor
--          assistedQueryColumn: pwd_assisted_query
--          assistedQueryEncryptorName: pwd_assisted_query_cipher
-+          cipher:
-+            name: pwd_cipher
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: pwd_assisted_query
-+            encryptorName: pwd_assisted_query_cipher
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
+index c669843e010..2d61e5749bb 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.cn.md
+@@ -37,15 +37,23 @@ weight = 4
+ 
+ 可配置属性：
+ 
+-| *名称*                       | *数据类型*  | *说明*          |
+-|----------------------------|---------|---------------|
+-| logicColumn                | String  | 逻辑列名称         |
+-| cipherColumn               | String  | 密文列名称         |
+-| assistedQueryColumn (?)    | String  | 查询辅助列名称       |
+-| likeQueryColumn (?)        | String  | 模糊查询列名称       |
+-| encryptorName              | String  | 密文列加密算法名称     |
+-| assistedQueryEncryptorName | String  | 查询辅助列加密算法名称   |
+-| likeQueryEncryptorName     | String  | 模糊查询列加密算法名称   |
++| *名称*              | *数据类型*  | *说明*        |
++|-------------------|---------|-------------|
++| name              | String  | 逻辑列名称       |
++| cipher            | EncryptColumnItemRuleConfiguration  | 密文列配置       |
++| assistedQuery (?) | EncryptColumnItemRuleConfiguration  | 查询辅助列配置     |
++| likeQuery (?)     | EncryptColumnItemRuleConfiguration  | 模糊查询列配置     |
++
++### 加密列属性规则配置
++
++类名称：org.apache.shardingsphere.encrypt.api.config.rule.EncryptColumnItemRuleConfiguration
++
++可配置属性：
++
++| *名称*            | *数据类型*                             | *说明*    |
++|-----------------|------------------------------------|---------|
++| name            | String                             | 加密列属性名称 |
++| encryptorName   | String                             | 加密列算法名称 |
+ 
+ ### 加解密算法配置
+ 
+@@ -75,8 +83,10 @@ public final class EncryptDatabasesConfiguration {
+     public DataSource getDataSource() throws SQLException {
+         Properties props = new Properties();
+         props.setProperty("aes-key-value", "123456");
+-        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "name_encryptor");
+-        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "like_pwd", "pwd_encryptor");
++        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", new EncryptColumnItemRuleConfiguration("username", "name_encryptor"));
++        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", new EncryptColumnItemRuleConfiguration("pwd", "pwd_encryptor"));
++        columnConfigTest.setAssistedQuery(new EncryptColumnItemRuleConfiguration("assisted_query_pwd", "pwd_encryptor"));
++        columnConfigTest.setLikeQuery(new EncryptColumnItemRuleConfiguration("like_pwd", "like_encryptor"));
+         EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
+         Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
+         encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
+index caee7caa475..86482562acb 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/encrypt.en.md
+@@ -37,15 +37,23 @@ Class name: org.apache.shardingsphere.encrypt.api.config.rule.EncryptColumnRuleC
+ 
+ Attributes:
+ 
+-| *Name*                     | *DataType* | *Description*                                                        |
+-|----------------------------|------------|----------------------------------------------------------------------|
+-| logicColumn                | String     | Logic column name                                                    |
+-| cipherColumn               | String     | Cipher column name                                                   |
+-| assistedQueryColumn (?)    | String     | Assisted query column name                                           |
+-| likeQueryColumn (?)        | String     | Like query column name                                               |
+-| encryptorName              | String     | Encrypt algorithm name                                               |
+-| assistedQueryEncryptorName | String     | Assisted query encrypt algorithm name                                |
+-| likeQueryEncryptorName     | String     | Like query encrypt algorithm name                                    |
++| *Name*        | *DataType*                         | *Description*                |
++|---------------|------------------------------------|------------------------------|
++| name          | String                             | Logic column name            |
++| cipher        | EncryptColumnItemRuleConfiguration | Cipher column config         |
++| assistedQuery (?) | EncryptColumnItemRuleConfiguration | Assisted query column config |
++| likeQuery (?) | EncryptColumnItemRuleConfiguration | Like query column config     |
++
++### Encrypt Column Item Rule Configuration
++
++Class name: org.apache.shardingsphere.encrypt.api.config.rule.EncryptColumnItemRuleConfiguration
++
++Attributes:
++
++| *Name*        | *DataType*                         | *Description*            |
++|-----------------|------------------------------------|--------------------------|
++| name            | String                             | encrypt column item name |
++| encryptorName   | String                             | encryptor name           |
+ 
+ ### Encrypt Algorithm Configuration
+ 
+@@ -75,8 +83,10 @@ public final class EncryptDatabasesConfiguration {
+     public DataSource getDataSource() throws SQLException {
+         Properties props = new Properties();
+         props.setProperty("aes-key-value", "123456");
+-        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "name_encryptor");
+-        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "like_pwd", "pwd_encryptor");
++        EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", new EncryptColumnItemRuleConfiguration("username", "name_encryptor"));
++        EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", new EncryptColumnItemRuleConfiguration("pwd", "pwd_encryptor"));
++        columnConfigTest.setAssistedQuery(new EncryptColumnItemRuleConfiguration("assisted_query_pwd", "pwd_encryptor"));
++        columnConfigTest.setLikeQuery(new EncryptColumnItemRuleConfiguration("like_pwd", "like_encryptor"));
+         EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
+         Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
+         encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
+index e667cc471da..03c8b9d0d1a 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.cn.md
+@@ -41,11 +41,13 @@ private static ReadwriteSplittingRuleConfiguration createReadwriteSplittingConfi
+ }
+ 
+ // 数据加密配置
+-public EncryptRuleConfiguration createEncryptRuleConfiguration() {
++private static EncryptRuleConfiguration createEncryptRuleConfiguration() {
+     Properties props = new Properties();
+     props.setProperty("aes-key-value", "123456");
+-    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "name_encryptor");
+-    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "like_pwd", "pwd_encryptor");
++    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", new EncryptColumnItemRuleConfiguration("username", "name_encryptor"));
++    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", new EncryptColumnItemRuleConfiguration("pwd", "pwd_encryptor"));
++    columnConfigTest.setAssistedQuery(new EncryptColumnItemRuleConfiguration("assisted_query_pwd", "pwd_encryptor"));
++    columnConfigTest.setLikeQuery(new EncryptColumnItemRuleConfiguration("like_pwd", "like_encryptor"));
+     EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
+     Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
+     encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
+index d235242074b..70297088984 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/rules/mix.en.md
+@@ -42,12 +42,14 @@ private static ReadwriteSplittingRuleConfiguration createReadwriteSplittingConfi
+ }
+ 
+ // Data encryption configuration
+-public EncryptRuleConfiguration createEncryptRuleConfiguration() {
++private static EncryptRuleConfiguration createEncryptRuleConfiguration() {
+     Properties props = new Properties();
+     props.setProperty("aes-key-value", "123456");
+-    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", "username", "", "", "username_plain", "name_encryptor", null);
+-    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", "pwd", "assisted_query_pwd", "like_pwd", "", "pwd_encryptor", null);
+-    EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest), null);
++    EncryptColumnRuleConfiguration columnConfigAes = new EncryptColumnRuleConfiguration("username", new EncryptColumnItemRuleConfiguration("username", "name_encryptor"));
++    EncryptColumnRuleConfiguration columnConfigTest = new EncryptColumnRuleConfiguration("pwd", new EncryptColumnItemRuleConfiguration("pwd", "pwd_encryptor"));
++    columnConfigTest.setAssistedQuery(new EncryptColumnItemRuleConfiguration("assisted_query_pwd", "pwd_encryptor"));
++    columnConfigTest.setLikeQuery(new EncryptColumnItemRuleConfiguration("like_pwd", "like_encryptor"));
++    EncryptTableRuleConfiguration encryptTableRuleConfig = new EncryptTableRuleConfiguration("t_user", Arrays.asList(columnConfigAes, columnConfigTest));
+     Map<String, AlgorithmConfiguration> encryptAlgorithmConfigs = new HashMap<>();
+     encryptAlgorithmConfigs.put("name_encryptor", new AlgorithmConfiguration("AES", props));
+     encryptAlgorithmConfigs.put("pwd_encryptor", new AlgorithmConfiguration("assistedTest", props));
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
+index 4a51dc76a53..940a439b0f4 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
+@@ -93,6 +93,45 @@ rules:
+ YamlShardingSphereDataSourceFactory.createDataSource(getFile());
  ```
  
- 使用这套配置， Apache ShardingSphere 只需将 logicColumn 和 cipherColumn，assistedQueryColumn 进行转换，底层数据表不存储明文，只存储了密文，这也是安全审计部分的要求所在。
-diff --git a/docs/document/content/reference/encrypt/_index.en.md b/docs/document/content/reference/encrypt/_index.en.md
-index a88100f698f..478267e16be 100644
---- a/docs/document/content/reference/encrypt/_index.en.md
-+++ b/docs/document/content/reference/encrypt/_index.en.md
-@@ -60,19 +60,21 @@ Solution description: after selecting the appropriate encryption algorithm, such
- 
- ```yaml
- -!ENCRYPT
-- encryptors:
--  aes_encryptor:
--   type: AES
--   props:
--    aes-key-value: 123456abc
-- tables:
--  t_user:
--   columns:
--    pwd:
--     cipherColumn: pwd_cipher
--     encryptorName: aes_encryptor
--     assistedQueryColumn: pwd_assisted_query
--     assistedQueryEncryptorName: pwd_assisted_query_cipher
++为了保持对低版本 YAML 配置的兼容，ShardingSphere 通过 `COMPATIBLE_ENCRYPT` 提供了如下的兼容配置，该配置会在后续版本中删除，建议及时升级最新 YAML 配置。
++
++```yaml
++dataSources:
++  unique_ds:
++    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++    driverClassName: com.mysql.jdbc.Driver
++    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
++    username: root
++    password:
++
++rules:
++- !COMPATIBLE_ENCRYPT
++  tables:
++    t_user:
++      columns:
++        username:
++          cipherColumn: username
++          encryptorName: aes_encryptor
++          assistedQueryColumn: assisted_query_username
++          assistedQueryEncryptorName: assisted_encryptor
++          likeQueryColumn: like_query_username
++          likeQueryEncryptorName: like_encryptor
++        pwd:
++          cipherColumn: pwd
++          encryptorName: aes_encryptor
++          assistedQueryColumn: assisted_query_pwd
++          assistedQueryEncryptorName: assisted_encryptor
 +  encryptors:
 +    aes_encryptor:
 +      type: AES
 +      props:
 +        aes-key-value: 123456abc
++    assisted_encryptor:
++      type: MD5
++    like_encryptor:
++      type: CHAR_DIGEST_LIKE
++```
++
+ ## 相关参考
+ 
+ - [核心特性：数据加密](/cn/features/encrypt/)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
+index 89be5263905..22935ad2a83 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
+@@ -94,6 +94,45 @@ Read the YAML configuration to create a data source according to the createDataS
+ YamlShardingSphereDataSourceFactory.createDataSource(getFile());
+ ```
+ 
++In order to keep compatibility with earlier YAML configuration, ShardingSphere provides following compatible configuration through 'COMPATIBLE_ENCRYPT', which will be removed in future versions, and it is recommended to upgrade latest YAML configuration.
++
++```yaml
++dataSources:
++  unique_ds:
++    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++    driverClassName: com.mysql.jdbc.Driver
++    jdbcUrl: jdbc:mysql://localhost:3306/demo_ds?serverTimezone=UTC&useSSL=false&useUnicode=true&characterEncoding=UTF-8
++    username: root
++    password:
++
++rules:
++- !COMPATIBLE_ENCRYPT
 +  tables:
 +    t_user:
 +      columns:
++        username:
++          cipherColumn: username
++          encryptorName: aes_encryptor
++          assistedQueryColumn: assisted_query_username
++          assistedQueryEncryptorName: assisted_encryptor
++          likeQueryColumn: like_query_username
++          likeQueryEncryptorName: like_encryptor
 +        pwd:
-+          cipher:
-+            name: pwd_cipher
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: pwd_assisted_query
-+            encryptorName: pwd_assisted_query_cipher
- ```
++          cipherColumn: pwd
++          encryptorName: aes_encryptor
++          assistedQueryColumn: assisted_query_pwd
++          assistedQueryEncryptorName: assisted_encryptor
++  encryptors:
++    aes_encryptor:
++      type: AES
++      props:
++        aes-key-value: 123456abc
++    assisted_encryptor:
++      type: MD5
++    like_encryptor:
++      type: CHAR_DIGEST_LIKE
++```
++
+ ## Related References
  
- With the above configuration, Apache ShardingSphere only needs to convert `logicColumn`, `cipherColumn`, and `assistedQueryColumn`. 
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-index f9c1dba1fa8..fcfb5465fa6 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.cn.md
-@@ -94,10 +94,12 @@ rules:
-     t_user:
-       columns:
-         username:
--          cipherColumn: username
--          encryptorName: name_encryptor
--          likeQueryColumn: name_like
--          likeQueryEncryptorName: like_encryptor
-+          cipher:
-+            name: username
-+            encryptorName: name_encryptor
-+          likeQuery:
-+            name: name_like
-+            encryptorName: like_encryptor
-   encryptors:
-     like_encryptor:
-       type: CHAR_DIGEST_LIKE
-diff --git a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-index e0f8d2f7356..a15859bf3fd 100644
---- a/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-+++ b/docs/document/content/user-manual/common-config/builtin-algorithm/encrypt.en.md
-@@ -94,10 +94,12 @@ rules:
-     t_user:
-       columns:
-         username:
--          cipherColumn: username
--          encryptorName: name_encryptor
--          likeQueryColumn: name_like
--          likeQueryEncryptorName: like_encryptor
-+          cipher:
-+            name: username
-+            encryptorName: name_encryptor
-+          likeQuery:
-+            name: name_like
-+            encryptorName: like_encryptor
-   encryptors:
-     like_encryptor:
-       type: CHAR_DIGEST_LIKE
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
-index 18939827928..4a51dc76a53 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.cn.md
-@@ -16,12 +16,15 @@ rules:
-     <table_name> (+): # 加密表名称
-       columns:
-         <column_name> (+): # 加密列名称
--          cipherColumn: # 密文列名称
--          encryptorName: # 密文列加密算法名称
--          assistedQueryColumn (?):  # 查询辅助列名称
--          assistedQueryEncryptorName:  # 查询辅助列加密算法名称
--          likeQueryColumn (?):  # 模糊查询列名称
--          likeQueryEncryptorName:  # 模糊查询列加密算法名称
-+          cipher:
-+            name: # 密文列名称
-+            encryptorName: # 密文列加密算法名称
-+          assistedQuery (?):  
-+            name: # 查询辅助列名称
-+            encryptorName:  # 查询辅助列加密算法名称
-+          likeQuery (?):
-+            name: # 模糊查询列名称
-+            encryptorName:  # 模糊查询列加密算法名称
-     
-   # 加密算法配置
-   encryptors:
-@@ -57,17 +60,22 @@ rules:
-     t_user:
-       columns:
-         username:
--          cipherColumn: username
--          encryptorName: aes_encryptor
--          assistedQueryColumn: assisted_query_username
--          assistedQueryEncryptorName: assisted_encryptor
--          likeQueryColumn: like_query_username
--          likeQueryEncryptorName: like_encryptor
-+          cipher:
-+            name: username
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: assisted_query_username
-+            encryptorName: assisted_encryptor
-+          likeQuery:
-+            name: like_query_username
-+            encryptorName: like_encryptor
-         pwd:
--          cipherColumn: pwd
--          encryptorName: aes_encryptor
--          assistedQueryColumn: assisted_query_pwd
--          assistedQueryEncryptorName: assisted_encryptor
-+          cipher:
-+            name: pwd
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: assisted_query_pwd
-+            encryptorName: assisted_encryptor
-   encryptors:
-     aes_encryptor:
-       type: AES
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
-index 221c7502222..89be5263905 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/encrypt.en.md
-@@ -17,12 +17,15 @@ rules:
-     <table_name> (+): # Encrypt table name
-       columns:
-         <column_name> (+): # Encrypt logic column name
--          cipherColumn: # Cipher column name
--          encryptorName: # Cipher encrypt algorithm name
--          assistedQueryColumn (?):  # Assisted query column name
--          assistedQueryEncryptorName:  # Assisted query encrypt algorithm name
--          likeQueryColumn (?):  # Like query column name
--          likeQueryEncryptorName:  # Like query encrypt algorithm name 
-+          cipher:
-+            name: # Cipher column name
-+            encryptorName: # Cipher encrypt algorithm name
-+          assistedQuery (?):
-+            name: # Assisted query column name
-+            encryptorName:  # Assisted query encrypt algorithm name
-+          likeQuery (?):
-+            name: # Like query column name
-+            encryptorName:  # Like query encrypt algorithm name 
-     
-   # Encrypt algorithm configuration
-   encryptors:
-@@ -58,17 +61,22 @@ rules:
-     t_user:
-       columns:
-         username:
--          cipherColumn: username
--          encryptorName: aes_encryptor
--          assistedQueryColumn: assisted_query_username
--          assistedQueryEncryptorName: assisted_encryptor
--          likeQueryColumn: like_query_username
--          likeQueryEncryptorName: like_encryptor
-+          cipher:
-+            name: username
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: assisted_query_username
-+            encryptorName: assisted_encryptor
-+          likeQuery:
-+            name: like_query_username
-+            encryptorName: like_encryptor
-         pwd:
--          cipherColumn: pwd
--          encryptorName: aes_encryptor
--          assistedQueryColumn: assisted_query_pwd
--          assistedQueryEncryptorName: assisted_encryptor
-+          cipher:
-+            name: pwd
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: assisted_query_pwd
-+            encryptorName: assisted_encryptor
-   encryptors:
-     aes_encryptor:
-       type: AES
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
-index 98e46bdd2a3..6e63a2a310e 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.cn.md
-@@ -50,12 +50,15 @@ rules:
-     <table_name>: # 加密表名称
-       columns:
-         <column_name> (+): # 加密列名称
--          cipherColumn: # 密文列名称
--          encryptorName: # 密文列加密算法名称
--          assistedQueryColumn (?):  # 查询辅助列名称
--          assistedQueryEncryptorName:  # 查询辅助列加密算法名称
--          likeQueryColumn (?):  # 模糊查询列名称
--          likeQueryEncryptorName:  # 模糊查询列加密算法名称
-+          cipher:
-+            name: # 密文列名称
-+            encryptorName: # 密文列加密算法名称
-+          assistedQuery (?):
-+            name: # 查询辅助列名称
-+            encryptorName:  # 查询辅助列加密算法名称
-+          likeQuery (?):
-+            name: # 模糊查询列名称
-+            encryptorName:  # 模糊查询列加密算法名称
- ```
- 
- ## 配置示例
-@@ -107,13 +110,17 @@ rules:
-     t_encrypt:
-       columns:
-         user_id:
--          cipherColumn: user_cipher
--          encryptorName: aes_encryptor
--          assistedQueryColumn: assisted_query_user
--          assistedQueryEncryptorName: assisted_encryptor
--          likeQueryColumn: like_query_user
--          likeQueryEncryptorName: like_encryptor
-+          cipher:
-+            name: user_cipher
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: assisted_query_user
-+            encryptorName: assisted_encryptor
-+          likeQuery:
-+            name: like_query_user
-+            encryptorName: like_encryptor
-         order_id:
--          cipherColumn: order_cipher
--          encryptorName: aes_encryptor
-+          cipher:
-+            name: order_cipher
-+            encryptorName: aes_encryptor
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
-index 75a20fbef53..2474859f016 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/mix.en.md
-@@ -51,12 +51,15 @@ rules:
-     <table_name>: # Encryption table name
-       columns:
-         <column_name> (+): # Encrypt logic column name
--          cipherColumn: # Cipher column name
--          encryptorName: # Cipher encrypt algorithm name
--          assistedQueryColumn (?):  # Assisted query column name
--          assistedQueryEncryptorName:  # Assisted query encrypt algorithm name
--          likeQueryColumn (?):  # Like query column name
--          likeQueryEncryptorName:  # Like query encrypt algorithm name 
-+          cipher:
-+            name: # Cipher column name
-+            encryptorName: # Cipher encrypt algorithm name
-+          assistedQuery (?):
-+            name: # Assisted query column name
-+            encryptorName:  # Assisted query encrypt algorithm name
-+          likeQuery (?):
-+            name: # Like query column name
-+            encryptorName:  # Like query encrypt algorithm name 
- ```
- 
- ## Samples
-@@ -108,13 +111,17 @@ rules:
-     t_encrypt:
-       columns:
-         user_id:
--          cipherColumn: user_cipher
--          encryptorName: aes_encryptor
--          assistedQueryColumn: assisted_query_user
--          assistedQueryEncryptorName: assisted_encryptor
--          likeQueryColumn: like_query_user
--          likeQueryEncryptorName: like_encryptor
-+          cipher:
-+            name: user_cipher
-+            encryptorName: aes_encryptor
-+          assistedQuery:
-+            name: assisted_query_user
-+            encryptorName: assisted_encryptor
-+          likeQuery:
-+            name: like_query_user
-+            encryptorName: like_encryptor
-         order_id:
--          cipherColumn: order_cipher
--          encryptorName: aes_encryptor
-+          cipher:
-+            name: order_cipher
-+            encryptorName: aes_encryptor
- ```
+ - [Core Feature: Data Encryption](/en/features/encrypt/)

@@ -19,8 +19,8 @@ SHARDINGSPHERE_DOC_PATH=$1
 
 echo "current path is ${SHARDINGSPHERE_DOC_PATH}"
 echo "1. start to clone shardingsphere"
-git clone https://github.com/apache/shardingsphere
-cd shardingsphere
+git clone https://github.com/taojintianxia/shardingsphere
+cd shardingsphere && git checkout test-docs-theme
 
 echo "1.1 prepare the config for checkstyle"
 sed -i 's/<property name="severity" value="error" \/>/<property name="severity" value="warning" \/>/g' src/resources/checkstyle.xml

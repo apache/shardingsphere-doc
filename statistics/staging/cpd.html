@@ -1109,6 +1109,110 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/mode/manager/cluster/ClusterModeContextManager.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/ClusterModeContextManager.html#L40">40</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/NewClusterModeContextManager.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/NewClusterModeContextManager.html#L41">41</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public final class ClusterModeContextManager implements ModeContextManager, ContextManagerAware {
+    
+    private ContextManager contextManager;
+    
+    @Override
+    public void createDatabase(final String databaseName) {
+        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().addDatabase(databaseName);
+    }
+    
+    @Override
+    public void dropDatabase(final String databaseName) {
+        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().dropDatabase(databaseName);
+    }
+    
+    @Override
+    public void createSchema(final String databaseName, final String schemaName) {
+        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().addSchema(databaseName, schemaName);
+    }
+    
+    @Override
+    public void alterSchema(final AlterSchemaPOJO alterSchemaPOJO) {
+        String databaseName = alterSchemaPOJO.getDatabaseName();
+        String schemaName = alterSchemaPOJO.getSchemaName();
+        ShardingSphereSchema schema = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getSchema(schemaName);
+        DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();
+        databaseMetaDataService.persist(databaseName, alterSchemaPOJO.getRenameSchemaName(), schema);
+        databaseMetaDataService.getViewMetaDataPersistService().persist(databaseName, alterSchemaPOJO.getRenameSchemaName(), schema.getViews());
+        databaseMetaDataService.dropSchema(databaseName, schemaName);
+    }
+    
+    @Override
+    public void dropSchema(final String databaseName, final Collection&lt;String&gt; schemaNames) {
+        DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();
+        schemaNames.forEach(each -&gt; databaseMetaDataService.dropSchema(databaseName, each));
+    }
+    
+    @Override
+    public void alterSchemaMetaData(final AlterSchemaMetaDataPOJO alterSchemaMetaDataPOJO) {
+        String databaseName = alterSchemaMetaDataPOJO.getDatabaseName();
+        String schemaName = alterSchemaMetaDataPOJO.getSchemaName();
+        Map&lt;String, ShardingSphereTable&gt; tables = alterSchemaMetaDataPOJO.getAlteredTables().stream().collect(Collectors.toMap(ShardingSphereTable::getName, table -&gt; table));
+        Map&lt;String, ShardingSphereView&gt; views = alterSchemaMetaDataPOJO.getAlteredViews().stream().collect(Collectors.toMap(ShardingSphereView::getName, view -&gt; view));
+        DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();
+        databaseMetaDataService.getTableMetaDataPersistService().persist(databaseName, schemaName, tables);
+        databaseMetaDataService.getViewMetaDataPersistService().persist(databaseName, schemaName, views);
+        alterSchemaMetaDataPOJO.getDroppedTables().forEach(each -&gt; databaseMetaDataService.getTableMetaDataPersistService().delete(databaseName, schemaName, each));
+        alterSchemaMetaDataPOJO.getDroppedViews().forEach(each -&gt; databaseMetaDataService.getViewMetaDataPersistService().delete(databaseName, schemaName, each));
+    }
+    
+    @Override
+    public void registerStorageUnits(final String databaseName, final Map&lt;String, DataSourceProperties&gt; toBeRegisterStorageUnitProps) {
+        contextManager.getMetaDataContexts().getPersistService().getDataSourceService().append(databaseName, toBeRegisterStorageUnitProps);
+    }
+    
+    @Override
+    public void alterStorageUnits(final String databaseName, final Map&lt;String, DataSourceProperties&gt; toBeUpdatedStorageUnitProps) {
+        contextManager.getMetaDataContexts().getPersistService().getDataSourceService().append(databaseName, toBeUpdatedStorageUnitProps);
+    }
+    
+    @Override
+    public void unregisterStorageUnits(final String databaseName, final Collection&lt;String&gt; toBeDroppedStorageUnitNames) {
+        contextManager.getMetaDataContexts().getPersistService().getDataSourceService().persist(databaseName,
+                getToBeReversedDataSourcePropsMap(contextManager.getMetaDataContexts().getPersistService().getDataSourceService().load(databaseName), toBeDroppedStorageUnitNames));
+    }
+    
+    private Map&lt;String, DataSourceProperties&gt; getToBeReversedDataSourcePropsMap(final Map&lt;String, DataSourceProperties&gt; dataSourcePropsMap, final Collection&lt;String&gt; toBeDroppedResourceNames) {
+        return dataSourcePropsMap.entrySet().stream().filter(entry -&gt; !toBeDroppedResourceNames.contains(entry.getKey())).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+    }
+    
+    @Override
+    public void alterRuleConfiguration(final String databaseName, final Collection&lt;RuleConfiguration&gt; ruleConfigs) {
+        contextManager.getMetaDataContexts().getPersistService().getDatabaseRulePersistService().persist(databaseName, ruleConfigs);
+    }
+    
+    @Override
+    public void alterGlobalRuleConfiguration(final Collection&lt;RuleConfiguration&gt; globalRuleConfigs) {
+        contextManager.getMetaDataContexts().getPersistService().getGlobalRuleService().persist(globalRuleConfigs);
+    }
+    
+    @Override
+    public void alterProperties(final Properties props) {
+        contextManager.getMetaDataContexts().getPersistService().getPropsService().persist(props);
+    }
+    
+    @Override
+    public void setContextManagerAware(final ContextManager contextManager) {
+        this.contextManager = contextManager;
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L1020">1020</a></td></tr>
@@ -1921,103 +2025,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/metadata/persist/MetaDataPersistService.java</td>
-<td>shardingsphere-metadata-core</td>
-<td><a href="./xref/org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#L68">68</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.java</td>
-<td>shardingsphere-metadata-core</td>
-<td><a href="./xref/org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.html#L70">70</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>dataSourceService = new DataSourcePersistService(repository);
-        databaseMetaDataService = new DatabaseMetaDataPersistService(repository);
-        databaseRulePersistService = new DatabaseRulePersistService(repository);
-        globalRuleService = new GlobalRulePersistService(repository);
-        propsService = new PropertiesPersistService(repository);
-        metaDataVersionPersistService = new MetaDataVersionPersistService(repository);
-        shardingSphereDataPersistService = new ShardingSphereDataPersistService(repository);
-    }
-    
-    /**
-     * Persist global rule configurations.
-     *
-     * @param globalRuleConfigs global rule configurations
-     * @param props properties
-     */
-    @Override
-    public void persistGlobalRuleConfiguration(final Collection&lt;RuleConfiguration&gt; globalRuleConfigs, final Properties props) {
-        globalRuleService.persist(globalRuleConfigs);
-        propsService.persist(props);
-    }
-    
-    /**
-     * Persist configurations.
-     *
-     * @param databaseName database name
-     * @param databaseConfigs database configurations
-     * @param dataSources data sources
-     * @param rules rules
-     */
-    @Override
-    public void persistConfigurations(final String databaseName, final DatabaseConfiguration databaseConfigs,
-                                      final Map&lt;String, DataSource&gt; dataSources, final Collection&lt;ShardingSphereRule&gt; rules) {
-        Map&lt;String, DataSourceProperties&gt; dataSourcePropertiesMap = getDataSourcePropertiesMap(databaseConfigs.getDataSources());
-        if (dataSourcePropertiesMap.isEmpty() &amp;&amp; databaseConfigs.getRuleConfigurations().isEmpty()) {
-            databaseMetaDataService.addDatabase(databaseName);
-        } else {
-            dataSourceService.persist(databaseName, getDataSourcePropertiesMap(databaseConfigs.getDataSources()));
-            databaseRulePersistService.persist(databaseName, dataSources, rules, databaseConfigs.getRuleConfigurations());
-        }
-    }
-    
-    private Map&lt;String, DataSourceProperties&gt; getDataSourcePropertiesMap(final Map&lt;String, DataSource&gt; dataSourceMap) {
-        Map&lt;String, DataSourceProperties&gt; result = new LinkedHashMap&lt;&gt;(dataSourceMap.size(), 1F);
-        for (Entry&lt;String, DataSource&gt; entry : dataSourceMap.entrySet()) {
-            result.put(entry.getKey(), DataSourcePropertiesCreator.create(entry.getValue()));
-        }
-        return result;
-    }
-    
-    /**
-     * Get effective data sources.
-     *
-     * @param databaseName database name
-     * @param databaseConfigs database configurations
-     * @return effective data sources
-     */
-    @Override
-    public Map&lt;String, DataSource&gt; getEffectiveDataSources(final String databaseName, final Map&lt;String, ? extends DatabaseConfiguration&gt; databaseConfigs) {
-        Map&lt;String, DataSourceProperties&gt; persistedDataPropsMap = dataSourceService.load(databaseName);
-        return databaseConfigs.containsKey(databaseName)
-                ? mergeEffectiveDataSources(persistedDataPropsMap, databaseConfigs.get(databaseName).getDataSources())
-                : DataSourcePoolCreator.create(persistedDataPropsMap);
-    }
-    
-    private Map&lt;String, DataSource&gt; mergeEffectiveDataSources(final Map&lt;String, DataSourceProperties&gt; persistedDataSourcePropsMap, final Map&lt;String, DataSource&gt; localConfiguredDataSources) {
-        Map&lt;String, DataSource&gt; result = new LinkedHashMap&lt;&gt;(persistedDataSourcePropsMap.size(), 1F);
-        for (Entry&lt;String, DataSourceProperties&gt; entry : persistedDataSourcePropsMap.entrySet()) {
-            String dataSourceName = entry.getKey();
-            DataSourceProperties persistedDataSourceProps = entry.getValue();
-            DataSource localConfiguredDataSource = localConfiguredDataSources.get(dataSourceName);
-            if (null == localConfiguredDataSource) {
-                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
-            } else if (DataSourcePropertiesCreator.create(localConfiguredDataSource).equals(persistedDataSourceProps)) {
-                result.put(dataSourceName, localConfiguredDataSource);
-            } else {
-                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
-                new DataSourcePoolDestroyer(localConfiguredDataSource).asyncDestroy();
-            }
-        }
-        return result;
-    }
-}</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-executor-core</td>
 <td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/FilterableTableScanExecutor.html#L244">244</a></td></tr>
@@ -2091,6 +2098,103 @@
                 return new EmptyRowEnumerator&lt;&gt;();
             }
         };
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/metadata/persist/MetaDataPersistService.java</td>
+<td>shardingsphere-metadata-core</td>
+<td><a href="./xref/org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#L68">68</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.java</td>
+<td>shardingsphere-metadata-core</td>
+<td><a href="./xref/org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.html#L70">70</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>dataSourceService = new DataSourcePersistService(repository);
+        databaseMetaDataService = new DatabaseMetaDataPersistService(repository);
+        databaseRulePersistService = new DatabaseRulePersistService(repository);
+        globalRuleService = new GlobalRulePersistService(repository);
+        propsService = new PropertiesPersistService(repository);
+        metaDataVersionPersistService = new MetaDataVersionPersistService(repository);
+        shardingSphereDataPersistService = new ShardingSphereDataPersistService(repository);
+    }
+    
+    /**
+     * Persist global rule configurations.
+     *
+     * @param globalRuleConfigs global rule configurations
+     * @param props properties
+     */
+    @Override
+    public void persistGlobalRuleConfiguration(final Collection&lt;RuleConfiguration&gt; globalRuleConfigs, final Properties props) {
+        globalRuleService.persist(globalRuleConfigs);
+        propsService.persist(props);
+    }
+    
+    /**
+     * Persist configurations.
+     *
+     * @param databaseName database name
+     * @param databaseConfigs database configurations
+     * @param dataSources data sources
+     * @param rules rules
+     */
+    @Override
+    public void persistConfigurations(final String databaseName, final DatabaseConfiguration databaseConfigs,
+                                      final Map&lt;String, DataSource&gt; dataSources, final Collection&lt;ShardingSphereRule&gt; rules) {
+        Map&lt;String, DataSourceProperties&gt; dataSourcePropertiesMap = getDataSourcePropertiesMap(databaseConfigs.getDataSources());
+        if (dataSourcePropertiesMap.isEmpty() &amp;&amp; databaseConfigs.getRuleConfigurations().isEmpty()) {
+            databaseMetaDataService.addDatabase(databaseName);
+        } else {
+            dataSourceService.persist(databaseName, getDataSourcePropertiesMap(databaseConfigs.getDataSources()));
+            databaseRulePersistService.persist(databaseName, databaseConfigs.getRuleConfigurations());
+        }
+    }
+    
+    private Map&lt;String, DataSourceProperties&gt; getDataSourcePropertiesMap(final Map&lt;String, DataSource&gt; dataSourceMap) {
+        Map&lt;String, DataSourceProperties&gt; result = new LinkedHashMap&lt;&gt;(dataSourceMap.size(), 1F);
+        for (Entry&lt;String, DataSource&gt; entry : dataSourceMap.entrySet()) {
+            result.put(entry.getKey(), DataSourcePropertiesCreator.create(entry.getValue()));
+        }
+        return result;
+    }
+    
+    /**
+     * Get effective data sources.
+     *
+     * @param databaseName database name
+     * @param databaseConfigs database configurations
+     * @return effective data sources
+     */
+    @Override
+    public Map&lt;String, DataSource&gt; getEffectiveDataSources(final String databaseName, final Map&lt;String, ? extends DatabaseConfiguration&gt; databaseConfigs) {
+        Map&lt;String, DataSourceProperties&gt; persistedDataPropsMap = dataSourceService.load(databaseName);
+        return databaseConfigs.containsKey(databaseName)
+                ? mergeEffectiveDataSources(persistedDataPropsMap, databaseConfigs.get(databaseName).getDataSources())
+                : DataSourcePoolCreator.create(persistedDataPropsMap);
+    }
+    
+    private Map&lt;String, DataSource&gt; mergeEffectiveDataSources(final Map&lt;String, DataSourceProperties&gt; persistedDataSourcePropsMap, final Map&lt;String, DataSource&gt; localConfiguredDataSources) {
+        Map&lt;String, DataSource&gt; result = new LinkedHashMap&lt;&gt;(persistedDataSourcePropsMap.size(), 1F);
+        for (Entry&lt;String, DataSourceProperties&gt; entry : persistedDataSourcePropsMap.entrySet()) {
+            String dataSourceName = entry.getKey();
+            DataSourceProperties persistedDataSourceProps = entry.getValue();
+            DataSource localConfiguredDataSource = localConfiguredDataSources.get(dataSourceName);
+            if (null == localConfiguredDataSource) {
+                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
+            } else if (DataSourcePropertiesCreator.create(localConfiguredDataSource).equals(persistedDataSourceProps)) {
+                result.put(dataSourceName, localConfiguredDataSource);
+            } else {
+                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
+                new DataSourcePoolDestroyer(localConfiguredDataSource).asyncDestroy();
+            }
+        }
+        return result;
     }
 }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
@@ -4233,6 +4337,47 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/infra/yaml/config/swapper/rule/NewYamlRuleConfigurationSwapperEngine.java</td>
+<td>shardingsphere-infra-common</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/yaml/config/swapper/rule/NewYamlRuleConfigurationSwapperEngine.html#L44">44</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/infra/yaml/config/swapper/rule/YamlRuleConfigurationSwapperEngine.java</td>
+<td>shardingsphere-infra-common</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/yaml/config/swapper/rule/YamlRuleConfigurationSwapperEngine.html#L43">43</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>return OrderedSPILoader.getServices(NewYamlRuleConfigurationSwapper.class, ruleConfigs);
+    }
+    
+    /**
+     * Swap from YAML rule configurations to rule configurations.
+     *
+     * @param yamlRuleConfigs YAML rule configurations
+     * @return rule configurations
+     */
+    @SuppressWarnings(&quot;rawtypes&quot;)
+    public Collection&lt;RuleConfiguration&gt; swapToRuleConfigurations(final Collection&lt;YamlRuleConfiguration&gt; yamlRuleConfigs) {
+        Collection&lt;RuleConfiguration&gt; result = new LinkedList&lt;&gt;();
+        Collection&lt;Class&lt;?&gt;&gt; ruleConfigTypes = yamlRuleConfigs.stream().map(YamlRuleConfiguration::getRuleConfigurationType).collect(Collectors.toList());
+        for (Entry&lt;Class&lt;?&gt;, YamlRuleConfigurationSwapper&gt; entry : OrderedSPILoader.getServicesByClass(YamlRuleConfigurationSwapper.class, ruleConfigTypes).entrySet()) {
+            result.addAll(swapToRuleConfigurations(yamlRuleConfigs, entry.getKey(), entry.getValue()));
+        }
+        return result;
+    }
+    
+    @SuppressWarnings({&quot;unchecked&quot;, &quot;rawtypes&quot;})
+    private Collection&lt;RuleConfiguration&gt; swapToRuleConfigurations(final Collection&lt;YamlRuleConfiguration&gt; yamlRuleConfigs,
+                                                                   final Class&lt;?&gt; ruleConfigType, final YamlRuleConfigurationSwapper swapper) {
+        return yamlRuleConfigs.stream()
+                .filter(each -&gt; each.getRuleConfigurationType().equals(ruleConfigType)).map(each -&gt; (RuleConfiguration) swapper.swapToObject(each)).collect(Collectors.toList());
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/test/it/sql/parser/internal/asserts/statement/rdl/alter/impl/AlterDefaultShardingStrategyStatementAssert.java</td>
 <td>shardingsphere-it-parser</td>
 <td><a href="./xref/org/apache/shardingsphere/test/it/sql/parser/internal/asserts/statement/rdl/alter/impl/AlterDefaultShardingStrategyStatementAssert.html#L45">45</a></td></tr>
@@ -4291,45 +4436,6 @@ public final class AgentReflectionUtils {
     
     @Override
     public final ASTNode visitRegularFunction(final RegularFunctionContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/mode/manager/cluster/ClusterContextManagerBuilder.java</td>
-<td>shardingsphere-cluster-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/ClusterContextManagerBuilder.html#L56">56</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/mode/manager/cluster/NewClusterContextManagerBuilder.java</td>
-<td>shardingsphere-cluster-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/NewClusterContextManagerBuilder.html#L57">57</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>MetaDataContexts metaDataContexts = MetaDataContextsFactory.create(persistService, param, instanceContext, registryCenter.getStorageNodeStatusService().loadStorageNodes());
-        ContextManager result = new ContextManager(metaDataContexts, instanceContext);
-        setContextManagerAware(result);
-        registerOnline(persistService, registryCenter, param, result);
-        return result;
-    }
-    
-    private ClusterPersistRepository getClusterPersistRepository(final ClusterPersistRepositoryConfiguration config) {
-        Preconditions.checkNotNull(config, &quot;Cluster persist repository configuration cannot be null.&quot;);
-        ClusterPersistRepository result = TypedSPILoader.getService(ClusterPersistRepository.class, config.getType(), config.getProps());
-        result.init(config);
-        return result;
-    }
-    
-    private InstanceContext buildInstanceContext(final RegistryCenter registryCenter, final ContextManagerBuilderParameter param) {
-        return new InstanceContext(new ComputeNodeInstance(param.getInstanceMetaData()), new ClusterWorkerIdGenerator(registryCenter, param.getInstanceMetaData()),
-                param.getModeConfiguration(), new ClusterModeContextManager(), new GlobalLockContext(registryCenter.getGlobalLockPersistService()), registryCenter.getEventBusContext());
-    }
-    
-    private void setContextManagerAware(final ContextManager contextManager) {
-        ((ContextManagerAware) contextManager.getInstanceContext().getModeContextManager()).setContextManagerAware(contextManager);
-    }
-    
-    private void registerOnline(final MetaDataPersistService persistService, final RegistryCenter registryCenter, final ContextManagerBuilderParameter param, final ContextManager contextManager) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -6744,6 +6850,38 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/mode/manager/cluster/ClusterContextManagerBuilder.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/ClusterContextManagerBuilder.html#L56">56</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/NewClusterContextManagerBuilder.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/NewClusterContextManagerBuilder.html#L57">57</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>MetaDataContexts metaDataContexts = MetaDataContextsFactory.create(persistService, param, instanceContext, registryCenter.getStorageNodeStatusService().loadStorageNodes());
+        ContextManager result = new ContextManager(metaDataContexts, instanceContext);
+        setContextManagerAware(result);
+        registerOnline(persistService, registryCenter, param, result);
+        return result;
+    }
+    
+    private ClusterPersistRepository getClusterPersistRepository(final ClusterPersistRepositoryConfiguration config) {
+        Preconditions.checkNotNull(config, &quot;Cluster persist repository configuration cannot be null.&quot;);
+        ClusterPersistRepository result = TypedSPILoader.getService(ClusterPersistRepository.class, config.getType(), config.getProps());
+        result.init(config);
+        return result;
+    }
+    
+    private InstanceContext buildInstanceContext(final RegistryCenter registryCenter, final ContextManagerBuilderParameter param) {
+        return new InstanceContext(new ComputeNodeInstance(param.getInstanceMetaData()), new ClusterWorkerIdGenerator(registryCenter, param.getInstanceMetaData()),
+                param.getModeConfiguration(), new ClusterModeContextManager(), new GlobalLockContext(registryCenter.getGlobalLockPersistService()), registryCenter.getEventBusContext());</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1516">1516</a></td></tr>
@@ -8646,10 +8784,14 @@ public final class AgentReflectionUtils {
 <td>shardingsphere-cluster-mode-core</td>
 <td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/ClusterModeContextManager.html#L81">81</a></td></tr>
 <tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/NewClusterModeContextManager.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/NewClusterModeContextManager.html#L82">82</a></td></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.java</td>
 <td>shardingsphere-standalone-mode-core</td>
 <td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.html#L189">189</a></td></tr>
-<tr class="b"><td colspan='3'>
+<tr class="a"><td colspan='3'>
 <div>
 <pre>Map&lt;String, ShardingSphereView&gt; views = alterSchemaMetaDataPOJO.getAlteredViews().stream().collect(Collectors.toMap(ShardingSphereView::getName, view -&gt; view));
         DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();

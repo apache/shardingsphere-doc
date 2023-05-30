@@ -68,7 +68,7 @@
 <a class="jxr_linenumber" name="L60" href="#L60">60</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String INDEX_META_DATA_SQL = <span class="jxr_string">"SELECT OWNER AS TABLE_SCHEMA, TABLE_NAME, INDEX_NAME FROM ALL_INDEXES WHERE OWNER = ? AND TABLE_NAME IN (%s)"</span>;
 <a class="jxr_linenumber" name="L61" href="#L61">61</a>      
 <a class="jxr_linenumber" name="L62" href="#L62">62</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String PRIMARY_KEY_META_DATA_SQL = <span class="jxr_string">"SELECT A.OWNER AS TABLE_SCHEMA, A.TABLE_NAME AS TABLE_NAME, B.COLUMN_NAME AS COLUMN_NAME FROM ALL_CONSTRAINTS A INNER JOIN"</span>
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>              + <span class="jxr_string">" ALL_CONS_COLUMNS B ON A.CONSTRAINT_NAME = B.CONSTRAINT_NAME WHERE CONSTRAINT_TYPE = 'P' AND A.OWNER = ?"</span>;
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>              + <span class="jxr_string">" ALL_CONS_COLUMNS B ON A.CONSTRAINT_NAME = B.CONSTRAINT_NAME WHERE CONSTRAINT_TYPE = 'P' AND A.OWNER = '%s'"</span>;
 <a class="jxr_linenumber" name="L64" href="#L64">64</a>      
 <a class="jxr_linenumber" name="L65" href="#L65">65</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String PRIMARY_KEY_META_DATA_SQL_IN_TABLES = PRIMARY_KEY_META_DATA_SQL + <span class="jxr_string">" AND A.TABLE_NAME IN (%s)"</span>;
 <a class="jxr_linenumber" name="L66" href="#L66">66</a>      
@@ -184,29 +184,28 @@
 <a class="jxr_linenumber" name="L176" href="#L176">176</a>     
 <a class="jxr_linenumber" name="L177" href="#L177">177</a>     <strong class="jxr_keyword">private</strong> Map&lt;String, Collection&lt;String&gt;&gt; loadTablePrimaryKeys(<strong class="jxr_keyword">final</strong> Connection connection, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tableNames) <strong class="jxr_keyword">throws</strong> SQLException {
 <a class="jxr_linenumber" name="L178" href="#L178">178</a>         Map&lt;String, Collection&lt;String&gt;&gt; result = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;();
-<a class="jxr_linenumber" name="L179" href="#L179">179</a>         <strong class="jxr_keyword">try</strong> (PreparedStatement preparedStatement = connection.prepareStatement(getPrimaryKeyMetaDataSQL(tableNames))) {
-<a class="jxr_linenumber" name="L180" href="#L180">180</a>             preparedStatement.setString(1, connection.getSchema());
-<a class="jxr_linenumber" name="L181" href="#L181">181</a>             <strong class="jxr_keyword">try</strong> (ResultSet resultSet = preparedStatement.executeQuery()) {
-<a class="jxr_linenumber" name="L182" href="#L182">182</a>                 <strong class="jxr_keyword">while</strong> (resultSet.next()) {
-<a class="jxr_linenumber" name="L183" href="#L183">183</a>                     String columnName = resultSet.getString(<span class="jxr_string">"COLUMN_NAME"</span>);
-<a class="jxr_linenumber" name="L184" href="#L184">184</a>                     String tableName = resultSet.getString(<span class="jxr_string">"TABLE_NAME"</span>);
-<a class="jxr_linenumber" name="L185" href="#L185">185</a>                     result.computeIfAbsent(tableName, k -&gt; <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;()).add(columnName);
-<a class="jxr_linenumber" name="L186" href="#L186">186</a>                 }
-<a class="jxr_linenumber" name="L187" href="#L187">187</a>             }
-<a class="jxr_linenumber" name="L188" href="#L188">188</a>         }
-<a class="jxr_linenumber" name="L189" href="#L189">189</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L190" href="#L190">190</a>     }
-<a class="jxr_linenumber" name="L191" href="#L191">191</a>     
-<a class="jxr_linenumber" name="L192" href="#L192">192</a>     <strong class="jxr_keyword">private</strong> String getPrimaryKeyMetaDataSQL(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tables) {
-<a class="jxr_linenumber" name="L193" href="#L193">193</a>         <strong class="jxr_keyword">return</strong> tables.isEmpty() ? PRIMARY_KEY_META_DATA_SQL
-<a class="jxr_linenumber" name="L194" href="#L194">194</a>                 : String.format(PRIMARY_KEY_META_DATA_SQL_IN_TABLES, tables.stream().map(each -&gt; String.format(<span class="jxr_string">"'%s'"</span>, each)).collect(Collectors.joining(<span class="jxr_string">","</span>)));
-<a class="jxr_linenumber" name="L195" href="#L195">195</a>     }
-<a class="jxr_linenumber" name="L196" href="#L196">196</a>     
-<a class="jxr_linenumber" name="L197" href="#L197">197</a>     @Override
-<a class="jxr_linenumber" name="L198" href="#L198">198</a>     <strong class="jxr_keyword">public</strong> String getType() {
-<a class="jxr_linenumber" name="L199" href="#L199">199</a>         <strong class="jxr_keyword">return</strong> <span class="jxr_string">"Oracle"</span>;
-<a class="jxr_linenumber" name="L200" href="#L200">200</a>     }
-<a class="jxr_linenumber" name="L201" href="#L201">201</a> }
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>         <strong class="jxr_keyword">try</strong> (PreparedStatement preparedStatement = connection.prepareStatement(getPrimaryKeyMetaDataSQL(connection.getSchema(), tableNames))) {
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>             <strong class="jxr_keyword">try</strong> (ResultSet resultSet = preparedStatement.executeQuery()) {
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>                 <strong class="jxr_keyword">while</strong> (resultSet.next()) {
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>                     String columnName = resultSet.getString(<span class="jxr_string">"COLUMN_NAME"</span>);
+<a class="jxr_linenumber" name="L183" href="#L183">183</a>                     String tableName = resultSet.getString(<span class="jxr_string">"TABLE_NAME"</span>);
+<a class="jxr_linenumber" name="L184" href="#L184">184</a>                     result.computeIfAbsent(tableName, k -&gt; <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;()).add(columnName);
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>                 }
+<a class="jxr_linenumber" name="L186" href="#L186">186</a>             }
+<a class="jxr_linenumber" name="L187" href="#L187">187</a>         }
+<a class="jxr_linenumber" name="L188" href="#L188">188</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L189" href="#L189">189</a>     }
+<a class="jxr_linenumber" name="L190" href="#L190">190</a>     
+<a class="jxr_linenumber" name="L191" href="#L191">191</a>     <strong class="jxr_keyword">private</strong> String getPrimaryKeyMetaDataSQL(<strong class="jxr_keyword">final</strong> String schemaName, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tables) {
+<a class="jxr_linenumber" name="L192" href="#L192">192</a>         <strong class="jxr_keyword">return</strong> tables.isEmpty() ? String.format(PRIMARY_KEY_META_DATA_SQL, schemaName)
+<a class="jxr_linenumber" name="L193" href="#L193">193</a>                 : String.format(PRIMARY_KEY_META_DATA_SQL_IN_TABLES, schemaName, tables.stream().map(each -&gt; String.format(<span class="jxr_string">"'%s'"</span>, each)).collect(Collectors.joining(<span class="jxr_string">","</span>)));
+<a class="jxr_linenumber" name="L194" href="#L194">194</a>     }
+<a class="jxr_linenumber" name="L195" href="#L195">195</a>     
+<a class="jxr_linenumber" name="L196" href="#L196">196</a>     @Override
+<a class="jxr_linenumber" name="L197" href="#L197">197</a>     <strong class="jxr_keyword">public</strong> String getType() {
+<a class="jxr_linenumber" name="L198" href="#L198">198</a>         <strong class="jxr_keyword">return</strong> <span class="jxr_string">"Oracle"</span>;
+<a class="jxr_linenumber" name="L199" href="#L199">199</a>     }
+<a class="jxr_linenumber" name="L200" href="#L200">200</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2023 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

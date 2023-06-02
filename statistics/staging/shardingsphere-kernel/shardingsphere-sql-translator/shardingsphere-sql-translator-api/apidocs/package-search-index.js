@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.sqltranslator.api.config"},{"l":"org.apache.shardingsphere.sqltranslator.exception"},{"l":"org.apache.shardingsphere.sqltranslator.exception.syntax"},{"l":"org.apache.shardingsphere.sqltranslator.spi"}]

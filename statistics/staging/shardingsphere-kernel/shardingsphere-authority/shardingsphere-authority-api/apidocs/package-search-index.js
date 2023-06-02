@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.authority.config"},{"l":"org.apache.shardingsphere.authority.model"},{"l":"org.apache.shardingsphere.authority.spi"}]

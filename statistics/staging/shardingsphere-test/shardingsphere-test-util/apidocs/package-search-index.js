@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.test.loader"},{"l":"org.apache.shardingsphere.test.loader.strategy"},{"l":"org.apache.shardingsphere.test.loader.strategy.impl"},{"l":"org.apache.shardingsphere.test.loader.summary"},{"l":"org.apache.shardingsphere.test.mock"},{"l":"org.apache.shardingsphere.test.util"}]

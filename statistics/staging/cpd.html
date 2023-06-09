@@ -2995,44 +2995,6 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.java</td>
-<td>shardingsphere-infra-context</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.html#L59">59</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.java</td>
-<td>shardingsphere-infra-context</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.html#L56">56</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>}
-    
-    private ShardingSphereTable getTable(final ShardingSphereDatabase database, final Collection&lt;String&gt; logicDataSourceNames, final String schemaName,
-                                         final String tableName, final ConfigurationProperties props) throws SQLException {
-        ShardingSphereRuleMetaData ruleMetaData = new ShardingSphereRuleMetaData(new LinkedList&lt;&gt;(database.getRuleMetaData().getRules()));
-        if (!containsInImmutableDataNodeContainedRule(tableName, database)) {
-            ruleMetaData.findRules(MutableDataNodeRule.class).forEach(each -&gt; each.put(logicDataSourceNames.iterator().next(), schemaName, tableName));
-        }
-        GenericSchemaBuilderMaterial material = new GenericSchemaBuilderMaterial(database.getProtocolType(),
-                database.getResourceMetaData().getStorageTypes(), database.getResourceMetaData().getDataSources(), ruleMetaData.getRules(), props, schemaName);
-        Map&lt;String, ShardingSphereSchema&gt; schemaMap = GenericSchemaBuilder.build(Collections.singletonList(tableName), material);
-        return Optional.ofNullable(schemaMap.get(schemaName)).map(optional -&gt; optional.getTable(tableName))
-                .orElseGet(() -&gt; new ShardingSphereTable(tableName, Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
-    }
-    
-    private boolean containsInImmutableDataNodeContainedRule(final String tableName, final ShardingSphereDatabase database) {
-        return database.getRuleMetaData().findRules(DataNodeContainedRule.class).stream()
-                .filter(each -&gt; !(each instanceof MutableDataNodeRule)).anyMatch(each -&gt; each.getAllTables().contains(tableName));
-    }
-    
-    @Override
-    public String getType() {
-        return AlterTableStatement.class.getName();</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1346">1346</a></td></tr>
@@ -3163,6 +3125,43 @@ public final class AgentReflectionUtils {
     }
     
     private Collection&lt;TableMetaData&gt; createTableMetaDataList(final Multimap&lt;String, IndexMetaData&gt; tableIndexMetaDataMap, final Multimap&lt;String, ColumnMetaData&gt; tableColumnMetaDataMap) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.java</td>
+<td>shardingsphere-infra-context</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.html#L59">59</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.java</td>
+<td>shardingsphere-infra-context</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.html#L56">56</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>}
+    
+    private ShardingSphereTable getTable(final ShardingSphereDatabase database, final Collection&lt;String&gt; logicDataSourceNames, final String schemaName,
+                                         final String tableName, final ConfigurationProperties props) throws SQLException {
+        ShardingSphereRuleMetaData ruleMetaData = new ShardingSphereRuleMetaData(new LinkedList&lt;&gt;(database.getRuleMetaData().getRules()));
+        if (isSingleTable(tableName, database)) {
+            ruleMetaData.findRules(MutableDataNodeRule.class).forEach(each -&gt; each.put(logicDataSourceNames.iterator().next(), schemaName, tableName));
+        }
+        GenericSchemaBuilderMaterial material = new GenericSchemaBuilderMaterial(database.getProtocolType(),
+                database.getResourceMetaData().getStorageTypes(), database.getResourceMetaData().getDataSources(), ruleMetaData.getRules(), props, schemaName);
+        Map&lt;String, ShardingSphereSchema&gt; schemaMap = GenericSchemaBuilder.build(Collections.singletonList(tableName), material);
+        return Optional.ofNullable(schemaMap.get(schemaName)).map(optional -&gt; optional.getTable(tableName))
+                .orElseGet(() -&gt; new ShardingSphereTable(tableName, Collections.emptyList(), Collections.emptyList(), Collections.emptyList()));
+    }
+    
+    private boolean isSingleTable(final String tableName, final ShardingSphereDatabase database) {
+        return database.getRuleMetaData().findRules(TableContainedRule.class).stream().noneMatch(each -&gt; each.getDistributedTableMapper().contains(tableName));
+    }
+    
+    @Override
+    public String getType() {
+        return AlterTableStatement.class.getName();</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -3666,6 +3665,57 @@ public final class AgentReflectionUtils {
         if (Strings.isNullOrEmpty(result)) {
             return result;
         }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/traffic/yaml/swapper/NewYamlTrafficRuleConfigurationSwapper.java</td>
+<td>shardingsphere-traffic-core</td>
+<td><a href="./xref/org/apache/shardingsphere/traffic/yaml/swapper/NewYamlTrafficRuleConfigurationSwapper.html#L79">79</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/traffic/yaml/swapper/YamlTrafficRuleConfigurationSwapper.java</td>
+<td>shardingsphere-traffic-core</td>
+<td><a href="./xref/org/apache/shardingsphere/traffic/yaml/swapper/YamlTrafficRuleConfigurationSwapper.html#L56">56</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>private TrafficRuleConfiguration swapToObject(final YamlTrafficRuleConfiguration yamlConfig) {
+        
+        TrafficRuleConfiguration result = new TrafficRuleConfiguration();
+        for (Entry&lt;String, YamlTrafficStrategyConfiguration&gt; entry : yamlConfig.getTrafficStrategies().entrySet()) {
+            YamlTrafficStrategyConfiguration strategyConfig = entry.getValue();
+            strategyConfig.setName(entry.getKey());
+            result.getTrafficStrategies().add(strategySwapper.swapToObject(strategyConfig));
+        }
+        setAlgorithms(yamlConfig, result);
+        return result;
+    }
+    
+    private void setAlgorithms(final YamlTrafficRuleConfiguration yamlConfig, final TrafficRuleConfiguration ruleConfig) {
+        if (null != yamlConfig.getTrafficAlgorithms()) {
+            yamlConfig.getTrafficAlgorithms().forEach((key, value) -&gt; ruleConfig.getTrafficAlgorithms().put(key, algorithmSwapper.swapToObject(value)));
+        }
+        if (null != yamlConfig.getLoadBalancers()) {
+            yamlConfig.getLoadBalancers().forEach((key, value) -&gt; ruleConfig.getLoadBalancers().put(key, algorithmSwapper.swapToObject(value)));
+        }
+    }
+    
+    @Override
+    public Class&lt;TrafficRuleConfiguration&gt; getTypeClass() {
+        return TrafficRuleConfiguration.class;
+    }
+    
+    @Override
+    public String getRuleTagName() {
+        return &quot;TRAFFIC&quot;;
+    }
+    
+    @Override
+    public int getOrder() {
+        return TrafficOrder.ORDER;
+    }
+}</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -4194,53 +4244,6 @@ public final class AgentReflectionUtils {
         result.setLeft(tableSegment);
         result.setStartIndex(tableSegment.getStartIndex());
         result.setStopIndex(ctx.stop.getStopIndex());</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
-<td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L217">217</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
-<td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L245">245</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>private boolean isTransparentStatement(final ShardingSphereRuleMetaData ruleMetaData) {
-        Optional&lt;DataNodeContainedRule&gt; dataNodeContainedRule = getDataNodeContainedRuleForShardingRule(ruleMetaData.findRules(DataNodeContainedRule.class));
-        Collection&lt;ColumnContainedRule&gt; columnContainedRules = ruleMetaData.findRules(ColumnContainedRule.class);
-        for (String each : sqlStatementContext.getTablesContext().getTableNames()) {
-            if ((!dataNodeContainedRule.isPresent() || !dataNodeContainedRule.get().getAllTables().contains(each)) &amp;&amp; !containsInColumnContainedRule(each, columnContainedRules)) {
-                continue;
-            }
-            return false;
-        }
-        return true;
-    }
-    
-    private Optional&lt;DataNodeContainedRule&gt; getDataNodeContainedRuleForShardingRule(final Collection&lt;DataNodeContainedRule&gt; dataNodeContainedRules) {
-        for (DataNodeContainedRule each : dataNodeContainedRules) {
-            if (!(each instanceof MutableDataNodeRule)) {
-                return Optional.of(each);
-            }
-        }
-        return Optional.empty();
-    }
-    
-    private boolean containsInColumnContainedRule(final String tableName, final Collection&lt;ColumnContainedRule&gt; columnContainedRules) {
-        for (ColumnContainedRule each : columnContainedRules) {
-            if (each.getTables().contains(tableName)) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    @Override
-    public ResultSet executeQuery() throws SQLException {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -4986,6 +4989,39 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/traffic/yaml/swapper/NewYamlTrafficRuleConfigurationSwapper.java</td>
+<td>shardingsphere-traffic-core</td>
+<td><a href="./xref/org/apache/shardingsphere/traffic/yaml/swapper/NewYamlTrafficRuleConfigurationSwapper.html#L50">50</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/traffic/yaml/swapper/YamlTrafficRuleConfigurationSwapper.java</td>
+<td>shardingsphere-traffic-core</td>
+<td><a href="./xref/org/apache/shardingsphere/traffic/yaml/swapper/YamlTrafficRuleConfigurationSwapper.html#L39">39</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>private YamlTrafficRuleConfiguration swapToYamlConfiguration(final TrafficRuleConfiguration data) {
+        YamlTrafficRuleConfiguration result = new YamlTrafficRuleConfiguration();
+        data.getTrafficStrategies().forEach(each -&gt; result.getTrafficStrategies().put(each.getName(), strategySwapper.swapToYamlConfiguration(each)));
+        setYamlAlgorithms(data, result);
+        return result;
+    }
+    
+    private void setYamlAlgorithms(final TrafficRuleConfiguration data, final YamlTrafficRuleConfiguration yamlConfig) {
+        if (null != data.getTrafficAlgorithms()) {
+            data.getTrafficAlgorithms().forEach((key, value) -&gt; yamlConfig.getTrafficAlgorithms().put(key, algorithmSwapper.swapToYamlConfiguration(value)));
+        }
+        if (null != data.getLoadBalancers()) {
+            data.getLoadBalancers().forEach((key, value) -&gt; yamlConfig.getLoadBalancers().put(key, algorithmSwapper.swapToYamlConfiguration(value)));
+        }
+    }
+    
+    @Override
+    public TrafficRuleConfiguration swapToObject(final Collection&lt;YamlDataNode&gt; dataNodes) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1249">1249</a></td></tr>
@@ -5113,52 +5149,6 @@ public final class AgentReflectionUtils {
     @Override
     public ASTNode visitDeallocate(final DeallocateContext ctx) {
         return new OpenGaussDeallocateStatement();</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
-<td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L219">219</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
-<td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L247">247</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/proxy/backend/connector/DatabaseConnector.java</td>
-<td>shardingsphere-proxy-backend-core</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/backend/connector/DatabaseConnector.html#L150">150</a></td></tr>
-<tr class="a"><td colspan='3'>
-<div>
-<pre>Collection&lt;ColumnContainedRule&gt; columnContainedRules = ruleMetaData.findRules(ColumnContainedRule.class);
-        for (String each : sqlStatementContext.getTablesContext().getTableNames()) {
-            if ((!dataNodeContainedRule.isPresent() || !dataNodeContainedRule.get().getAllTables().contains(each)) &amp;&amp; !containsInColumnContainedRule(each, columnContainedRules)) {
-                continue;
-            }
-            return false;
-        }
-        return true;
-    }
-    
-    private Optional&lt;DataNodeContainedRule&gt; getDataNodeContainedRuleForShardingRule(final Collection&lt;DataNodeContainedRule&gt; dataNodeContainedRules) {
-        for (DataNodeContainedRule each : dataNodeContainedRules) {
-            if (!(each instanceof MutableDataNodeRule)) {
-                return Optional.of(each);
-            }
-        }
-        return Optional.empty();
-    }
-    
-    private boolean containsInColumnContainedRule(final String tableName, final Collection&lt;ColumnContainedRule&gt; columnContainedRules) {
-        for (ColumnContainedRule each : columnContainedRules) {
-            if (each.getTables().contains(tableName)) {
-                return true;
-            }
-        }
-        return false;
-    }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -5623,11 +5613,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L299">299</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L280">280</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L196">196</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L195">195</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>return context.getInputGroups().iterator().next().getInputs().iterator().next();
@@ -5799,6 +5789,47 @@ public final class AgentReflectionUtils {
                 count++;
             }
         }
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/authority/yaml/swapper/NewYamlAuthorityRuleConfigurationSwapper.java</td>
+<td>shardingsphere-authority-core</td>
+<td><a href="./xref/org/apache/shardingsphere/authority/yaml/swapper/NewYamlAuthorityRuleConfigurationSwapper.html#L74">74</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/authority/yaml/swapper/YamlAuthorityRuleConfigurationSwapper.java</td>
+<td>shardingsphere-authority-core</td>
+<td><a href="./xref/org/apache/shardingsphere/authority/yaml/swapper/YamlAuthorityRuleConfigurationSwapper.html#L52">52</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>private AuthorityRuleConfiguration swapToObject(final YamlAuthorityRuleConfiguration yamlConfig) {
+        Collection&lt;ShardingSphereUser&gt; users = YamlUsersConfigurationConverter.convertToShardingSphereUser(yamlConfig.getUsers());
+        AlgorithmConfiguration provider = algorithmSwapper.swapToObject(yamlConfig.getPrivilege());
+        if (null == provider) {
+            provider = new DefaultAuthorityRuleConfigurationBuilder().build().getAuthorityProvider();
+        }
+        AuthorityRuleConfiguration result = new AuthorityRuleConfiguration(users, provider, yamlConfig.getDefaultAuthenticator());
+        yamlConfig.getAuthenticators().forEach((key, value) -&gt; result.getAuthenticators().put(key, algorithmSwapper.swapToObject(value)));
+        return result;
+    }
+    
+    @Override
+    public Class&lt;AuthorityRuleConfiguration&gt; getTypeClass() {
+        return AuthorityRuleConfiguration.class;
+    }
+    
+    @Override
+    public String getRuleTagName() {
+        return &quot;AUTHORITY&quot;;
+    }
+    
+    @Override
+    public int getOrder() {
+        return AuthorityOrder.ORDER;
     }
 }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
@@ -6672,7 +6703,7 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sharding/rule/ShardingRule.java</td>
 <td>shardingsphere-sharding-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sharding/rule/ShardingRule.html#L252">252</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sharding/rule/ShardingRule.html#L275">275</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.java</td>
 <td>shardingsphere-sharding-distsql-handler</td>
@@ -6856,29 +6887,6 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/infra/connection/refresher/type/view/AlterViewStatementSchemaRefresher.java</td>
-<td>shardingsphere-infra-context</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/view/AlterViewStatementSchemaRefresher.html#L75">75</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/infra/connection/refresher/type/view/CreateViewStatementSchemaRefresher.java</td>
-<td>shardingsphere-infra-context</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/view/CreateViewStatementSchemaRefresher.html#L51">51</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>ShardingSphereRuleMetaData ruleMetaData = new ShardingSphereRuleMetaData(new LinkedList&lt;&gt;(database.getRuleMetaData().getRules()));
-        if (!containsInImmutableDataNodeContainedRule(viewName, database)) {
-            ruleMetaData.findRules(MutableDataNodeRule.class).forEach(each -&gt; each.put(logicDataSourceNames.iterator().next(), schemaName, viewName));
-        }
-        GenericSchemaBuilderMaterial material = new GenericSchemaBuilderMaterial(database.getProtocolType(),
-                database.getResourceMetaData().getStorageTypes(), database.getResourceMetaData().getDataSources(), ruleMetaData.getRules(), props, schemaName);
-        Map&lt;String, ShardingSphereSchema&gt; schemaMap = GenericSchemaBuilder.build(Collections.singletonList(viewName), material);
-        Optional&lt;ShardingSphereTable&gt; actualViewMetaData = Optional.ofNullable(schemaMap.get(schemaName)).map(optional -&gt; optional.getTable(viewName));</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.java</td>
 <td>shardingsphere-sql-federation-core</td>
 <td><a href="./xref/org/apache/shardingsphere/sqlfederation/executor/TranslatableTableScanExecutor.html#L176">176</a></td></tr>
@@ -6941,13 +6949,36 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/infra/connection/refresher/type/view/AlterViewStatementSchemaRefresher.java</td>
+<td>shardingsphere-infra-context</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/view/AlterViewStatementSchemaRefresher.html#L75">75</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/infra/connection/refresher/type/view/CreateViewStatementSchemaRefresher.java</td>
+<td>shardingsphere-infra-context</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/view/CreateViewStatementSchemaRefresher.html#L51">51</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>ShardingSphereRuleMetaData ruleMetaData = new ShardingSphereRuleMetaData(new LinkedList&lt;&gt;(database.getRuleMetaData().getRules()));
+        if (isSingleTable(viewName, database)) {
+            ruleMetaData.findRules(MutableDataNodeRule.class).forEach(each -&gt; each.put(logicDataSourceNames.iterator().next(), schemaName, viewName));
+        }
+        GenericSchemaBuilderMaterial material = new GenericSchemaBuilderMaterial(database.getProtocolType(),
+                database.getResourceMetaData().getStorageTypes(), database.getResourceMetaData().getDataSources(), ruleMetaData.getRules(), props, schemaName);
+        Map&lt;String, ShardingSphereSchema&gt; schemaMap = GenericSchemaBuilder.build(Collections.singletonList(viewName), material);
+        Optional&lt;ShardingSphereTable&gt; actualViewMetaData = Optional.ofNullable(schemaMap.get(schemaName)).map(optional -&gt; optional.getTable(viewName));</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L546">546</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L527">527</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L628">628</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L609">609</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>currentResultSet = new ShardingSphereResultSet(resultSets, mergedResult, this, transparentStatement, executionContext, columnLabelAndIndexMap);
@@ -7124,32 +7155,6 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.java</td>
-<td>shardingsphere-infra-context</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.html#L63">63</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/infra/connection/refresher/type/table/CreateTableStatementSchemaRefresher.java</td>
-<td>shardingsphere-infra-context</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/CreateTableStatementSchemaRefresher.html#L50">50</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.java</td>
-<td>shardingsphere-infra-context</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.html#L60">60</a></td></tr>
-<tr class="a"><td colspan='3'>
-<div>
-<pre>ShardingSphereRuleMetaData ruleMetaData = new ShardingSphereRuleMetaData(new LinkedList&lt;&gt;(database.getRuleMetaData().getRules()));
-        if (!containsInImmutableDataNodeContainedRule(tableName, database)) {
-            ruleMetaData.findRules(MutableDataNodeRule.class).forEach(each -&gt; each.put(logicDataSourceNames.iterator().next(), schemaName, tableName));
-        }
-        GenericSchemaBuilderMaterial material = new GenericSchemaBuilderMaterial(database.getProtocolType(),
-                database.getResourceMetaData().getStorageTypes(), database.getResourceMetaData().getDataSources(), ruleMetaData.getRules(), props, schemaName);
-        Map&lt;String, ShardingSphereSchema&gt; schemaMap = GenericSchemaBuilder.build(Collections.singletonList(tableName), material);</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1641">1641</a></td></tr>
@@ -7176,6 +7181,32 @@ public final class AgentReflectionUtils {
     @Override
     public ASTNode visitTableReferences(final TableReferencesContext ctx) {
         TableSegment result = (TableSegment) visit(ctx.tableReference(0));</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.java</td>
+<td>shardingsphere-infra-context</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.html#L63">63</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/infra/connection/refresher/type/table/CreateTableStatementSchemaRefresher.java</td>
+<td>shardingsphere-infra-context</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/CreateTableStatementSchemaRefresher.html#L50">50</a></td></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.java</td>
+<td>shardingsphere-infra-context</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/RenameTableStatementSchemaRefresher.html#L60">60</a></td></tr>
+<tr class="a"><td colspan='3'>
+<div>
+<pre>ShardingSphereRuleMetaData ruleMetaData = new ShardingSphereRuleMetaData(new LinkedList&lt;&gt;(database.getRuleMetaData().getRules()));
+        if (isSingleTable(tableName, database)) {
+            ruleMetaData.findRules(MutableDataNodeRule.class).forEach(each -&gt; each.put(logicDataSourceNames.iterator().next(), schemaName, tableName));
+        }
+        GenericSchemaBuilderMaterial material = new GenericSchemaBuilderMaterial(database.getProtocolType(),
+                database.getResourceMetaData().getStorageTypes(), database.getResourceMetaData().getDataSources(), ruleMetaData.getRules(), props, schemaName);
+        Map&lt;String, ShardingSphereSchema&gt; schemaMap = GenericSchemaBuilder.build(Collections.singletonList(tableName), material);</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -7242,11 +7273,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L717">717</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L698">698</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L656">656</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L637">637</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>clearParameters();
@@ -7904,7 +7935,7 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sharding/rule/ShardingRule.java</td>
 <td>shardingsphere-sharding-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sharding/rule/ShardingRule.html#L156">156</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sharding/rule/ShardingRule.html#L179">179</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.java</td>
 <td>shardingsphere-sharding-distsql-handler</td>
@@ -8263,7 +8294,7 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.java</td>
 <td>shardingsphere-standalone-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.html#L189">189</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.html#L188">188</a></td></tr>
 <tr class="a"><td colspan='3'>
 <div>
 <pre>Map&lt;String, ShardingSphereView&gt; views = alterSchemaMetaDataPOJO.getAlteredViews().stream().collect(Collectors.toMap(ShardingSphereView::getName, view -&gt; view));
@@ -8717,7 +8748,7 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/authority/yaml/swapper/NewYamlAuthorityRuleConfigurationSwapper.java</td>
 <td>shardingsphere-authority-core</td>
-<td><a href="./xref/org/apache/shardingsphere/authority/yaml/swapper/NewYamlAuthorityRuleConfigurationSwapper.html#L49">49</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/authority/yaml/swapper/NewYamlAuthorityRuleConfigurationSwapper.html#L51">51</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/authority/yaml/swapper/YamlAuthorityRuleConfigurationSwapper.java</td>
 <td>shardingsphere-authority-core</td>
@@ -9161,11 +9192,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L524">524</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L505">505</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc-core</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L608">608</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L589">589</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>}
@@ -9885,6 +9916,37 @@ public final class AgentReflectionUtils {
         }
     }
 }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/encrypt/rule/EncryptRule.java</td>
+<td>shardingsphere-encrypt-core</td>
+<td><a href="./xref/org/apache/shardingsphere/encrypt/rule/EncryptRule.html#L70">70</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/encrypt/rule/EncryptRule.java</td>
+<td>shardingsphere-encrypt-core</td>
+<td><a href="./xref/org/apache/shardingsphere/encrypt/rule/EncryptRule.html#L86">86</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public EncryptRule(final EncryptRuleConfiguration ruleConfig) {
+        configuration = ruleConfig;
+        ruleConfig.getEncryptors().forEach((key, value) -&gt; putAllEncryptors(key, TypedSPILoader.getService(EncryptAlgorithm.class, value.getType(), value.getProps())));
+        for (EncryptTableRuleConfiguration each : ruleConfig.getTables()) {
+            each.getColumns().forEach(this::checkEncryptAlgorithmType);
+            tables.put(each.getName().toLowerCase(), new EncryptTable(each));
+            tableNamesMapper.put(each.getName());
+        }
+    }
+    
+    /**
+     * Encrypt rule constructor.
+     * 
+     * @deprecated deprecated by compatible encrypt rule configuration
+     */
+    @Deprecated</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

@@ -1435,7 +1435,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/mode/manager/cluster/NewClusterModeContextManager.java</td>
 <td>shardingsphere-cluster-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/NewClusterModeContextManager.html#L42">42</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/NewClusterModeContextManager.html#L43">43</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>public final class ClusterModeContextManager implements ModeContextManager, ContextManagerAware {
@@ -2219,6 +2219,116 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/NewStateChangedSubscriber.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/NewStateChangedSubscriber.html#L52">52</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/StateChangedSubscriber.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/StateChangedSubscriber.html#L51">51</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public NewStateChangedSubscriber(final NewRegistryCenter registryCenter, final ContextManager contextManager) {
+        this.registryCenter = registryCenter;
+        this.contextManager = contextManager;
+        contextManager.getInstanceContext().getEventBusContext().register(this);
+    }
+    
+    /**
+     * Renew disabled data source names.
+     * 
+     * @param event Storage node changed event
+     */
+    @Subscribe
+    public synchronized void renew(final StorageNodeChangedEvent event) {
+        if (!contextManager.getMetaDataContexts().getMetaData().containsDatabase(event.getQualifiedDatabase().getDatabaseName())) {
+            return;
+        }
+        QualifiedDatabase qualifiedDatabase = event.getQualifiedDatabase();
+        Optional&lt;StaticDataSourceContainedRule&gt; staticDataSourceRule = contextManager.getMetaDataContexts()
+                .getMetaData().getDatabase(qualifiedDatabase.getDatabaseName()).getRuleMetaData().findSingleRule(StaticDataSourceContainedRule.class);
+        staticDataSourceRule.ifPresent(optional -&gt; optional.updateStatus(new StorageNodeDataSourceChangedEvent(qualifiedDatabase, event.getDataSource())));
+        DataSourceStateManager.getInstance().updateState(
+                qualifiedDatabase.getDatabaseName(), qualifiedDatabase.getDataSourceName(), DataSourceState.valueOf(event.getDataSource().getStatus().name()));
+    }
+    
+    /**
+     * Reset cluster state.
+     * 
+     * @param event cluster lock deleted event
+     */
+    @Subscribe
+    public synchronized void renew(final ClusterLockDeletedEvent event) {
+        contextManager.getInstanceContext().getEventBusContext().post(new ClusterStatusChangedEvent(event.getState()));
+    }
+    
+    /**
+     * Renew cluster state.
+     * 
+     * @param event cluster state event
+     */
+    @Subscribe
+    public synchronized void renew(final ClusterStateEvent event) {
+        contextManager.updateClusterState(event.getStatus());
+    }
+    
+    /**
+     * Renew instance status.
+     * 
+     * @param event state event
+     */
+    @Subscribe
+    public synchronized void renew(final StateEvent event) {
+        contextManager.getInstanceContext().updateInstanceStatus(event.getInstanceId(), event.getStatus());
+    }
+    
+    /**
+     * Renew instance worker id.
+     * 
+     * @param event worker id event
+     */
+    @Subscribe
+    public synchronized void renew(final WorkerIdEvent event) {
+        contextManager.getInstanceContext().updateWorkerId(event.getInstanceId(), event.getWorkerId());
+    }
+    
+    /**
+     * Renew instance labels.
+     * 
+     * @param event label event
+     */
+    @Subscribe
+    public synchronized void renew(final LabelsEvent event) {
+        // TODO labels may be empty
+        contextManager.getInstanceContext().updateLabel(event.getInstanceId(), event.getLabels());
+    }
+    
+    /**
+     * Renew instance list.
+     *
+     * @param event compute node online event
+     */
+    @Subscribe
+    public synchronized void renew(final InstanceOnlineEvent event) {
+        contextManager.getInstanceContext().addComputeNodeInstance(registryCenter.getComputeNodeStatusService().loadComputeNodeInstance(event.getInstanceMetaData()));
+    }
+    
+    /**
+     * Renew instance list.
+     *
+     * @param event compute node offline event
+     */
+    @Subscribe
+    public synchronized void renew(final InstanceOfflineEvent event) {
+        contextManager.getInstanceContext().deleteComputeNodeInstance(new ComputeNodeInstance(event.getInstanceMetaData()));
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sql92</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.html#L142">142</a></td></tr>
@@ -2469,6 +2579,85 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/process/subscriber/NewProcessListChangedSubscriber.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/process/subscriber/NewProcessListChangedSubscriber.html#L52">52</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/process/subscriber/ProcessListChangedSubscriber.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/process/subscriber/ProcessListChangedSubscriber.html#L51">51</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public NewProcessListChangedSubscriber(final NewRegistryCenter registryCenter, final ContextManager contextManager) {
+        this.registryCenter = registryCenter;
+        this.contextManager = contextManager;
+        contextManager.getInstanceContext().getEventBusContext().register(this);
+    }
+    
+    /**
+     * Report local processes.
+     *
+     * @param event show process list trigger event
+     */
+    @Subscribe
+    public void reportLocalProcesses(final ReportLocalProcessesEvent event) {
+        if (!event.getInstanceId().equals(contextManager.getInstanceContext().getInstance().getMetaData().getId())) {
+            return;
+        }
+        Collection&lt;Process&gt; processes = ProcessRegistry.getInstance().listAll();
+        if (!processes.isEmpty()) {
+            registryCenter.getRepository().persist(
+                    ProcessNode.getProcessListInstancePath(event.getTaskId(), event.getInstanceId()), YamlEngine.marshal(swapper.swapToYamlConfiguration(processes)));
+        }
+        registryCenter.getRepository().delete(ComputeNode.getProcessTriggerInstanceNodePath(event.getInstanceId(), event.getTaskId()));
+    }
+    
+    /**
+     * Complete to report local processes.
+     *
+     * @param event report local processes completed event
+     */
+    @Subscribe
+    public synchronized void completeToReportLocalProcesses(final ReportLocalProcessesCompletedEvent event) {
+        ProcessOperationLockRegistry.getInstance().notify(event.getTaskId());
+    }
+    
+    /**
+     * Kill local process.
+     *
+     * @param event kill local process event
+     * @throws SQLException SQL exception
+     */
+    @Subscribe
+    public synchronized void killLocalProcess(final KillLocalProcessEvent event) throws SQLException {
+        if (!event.getInstanceId().equals(contextManager.getInstanceContext().getInstance().getMetaData().getId())) {
+            return;
+        }
+        Process process = ProcessRegistry.getInstance().get(event.getProcessId());
+        if (null != process) {
+            for (Statement each : process.getProcessStatements()) {
+                each.cancel();
+            }
+        }
+        registryCenter.getRepository().delete(ComputeNode.getProcessKillInstanceIdNodePath(event.getInstanceId(), event.getProcessId()));
+    }
+    
+    /**
+     * Complete to kill local process.
+     *
+     * @param event kill local process completed event
+     */
+    @Subscribe
+    public synchronized void completeToKillLocalProcess(final KillLocalProcessCompletedEvent event) {
+        ProcessOperationLockRegistry.getInstance().notify(event.getProcessId());
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/agent/core/util/AgentReflectionUtils.java</td>
 <td>shardingsphere-agent-core</td>
 <td><a href="./xref/org/apache/shardingsphere/agent/core/util/AgentReflectionUtils.html#L31">31</a></td></tr>
@@ -2665,6 +2854,72 @@ public final class AgentReflectionUtils {
     
     @Override
     public final ASTNode visitIndexName(final IndexNameContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/workerid/generator/ClusterWorkerIdGenerator.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/workerid/generator/ClusterWorkerIdGenerator.html#L44">44</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/workerid/generator/NewClusterWorkerIdGenerator.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/workerid/generator/NewClusterWorkerIdGenerator.html#L45">45</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>private final RegistryCenter registryCenter;
+    
+    private final InstanceMetaData instanceMetaData;
+    
+    private volatile boolean isWarned;
+    
+    @Override
+    public int generate(final Properties props) {
+        int result = registryCenter.getComputeNodeStatusService().loadInstanceWorkerId(instanceMetaData.getId()).orElseGet(this::reGenerate);
+        checkIneffectiveConfiguration(result, props);
+        return result;
+    }
+    
+    private Integer reGenerate() {
+        Optional&lt;Integer&gt; result;
+        do {
+            result = generateAvailableWorkerId();
+        } while (!result.isPresent());
+        Integer generatedWorkId = result.get();
+        registryCenter.getComputeNodeStatusService().persistInstanceWorkerId(instanceMetaData.getId(), generatedWorkId);
+        return generatedWorkId;
+    }
+    
+    private Optional&lt;Integer&gt; generateAvailableWorkerId() {
+        Collection&lt;Integer&gt; assignedWorkerIds = registryCenter.getComputeNodeStatusService().getAssignedWorkerIds();
+        ShardingSpherePreconditions.checkState(assignedWorkerIds.size() &lt;= 1024, WorkIdAssignedException::new);
+        Collection&lt;Integer&gt; availableWorkerIds = new LinkedList&lt;&gt;();
+        for (int i = 0; i &lt; 1024; i++) {
+            availableWorkerIds.add(i);
+        }
+        PriorityQueue&lt;Integer&gt; priorityQueue = new PriorityQueue&lt;&gt;(availableWorkerIds);
+        for (Integer each : assignedWorkerIds) {
+            priorityQueue.remove(each);
+        }
+        Integer preselectedWorkerId = priorityQueue.poll();
+        Preconditions.checkState(null != preselectedWorkerId, &quot;Preselected worker-id can not be null.&quot;);
+        try {
+            registryCenter.getRepository().persistExclusiveEphemeral(WorkerIdNode.getWorkerIdGeneratorPath(preselectedWorkerId.toString()), instanceMetaData.getId());
+            return Optional.of(preselectedWorkerId);
+        } catch (final ClusterPersistRepositoryException ignore) {
+            return Optional.empty();
+        }
+    }
+    
+    private void checkIneffectiveConfiguration(final long generatedWorkerId, final Properties props) {
+        if (!isWarned &amp;&amp; null != props &amp;&amp; props.containsKey(WORKER_ID_KEY)) {
+            isWarned = true;
+            log.warn(&quot;No need to configured {} in cluster mode, system assigned {} was {}&quot;, WORKER_ID_KEY, WORKER_ID_KEY, generatedWorkerId);
+        }
+    }
+}</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -3031,7 +3286,7 @@ public final class AgentReflectionUtils {
 <tr class="a">
 <td>org/apache/shardingsphere/encrypt/distsql/handler/update/DropEncryptRuleStatementUpdater.java</td>
 <td>shardingsphere-encrypt-distsql-handler</td>
-<td><a href="./xref/org/apache/shardingsphere/encrypt/distsql/handler/update/DropEncryptRuleStatementUpdater.html#L68">68</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/encrypt/distsql/handler/update/DropEncryptRuleStatementUpdater.html#L84">84</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>currentRuleConfig.getEncryptors().putAll(toBeAlteredRuleConfig.getEncryptors());
@@ -6897,6 +7152,96 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/compute/subscriber/ComputeNodeStatusSubscriber.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/compute/subscriber/ComputeNodeStatusSubscriber.html#L39">39</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/compute/subscriber/NewComputeNodeStatusSubscriber.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/status/compute/subscriber/NewComputeNodeStatusSubscriber.html#L40">40</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public ComputeNodeStatusSubscriber(final RegistryCenter registryCenter, final ClusterPersistRepository repository) {
+        this.registryCenter = registryCenter;
+        this.repository = repository;
+        registryCenter.getEventBusContext().register(this);
+    }
+    
+    /**
+     * Update compute node status.
+     *
+     * @param event compute node status changed event
+     */
+    @Subscribe
+    public void update(final ComputeNodeStatusChangedEvent event) {
+        repository.persistEphemeral(ComputeNode.getInstanceStatusNodePath(event.getInstanceId()), event.getState().name());
+    }
+    
+    /**
+     * Update compute node labels.
+     * 
+     * @param event labels changed event
+     */
+    @Subscribe
+    public void update(final LabelsChangedEvent event) {
+        if (event.getLabels().isEmpty()) {
+            registryCenter.getComputeNodeStatusService().persistInstanceLabels(event.getInstanceId(), Collections.emptyList());
+        } else {
+            registryCenter.getComputeNodeStatusService().persistInstanceLabels(event.getInstanceId(), event.getLabels());
+        }
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/NewRegistryCenter.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/NewRegistryCenter.html#L100">100</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/cluster/coordinator/RegistryCenter.java</td>
+<td>shardingsphere-cluster-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/RegistryCenter.html#L99">99</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>new NewComputeNodeStatusSubscriber(this, repository);
+        new ClusterStatusSubscriber(repository, eventBusContext);
+        new StorageNodeStatusSubscriber(repository, eventBusContext);
+        new ClusterProcessSubscriber(repository, eventBusContext);
+        new ShardingSphereSchemaDataRegistrySubscriber(repository, globalLockPersistService, eventBusContext);
+    }
+    
+    /**
+     * Online instance.
+     * 
+     * @param computeNodeInstance compute node instance
+     */
+    public void onlineInstance(final ComputeNodeInstance computeNodeInstance) {
+        computeNodeStatusService.registerOnline(computeNodeInstance.getMetaData());
+        computeNodeStatusService.persistInstanceLabels(computeNodeInstance.getCurrentInstanceId(), computeNodeInstance.getLabels());
+        computeNodeStatusService.persistInstanceState(computeNodeInstance.getCurrentInstanceId(), computeNodeInstance.getState());
+        listenerFactory.watchListeners();
+    }
+    
+    /**
+     * Persist cluster state.
+     *
+     * @param contextManager context manager
+     */
+    public void persistClusterState(final ContextManager contextManager) {
+        if (Strings.isNullOrEmpty(repository.getDirectly(ComputeNode.getClusterStatusNodePath()))) {
+            clusterStatusService.persistClusterState(contextManager.getClusterStateContext());
+        }
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L877">877</a></td></tr>
@@ -9802,35 +10147,6 @@ public final class AgentReflectionUtils {
         defaultQueryProperties.setProperty(&quot;useServerPrepStmts&quot;, Boolean.TRUE.toString());
         defaultQueryProperties.setProperty(&quot;cachePrepStmts&quot;, Boolean.TRUE.toString());
         defaultQueryProperties.setProperty(&quot;prepStmtCacheSize&quot;, &quot;200000&quot;);</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/mode/manager/cluster/ClusterContextManagerBuilder.java</td>
-<td>shardingsphere-cluster-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/ClusterContextManagerBuilder.html#L59">59</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/mode/manager/cluster/NewClusterContextManagerBuilder.java</td>
-<td>shardingsphere-cluster-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/NewClusterContextManagerBuilder.html#L62">62</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>registerOnline(persistService, registryCenter, param, result);
-        return result;
-    }
-    
-    private ClusterPersistRepository getClusterPersistRepository(final ClusterPersistRepositoryConfiguration config) {
-        Preconditions.checkNotNull(config, &quot;Cluster persist repository configuration cannot be null.&quot;);
-        ClusterPersistRepository result = TypedSPILoader.getService(ClusterPersistRepository.class, config.getType(), config.getProps());
-        result.init(config);
-        return result;
-    }
-    
-    private InstanceContext buildInstanceContext(final RegistryCenter registryCenter, final ContextManagerBuilderParameter param) {
-        return new InstanceContext(new ComputeNodeInstance(param.getInstanceMetaData()), new ClusterWorkerIdGenerator(registryCenter, param.getInstanceMetaData()),
-                param.getModeConfiguration(), new ClusterModeContextManager(), new GlobalLockContext(registryCenter.getGlobalLockPersistService()), registryCenter.getEventBusContext());</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

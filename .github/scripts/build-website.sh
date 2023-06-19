@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 
+set -e
 echo config user shardingsphere
 git config --global user.email "dev@shardingsphere.apache.org"
 git config --global user.name "shardingsphere"

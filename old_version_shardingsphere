@@ -1,18 +1,696 @@
-commit 40148b51962df5e50211bd984c9fbf808bbf2dc2
-Author: zhaojinchao <zhaojinchao@apache.org>
-Date:   Sun Jun 25 15:37:57 2023 +0800
+commit 05956d176c111b24eb508db6f878e2b69c1913ab
+Author: Raigor <raigor.jiang@gmail.com>
+Date:   Mon Jun 26 18:15:52 2023 +0800
 
-    Fix dead link (#26540)
+    Fixes #22887, add docs for single tables. (#26582)
 
-diff --git a/docs/document/content/dev-manual/configuration.en.md b/docs/document/content/dev-manual/configuration.en.md
-index eb5bc4a0380..745b460f2e5 100644
---- a/docs/document/content/dev-manual/configuration.en.md
-+++ b/docs/document/content/dev-manual/configuration.en.md
-@@ -48,7 +48,6 @@ Used to convert YAML configuration to standard user configuration
- | SINGLE               | Used to convert the YAML configuration of the single table into the standard configuration of the single table         | [`org.apache.shardingsphere.singletable.yaml.config.swapper.YamlSingleRuleConfigurationSwapper`](https://github.com/apache/shardingsphere/blob/master/kernel/single/core/src/main/java/org/apache/shardingsphere/single/yaml/config/swapper/YamlSingleRuleConfigurationSwapper.java)                                  |
- | SHARDING             | Used to convert the YAML configuration of the sharding into the standard configuration of the sharding                 | [`org.apache.shardingsphere.sharding.yaml.swapper.YamlShardingRuleConfigurationSwapper`](https://github.com/apache/shardingsphere/blob/master/features/sharding/core/src/main/java/org/apache/shardingsphere/sharding/yaml/swapper/YamlShardingRuleConfigurationSwapper.java)                                                    |
- | READWRITE_SPLITTING  | Used to convert the YAML configuration of read-write splitting into the standard configuration of read-write splitting | [`org.apache.shardingsphere.readwritesplitting.yaml.swapper.YamlReadwriteSplittingRuleConfigurationSwapper`](https://github.com/apache/shardingsphere/blob/master/features/readwrite-splitting/core/src/main/java/org/apache/shardingsphere/readwritesplitting/yaml/swapper/YamlReadwriteSplittingRuleConfigurationSwapper.java) |
--| DB_DISCOVERY         | Used to convert the YAML configuration of database discovery into the standard configuration of database discovery     | [`org.apache.shardingsphere.dbdiscovery.yaml.swapper.YamlDatabaseDiscoveryRuleConfigurationSwapper`](https://github.com/apache/shardingsphere/blob/master/features/db-discovery/core/src/main/java/org/apache/shardingsphere/dbdiscovery/yaml/swapper/YamlDatabaseDiscoveryRuleConfigurationSwapper.java)                        |
- | ENCRYPT              | Used to convert encrypted YAML configuration into encrypted standard configuration                                     | [`org.apache.shardingsphere.encrypt.yaml.swapper.YamlEncryptRuleConfigurationSwapper`](https://github.com/apache/shardingsphere/blob/master/features/encrypt/core/src/main/java/org/apache/shardingsphere/encrypt/yaml/swapper/YamlEncryptRuleConfigurationSwapper.java)                                                         |
- | SHADOW               | Used to convert the YAML configuration of the shadow database into the standard configuration of the shadow database   | [`org.apache.shardingsphere.shadow.yaml.swapper.YamlShadowRuleConfigurationSwapper`](https://github.com/apache/shardingsphere/blob/master/features/shadow/core/src/main/java/org/apache/shardingsphere/shadow/yaml/swapper/YamlShadowRuleConfigurationSwapper.java)                                                              |
- | SQL_TRANSLATOR       | Used to convert the YAML configuration of the SQL transformation to the SQL transformation standard configuration      | [`org.apache.shardingsphere.sqltranslator.yaml.swapper.YamlSQLTranslatorRuleConfigurationSwapper`](https://github.com/apache/shardingsphere/blob/master/kernel/sql-translator/core/src/main/java/org/apache/shardingsphere/sqltranslator/yaml/swapper/YamlSQLTranslatorRuleConfigurationSwapper.java)                            |
+diff --git a/docs/document/content/features/sharding/concept.cn.md b/docs/document/content/features/sharding/concept.cn.md
+index 2ee35668426..694a839cbb1 100644
+--- a/docs/document/content/features/sharding/concept.cn.md
++++ b/docs/document/content/features/sharding/concept.cn.md
+@@ -53,6 +53,12 @@ SELECT i.* FROM t_order_1 o JOIN t_order_item_1 i ON o.order_id=i.order_id WHERE
+ 
+ 指所有的分片数据源中仅唯一存在的表。 适用于数据量不大且无需分片的表。
+ 
++注意：符合以下条件的单表会被自动加载：
++- 数据加密、数据脱敏等规则中显示配置的单表
++- 用户通过 ShardingSphere 执行 DDL 语句创建的单表
++
++其余不符合上述条件的单表，ShardingSphere 不会自动加载，用户可根据需要配置单表规则进行管理。
++
+ ## 数据节点
+ 
+ 数据分片的最小单元，由数据源名称和真实表组成。 例：ds_0.t_order_0。
+diff --git a/docs/document/content/features/sharding/concept.en.md b/docs/document/content/features/sharding/concept.en.md
+index d9653e41d80..96fe920fb89 100644
+--- a/docs/document/content/features/sharding/concept.en.md
++++ b/docs/document/content/features/sharding/concept.en.md
+@@ -58,6 +58,12 @@ Refers to tables that exist in all data sources. The table structure and its dat
+ 
+ Refers to the only table that exists in all sharded data sources. Suitable for tables with a small amount of data and do not need to be sharded.
+ 
++Note: Single tables that meet the following conditions will be automatically loaded:
++- A single table showing the configuration in rules such as encrypt and mask
++- A single table created by users executing DDL statements through ShardingSphere
++
++For other single tables that do not meet the above conditions, ShardingSphere will not automatically load them, and users can configure single table rules as needed for management.
++
+ ## Data Nodes
+ 
+ The smallest unit of the data shard, consists of the data source name and the real table. Example: `ds_0.t_order_0`.
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/single.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/single.cn.md
+new file mode 100644
+index 00000000000..a8762d3c249
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/single.cn.md
+@@ -0,0 +1,30 @@
+++++
++title = "单表"
++weight = 12
+++++
++
++## 背景信息
++
++单表规则用于指定哪些单表需要被 ShardingSphere 管理，也可设置默认的单表数据源。
++
++## 参数解释
++
++```yaml
++rules:
++- !SINGLE
++  tables:
++    # MySQL 风格
++    - ds_0.t_single # 加载指定单表
++    - ds_1.* # 加载指定数据源中的全部单表
++    - "*.*" # 加载全部单表
++    # PostgreSQL 风格
++    - ds_0.public.t_config
++    - ds_1.public.*
++    - ds_2.*.*
++    - "*.*.*"
++  defaultDataSource: ds_0 # 默认数据源，仅在执行 CREATE TABLE 创建单表时有效。缺失值为空，表示随机单播路由。
++```
++
++## 相关参考
++
++- [单表](/cn/features/sharding/concept/#单表)
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/single.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/single.en.md
+new file mode 100644
+index 00000000000..f6be197727e
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/rules/single.en.md
+@@ -0,0 +1,30 @@
+++++
++title = "Single Table"
++weight = 12
+++++
++
++## Background
++
++Single rule is used to specify which single tables need to be managed by ShardingSphere, or to set the default single table data source.
++
++## Parameters
++
++```yaml
++rules:
++- !SINGLE
++  tables:
++    # MySQL style
++    - ds_0.t_single # Load specified single table
++    - ds_1.* # Load all single tables in the specified data source
++    - "*.*" # Load all single tables
++    # PostgreSQL style
++    - ds_0.public.t_config
++    - ds_1.public.*
++    - ds_2.*.*
++    - "*.*.*"
++  defaultDataSource: ds_0 # The default data source is used when executing CREATE TABLE statement to create a single table. The default value is null, indicating random unicast routing.
++```
++
++## Related References
++
++- [Single Table](en/features/sharding/concept/#single-table)
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table.cn.md
+new file mode 100644
+index 00000000000..4819500af22
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table.cn.md
+@@ -0,0 +1,69 @@
+++++
++title = "LOAD SINGLE TABLE"
++weight = 1
+++++
++
++## 描述
++
++`LOAD SINGLE TABLE` 用于加载单表。
++
++### 语法定义
++
++{{< tabs >}}
++{{% tab name="语法" %}}
++```sql
++loadSingleTable ::=
++  'LOAD' 'SINGLE' 'TABLE' tableDefinition
++
++tableDefinition ::=
++  tableIdentifier (',' tableIdentifier)*
++
++tableIdentifier ::=
++  '*.*' | '*.*.*' | storageUnitName '.*' | storageUnitName '.*.*' | storageUnitName '.' schemaName '.*' | storageUnitName '.' tableName | storageUnitName '.' schemaName '.' tableName
++
++storageUnitName ::=
++  identifier
++
++schemaName ::=
++  identifier
++
++tableName ::=
++  identifier
++```
++{{% /tab %}}
++{{% tab name="铁路图" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### 补充说明
++
++- PostgreSQL 和 OpenGauss 协议下支持指定 schemaName
++
++### 示例
++
++- 加载指定单表
++
++```sql
++LOAD SINGLE TABLE ds_0.t_single;
++```
++
++- 加载指定存储节点中的全部单表
++
++```sql
++LOAD SINGLE TABLE ds_0.*;
++```
++
++- 加载全部单表
++
++```sql
++LOAD SINGLE TABLE *.*;
++```
++
++### 保留字
++
++`LOAD`、`SINGLE`、`TABLE`
++
++### 相关链接
++
++- [保留字](/cn/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table.en.md
+new file mode 100644
+index 00000000000..0f1d764031e
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table.en.md
+@@ -0,0 +1,70 @@
+++++
++title = "LOAD SINGLE TABLE"
++weight = 1
+++++
++
++## Description
++
++The `LOAD SINGLE TABLE` syntax is used to load single table from storage unit.
++
++### Syntax
++
++{{< tabs >}}
++{{% tab name="Grammar" %}}
++```sql
++loadSingleTable ::=
++  'LOAD' 'SINGLE' 'TABLE' tableDefinition
++
++tableDefinition ::=
++  tableIdentifier (',' tableIdentifier)*
++
++tableIdentifier ::=
++  '*.*' | '*.*.*' | storageUnitName '.*' | storageUnitName '.*.*' | storageUnitName '.' schemaName '.*' | storageUnitName '.' tableName | storageUnitName '.' schemaName '.' tableName
++
++storageUnitName ::=
++  identifier
++
++schemaName ::=
++  identifier
++
++tableName ::=
++  identifier
++```
++{{% /tab %}}
++{{% tab name="Railroad diagram" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### Supplement
++
++- support specifying schemaName in PostgreSQL and OpenGauss protocols
++
++
++### Example
++
++- Load specified single table
++
++```sql
++LOAD SINGLE TABLE ds_0.t_single;
++```
++
++- Load all single tables in the specified storage unit
++
++```sql
++LOAD SINGLE TABLE ds_0.*;
++```
++
++- Load all single tables
++
++```sql
++LOAD SINGLE TABLE *.*;
++```
++
++### Reserved word
++
++`LOAD`, `SINGLE`, `TABLE`
++
++### Related links
++
++- [Reserved word](/en/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.cn.md
+index c2adcdf2aab..da48cc76e20 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.cn.md
+@@ -1,6 +1,6 @@
+ +++
+ title = "SET DEFAULT SINGLE TABLE STORAGE UNIT"
+-weight = 1
++weight = 3
+ +++
+ 
+ ## 描述
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.en.md
+index 118bb1a41f8..adc3933fc4f 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/set-default-single-table-storage-unit.en.md
+@@ -1,6 +1,6 @@
+ +++
+ title = "SET DEFAULT SINGLE TABLE STORAGE UNIT"
+-weight = 1
++weight = 3
+ +++
+ 
+ ## Description
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/unload-single-table.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/unload-single-table.cn.md
+new file mode 100644
+index 00000000000..5b0639904a3
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/unload-single-table.cn.md
+@@ -0,0 +1,56 @@
+++++
++title = "UNLOAD SINGLE TABLE"
++weight = 2
+++++
++
++## 描述
++
++`UNLOAD SINGLE TABLE` 用于卸载单表。
++
++### 语法定义
++
++{{< tabs >}}
++{{% tab name="语法" %}}
++```sql
++unloadSingleTable ::=
++  'UNLOAD' 'SINGLE' 'TABLE' tableNames
++
++tableNames ::=
++  tableName (',' tableName)*
++
++tableName ::=
++  identifier
++```
++{{% /tab %}}
++{{% tab name="铁路图" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### 补充说明
++
++- 与加载不同，卸载单表时仅需指定表名
++
++### 示例
++
++- 卸载指定单表
++
++```sql
++UNLOAD SINGLE TABLE t_single;
++```
++
++- 卸载全部单表
++
++```sql
++UNLOAD SINGLE TABLE *;
++-- 或
++UNLOAD ALL SINGLE TABLES;
++```
++
++### 保留字
++
++`UNLOAD`、`SINGLE`、`TABLE` 、`ALL` 、`TABLES`
++
++### 相关链接
++
++- [保留字](/cn/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
+\ No newline at end of file
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/unload-single-table.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/unload-single-table.en.md
+new file mode 100644
+index 00000000000..638349f52a4
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/unload-single-table.en.md
+@@ -0,0 +1,57 @@
+++++
++title = "UNLOAD SINGLE TABLE"
++weight = 2
+++++
++
++## Description
++
++The `UNLOAD SINGLE TABLE` syntax is used to unload single table.
++
++### Syntax
++
++{{< tabs >}}
++{{% tab name="Grammar" %}}
++```sql
++unloadSingleTable ::=
++  'UNLOAD' 'SINGLE' 'TABLE' tableNames
++
++tableNames ::=
++  tableName (',' tableName)*
++
++tableName ::=
++  identifier
++```
++{{% /tab %}}
++{{% tab name="Railroad diagram" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### Supplement
++
++- Unlike loading, only the table name needs to be specified when unloading a single table
++
++
++### Example
++
++- Unload specified single table
++
++```sql
++UNLOAD SINGLE TABLE t_single;
++```
++
++- Load all single tables
++
++```sql
++UNLOAD SINGLE TABLE *;
++-- or
++UNLOAD ALL SINGLE TABLES;
++```
++
++### Reserved word
++
++`UNLOAD`, `SINGLE`, `TABLE`, `ALL`, `TABLES`
++
++### Related links
++
++- [Reserved word](/en/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.cn.md
+index a2b415c081e..ba3d416c7b1 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.cn.md
+@@ -33,10 +33,10 @@ databaseName ::=
+ 
+ ### 返回值说明
+ 
+-| 列             | 说明         |
+-|---------------|------------|
+-| table_name    | 单表名称       |
+-| resource_name | 单表所在的数据源名称 |
++| 列                | 说明              |
++|-------------------|-------------------|
++| table_name        | 单表名称           |
++| storage_unit_name | 单表所在的数据源名称 |
+ 
+ 
+ ### 示例
+@@ -65,11 +65,11 @@ SHOW SINGLE TABLE t_user;
+ 
+ ```sql
+ mysql> SHOW SINGLE TABLE t_user;
+-+------------+---------------+
+-| table_name | resource_name |
+-+------------+---------------+
+-| t_user     | ds_0          |
+-+------------+---------------+
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_user     | ds_0              |
+++------------+-------------------+
+ 1 row in set (0.00 sec)
+ ```
+ 
+@@ -81,11 +81,11 @@ SHOW SINGLE TABLES FROM sharding_db;
+ 
+ ```sql
+ mysql> SHOW SINGLE TABLES FROM sharding_db;
+-+------------+---------------+
+-| table_name | resource_name |
+-+------------+---------------+
+-| t_user     | ds_0          |
+-+------------+---------------+
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_user     | ds_0              |
+++------------+-------------------+
+ 1 row in set (0.00 sec)
+ ```
+ 
+@@ -97,11 +97,11 @@ SHOW SINGLE TABLES;
+ 
+ ```sql
+ mysql> SHOW SINGLE TABLES;
+-+------------+---------------+
+-| table_name | resource_name |
+-+------------+---------------+
+-| t_user     | ds_0          |
+-+------------+---------------+
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_user     | ds_0              |
+++------------+-------------------+
+ 1 row in set (0.00 sec)
+ ```
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.en.md
+index b638fdac774..454c36de5f2 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-single-table.en.md
+@@ -33,10 +33,10 @@ databaseName ::=
+ 
+ ### Return value description
+ 
+-| Column        | Description                                         |
+-|---------------|-----------------------------------------------------|
+-| table_name    | Single table name                                   |
+-| resource_name | The resource name where the single table is located |
++| Column            | Description                                             |
++|-------------------|---------------------------------------------------------|
++| table_name        | Single table name                                       |
++| storage_unit_name | The storage unit name where the single table is located |
+ 
+ 
+ ### Example
+@@ -49,11 +49,11 @@ SHOW SINGLE TABLE t_user FROM sharding_db;
+ 
+ ```sql
+ mysql> SHOW SINGLE TABLE t_user FROM sharding_db;
+-+------------+---------------+
+-| table_name | resource_name |
+-+------------+---------------+
+-| t_user     | ds_0          |
+-+------------+---------------+
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_user     | ds_0              |
+++------------+-------------------+
+ 1 row in set (0.00 sec)
+ ```
+ 
+@@ -65,11 +65,11 @@ SHOW SINGLE TABLE t_user;
+ 
+ ```sql
+ mysql> SHOW SINGLE TABLE t_user;
+-+------------+---------------+
+-| table_name | resource_name |
+-+------------+---------------+
+-| t_user     | ds_0          |
+-+------------+---------------+
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_user     | ds_0              |
+++------------+-------------------+
+ 1 row in set (0.00 sec)
+ ```
+ 
+@@ -81,11 +81,11 @@ SHOW SINGLE TABLES FROM sharding_db;
+ 
+ ```sql
+ mysql> SHOW SINGLE TABLES FROM sharding_db;
+-+------------+---------------+
+-| table_name | resource_name |
+-+------------+---------------+
+-| t_user     | ds_0          |
+-+------------+---------------+
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_user     | ds_0              |
+++------------+-------------------+
+ 1 row in set (0.00 sec)
+ ```
+ 
+@@ -97,11 +97,11 @@ SHOW SINGLE TABLES;
+ 
+ ```sql
+ mysql> SHOW SINGLE TABLES;
+-+------------+---------------+
+-| table_name | resource_name |
+-+------------+---------------+
+-| t_user     | ds_0          |
+-+------------+---------------+
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_user     | ds_0              |
+++------------+-------------------+
+ 1 row in set (0.00 sec)
+ ```
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-unloaded-single-tables.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-unloaded-single-tables.cn.md
+new file mode 100644
+index 00000000000..c0c55b55e41
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-unloaded-single-tables.cn.md
+@@ -0,0 +1,57 @@
+++++
++title = "SHOW UNLOADED SINGLE TABLES"
++weight = 4
+++++
++
++### 描述
++
++`SHOW UNLOADED SINGLE TABLES` 语法用于查询未加载的单表。
++
++### 语法
++
++{{< tabs >}}
++{{% tab name="Grammar" %}}
++```sql
++showUnloadedSingleTables::=
++  'SHOW' 'UNLOADED' 'SINGLE' 'TABLES'
++```
++{{% /tab %}}
++{{% tab name="Railroad diagram" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### 返回值说明
++
++| 列                | 说明                 |
++|-------------------|---------------------|
++| table_name        | 单表名称             |
++| storage_unit_name | 单表所在的存储单元名称 |
++
++
++### 示例
++
++- 查询未加载的单表
++
++```sql
++SHOW UNLOADED SINGLE TABLES;
++```
++
++```sql
++mysql> SHOW UNLOADED SINGLE TABLES;
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_single   | ds_1              |
+++------------+-------------------+
++1 row in set (0.01 sec)
++```
++
++### 保留字
++
++`SHOW`、`UNLOADED`、`SINGLE`、`TABLES`
++
++### 相关链接
++
++- [保留字](/cn/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
++
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-unloaded-single-tables.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-unloaded-single-tables.en.md
+new file mode 100644
+index 00000000000..9dbdd009803
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rql/rule-query/single-table/show-unloaded-single-tables.en.md
+@@ -0,0 +1,56 @@
+++++
++title = "SHOW UNLOADED SINGLE TABLES"
++weight = 4
+++++
++
++### Description
++
++The `SHOW UNLOADED SINGLE TABLES` syntax is used to query unloaded single tables.
++
++### Syntax
++
++{{< tabs >}}
++{{% tab name="Grammar" %}}
++```sql
++showUnloadedSingleTables::=
++  'SHOW' 'UNLOADED' 'SINGLE' 'TABLES'
++```
++{{% /tab %}}
++{{% tab name="Railroad diagram" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### Return value description
++
++| Column            | Description                                             |
++|-------------------|---------------------------------------------------------|
++| table_name        | Single table name                                       |
++| storage_unit_name | The storage unit name where the single table is located |
++
++
++### Example
++
++- Query unloaded single tables.
++
++```sql
++SHOW UNLOADED SINGLE TABLES;
++```
++
++```sql
++mysql> SHOW UNLOADED SINGLE TABLES;
+++------------+-------------------+
++| table_name | storage_unit_name |
+++------------+-------------------+
++| t_single   | ds_1              |
+++------------+-------------------+
++1 row in set (0.01 sec)
++```
++
++### Reserved word
++
++`SHOW`, `UNLOADED`, `SINGLE`, `TABLES`
++
++### Related links
++
++- [Reserved word](/en/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)

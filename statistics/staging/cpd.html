@@ -1510,6 +1510,91 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/metadata/persist/MetaDataPersistService.java</td>
+<td>shardingsphere-metadata-core</td>
+<td><a href="./xref/org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#L76">76</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.java</td>
+<td>shardingsphere-metadata-core</td>
+<td><a href="./xref/org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.html#L77">77</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>metaDataVersionPersistService = new MetaDataVersionPersistService(repository);
+        shardingSphereDataPersistService = new ShardingSphereDataPersistService(repository);
+    }
+    
+    @Override
+    public void persistGlobalRuleConfiguration(final Collection&lt;RuleConfiguration&gt; globalRuleConfigs, final Properties props) {
+        globalRuleService.persist(globalRuleConfigs);
+        propsService.persist(props);
+    }
+    
+    @Override
+    public void persistConfigurations(final String databaseName, final DatabaseConfiguration databaseConfigs,
+                                      final Map&lt;String, DataSource&gt; dataSources, final Collection&lt;ShardingSphereRule&gt; rules) {
+        Map&lt;String, DataSourceProperties&gt; dataSourcePropertiesMap = getDataSourcePropertiesMap(databaseConfigs.getDataSources());
+        if (dataSourcePropertiesMap.isEmpty() &amp;&amp; databaseConfigs.getRuleConfigurations().isEmpty()) {
+            databaseMetaDataService.addDatabase(databaseName);
+        } else {
+            dataSourceService.persist(databaseName, getDataSourcePropertiesMap(databaseConfigs.getDataSources()));
+            databaseRulePersistService.persist(databaseName, decorateRuleConfigs(databaseName, dataSources, rules));
+        }
+    }
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private Collection&lt;RuleConfiguration&gt; decorateRuleConfigs(final String databaseName, final Map&lt;String, DataSource&gt; dataSources, final Collection&lt;ShardingSphereRule&gt; rules) {
+        Collection&lt;RuleConfiguration&gt; result = new LinkedList&lt;&gt;();
+        for (ShardingSphereRule each : rules) {
+            RuleConfiguration ruleConfig = each.getConfiguration();
+            if (TypedSPILoader.contains(RuleConfigurationDecorator.class, ruleConfig.getClass().getName())) {
+                result.add(TypedSPILoader.getService(RuleConfigurationDecorator.class, ruleConfig.getClass().getName()).decorate(databaseName, dataSources, rules, ruleConfig));
+            } else {
+                result.add(each.getConfiguration());
+            }
+        }
+        return result;
+    }
+    
+    private Map&lt;String, DataSourceProperties&gt; getDataSourcePropertiesMap(final Map&lt;String, DataSource&gt; dataSourceMap) {
+        Map&lt;String, DataSourceProperties&gt; result = new LinkedHashMap&lt;&gt;(dataSourceMap.size(), 1F);
+        for (Entry&lt;String, DataSource&gt; entry : dataSourceMap.entrySet()) {
+            result.put(entry.getKey(), DataSourcePropertiesCreator.create(entry.getValue()));
+        }
+        return result;
+    }
+    
+    @Override
+    public Map&lt;String, DataSource&gt; getEffectiveDataSources(final String databaseName, final Map&lt;String, ? extends DatabaseConfiguration&gt; databaseConfigs) {
+        Map&lt;String, DataSourceProperties&gt; persistedDataPropsMap = dataSourceService.load(databaseName);
+        return databaseConfigs.containsKey(databaseName)
+                ? mergeEffectiveDataSources(persistedDataPropsMap, databaseConfigs.get(databaseName).getDataSources())
+                : DataSourcePoolCreator.create(persistedDataPropsMap);
+    }
+    
+    private Map&lt;String, DataSource&gt; mergeEffectiveDataSources(final Map&lt;String, DataSourceProperties&gt; persistedDataSourcePropsMap, final Map&lt;String, DataSource&gt; localConfiguredDataSources) {
+        Map&lt;String, DataSource&gt; result = new LinkedHashMap&lt;&gt;(persistedDataSourcePropsMap.size(), 1F);
+        for (Entry&lt;String, DataSourceProperties&gt; entry : persistedDataSourcePropsMap.entrySet()) {
+            String dataSourceName = entry.getKey();
+            DataSourceProperties persistedDataSourceProps = entry.getValue();
+            DataSource localConfiguredDataSource = localConfiguredDataSources.get(dataSourceName);
+            if (null == localConfiguredDataSource) {
+                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
+            } else if (DataSourcePropertiesCreator.create(localConfiguredDataSource).equals(persistedDataSourceProps)) {
+                result.put(dataSourceName, localConfiguredDataSource);
+            } else {
+                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
+                new DataSourcePoolDestroyer(localConfiguredDataSource).asyncDestroy();
+            }
+        }
+        return result;
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-oracle</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/oracle/visitor/statement/OracleStatementVisitor.html#L434">434</a></td></tr>
@@ -1916,77 +2001,6 @@
         }
         if (astNode instanceof OtherLiteralValue) {
             return new CommonExpressionSegment(context.getStart().getStartIndex(), context.getStop().getStopIndex(), context.getText());</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/metadata/persist/MetaDataPersistService.java</td>
-<td>shardingsphere-metadata-core</td>
-<td><a href="./xref/org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#L73">73</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.java</td>
-<td>shardingsphere-metadata-core</td>
-<td><a href="./xref/org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.html#L74">74</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>metaDataVersionPersistService = new MetaDataVersionPersistService(repository);
-        shardingSphereDataPersistService = new ShardingSphereDataPersistService(repository);
-    }
-    
-    @Override
-    public void persistGlobalRuleConfiguration(final Collection&lt;RuleConfiguration&gt; globalRuleConfigs, final Properties props) {
-        globalRuleService.persist(globalRuleConfigs);
-        propsService.persist(props);
-    }
-    
-    @Override
-    public void persistConfigurations(final String databaseName, final DatabaseConfiguration databaseConfigs,
-                                      final Map&lt;String, DataSource&gt; dataSources, final Collection&lt;ShardingSphereRule&gt; rules) {
-        Map&lt;String, DataSourceProperties&gt; dataSourcePropertiesMap = getDataSourcePropertiesMap(databaseConfigs.getDataSources());
-        if (dataSourcePropertiesMap.isEmpty() &amp;&amp; databaseConfigs.getRuleConfigurations().isEmpty()) {
-            databaseMetaDataService.addDatabase(databaseName);
-        } else {
-            dataSourceService.persist(databaseName, getDataSourcePropertiesMap(databaseConfigs.getDataSources()));
-            databaseRulePersistService.persist(databaseName, databaseConfigs.getRuleConfigurations());
-        }
-    }
-    
-    private Map&lt;String, DataSourceProperties&gt; getDataSourcePropertiesMap(final Map&lt;String, DataSource&gt; dataSourceMap) {
-        Map&lt;String, DataSourceProperties&gt; result = new LinkedHashMap&lt;&gt;(dataSourceMap.size(), 1F);
-        for (Entry&lt;String, DataSource&gt; entry : dataSourceMap.entrySet()) {
-            result.put(entry.getKey(), DataSourcePropertiesCreator.create(entry.getValue()));
-        }
-        return result;
-    }
-    
-    @Override
-    public Map&lt;String, DataSource&gt; getEffectiveDataSources(final String databaseName, final Map&lt;String, ? extends DatabaseConfiguration&gt; databaseConfigs) {
-        Map&lt;String, DataSourceProperties&gt; persistedDataPropsMap = dataSourceService.load(databaseName);
-        return databaseConfigs.containsKey(databaseName)
-                ? mergeEffectiveDataSources(persistedDataPropsMap, databaseConfigs.get(databaseName).getDataSources())
-                : DataSourcePoolCreator.create(persistedDataPropsMap);
-    }
-    
-    private Map&lt;String, DataSource&gt; mergeEffectiveDataSources(final Map&lt;String, DataSourceProperties&gt; persistedDataSourcePropsMap, final Map&lt;String, DataSource&gt; localConfiguredDataSources) {
-        Map&lt;String, DataSource&gt; result = new LinkedHashMap&lt;&gt;(persistedDataSourcePropsMap.size(), 1F);
-        for (Entry&lt;String, DataSourceProperties&gt; entry : persistedDataSourcePropsMap.entrySet()) {
-            String dataSourceName = entry.getKey();
-            DataSourceProperties persistedDataSourceProps = entry.getValue();
-            DataSource localConfiguredDataSource = localConfiguredDataSources.get(dataSourceName);
-            if (null == localConfiguredDataSource) {
-                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
-            } else if (DataSourcePropertiesCreator.create(localConfiguredDataSource).equals(persistedDataSourceProps)) {
-                result.put(dataSourceName, localConfiguredDataSource);
-            } else {
-                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
-                new DataSourcePoolDestroyer(localConfiguredDataSource).asyncDestroy();
-            }
-        }
-        return result;
-    }
-}</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -7637,11 +7651,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.java</td>
 <td>shardingsphere-proxy-backend-core</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.html#L55">55</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.html#L56">56</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.java</td>
 <td>shardingsphere-proxy-backend-core</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.html#L50">50</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.html#L51">51</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>public NewRuleDefinitionBackendHandler(final T sqlStatement, final ConnectionSession connectionSession) {
@@ -8821,6 +8835,30 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
+<td>shardingsphere-sharding-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L160">160</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
+<td>shardingsphere-sharding-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L178">178</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public synchronized void renew(final AlterDefaultDatabaseShardingStrategyEvent event) {
+        if (!event.getActiveVersion().equals(contextManager.getInstanceContext().getModeContextManager().getActiveVersionByKey(event.getActiveVersionKey()))) {
+            return;
+        }
+        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabases().get(event.getDatabaseName());
+        ShardingStrategyConfiguration needToAlteredConfig = swapShardingStrategyConfig(
+                contextManager.getInstanceContext().getModeContextManager().getVersionPathByActiveVersionKey(event.getActiveVersionKey(), event.getActiveVersion()));
+        ShardingRuleConfiguration config = (ShardingRuleConfiguration) database.getRuleMetaData().getSingleRule(ShardingRule.class).getConfiguration();
+        config.setDefaultDatabaseShardingStrategy(needToAlteredConfig);</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L268">268</a></td></tr>
@@ -9178,6 +9216,29 @@ public final class AgentReflectionUtils {
         }
         return result;
     }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/encrypt/subscriber/EncryptTableSubscriber.java</td>
+<td>shardingsphere-encrypt-core</td>
+<td><a href="./xref/org/apache/shardingsphere/encrypt/subscriber/EncryptTableSubscriber.html#L55">55</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/encrypt/subscriber/compatible/CompatibleEncryptTableSubscriber.java</td>
+<td>shardingsphere-encrypt-core</td>
+<td><a href="./xref/org/apache/shardingsphere/encrypt/subscriber/compatible/CompatibleEncryptTableSubscriber.html#L57">57</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public synchronized void renew(final AddEncryptTableEvent event) {
+        if (!event.getActiveVersion().equals(contextManager.getInstanceContext().getModeContextManager().getActiveVersionByKey(event.getActiveVersionKey()))) {
+            return;
+        }
+        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabases().get(event.getDatabaseName());
+        EncryptTableRuleConfiguration needToAddedConfig = swapEncryptTableRuleConfig(
+                contextManager.getInstanceContext().getModeContextManager().getVersionPathByActiveVersionKey(event.getActiveVersionKey(), event.getActiveVersion()));
+        contextManager.getInstanceContext().getEventBusContext().post(new DatabaseRuleConfigurationChangedEvent(event.getDatabaseName(), getEncryptRuleConfiguration(database, needToAddedConfig)));</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -10121,6 +10182,30 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
+<td>shardingsphere-sharding-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L297">297</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
+<td>shardingsphere-sharding-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L313">313</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public synchronized void renew(final DeleteShardingAuditorStrategyConfigurationEvent event) {
+        if (!contextManager.getMetaDataContexts().getMetaData().containsDatabase(event.getDatabaseName())) {
+            return;
+        }
+        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabases().get(event.getDatabaseName());
+        ShardingRuleConfiguration config = (ShardingRuleConfiguration) database.getRuleMetaData().getSingleRule(ShardingRule.class).getConfiguration();
+        config.setDefaultAuditStrategy(null);
+        contextManager.getInstanceContext().getEventBusContext().post(new DatabaseRuleConfigurationChangedEvent(event.getDatabaseName(), config));
+    }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/infra/metadata/database/schema/loader/metadata/dialect/H2SchemaMetaDataLoader.java</td>
 <td>shardingsphere-infra-common</td>
 <td><a href="./xref/org/apache/shardingsphere/infra/metadata/database/schema/loader/metadata/dialect/H2SchemaMetaDataLoader.html#L74">74</a></td></tr>
@@ -10322,6 +10407,34 @@ public final class AgentReflectionUtils {
         }
         // FIXME :For DISTINCT()
         if (projection instanceof ColumnSegment) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.java</td>
+<td>shardingsphere-proxy-backend-core</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.html#L124">124</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.java</td>
+<td>shardingsphere-proxy-backend-core</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.html#L99">99</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>}
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private RuleConfiguration decorateRuleConfiguration(final ShardingSphereDatabase database, final RuleConfiguration ruleConfig) {
+        if (TypedSPILoader.contains(RuleConfigurationDecorator.class, ruleConfig.getClass().getName())) {
+            return TypedSPILoader.getService(RuleConfigurationDecorator.class, ruleConfig.getClass().getName()).decorate(database.getName(),
+                    database.getResourceMetaData().getDataSources(), database.getRuleMetaData().getRules(), ruleConfig);
+        }
+        return ruleConfig;
+    }
+    
+    @SuppressWarnings({&quot;rawtypes&quot;, &quot;unchecked&quot;})
+    private Collection&lt;MetaDataVersion&gt; processDrop(final ShardingSphereDatabase database, final T sqlStatement, final RuleDefinitionDropUpdater updater, final RuleConfiguration currentRuleConfig) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -10620,47 +10733,48 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
-<td>shardingsphere-sharding-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L270">270</a></td></tr>
+<td>org/apache/shardingsphere/shadow/subscriber/ShadowAlgorithmSubscriber.java</td>
+<td>shardingsphere-shadow-core</td>
+<td><a href="./xref/org/apache/shardingsphere/shadow/subscriber/ShadowAlgorithmSubscriber.html#L57">57</a></td></tr>
 <tr class="a">
-<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
-<td>shardingsphere-sharding-core</td>
-<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L286">286</a></td></tr>
+<td>org/apache/shardingsphere/shadow/subscriber/ShadowDataSourceSubscriber.java</td>
+<td>shardingsphere-shadow-core</td>
+<td><a href="./xref/org/apache/shardingsphere/shadow/subscriber/ShadowDataSourceSubscriber.html#L57">57</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
-<pre>public synchronized void renew(final DeleteShardingAuditorStrategyConfigurationEvent event) {
-        if (!contextManager.getMetaDataContexts().getMetaData().containsDatabase(event.getDatabaseName())) {
-            return;
+<pre>contextManager.getInstanceContext().getModeContextManager().getVersionPathByActiveVersionKey(event.getActiveVersionKey(), event.getActiveVersion()));
+        Optional&lt;ShadowRule&gt; rule = contextManager.getMetaDataContexts().getMetaData().getDatabases().get(event.getDatabaseName()).getRuleMetaData().findSingleRule(ShadowRule.class);
+        ShadowRuleConfiguration config;
+        if (rule.isPresent()) {
+            config = (ShadowRuleConfiguration) rule.get().getConfiguration();
+        } else {
+            config = new ShadowRuleConfiguration();
         }
-        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabases().get(event.getDatabaseName());
-        ShardingRuleConfiguration config = (ShardingRuleConfiguration) database.getRuleMetaData().getSingleRule(ShardingRule.class).getConfiguration();
-        config.setDefaultAuditStrategy(null);
-        instanceContext.getEventBusContext().post(new DatabaseRuleConfigurationChangedEvent(event.getDatabaseName(), config));
-    }</pre></div></td></tr></table>
+        config.getShadowAlgorithms().put(event.getAlgorithmName(), needToAlteredConfig);</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/encrypt/subscriber/EncryptTableSubscriber.java</td>
-<td>shardingsphere-encrypt-core</td>
-<td><a href="./xref/org/apache/shardingsphere/encrypt/subscriber/EncryptTableSubscriber.html#L58">58</a></td></tr>
+<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
+<td>shardingsphere-sharding-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L71">71</a></td></tr>
 <tr class="a">
-<td>org/apache/shardingsphere/encrypt/subscriber/compatible/CompatibleEncryptTableSubscriber.java</td>
-<td>shardingsphere-encrypt-core</td>
-<td><a href="./xref/org/apache/shardingsphere/encrypt/subscriber/compatible/CompatibleEncryptTableSubscriber.html#L60">60</a></td></tr>
+<td>org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.java</td>
+<td>shardingsphere-sharding-core</td>
+<td><a href="./xref/org/apache/shardingsphere/sharding/subscriber/ShardingStrategyConfigurationSubscriber.html#L89">89</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
-<pre>public synchronized void renew(final AddEncryptTableEvent event) {
-        if (!event.getActiveVersion().equals(instanceContext.getModeContextManager().getActiveVersionByKey(event.getActiveVersionKey()))) {
+<pre>public synchronized void renew(final AddDefaultDatabaseShardingStrategyEvent event) {
+        if (!event.getActiveVersion().equals(contextManager.getInstanceContext().getModeContextManager().getActiveVersionByKey(event.getActiveVersionKey()))) {
             return;
         }
         ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabases().get(event.getDatabaseName());
-        EncryptTableRuleConfiguration needToAddedConfig = swapEncryptTableRuleConfig(
-                instanceContext.getModeContextManager().getVersionPathByActiveVersionKey(event.getActiveVersionKey(), event.getActiveVersion()));
-        instanceContext.getEventBusContext().post(new DatabaseRuleConfigurationChangedEvent(event.getDatabaseName(), getEncryptRuleConfiguration(database, needToAddedConfig)));</pre></div></td></tr></table>
+        ShardingStrategyConfiguration needToAddedConfig = swapShardingStrategyConfig(
+                contextManager.getInstanceContext().getModeContextManager().getVersionPathByActiveVersionKey(event.getActiveVersionKey(), event.getActiveVersion()));
+        ShardingRuleConfiguration config = getShardingRuleConfiguration(database);
+        config.setDefaultDatabaseShardingStrategy(needToAddedConfig);</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

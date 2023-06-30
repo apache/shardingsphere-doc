@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Enhancing Database Security: ShardingSphere-Proxy’s Authentication &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Enhancing Database Security: ShardingSphere-Proxy’s Authentication</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>ShardingSphere-Proxy is a transparent database proxy that supports interaction with any client using MySQL, PostgreSQL, or openGauss protocols.</p>
+<p>Proxy provides user authentication and can adapt to different authentication modes for various database protocols. However, there is a question that has been rarely addressed and has almost no corresponding issue even in the Github community:</p>
+<p>“How does ShardingSphere-Proxy authenticate its clients?”</p>
+<p><strong>Note:</strong> this post only discusses password authentication, and does not include non-password authentication methods such as UDS (Unix Domain Socket).</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md1.jpeg" alt="img"></p>
+<h1 id="background-info">Background Info</h1>
+<p>To begin, let’s take a look at how several common databases authenticate their users.</p>
+<h1 id="mysql">MySQL</h1>
+<p>Taking <code>MySQL 5.7</code> as an example, you can easily understand the authentication interaction between the client and the server as follows:</p>
+<ul>
+<li>
+<p>The client and the server achieve protocol handshake, including negotiating which authentication protocol to use. The default value is <code>mysql_native_password</code>.</p>
+</li>
+<li>
+<p>The server generates 20-byte random data and sends it to the client.</p>
+</li>
+<li>
+<p>Based on the random data, the client encrypts passwords entered by users, then sends the encrypted information to the server for password verification. [1]</p>
+</li>
+</ul>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md2.jpeg" alt="img"></p>
+<p>MySQL Native Authentication Process</p>
+<p>Above is a brief description of MySQL Native Authentication. It can help us understand what happens once users enter passwords.</p>
+<p>To adapt to different scenarios, MySQL provides multiple authentication protocols in a plugin form [2].</p>
+<ul>
+<li>
+<p><code>mysql_native_password</code>: native authentication, used as the default before version 8.0.</p>
+</li>
+<li>
+<p><code>caching_sha2_password</code>: SHA-256-based cache authentication, used as the default after version 8.0.</p>
+</li>
+<li>
+<p><code>mysql_clear_password</code>: clear text password authentication, suitable for certain scenarios.</p>
+</li>
+</ul>
+<p>MySQL enterprise versions also provide authentication plugins such as:</p>
+<ul>
+<li>
+<p><code>authentication_windows</code>: Windows service-based authentication.</p>
+</li>
+<li>
+<p><code>authentication_ldap_simple</code>: LDAP-based authentication.</p>
+</li>
+</ul>
+<p>Now let’s take a look at the authentication mechanisms of PostgreSQL and openGauss.</p>
+<p><strong>PostgreSQL</strong>
+Common authentication methods for PostgreSQL [3] include:</p>
+<ul>
+<li><code>scram-sha-256</code>: SHA-256 authentication based on SCRAM (Salted Challenge Response Authentication Mechanism).</li>
+<li><code>md5</code>: using MD5 encryption.</li>
+<li><code>password</code>: using clear text passwords.</li>
+</ul>
+<p><strong>openGauss</strong>
+Common authentication methods for openGauss [4] include：</p>
+<ul>
+<li><code>scram-sha-256</code>: SHA-256 authentication based on SCRAM.</li>
+<li><code>md5</code>: using MD5 encryption.</li>
+<li><code>sm3</code>: using SM3 encryption.</li>
+</ul>
+<h1 id="overview">Overview</h1>
+<p>As a powerful database proxy, ShardingSphere-Proxy supports multiple database protocols and provides user authentication through its AuthenticationEngine.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md3.jpeg" alt="img"></p>
+<p>The goal of AuthenticationEngine is to achieve protocol handshake and identity authentication.</p>
+<p>ShardingSphere-Proxy supports handshake and authentication protocols for MySQL, PostgreSQL and openGauss, and provides multiple authentication algorithms, including:</p>
+<h2 id="mysql-1">MySQL</h2>
+<ul>
+<li><code>mysql_native_password</code></li>
+<li><code>mysql_clear_password</code></li>
+</ul>
+<h2 id="postgresql">PostgreSQL</h2>
+<ul>
+<li><code>md5</code></li>
+<li><code>password</code></li>
+</ul>
+<h2 id="opengauss">openGauss</h2>
+<ul>
+<li><code>md5</code></li>
+<li><code>scram-sha-256</code></li>
+</ul>
+<p>Please note that in Proxy, the default authentication algorithms for MySQL, PostgreSQL and openGauss are <code>mysql_native_password</code>, <code>md5</code> and <code>scram-sha-256</code>, respectively.</p>
+<h1 id="shardingsphere-proxy-authentication-configuration">ShardingSphere-Proxy Authentication Configuration</h1>
+<p>In version 5.3.2, ShardingSphere added authenticator-related configuration items to allow users to specify authentication algorithms as needed when using Proxy. The format is as follows:</p>
+<pre><code>authority:
+  users:
+    - user: # Combination of the authorized host and the username used to log in to the computer node. Format：&lt;username&gt;@&lt;hostname&gt;. When hostname is % an empty string, it indicates no limit to the authorized host. 
+      password: # User password.
+      authenticationMethodName: # Optional, used to specify the password authentication method for users.
+  authenticators: # Optional, no configuration is required by default. Proxy is automatically selected based on the front-end protocol type.
+    authenticatorName:
+      type: # Password authentication type.
+  defaultAuthenticator: # It is optional that you can specify an authenticatorName as the default password authentication method.
+  privilege:
+    type: # Type of Authority provider, with a default value of ALL_PERMITTED.
+</code></pre><p><code>AuthenticationMethodName</code>, <code>authenticators</code> and <code>defaultAuthenticator</code> are all optional and only configured when needed.</p>
+<p>Proxy also supports user-level authentication configuration, where users can use different authentication algorithms.</p>
+<p>Now, let’s take <code>openGauss</code> as an example to explain how to use the newly-added MD5 authentication algorithm to log in to psql.</p>
+<h1 id="preparation">Preparation</h1>
+<p>Before making specific configurations, we compare the performance of <code>gsql</code> and <code>psql</code> connecting to Proxy.</p>
+<h2 id="serveryaml">server.yaml</h2>
+<pre><code>authority:
+  users:
+    - user: root@%
+      password: root
+    - user: sharding
+      password: sharding
+
+props:
+  proxy-frontend-database-protocol-type: openGauss
+</code></pre><p><strong>Note:</strong></p>
+<ul>
+<li>
+<p>We specify <code>openGaussas</code> the front-end protocol.</p>
+</li>
+<li>
+<p>No specified authentication type. Proxy adopts the default value of <code>scram-sha-256</code>.</p>
+</li>
+</ul>
+<h2 id="config-shardingyaml">config-sharding.yaml</h2>
+<pre><code>databaseName: sharding_db
+
+dataSources:
+  ds_0:
+    url: jdbc:opengauss://127.0.0.1:15432/demo_ds
+    username: username
+    password: password
+    connectionTimeoutMilliseconds: 30000
+    idleTimeoutMilliseconds: 60000
+    maxLifetimeMilliseconds: 1800000
+    maxPoolSize: 10
+    minPoolSize: 1
+</code></pre><h2 id="gsql-login">gsql login</h2>
+<p>Connection succeeded.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md4.jpeg" alt="img"></p>
+<p>Here we use gsql in opengauss:3.1.0 to access ShardingSphere-Proxy.</p>
+<h2 id="psql-login">psql login</h2>
+<p>Connection failed.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md5.jpeg" alt="img"></p>
+<p>We see that it’s actually due to the authentication protocol.</p>
+<p>The psql client requires md5 protocol authentication by default, but because Proxy requires the scram-sha-256 under the openGuass protocol, the negotiation fails and an exception is thrown.</p>
+<h2 id="following-steps">Following Steps</h2>
+<p>Now we specify MD5 as the authentication method for sharding users, while retaining the default setting of using <code>scram-sha-256</code> to support different users and clients.</p>
+<p><strong>server.yaml</strong></p>
+<pre><code>authority:
+  users:
+    - user: root@%
+      password: root
+    - user: sharding
+      password: sharding
+      authenticationMethodName: md5
+  authenticators:
+    md5:
+      type: MD5
+    scram_sha256:
+      type: SCRAM_SHA256 # SCRAM_SHA256 is the SPI name that provides scram-sha-256 authentication alogorithm
+  defaultAuthenticator: scram_sha256
+
+props:
+  proxy-frontend-database-protocol-type: openGauss
+</code></pre><p><strong>Notes：</strong></p>
+<ul>
+<li>We specify <code>openGaussas</code> the front-end protocol.</li>
+<li>We specify <code>MD5</code> as the authentication algorithm for sharding users.</li>
+<li>The specified default authentication remains <code>scram-sha-256</code>, which means root users require <code>scram-sha-256</code> authentication.</li>
+</ul>
+<h2 id="config-shardingyaml-1">config-sharding.yaml</h2>
+<p>Remains unchanged.</p>
+<h2 id="gsql-login-1">gsql login</h2>
+<p>Connection succeeded.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md6.jpeg" alt="img"></p>
+<h2 id="psql-login-as-root-user">psql login as root user</h2>
+<p>Connection failed.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md7.jpeg" alt="img"></p>
+<p>Psql fails to connect because no <code>scram-sha-256</code> authentication mechanism is supported. Then what about the sharding user?</p>
+<h2 id="psql-login-as-sharding-user">psql login as sharding user</h2>
+<p>Connection succeeded.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md8.jpeg" alt="img"></p>
+<p>Now we see that <code>psql</code> has successfully connected to ShardingSphere-Proxy under the openGuass protocol.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/2023_05_18_Enhancing_Database_Security_ShardingSphere-Proxy%E2%80%99s_Authentication.en.md9.jpeg" alt="img"></p>
+<h1 id="future-plans">Future Plans</h1>
+<p>ShardingSphere has already implemented a framework in Proxy for different database protocols and authentication algorithms. We have also provided optional authentication algorithms for several database protocols. In the future, we aim to expand our support for authentication algorithms across a wider range of database protocols.</p>
+<p>We believe that our community is the key to making ShardingSphere better. We welcome more people to join us and contribute to the development of the project.</p>
+<h1 id="summary">Summary</h1>
+<p>In this post, we discussed the configuration of authentication protocols for ShardingSphere-Proxy. For more information on this topic, please refer to the official documentation on our website [5].</p>
+<p>If you have any questions or suggestions about Apache ShardingSphere, please feel free to raise them in the GitHub issue list [6], or visit our Slack community [7] for further discussion.</p>
+<h1 id="useful-links">Useful Links</h1>
+<p>[1] <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/page_protocol_connection_phase_authentication_methods_native_password_authentication.html">MySQL Native Authentication</a></p>
+<p>[2] <a href="https://dev.mysql.com/doc/refman/8.0/en/pluggable-authentication.html">MySQL Pluggable Authentication</a></p>
+<p>[3] <a href="https://www.postgresql.org/docs/15/auth-password.html">PostgreSQL Password Authentication</a></p>
+<p>[4] <a href="https://docs.opengauss.org/en/docs/3.1.1/docs/Developerguide/configuration-file-reference.html">openGauss Configuration File Reference</a></p>
+<p>[5] <a href="https://shardingsphere.apache.org/document/5.3.2/en/user-manual/shardingsphere-proxy/yaml-config/authority/">ShardingSphere-Proxy Authentication and Authorization</a></p>
+<p>[6] <a href="https://github.com/apache/shardingsphere/issues">GitHub Issue List</a></p>
+<p>[7] <a href="https://apacheshardingsphere.slack.com/?redir=%2Fssb%2Fredirect">Slack Community</a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_06_07_how_to_run_sql_trace_with_shardingsphere/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_05_10_simplifying_learning_shardingspheres_template_engine_for_streamlined_examples/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

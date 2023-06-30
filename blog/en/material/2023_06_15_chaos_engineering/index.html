@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>Chaos Engineering: Efficient Way to Improve System Availability &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">Chaos Engineering: Efficient Way to Improve System Availability</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p><img src="https://shardingsphere.apache.org/blog/img/chaos_engineering1.jpeg" alt=""></p>
+<p>Resilience is a crucial requirement for ShardingSphere-Proxy, an essential database infrastructure. Testing and verifying resilience can be efficiently achieved through the use of chaos engineering methodology. To support customized chaos engineering, the <a href="https://shardingsphere.apache.org/oncloud/">ShardingSphere-on-Cloud</a> project is designing and implementing a new <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/">CustomResourceDefinition</a> (CRD) called Chaos. This post provides a practical description of CRD’s concept and features, helping the community better understand its potential benefits.</p>
+<h1 id="what-is-chaos-engineering">What is chaos engineering</h1>
+<p>System availability is a critical metric for evaluating service reliability. Numerous methods can ensure high availability, including engineering resilience and techniques, and others. One such technique is chaos engineering, which involves introducing software faults into production systems to enhance availability.</p>
+<p>According to <a href="https://principlesofchaos.org/">Principles of Chaos</a> (2019), the definition of chaos engineering is:</p>
+<blockquote>
+<p>“Chaos Engineering is the discipline of experimenting on a system to build confidence in the system’s capability to withstand turbulent conditions in production.”</p>
+</blockquote>
+<p>In other words, chaos engineering is a practice that aims to enhance system robustness by detecting potential weaknesses in software systems early, ultimately preventing major disruptions or failures.</p>
+<h1 id="why-is-chaos-engineering-needed">Why is chaos engineering needed</h1>
+<p>The complexity of a system can be shown in a linear and nonlinear way as well as reflect how changes in the input of a system affect the output.</p>
+<p>A linear system is typically predictable. There are many examples of linear systems in nature, such as simple mathematical functions and physical definitions.</p>
+<p>In contrast, the output of a nonlinear system cannot be accurately calculated. In a large distributed program, components interact with each other, and we cannot determine if expected output can be achieved under various inputs.</p>
+<p>Currently, most programs are increasingly complex. In common cloud environments, coordinating various components is becoming more challenging (such as Kubernetes, along with the services running on it, like Istio, Envoy, and other software infrastructure).</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/chaos_engineering2.png" alt=""></p>
+<div class="caption-center"> Figure 1. Infrastructure stack for general service </div>
+<p>The complexity and rapid changes inherent to many systems often lead to developers having a narrow understanding of the overall picture. For example, developers behind a mall system may not familiar with the technical details of the infrastructure they adopted. With increased complexity, any single person’s understanding on the model built by the system may become less accurate. Hence, gaining a complete comprehension of a complex system is not realistic.</p>
+<p>Chaos is inherent and describes an unknown state in complex systems. <strong>Chaos engineering is used to discover chaos in complex systems, learn the behavior of the system, and develop the ability to respond to failures and restore the system to a steady state.</strong></p>
+<h1 id="the-guidelines-and-practical-ways-of-chaos-engineering">The guidelines and practical ways of chaos engineering</h1>
+<h2 id="formulate-a-hypothesis-about-steady-state">Formulate a hypothesis about steady-state</h2>
+<p>Every experiment begins with a hypothesis, often taking the form of “even in XYZ circumstances, the system remains in a steady state.” This principle emphasizes the establishment of hypotheses based on defining steady states. Therefore, we should define various indicators of the system’s normal state based on long-term monitoring of the production environment and focus on measurable outputs, rather than internal properties of the system.</p>
+<p>When identifying a steady state, it’s often essential to consider the global outputs of the system, such as running logs, performance logs, alerts, and program behavior, and abstract them into steady-state conditions. Having introduced experimental variables (faults), these steady-state conditions should change as expected.</p>
+<p>When the system is in the steady state we defined, we should consider that the system can provide services normally to the outside world. In addition, monitoring the steady state is also important so that the system can recover to the steady state in a short period of time.</p>
+<h2 id="introducing-diverse-real-world-events">Introducing diverse real-world events</h2>
+<p>We ought to introduce events that are real and what we care about such as trying to reproduce faults that occurred in the production environment, such as cache avalanche, service degradation, etc.</p>
+<p>Behaviors that would lead to the same fault symptoms should not be introduced, such as occupying all the memory, CPU, or disk of a service instance or ‘killing’ the instance, which system responds to bad requests. Testing should focus on the system’s behavior after a fault occurs, rather than on how to trigger the fault.</p>
+<h2 id="experiments-in-the-production-environment">Experiments in the production environment</h2>
+<p>When conducting experiments, we can learn about the relevant behaviors of the system and establish confidence in the system. If we conduct experiments in a test environment, we can only establish confidence in that specific test environment. If there are differences between the production environment and the test environment, we cannot establish confidence in the production environment.</p>
+<p>This is because a complex system is a whole, environmental differences between testing and production environments can render testing environment experiments meaningless, causing a “<a href="https://zh.wikipedia.org/wiki/%E9%95%BF%E9%9E%AD%E6%95%88%E5%BA%94">Bullwhip-effect</a>”. However, conducting experiments in the production environment may affect users of the system and cause losses. We need to make trade-offs in the formal environment and let the experimental tools mature in the quasi-production environment before routing the experiments to a small portion of traffic in the production environment.</p>
+<h2 id="automate-experiments">Automate experiments</h2>
+<p>When testing massive experiment sets are required, automating the process is more efficient than manually setting experiment environments, introducing faults, and gathering results. Automated experiments save time, run continuously, and can cover a larger number of experiment sets.</p>
+<p>When repeat experiments are required, hypotheses are not always true, and they can be expired following iterated software, so periodic conducting regression experiments are needed.</p>
+<h2 id="minimize-the-blast-radius">Minimize the blast radius</h2>
+<p>Safe experiment methods can reduce the risk to the production environment, such as using traffic shadowing or selecting a suitable time period. An indicator in a small variable group is more significant compared to a small control group.</p>
+<h1 id="chaos-maturity-model">Chaos maturity model</h1>
+<p>Chaos maturity model provided a <a href="https://www.oreilly.com/content/chaos-engineering/#cmm_map_image">model map</a>, based on different positions to measure different types of chaos engineering in practice.</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/chaos_engineering3.png" alt=""></p>
+<div class="caption-center"> Figure 2. Chaos Maturity Map </div>
+<p>There are two axes on the map, adoption on the X-axis and sophistication on the Y-axis, which can be explored separately:</p>
+<h2 id="adoption">Adoption</h2>
+<p>As chaos engineering becomes mature, chaos engineering software needs to achieve a specific level that robustness validation alone can significantly affect the compliance process. However, initial adoption of chaos engineering generally starts from scratch.</p>
+<h2 id="sophistication">Sophistication</h2>
+<p>Sophistication has some different metrica: provide consultation services and provide a set of tools. Due to the software infrastructure’s diversity, no tool can abstract sophisticated chaos engineering experiment instances in all environments and apply it in reality. Thus, <strong>chaos engineering practices were contributed from massive labor inputs, then customized solutions were gradually developed</strong>.</p>
+<p>Another way to understand sophistication engineering is to consider the system levels and introducing system experiment variables. Experiments typically start at the infrastructure level with killing pods or virtual machines at the initial. During the initial stages of chaos experiments, the common approach is to use methods such as killing pods or virtual machines. As the tools become more sophisticated, chaos injection logic may be introduced into the target system, impacting the requests between services.</p>
+<p>Additionally, when experimental variables affect business logic, we can observe more complex experiments. For instance, returning feasible but unexpected request responses to a service can lead to different results by programs. The experiments in the system will be conducted from the infrastructure layer to the application layer, and then to the business logic layer. Moreover, low-granularity experiments such as those that tend to trigger potential faults in the business logic layer are to be prioritized.</p>
+<h1 id="continuous-verification"><strong>Continuous verification</strong></h1>
+<blockquote>
+<p>“<a href="https://www.oreilly.com/library/view/chaos-engineering/9781492043850/">Continuous verification (CV) is a discipline of proactive experimentation, implemented as tooling that verifies system behaviors.</a>” — Casy Rosenthal</p>
+</blockquote>
+<p>Continuous validation development tools are a prime example of complexity in the chaos maturity model. CV, like CI/CD, addresses the need for increasingly complex operational systems. Due to resource constraints, system developers cannot afford to verify internal plans, and must instead focus on validating the system’s output meets desired expectations. That’s why CV is better than verification and also this is a successful sign of managing complex systems.</p>
+<p>There are at least three types of continuous verification: feature testing, data artifacts, and correctness.</p>
+<p><strong>Feature Testing</strong>: based on the various performance indicators (concurrency, latency deviation, execution speed, etc.), and through observation of actual production traffic, the report and recognition of this test will be established.</p>
+<p><strong>Data artifacts</strong>: databases and storage applications have various requirements for the characters of writing and retrieving data, such as transaction consistency, idempotence, incorrect data isolation levels, etc.</p>
+<p><strong>Correctness:</strong> not all correct forms are manifested as a certain state or ideal attribute. In some cases, the interaction between different components must be taken by interface contracts or agreements. When an interface request returns a seemingly correct result that is beyond its judgement logic, unexpected errors may occur. The reason for such issues is that different levels of code are consistent at the logical level but inconsistent between layers.</p>
+<h1 id="open-source-chaos-engineering-platform">Open-source chaos engineering platform</h1>
+<h2 id="litmus-chaoshttpslitmuschaosio"><a href="https://litmuschaos.io/">Litmus Chaos</a></h2>
+<p>Litmus Chaos is a chaos engineering platform that provides cross-cloud services. It’s a CNCF open-source project that many organizations have used. <a href="https://litmuschaos.io/">Litmus Chaos</a>’s mission is to help Kubernetes SRE and developers to find weaknesses in non-Kubernetes platforms and applications that run on Kubernetes.</p>
+<h2 id="chaos-meshhttpschaos-meshorg"><a href="https://chaos-mesh.org/">Chaos Mesh</a></h2>
+<p>Chaos Mesh is a chaos engineering platform open-sourced by PingCAP. It has a strong capability to orchestrate failure scenarios and provide comprehensive failure simulation types, which allow users to simulate the faults that might occur in production and testing environments and helps them identify potential failures. Chaos Mesh provides comprehensive visual tools to help beginner programmers conveniently run and monitor their own chaos scenarios. Chaos Mesh was developed based on Kubernetes CRD, mainly including three components:</p>
+<ul>
+<li>Chaos Dashboard: a visible platform of Chaos Mesh, provides a user-friendly WebUI, allowing users to design, monitor for Chaos, and manage RABC permits.</li>
+<li>Chaos Controller Manager: core logical components of Chaos Mesh, able to schedule users’ designed Chaos CR. The component includes many CRD Controllers, such as PodChaos Controller, WorkerFlow Controller, etc.</li>
+<li>Chaos Daemon: the main execution component of Chaos Mesh. Chaos Daemon runs as DeamonSet, and holds Privileged access by default (opt-in). Generally, this component interferes with network equipment, file systems, and kernels by invasion to target Pod Namespace.</li>
+</ul>
+<h2 id="chaos-bladehttpschaosbladeio"><a href="https://chaosblade.io/">Chaos Blade</a></h2>
+<p>Chaos Blade is a chaos engineering project designed and open-sourced by Alibaba in 2019, which includes the chaos engineering experiment tool Chaos Blade and platform Chaosblade-box. It helps enterprises solve high availability issues during cloud-native processes through chaos engineering.</p>
+<p>Chaosblade supports three big platforms, four computing language applications, involves over 200 experimental scenarios, and over 3000 parameters, allowing for fine control of the experimental scope.</p>
+<p>ChaosBlade-Box supports the management of experimental tools, and in addition to managing Chaos Blade, it also supports the aggregation of experimental tools from other platforms such as Litmuschaos.</p>
+<h1 id="conclusion">Conclusion</h1>
+<p>To introduce chaos engineering into a certain system, we can refer to the chaos maturity model and start with simple inputs. In the case of our community, we can agree upon a date for developers of various components in the system to perform a fault test together, record the results to enhance the sense of participation and importance of chaos engineering for contributors. We’ll then observe system behavior, define steady states, and design reasonable chaos experiment plans. These experiments can be conducted in pre-production or production environments to discover and learn new behaviors of the system and enhance the community’s ability to handle faults. Afterwards, we can design automated experiments and use regression testing to ensure the correctness of experimental hypotheses. By the way, Chaos is coming soon to the 0.3.0 version, stay tuned!</p>
+<h1 id="reference">Reference</h1>
+<ol>
+<li><a href="https://principlesofchaos.org/">Principles of Chaos Engineering</a></li>
+<li><a href="https://litmuschaos.io/">LitmusChaos</a></li>
+<li><a href="https://chaos-mesh.org/">Chaos Mesh: A Powerful Chaos Engineering Platform for Kubernetes</a></li>
+<li><a href="https://chaosblade.io/">Chaos Blade</a></li>
+<li><a href="https://zh.wikipedia.org/wiki/%E9%95%BF%E9%9E%AD%E6%95%88%E5%BA%94">Bullwhip effect</a></li>
+<li><a href="https://www.oreilly.com/content/chaos-engineering/#cmm_map_image">CMM Map</a></li>
+<li><a href="https://www.oreilly.com/library/view/chaos-engineering/9781492043850/">Chaos Engineering (Rosenthal, C, Jones,N, 2020)</a></li>
+</ol>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_06_07_how_to_run_sql_trace_with_shardingsphere/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

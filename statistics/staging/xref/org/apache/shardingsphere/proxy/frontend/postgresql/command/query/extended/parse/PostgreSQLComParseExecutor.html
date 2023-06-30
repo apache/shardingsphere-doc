@@ -65,53 +65,58 @@
 <a class="jxr_linenumber" name="L57" href="#L57">57</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="ConnectionSession" href="../../../../../../../../../../org/apache/shardingsphere/proxy/backend/session/ConnectionSession.html#ConnectionSession">ConnectionSession</a> connectionSession;
 <a class="jxr_linenumber" name="L58" href="#L58">58</a>      
 <a class="jxr_linenumber" name="L59" href="#L59">59</a>      @Override
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>      <strong class="jxr_keyword">public</strong> Collection&lt;DatabasePacket&lt;?&gt;&gt; execute() {
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>      <strong class="jxr_keyword">public</strong> Collection&lt;DatabasePacket&gt; execute() {
 <a class="jxr_linenumber" name="L61" href="#L61">61</a>          <a name="SQLParserEngine" href="../../../../../../../../../../org/apache/shardingsphere/infra/parser/SQLParserEngine.html#SQLParserEngine">SQLParserEngine</a> sqlParserEngine = createShardingSphereSQLParserEngine(connectionSession.getDatabaseName());
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>          String sql = packet.getSql();
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>          String sql = packet.getSQL();
 <a class="jxr_linenumber" name="L63" href="#L63">63</a>          <a name="SQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/sql/parser/sql/common/statement/SQLStatement.html#SQLStatement">SQLStatement</a> sqlStatement = sqlParserEngine.parse(sql, <strong class="jxr_keyword">true</strong>);
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>          <strong class="jxr_keyword">if</strong> (sqlStatement.getParameterCount() &gt; 0) {
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>              sql = convertSQLToJDBCStyle(sqlStatement, sql);
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>              sqlStatement = sqlParserEngine.parse(sql, <strong class="jxr_keyword">true</strong>);
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>          }
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>          List&lt;PostgreSQLColumnType&gt; paddedColumnTypes = paddingColumnTypes(sqlStatement.getParameterCount(), packet.readParameterTypes());
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>          SQLStatementContext&lt;?&gt; sqlStatementContext = sqlStatement instanceof <a name="DistSQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/distsql/parser/statement/DistSQLStatement.html#DistSQLStatement">DistSQLStatement</a> ? <strong class="jxr_keyword">new</strong> <a name="DistSQLStatementContext" href="../../../../../../../../../../org/apache/shardingsphere/proxy/backend/distsql/DistSQLStatementContext.html#DistSQLStatementContext">DistSQLStatementContext</a>((<a name="DistSQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/distsql/parser/statement/DistSQLStatement.html#DistSQLStatement">DistSQLStatement</a>) sqlStatement)
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>                  : SQLStatementContextFactory.newInstance(ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaData(),
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>                          sqlStatement, connectionSession.getDefaultDatabaseName());
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>          <a name="PostgreSQLServerPreparedStatement" href="../../../../../../../../../../org/apache/shardingsphere/proxy/frontend/postgresql/command/query/extended/PostgreSQLServerPreparedStatement.html#PostgreSQLServerPreparedStatement">PostgreSQLServerPreparedStatement</a> serverPreparedStatement = <strong class="jxr_keyword">new</strong> <a name="PostgreSQLServerPreparedStatement" href="../../../../../../../../../../org/apache/shardingsphere/proxy/frontend/postgresql/command/query/extended/PostgreSQLServerPreparedStatement.html#PostgreSQLServerPreparedStatement">PostgreSQLServerPreparedStatement</a>(sql, sqlStatementContext, paddedColumnTypes);
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>          connectionSession.getServerPreparedStatementRegistry().addPreparedStatement(packet.getStatementId(), serverPreparedStatement);
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>          <strong class="jxr_keyword">return</strong> Collections.singletonList(PostgreSQLParseCompletePacket.getInstance());
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>      }
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>      
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>      <strong class="jxr_keyword">private</strong> <a name="SQLParserEngine" href="../../../../../../../../../../org/apache/shardingsphere/infra/parser/SQLParserEngine.html#SQLParserEngine">SQLParserEngine</a> createShardingSphereSQLParserEngine(<strong class="jxr_keyword">final</strong> String databaseName) {
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>          <a name="MetaDataContexts" href="../../../../../../../../../../org/apache/shardingsphere/mode/metadata/MetaDataContexts.html#MetaDataContexts">MetaDataContexts</a> metaDataContexts = ProxyContext.getInstance().getContextManager().getMetaDataContexts();
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>          <a name="SQLParserRule" href="../../../../../../../../../../org/apache/shardingsphere/parser/rule/SQLParserRule.html#SQLParserRule">SQLParserRule</a> sqlParserRule = metaDataContexts.getMetaData().getGlobalRuleMetaData().getSingleRule(SQLParserRule.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>          <strong class="jxr_keyword">return</strong> sqlParserRule.getSQLParserEngine(DatabaseTypeEngine.getTrunkDatabaseTypeName(metaDataContexts.getMetaData().getDatabase(databaseName).getProtocolType()));
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>          List&lt;Integer&gt; actualParameterMarkerIndexes = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;();
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>          <strong class="jxr_keyword">if</strong> (sqlStatement.getParameterCount() &gt; 0) {
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>              List&lt;ParameterMarkerSegment&gt; parameterMarkerSegments = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(((<a name="AbstractSQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/sql/parser/sql/common/statement/AbstractSQLStatement.html#AbstractSQLStatement">AbstractSQLStatement</a>) sqlStatement).getParameterMarkerSegments());
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>              <strong class="jxr_keyword">for</strong> (<a name="ParameterMarkerSegment" href="../../../../../../../../../../org/apache/shardingsphere/sql/parser/sql/common/segment/generic/ParameterMarkerSegment.html#ParameterMarkerSegment">ParameterMarkerSegment</a> each : parameterMarkerSegments) {
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>                  actualParameterMarkerIndexes.add(each.getParameterIndex());
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>              }
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>              sql = convertSQLToJDBCStyle(parameterMarkerSegments, sql);
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>              sqlStatement = sqlParserEngine.parse(sql, <strong class="jxr_keyword">true</strong>);
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>          }
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>          List&lt;PostgreSQLColumnType&gt; paddedColumnTypes = paddingColumnTypes(sqlStatement.getParameterCount(), packet.readParameterTypes());
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>          <a name="SQLStatementContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/statement/SQLStatementContext.html#SQLStatementContext">SQLStatementContext</a> sqlStatementContext = sqlStatement instanceof <a name="DistSQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/distsql/parser/statement/DistSQLStatement.html#DistSQLStatement">DistSQLStatement</a> ? <strong class="jxr_keyword">new</strong> <a name="DistSQLStatementContext" href="../../../../../../../../../../org/apache/shardingsphere/proxy/backend/distsql/DistSQLStatementContext.html#DistSQLStatementContext">DistSQLStatementContext</a>((<a name="DistSQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/distsql/parser/statement/DistSQLStatement.html#DistSQLStatement">DistSQLStatement</a>) sqlStatement)
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>                  : SQLStatementContextFactory.newInstance(ProxyContext.getInstance().getContextManager().getMetaDataContexts().getMetaData(),
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>                          sqlStatement, connectionSession.getDefaultDatabaseName());
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>          <a name="PostgreSQLServerPreparedStatement" href="../../../../../../../../../../org/apache/shardingsphere/proxy/frontend/postgresql/command/query/extended/PostgreSQLServerPreparedStatement.html#PostgreSQLServerPreparedStatement">PostgreSQLServerPreparedStatement</a> serverPreparedStatement = <strong class="jxr_keyword">new</strong> <a name="PostgreSQLServerPreparedStatement" href="../../../../../../../../../../org/apache/shardingsphere/proxy/frontend/postgresql/command/query/extended/PostgreSQLServerPreparedStatement.html#PostgreSQLServerPreparedStatement">PostgreSQLServerPreparedStatement</a>(sql, sqlStatementContext, packet.getHintValueContext(), paddedColumnTypes,
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>                  actualParameterMarkerIndexes);
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>          connectionSession.getServerPreparedStatementRegistry().addPreparedStatement(packet.getStatementId(), serverPreparedStatement);
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>          <strong class="jxr_keyword">return</strong> Collections.singleton(PostgreSQLParseCompletePacket.getInstance());
 <a class="jxr_linenumber" name="L81" href="#L81">81</a>      }
 <a class="jxr_linenumber" name="L82" href="#L82">82</a>      
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>      <strong class="jxr_keyword">private</strong> String convertSQLToJDBCStyle(<strong class="jxr_keyword">final</strong> <a name="SQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/sql/parser/sql/common/statement/SQLStatement.html#SQLStatement">SQLStatement</a> sqlStatement, <strong class="jxr_keyword">final</strong> String sql) {
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>          List&lt;ParameterMarkerSegment&gt; parameterMarkerSegments = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(((<a name="AbstractSQLStatement" href="../../../../../../../../../../org/apache/shardingsphere/sql/parser/sql/common/statement/AbstractSQLStatement.html#AbstractSQLStatement">AbstractSQLStatement</a>) sqlStatement).getParameterMarkerSegments());
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>          parameterMarkerSegments.sort(Comparator.comparingInt(SQLSegment::getStopIndex));
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>          StringBuilder result = <strong class="jxr_keyword">new</strong> StringBuilder(sql);
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>          <strong class="jxr_keyword">for</strong> (<strong class="jxr_keyword">int</strong> i = parameterMarkerSegments.size() - 1; i &gt;= 0; i--) {
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>              <a name="ParameterMarkerSegment" href="../../../../../../../../../../org/apache/shardingsphere/sql/parser/sql/common/segment/generic/ParameterMarkerSegment.html#ParameterMarkerSegment">ParameterMarkerSegment</a> each = parameterMarkerSegments.get(i);
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>              result.replace(each.getStartIndex(), each.getStopIndex() + 1, ParameterMarkerType.QUESTION.getMarker());
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>          }
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>          <strong class="jxr_keyword">return</strong> result.toString();
-<a class="jxr_linenumber" name="L92" href="#L92">92</a>      }
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>      
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>      <strong class="jxr_keyword">private</strong> List&lt;PostgreSQLColumnType&gt; paddingColumnTypes(<strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">int</strong> parameterCount, <strong class="jxr_keyword">final</strong> List&lt;PostgreSQLColumnType&gt; specifiedColumnTypes) {
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>          <strong class="jxr_keyword">if</strong> (parameterCount == specifiedColumnTypes.size()) {
-<a class="jxr_linenumber" name="L96" href="#L96">96</a>              <strong class="jxr_keyword">return</strong> specifiedColumnTypes;
-<a class="jxr_linenumber" name="L97" href="#L97">97</a>          }
-<a class="jxr_linenumber" name="L98" href="#L98">98</a>          List&lt;PostgreSQLColumnType&gt; result = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(parameterCount);
-<a class="jxr_linenumber" name="L99" href="#L99">99</a>          result.addAll(specifiedColumnTypes);
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>         <strong class="jxr_keyword">int</strong> unspecifiedCount = parameterCount - specifiedColumnTypes.size();
-<a class="jxr_linenumber" name="L101" href="#L101">101</a>         <strong class="jxr_keyword">for</strong> (<strong class="jxr_keyword">int</strong> i = 0; i &lt; unspecifiedCount; i++) {
-<a class="jxr_linenumber" name="L102" href="#L102">102</a>             result.add(PostgreSQLColumnType.POSTGRESQL_TYPE_UNSPECIFIED);
-<a class="jxr_linenumber" name="L103" href="#L103">103</a>         }
-<a class="jxr_linenumber" name="L104" href="#L104">104</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L105" href="#L105">105</a>     }
-<a class="jxr_linenumber" name="L106" href="#L106">106</a> }
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>      <strong class="jxr_keyword">private</strong> <a name="SQLParserEngine" href="../../../../../../../../../../org/apache/shardingsphere/infra/parser/SQLParserEngine.html#SQLParserEngine">SQLParserEngine</a> createShardingSphereSQLParserEngine(<strong class="jxr_keyword">final</strong> String databaseName) {
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>          <a name="MetaDataContexts" href="../../../../../../../../../../org/apache/shardingsphere/mode/metadata/MetaDataContexts.html#MetaDataContexts">MetaDataContexts</a> metaDataContexts = ProxyContext.getInstance().getContextManager().getMetaDataContexts();
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>          <a name="SQLParserRule" href="../../../../../../../../../../org/apache/shardingsphere/parser/rule/SQLParserRule.html#SQLParserRule">SQLParserRule</a> sqlParserRule = metaDataContexts.getMetaData().getGlobalRuleMetaData().getSingleRule(SQLParserRule.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>          <strong class="jxr_keyword">return</strong> sqlParserRule.getSQLParserEngine(DatabaseTypeEngine.getTrunkDatabaseTypeName(metaDataContexts.getMetaData().getDatabase(databaseName).getProtocolType()));
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>      }
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>      
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>      <strong class="jxr_keyword">private</strong> String convertSQLToJDBCStyle(<strong class="jxr_keyword">final</strong> List&lt;ParameterMarkerSegment&gt; parameterMarkerSegments, <strong class="jxr_keyword">final</strong> String sql) {
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>          parameterMarkerSegments.sort(Comparator.comparingInt(SQLSegment::getStopIndex));
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>          StringBuilder result = <strong class="jxr_keyword">new</strong> StringBuilder(sql);
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>          <strong class="jxr_keyword">for</strong> (<strong class="jxr_keyword">int</strong> i = parameterMarkerSegments.size() - 1; i &gt;= 0; i--) {
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>              <a name="ParameterMarkerSegment" href="../../../../../../../../../../org/apache/shardingsphere/sql/parser/sql/common/segment/generic/ParameterMarkerSegment.html#ParameterMarkerSegment">ParameterMarkerSegment</a> each = parameterMarkerSegments.get(i);
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>              result.replace(each.getStartIndex(), each.getStopIndex() + 1, ParameterMarkerType.QUESTION.getMarker());
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>          }
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>          <strong class="jxr_keyword">return</strong> result.toString();
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>      }
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>      
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>      <strong class="jxr_keyword">private</strong> List&lt;PostgreSQLColumnType&gt; paddingColumnTypes(<strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">int</strong> parameterCount, <strong class="jxr_keyword">final</strong> List&lt;PostgreSQLColumnType&gt; specifiedColumnTypes) {
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>         <strong class="jxr_keyword">if</strong> (parameterCount == specifiedColumnTypes.size()) {
+<a class="jxr_linenumber" name="L101" href="#L101">101</a>             <strong class="jxr_keyword">return</strong> specifiedColumnTypes;
+<a class="jxr_linenumber" name="L102" href="#L102">102</a>         }
+<a class="jxr_linenumber" name="L103" href="#L103">103</a>         List&lt;PostgreSQLColumnType&gt; result = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(parameterCount);
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>         result.addAll(specifiedColumnTypes);
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>         <strong class="jxr_keyword">int</strong> unspecifiedCount = parameterCount - specifiedColumnTypes.size();
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>         <strong class="jxr_keyword">for</strong> (<strong class="jxr_keyword">int</strong> i = 0; i &lt; unspecifiedCount; i++) {
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>             result.add(PostgreSQLColumnType.UNSPECIFIED);
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>         }
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>     }
+<a class="jxr_linenumber" name="L111" href="#L111">111</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2023 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

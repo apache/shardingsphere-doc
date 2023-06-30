@@ -111,4 +111,16 @@ $(document).ready(function () {
     let item = $(this)
     item.find('.links').slideToggle()
   })
+
+  $('#philosophy .tab-nav li').on('click', function(){
+    $('#philosophy .tab-nav li').removeClass('on')
+    $(this).addClass('on')
+
+    var tabIndex = $(this).index();
+    
+    // 隐藏所有内容
+    $('#philosophy .con-list .con-item').removeClass('show');
+    // 显示对应索引的内容
+    $('#philosophy .con-list .con-item').eq(tabIndex).addClass('show');
+  })
 })

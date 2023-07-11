@@ -32,109 +32,121 @@
 <a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.rule.identifier.type.StaticDataSourceContainedRule;
 <a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.ContextManager;
 <a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.RegistryCenter;
-<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.datasource.DataSourceChangedEvent;
-<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.props.PropertiesChangedEvent;
-<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.rule.GlobalRuleConfigurationsChangedEvent;
-<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.rule.RuleConfigurationsChangedEvent;
-<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.event.storage.StorageNodeDataSource;
-<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.event.storage.StorageNodeDataSourceChangedEvent;
-<a class="jxr_linenumber" name="L33" href="#L33">33</a>  
-<a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
-<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> java.util.Map;
-<a class="jxr_linenumber" name="L36" href="#L36">36</a>  <strong class="jxr_keyword">import</strong> java.util.Map.Entry;
-<a class="jxr_linenumber" name="L37" href="#L37">37</a>  <strong class="jxr_keyword">import</strong> java.util.stream.Collectors;
-<a class="jxr_linenumber" name="L38" href="#L38">38</a>  
-<a class="jxr_linenumber" name="L39" href="#L39">39</a>  <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <em class="jxr_javadoccomment"> * Configuration changed subscriber.</em>
-<a class="jxr_linenumber" name="L41" href="#L41">41</a>  <em class="jxr_javadoccomment"> */</em>
-<a class="jxr_linenumber" name="L42" href="#L42">42</a>  @SuppressWarnings(<span class="jxr_string">"UnstableApiUsage"</span>)
-<a class="jxr_linenumber" name="L43" href="#L43">43</a>  <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a name="ConfigurationChangedSubscriber" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/ConfigurationChangedSubscriber.html#ConfigurationChangedSubscriber">ConfigurationChangedSubscriber</a> {
-<a class="jxr_linenumber" name="L44" href="#L44">44</a>      
-<a class="jxr_linenumber" name="L45" href="#L45">45</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="RegistryCenter" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/RegistryCenter.html#RegistryCenter">RegistryCenter</a> registryCenter;
-<a class="jxr_linenumber" name="L46" href="#L46">46</a>      
-<a class="jxr_linenumber" name="L47" href="#L47">47</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="ContextManager" href="../../../../../../../../org/apache/shardingsphere/mode/manager/ContextManager.html#ContextManager">ContextManager</a> contextManager;
-<a class="jxr_linenumber" name="L48" href="#L48">48</a>      
-<a class="jxr_linenumber" name="L49" href="#L49">49</a>      <strong class="jxr_keyword">public</strong> <a name="ConfigurationChangedSubscriber" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/ConfigurationChangedSubscriber.html#ConfigurationChangedSubscriber">ConfigurationChangedSubscriber</a>(<strong class="jxr_keyword">final</strong> <a name="RegistryCenter" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/RegistryCenter.html#RegistryCenter">RegistryCenter</a> registryCenter, <strong class="jxr_keyword">final</strong> <a name="ContextManager" href="../../../../../../../../org/apache/shardingsphere/mode/manager/ContextManager.html#ContextManager">ContextManager</a> contextManager) {
-<a class="jxr_linenumber" name="L50" href="#L50">50</a>          <strong class="jxr_keyword">this</strong>.registryCenter = registryCenter;
-<a class="jxr_linenumber" name="L51" href="#L51">51</a>          <strong class="jxr_keyword">this</strong>.contextManager = contextManager;
-<a class="jxr_linenumber" name="L52" href="#L52">52</a>          contextManager.getInstanceContext().getEventBusContext().register(<strong class="jxr_keyword">this</strong>);
-<a class="jxr_linenumber" name="L53" href="#L53">53</a>          disableDataSources();
-<a class="jxr_linenumber" name="L54" href="#L54">54</a>      }
-<a class="jxr_linenumber" name="L55" href="#L55">55</a>      
-<a class="jxr_linenumber" name="L56" href="#L56">56</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L57" href="#L57">57</a>  <em class="jxr_javadoccomment">     * Renew data source configuration.</em>
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L59" href="#L59">59</a>  <em class="jxr_javadoccomment">     * @param event data source changed event.</em>
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>      @Subscribe
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="DataSourceChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/datasource/DataSourceChangedEvent.html#DataSourceChangedEvent">DataSourceChangedEvent</a> event) {
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>          contextManager.alterDataSourceConfiguration(event.getDatabaseName(), event.getDataSourcePropertiesMap());
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>          disableDataSources();
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>      }
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>      
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>  <em class="jxr_javadoccomment">     * Renew rule configurations.</em>
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>  <em class="jxr_javadoccomment">     * @param event rule configurations changed event</em>
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>      @Subscribe
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="RuleConfigurationsChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/rule/RuleConfigurationsChangedEvent.html#RuleConfigurationsChangedEvent">RuleConfigurationsChangedEvent</a> event) {
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>          contextManager.alterRuleConfiguration(event.getDatabaseName(), event.getRuleConfigs());
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>          disableDataSources();
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>      }
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>      
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>  <em class="jxr_javadoccomment">     * Renew global rule configurations.</em>
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>  <em class="jxr_javadoccomment">     * @param event global rule configurations changed event</em>
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>      @Subscribe
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="GlobalRuleConfigurationsChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/rule/GlobalRuleConfigurationsChangedEvent.html#GlobalRuleConfigurationsChangedEvent">GlobalRuleConfigurationsChangedEvent</a> event) {
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>          contextManager.alterGlobalRuleConfiguration(event.getRuleConfigs());
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>          disableDataSources();
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>      }
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>      
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>  <em class="jxr_javadoccomment">     * Renew properties.</em>
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L92" href="#L92">92</a>  <em class="jxr_javadoccomment">     * @param event properties changed event</em>
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>      @Subscribe
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="PropertiesChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/props/PropertiesChangedEvent.html#PropertiesChangedEvent">PropertiesChangedEvent</a> event) {
-<a class="jxr_linenumber" name="L96" href="#L96">96</a>          contextManager.alterProperties(event.getProps());
-<a class="jxr_linenumber" name="L97" href="#L97">97</a>      }
-<a class="jxr_linenumber" name="L98" href="#L98">98</a>      
-<a class="jxr_linenumber" name="L99" href="#L99">99</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> disableDataSources() {
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>         Map&lt;String, StorageNodeDataSource&gt; storageNodes = getDisabledDataSources();
-<a class="jxr_linenumber" name="L101" href="#L101">101</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereDatabase&gt; entry : contextManager.getMetaDataContexts().getMetaData().getDatabases().entrySet()) {
-<a class="jxr_linenumber" name="L102" href="#L102">102</a>             entry.getValue().getRuleMetaData().findRules(StaticDataSourceContainedRule.<strong class="jxr_keyword">class</strong>).forEach(each -&gt; disableDataSources(entry.getKey(), each, storageNodes));
-<a class="jxr_linenumber" name="L103" href="#L103">103</a>         }
-<a class="jxr_linenumber" name="L104" href="#L104">104</a>     }
-<a class="jxr_linenumber" name="L105" href="#L105">105</a>     
-<a class="jxr_linenumber" name="L106" href="#L106">106</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> disableDataSources(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> <a name="StaticDataSourceContainedRule" href="../../../../../../../../org/apache/shardingsphere/infra/rule/identifier/type/StaticDataSourceContainedRule.html#StaticDataSourceContainedRule">StaticDataSourceContainedRule</a> rule, <strong class="jxr_keyword">final</strong> Map&lt;String, StorageNodeDataSource&gt; storageNodes) {
-<a class="jxr_linenumber" name="L107" href="#L107">107</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, StorageNodeDataSource&gt; entry : storageNodes.entrySet()) {
-<a class="jxr_linenumber" name="L108" href="#L108">108</a>             <a name="QualifiedDatabase" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/QualifiedDatabase.html#QualifiedDatabase">QualifiedDatabase</a> database = <strong class="jxr_keyword">new</strong> <a name="QualifiedDatabase" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/QualifiedDatabase.html#QualifiedDatabase">QualifiedDatabase</a>(entry.getKey());
-<a class="jxr_linenumber" name="L109" href="#L109">109</a>             <strong class="jxr_keyword">if</strong> (!database.getDatabaseName().equals(databaseName)) {
-<a class="jxr_linenumber" name="L110" href="#L110">110</a>                 <strong class="jxr_keyword">continue</strong>;
-<a class="jxr_linenumber" name="L111" href="#L111">111</a>             }
-<a class="jxr_linenumber" name="L112" href="#L112">112</a>             disableDataSources(entry.getValue(), rule, database);
-<a class="jxr_linenumber" name="L113" href="#L113">113</a>         }
-<a class="jxr_linenumber" name="L114" href="#L114">114</a>     }
-<a class="jxr_linenumber" name="L115" href="#L115">115</a>     
-<a class="jxr_linenumber" name="L116" href="#L116">116</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> disableDataSources(<strong class="jxr_keyword">final</strong> <a name="StorageNodeDataSource" href="../../../../../../../../org/apache/shardingsphere/mode/event/storage/StorageNodeDataSource.html#StorageNodeDataSource">StorageNodeDataSource</a> storageNodeDataSource, <strong class="jxr_keyword">final</strong> <a name="StaticDataSourceContainedRule" href="../../../../../../../../org/apache/shardingsphere/infra/rule/identifier/type/StaticDataSourceContainedRule.html#StaticDataSourceContainedRule">StaticDataSourceContainedRule</a> rule, <strong class="jxr_keyword">final</strong> <a name="QualifiedDatabase" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/QualifiedDatabase.html#QualifiedDatabase">QualifiedDatabase</a> database) {
-<a class="jxr_linenumber" name="L117" href="#L117">117</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, Collection&lt;String&gt;&gt; entry : rule.getDataSourceMapper().entrySet()) {
-<a class="jxr_linenumber" name="L118" href="#L118">118</a>             <strong class="jxr_keyword">if</strong> (!database.getGroupName().equals(entry.getKey())) {
-<a class="jxr_linenumber" name="L119" href="#L119">119</a>                 <strong class="jxr_keyword">continue</strong>;
-<a class="jxr_linenumber" name="L120" href="#L120">120</a>             }
-<a class="jxr_linenumber" name="L121" href="#L121">121</a>             entry.getValue().forEach(each -&gt; rule.updateStatus(<strong class="jxr_keyword">new</strong> <a name="StorageNodeDataSourceChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/event/storage/StorageNodeDataSourceChangedEvent.html#StorageNodeDataSourceChangedEvent">StorageNodeDataSourceChangedEvent</a>(database, storageNodeDataSource)));
-<a class="jxr_linenumber" name="L122" href="#L122">122</a>         }
-<a class="jxr_linenumber" name="L123" href="#L123">123</a>     }
-<a class="jxr_linenumber" name="L124" href="#L124">124</a>     
-<a class="jxr_linenumber" name="L125" href="#L125">125</a>     <strong class="jxr_keyword">private</strong> Map&lt;String, StorageNodeDataSource&gt; getDisabledDataSources() {
-<a class="jxr_linenumber" name="L126" href="#L126">126</a>         <strong class="jxr_keyword">return</strong> registryCenter.getStorageNodeStatusService().loadStorageNodes().entrySet()
-<a class="jxr_linenumber" name="L127" href="#L127">127</a>                 .stream().filter(entry -&gt; DataSourceState.DISABLED == entry.getValue().getStatus()).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-<a class="jxr_linenumber" name="L128" href="#L128">128</a>     }
-<a class="jxr_linenumber" name="L129" href="#L129">129</a> }
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.datasource.DataSourceNodesChangedEvent;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.datasource.DataSourceUnitsChangedEvent;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.props.PropertiesChangedEvent;
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.rule.GlobalRuleConfigurationsChangedEvent;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.cluster.coordinator.registry.config.event.rule.RuleConfigurationsChangedEvent;
+<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.event.storage.StorageNodeDataSource;
+<a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.event.storage.StorageNodeDataSourceChangedEvent;
+<a class="jxr_linenumber" name="L34" href="#L34">34</a>  
+<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
+<a class="jxr_linenumber" name="L36" href="#L36">36</a>  <strong class="jxr_keyword">import</strong> java.util.Map;
+<a class="jxr_linenumber" name="L37" href="#L37">37</a>  <strong class="jxr_keyword">import</strong> java.util.Map.Entry;
+<a class="jxr_linenumber" name="L38" href="#L38">38</a>  <strong class="jxr_keyword">import</strong> java.util.stream.Collectors;
+<a class="jxr_linenumber" name="L39" href="#L39">39</a>  
+<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>  <em class="jxr_javadoccomment"> * Configuration changed subscriber.</em>
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <em class="jxr_javadoccomment"> */</em>
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>  @SuppressWarnings(<span class="jxr_string">"UnstableApiUsage"</span>)
+<a class="jxr_linenumber" name="L44" href="#L44">44</a>  <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a name="ConfigurationChangedSubscriber" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/ConfigurationChangedSubscriber.html#ConfigurationChangedSubscriber">ConfigurationChangedSubscriber</a> {
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>      
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="RegistryCenter" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/RegistryCenter.html#RegistryCenter">RegistryCenter</a> registryCenter;
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>      
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="ContextManager" href="../../../../../../../../org/apache/shardingsphere/mode/manager/ContextManager.html#ContextManager">ContextManager</a> contextManager;
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>      
+<a class="jxr_linenumber" name="L50" href="#L50">50</a>      <strong class="jxr_keyword">public</strong> <a name="ConfigurationChangedSubscriber" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/ConfigurationChangedSubscriber.html#ConfigurationChangedSubscriber">ConfigurationChangedSubscriber</a>(<strong class="jxr_keyword">final</strong> <a name="RegistryCenter" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/RegistryCenter.html#RegistryCenter">RegistryCenter</a> registryCenter, <strong class="jxr_keyword">final</strong> <a name="ContextManager" href="../../../../../../../../org/apache/shardingsphere/mode/manager/ContextManager.html#ContextManager">ContextManager</a> contextManager) {
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>          <strong class="jxr_keyword">this</strong>.registryCenter = registryCenter;
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>          <strong class="jxr_keyword">this</strong>.contextManager = contextManager;
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>          contextManager.getInstanceContext().getEventBusContext().register(<strong class="jxr_keyword">this</strong>);
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>          disableDataSources();
+<a class="jxr_linenumber" name="L55" href="#L55">55</a>      }
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>      
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>  <em class="jxr_javadoccomment">     * Renew data source units configuration.</em>
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>  <em class="jxr_javadoccomment">     * @param event data source changed event.</em>
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>      @Subscribe
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="DataSourceUnitsChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/datasource/DataSourceUnitsChangedEvent.html#DataSourceUnitsChangedEvent">DataSourceUnitsChangedEvent</a> event) {
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>          contextManager.alterDataSourceUnitsConfiguration(event.getDatabaseName(), event.getDataSourcePropertiesMap());
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>          disableDataSources();
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>      }
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>      
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>  <em class="jxr_javadoccomment">     * Renew data source nodes configuration.</em>
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>  <em class="jxr_javadoccomment">     * @param event data source changed event.</em>
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>      @Subscribe
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="DataSourceNodesChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/datasource/DataSourceNodesChangedEvent.html#DataSourceNodesChangedEvent">DataSourceNodesChangedEvent</a> event) {
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>          contextManager.alterDataSourceNodesConfiguration(event.getDatabaseName(), event.getDataSourcePropertiesMap());
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>          disableDataSources();
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>      }
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>      
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>  <em class="jxr_javadoccomment">     * Renew rule configurations.</em>
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>  <em class="jxr_javadoccomment">     * @param event rule configurations changed event</em>
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>      @Subscribe
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="RuleConfigurationsChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/rule/RuleConfigurationsChangedEvent.html#RuleConfigurationsChangedEvent">RuleConfigurationsChangedEvent</a> event) {
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>          contextManager.alterRuleConfiguration(event.getDatabaseName(), event.getRuleConfigs());
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>          disableDataSources();
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>      }
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>      
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>  <em class="jxr_javadoccomment">     * Renew global rule configurations.</em>
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>  <em class="jxr_javadoccomment">     * @param event global rule configurations changed event</em>
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>      @Subscribe
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="GlobalRuleConfigurationsChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/rule/GlobalRuleConfigurationsChangedEvent.html#GlobalRuleConfigurationsChangedEvent">GlobalRuleConfigurationsChangedEvent</a> event) {
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>          contextManager.alterGlobalRuleConfiguration(event.getRuleConfigs());
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>          disableDataSources();
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>      }
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>     
+<a class="jxr_linenumber" name="L101" href="#L101">101</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L102" href="#L102">102</a> <em class="jxr_javadoccomment">     * Renew properties.</em>
+<a class="jxr_linenumber" name="L103" href="#L103">103</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L104" href="#L104">104</a> <em class="jxr_javadoccomment">     * @param event properties changed event</em>
+<a class="jxr_linenumber" name="L105" href="#L105">105</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>     @Subscribe
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> renew(<strong class="jxr_keyword">final</strong> <a name="PropertiesChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/manager/cluster/coordinator/registry/config/event/props/PropertiesChangedEvent.html#PropertiesChangedEvent">PropertiesChangedEvent</a> event) {
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>         contextManager.alterProperties(event.getProps());
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>     }
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>     
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> disableDataSources() {
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>         Map&lt;String, StorageNodeDataSource&gt; storageNodes = getDisabledDataSources();
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereDatabase&gt; entry : contextManager.getMetaDataContexts().getMetaData().getDatabases().entrySet()) {
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>             entry.getValue().getRuleMetaData().findRules(StaticDataSourceContainedRule.<strong class="jxr_keyword">class</strong>).forEach(each -&gt; disableDataSources(entry.getKey(), each, storageNodes));
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>         }
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>     }
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>     
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> disableDataSources(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> <a name="StaticDataSourceContainedRule" href="../../../../../../../../org/apache/shardingsphere/infra/rule/identifier/type/StaticDataSourceContainedRule.html#StaticDataSourceContainedRule">StaticDataSourceContainedRule</a> rule, <strong class="jxr_keyword">final</strong> Map&lt;String, StorageNodeDataSource&gt; storageNodes) {
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, StorageNodeDataSource&gt; entry : storageNodes.entrySet()) {
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>             <a name="QualifiedDatabase" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/QualifiedDatabase.html#QualifiedDatabase">QualifiedDatabase</a> database = <strong class="jxr_keyword">new</strong> <a name="QualifiedDatabase" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/QualifiedDatabase.html#QualifiedDatabase">QualifiedDatabase</a>(entry.getKey());
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>             <strong class="jxr_keyword">if</strong> (!database.getDatabaseName().equals(databaseName)) {
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>                 <strong class="jxr_keyword">continue</strong>;
+<a class="jxr_linenumber" name="L123" href="#L123">123</a>             }
+<a class="jxr_linenumber" name="L124" href="#L124">124</a>             disableDataSources(entry.getValue(), rule, database);
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>         }
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>     }
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>     
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> disableDataSources(<strong class="jxr_keyword">final</strong> <a name="StorageNodeDataSource" href="../../../../../../../../org/apache/shardingsphere/mode/event/storage/StorageNodeDataSource.html#StorageNodeDataSource">StorageNodeDataSource</a> storageNodeDataSource, <strong class="jxr_keyword">final</strong> <a name="StaticDataSourceContainedRule" href="../../../../../../../../org/apache/shardingsphere/infra/rule/identifier/type/StaticDataSourceContainedRule.html#StaticDataSourceContainedRule">StaticDataSourceContainedRule</a> rule, <strong class="jxr_keyword">final</strong> <a name="QualifiedDatabase" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/QualifiedDatabase.html#QualifiedDatabase">QualifiedDatabase</a> database) {
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, Collection&lt;String&gt;&gt; entry : rule.getDataSourceMapper().entrySet()) {
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>             <strong class="jxr_keyword">if</strong> (!database.getGroupName().equals(entry.getKey())) {
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>                 <strong class="jxr_keyword">continue</strong>;
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>             }
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>             entry.getValue().forEach(each -&gt; rule.updateStatus(<strong class="jxr_keyword">new</strong> <a name="StorageNodeDataSourceChangedEvent" href="../../../../../../../../org/apache/shardingsphere/mode/event/storage/StorageNodeDataSourceChangedEvent.html#StorageNodeDataSourceChangedEvent">StorageNodeDataSourceChangedEvent</a>(database, storageNodeDataSource)));
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>         }
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>     }
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>     
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>     <strong class="jxr_keyword">private</strong> Map&lt;String, StorageNodeDataSource&gt; getDisabledDataSources() {
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>         <strong class="jxr_keyword">return</strong> registryCenter.getStorageNodeStatusService().loadStorageNodes().entrySet()
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>                 .stream().filter(entry -&gt; DataSourceState.DISABLED == entry.getValue().getStatus()).collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>     }
+<a class="jxr_linenumber" name="L141" href="#L141">141</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2023 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

@@ -40,7 +40,7 @@
 <a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.ingest.IngestDataChangeType;
 <a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.ingest.record.RecordUtils;
 <a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.job.progress.listener.PipelineJobProgressUpdatedParameter;
-<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.sqlbuilder.PipelineSQLBuilderEngine;
+<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.sqlbuilder.PipelineImportSQLBuilder;
 <a class="jxr_linenumber" name="L36" href="#L36">36</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.util.PipelineJdbcUtils;
 <a class="jxr_linenumber" name="L37" href="#L37">37</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.exception.job.PipelineImporterJobWriteException;
 <a class="jxr_linenumber" name="L38" href="#L38">38</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.importer.DataRecordMerger;
@@ -74,7 +74,7 @@
 <a class="jxr_linenumber" name="L66" href="#L66">66</a>      
 <a class="jxr_linenumber" name="L67" href="#L67">67</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="JobRateLimitAlgorithm" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/spi/ratelimit/JobRateLimitAlgorithm.html#JobRateLimitAlgorithm">JobRateLimitAlgorithm</a> rateLimitAlgorithm;
 <a class="jxr_linenumber" name="L68" href="#L68">68</a>      
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="PipelineSQLBuilderEngine" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/sqlbuilder/PipelineSQLBuilderEngine.html#PipelineSQLBuilderEngine">PipelineSQLBuilderEngine</a> sqlBuilderEngine;
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="PipelineImportSQLBuilder" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/sqlbuilder/PipelineImportSQLBuilder.html#PipelineImportSQLBuilder">PipelineImportSQLBuilder</a> importSQLBuilder;
 <a class="jxr_linenumber" name="L70" href="#L70">70</a>      
 <a class="jxr_linenumber" name="L71" href="#L71">71</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> AtomicReference&lt;Statement&gt; batchInsertStatement = <strong class="jxr_keyword">new</strong> AtomicReference&lt;&gt;();
 <a class="jxr_linenumber" name="L72" href="#L72">72</a>      
@@ -86,7 +86,7 @@
 <a class="jxr_linenumber" name="L78" href="#L78">78</a>          <strong class="jxr_keyword">this</strong>.importerConfig = importerConfig;
 <a class="jxr_linenumber" name="L79" href="#L79">79</a>          <strong class="jxr_keyword">this</strong>.dataSourceManager = dataSourceManager;
 <a class="jxr_linenumber" name="L80" href="#L80">80</a>          rateLimitAlgorithm = importerConfig.getRateLimitAlgorithm();
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>          sqlBuilderEngine = <strong class="jxr_keyword">new</strong> <a name="PipelineSQLBuilderEngine" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/sqlbuilder/PipelineSQLBuilderEngine.html#PipelineSQLBuilderEngine">PipelineSQLBuilderEngine</a>(importerConfig.getDataSourceConfig().getDatabaseType());
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>          importSQLBuilder = <strong class="jxr_keyword">new</strong> <a name="PipelineImportSQLBuilder" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/sqlbuilder/PipelineImportSQLBuilder.html#PipelineImportSQLBuilder">PipelineImportSQLBuilder</a>(importerConfig.getDataSourceConfig().getDatabaseType());
 <a class="jxr_linenumber" name="L82" href="#L82">82</a>      }
 <a class="jxr_linenumber" name="L83" href="#L83">83</a>      
 <a class="jxr_linenumber" name="L84" href="#L84">84</a>      @Override
@@ -209,7 +209,7 @@
 <a class="jxr_linenumber" name="L201" href="#L201">201</a>     
 <a class="jxr_linenumber" name="L202" href="#L202">202</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> executeBatchInsert(<strong class="jxr_keyword">final</strong> Connection connection, <strong class="jxr_keyword">final</strong> List&lt;DataRecord&gt; dataRecords) <strong class="jxr_keyword">throws</strong> SQLException {
 <a class="jxr_linenumber" name="L203" href="#L203">203</a>         <a name="DataRecord" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/api/ingest/record/DataRecord.html#DataRecord">DataRecord</a> dataRecord = dataRecords.get(0);
-<a class="jxr_linenumber" name="L204" href="#L204">204</a>         String insertSql = sqlBuilderEngine.getImportSQLBuilder().buildInsertSQL(getSchemaName(dataRecord.getTableName()), dataRecord);
+<a class="jxr_linenumber" name="L204" href="#L204">204</a>         String insertSql = importSQLBuilder.buildInsertSQL(getSchemaName(dataRecord.getTableName()), dataRecord);
 <a class="jxr_linenumber" name="L205" href="#L205">205</a>         <strong class="jxr_keyword">try</strong> (PreparedStatement preparedStatement = connection.prepareStatement(insertSql)) {
 <a class="jxr_linenumber" name="L206" href="#L206">206</a>             batchInsertStatement.set(preparedStatement);
 <a class="jxr_linenumber" name="L207" href="#L207">207</a>             preparedStatement.setQueryTimeout(30);
@@ -239,7 +239,7 @@
 <a class="jxr_linenumber" name="L231" href="#L231">231</a>         Set&lt;String&gt; shardingColumns = importerConfig.getShardingColumns(dataRecord.getTableName());
 <a class="jxr_linenumber" name="L232" href="#L232">232</a>         List&lt;Column&gt; conditionColumns = RecordUtils.extractConditionColumns(dataRecord, shardingColumns);
 <a class="jxr_linenumber" name="L233" href="#L233">233</a>         List&lt;Column&gt; setColumns = dataRecord.getColumns().stream().filter(Column::isUpdated).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L234" href="#L234">234</a>         String updateSql = sqlBuilderEngine.getImportSQLBuilder().buildUpdateSQL(getSchemaName(dataRecord.getTableName()), dataRecord, conditionColumns);
+<a class="jxr_linenumber" name="L234" href="#L234">234</a>         String updateSql = importSQLBuilder.buildUpdateSQL(getSchemaName(dataRecord.getTableName()), dataRecord, conditionColumns);
 <a class="jxr_linenumber" name="L235" href="#L235">235</a>         <strong class="jxr_keyword">try</strong> (PreparedStatement preparedStatement = connection.prepareStatement(updateSql)) {
 <a class="jxr_linenumber" name="L236" href="#L236">236</a>             updateStatement.set(preparedStatement);
 <a class="jxr_linenumber" name="L237" href="#L237">237</a>             <strong class="jxr_keyword">for</strong> (<strong class="jxr_keyword">int</strong> i = 0; i &lt; setColumns.size(); i++) {
@@ -266,7 +266,7 @@
 <a class="jxr_linenumber" name="L258" href="#L258">258</a>     
 <a class="jxr_linenumber" name="L259" href="#L259">259</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> executeBatchDelete(<strong class="jxr_keyword">final</strong> Connection connection, <strong class="jxr_keyword">final</strong> List&lt;DataRecord&gt; dataRecords) <strong class="jxr_keyword">throws</strong> SQLException {
 <a class="jxr_linenumber" name="L260" href="#L260">260</a>         <a name="DataRecord" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/api/ingest/record/DataRecord.html#DataRecord">DataRecord</a> dataRecord = dataRecords.get(0);
-<a class="jxr_linenumber" name="L261" href="#L261">261</a>         String deleteSQL = sqlBuilderEngine.getImportSQLBuilder().buildDeleteSQL(getSchemaName(dataRecord.getTableName()), dataRecord,
+<a class="jxr_linenumber" name="L261" href="#L261">261</a>         String deleteSQL = importSQLBuilder.buildDeleteSQL(getSchemaName(dataRecord.getTableName()), dataRecord,
 <a class="jxr_linenumber" name="L262" href="#L262">262</a>                 RecordUtils.extractConditionColumns(dataRecord, importerConfig.getShardingColumns(dataRecord.getTableName())));
 <a class="jxr_linenumber" name="L263" href="#L263">263</a>         <strong class="jxr_keyword">try</strong> (PreparedStatement preparedStatement = connection.prepareStatement(deleteSQL)) {
 <a class="jxr_linenumber" name="L264" href="#L264">264</a>             batchDeleteStatement.set(preparedStatement);

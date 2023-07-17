@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>SQL Parse Format Function — A Technical Deep Dive by Apache ShardingSphere &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">SQL Parse Format Function — A Technical Deep Dive by Apache ShardingSphere</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>Complicted SQL statements are some of the most common problems that data scientists and engineers encounter. For example, can you comprehend at first glance the complex SQL statement below?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">select</span> a.order_id,a.status,<span style="color:#66d9ef">sum</span>(b.money) <span style="color:#66d9ef">as</span> money <span style="color:#66d9ef">from</span> t_order a <span style="color:#66d9ef">inner</span> <span style="color:#66d9ef">join</span> (<span style="color:#66d9ef">select</span> <span style="color:#66d9ef">c</span>.order_id <span style="color:#66d9ef">as</span> order_id, <span style="color:#66d9ef">c</span>.number <span style="color:#f92672">*</span> d.price <span style="color:#66d9ef">as</span> money <span style="color:#66d9ef">from</span> t_order_detail <span style="color:#66d9ef">c</span> <span style="color:#66d9ef">inner</span> <span style="color:#66d9ef">join</span> t_order_price d <span style="color:#66d9ef">on</span> <span style="color:#66d9ef">c</span>.s_id <span style="color:#f92672">=</span> d.s_id) b <span style="color:#66d9ef">on</span> a.order_id <span style="color:#f92672">=</span> b.order_id <span style="color:#66d9ef">where</span> b.money <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">100</span> <span style="color:#66d9ef">group</span> <span style="color:#66d9ef">by</span> a.order_id
+</code></pre></div><p>How about formatting it? Is it easier to understand the formatted formatted version below?</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">SELECT</span> a . order_id , a . status , <span style="color:#66d9ef">SUM</span>(b . money) <span style="color:#66d9ef">AS</span> money
+<span style="color:#66d9ef">FROM</span> t_order a <span style="color:#66d9ef">INNER</span> <span style="color:#66d9ef">JOIN</span>
+(
+<span style="color:#66d9ef">SELECT</span> <span style="color:#66d9ef">c</span> . order_id <span style="color:#66d9ef">AS</span> order_id, <span style="color:#66d9ef">c</span> . number <span style="color:#f92672">*</span> d . price <span style="color:#66d9ef">AS</span> money
+<span style="color:#66d9ef">FROM</span> t_order_detail <span style="color:#66d9ef">c</span> <span style="color:#66d9ef">INNER</span> <span style="color:#66d9ef">JOIN</span> t_order_price d <span style="color:#66d9ef">ON</span> <span style="color:#66d9ef">c</span> . s_id <span style="color:#f92672">=</span> d . s_id
+) b <span style="color:#66d9ef">ON</span> a . order_id <span style="color:#f92672">=</span> b . order_id
+<span style="color:#66d9ef">WHERE</span>
+b . money <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">100</span>
+<span style="color:#66d9ef">GROUP</span> <span style="color:#66d9ef">BY</span> a . order_id;
+</code></pre></div><p>The first step to parse such a complex SQL is always formatting, and then its SQL semantics can be parsed based on the formatted content. SQL Formatter is, therefore, one of the essential functions of for any database software.</p>
+<p>Accordingly, <a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a> now offers a SQL formatting tool called SQL Parse Format that depends on ShardingSphere’s SQL dialect parser.</p>
+<p><strong>SQL Parse Format is an important function of the ShardingSphere Parser Engine, and also lays the foundation for ShardingSphere’s SQL Audit (TODO).</strong> This article offers a deep dive into the SQL Parse Format function:</p>
+<ul>
+<li>What’s its core concept?</li>
+<li>How you can use it?</li>
+<li>How can you develop SQL Parse Format?</li>
+</ul>
+<h2 id="parser-engine">Parser Engine</h2>
+<p>To begin, we need to introduce more about Apache ShardingSphere’s Parser Engine because SQL Parse Format is a unique and relatively independent function of the parser engine.</p>
+<p>Apache ShardingSphere developed the parser engine to extract key information in SQL, such as fields of data shards and rewritten columns for data encryption. So far, Apache ShardingSphere’s parser engine has undergone three iterations.</p>
+<p>The initial parser engine leveraged <a href="https://druid.apache.org/">Druid</a> as its SQL parser and performed quite well before ShardingSphere Version 1.4.x.</p>
+<p>Later the ShardingSphere community decided to develop its second-generation parser engine on its own. Since the use purpose was changed, ShardingSphere adopted another approach to comprehend SQL: only the contextual information that data sharding needs was extracted, without generating a parse tree or a secondary traversal, to improve performance and compatibility.</p>
+<p>Currently, the third generation of ShardingSphere Parser Engine uses <a href="https://www.antlr.org/">ANTLR</a> as the parse tree generator and then extracts the contextual information by doing a secondary tree traversal. It is substantially compatible with more SQL dialects, which further accelerates developing other functions in Apache ShardingSphere.</p>
+<p>In version 5.0.x, ShardingSphere developers further enhanced the performance of the newest parser engine by changing its tree traversal method from Listener to Visitor and adding parsing results cache for pre-compiled SQL statements.</p>
+<p>The implementation of SQL Parse Format is attributable to the new parser engine. Next, let’s take a look at SQL Parse Format function.</p>
+<h2 id="sql-parser-format">SQL Parser Format</h2>
+<p>SQL Parse Format is used to format SQL statements. Additionally, SQL Parse Format function will be used in SQL Audit in the future to provide users with viewing SQL history, displaying formatted SQL with reports, or further analyzing or processing SQL.</p>
+<p>For instance, each part of the following SQL formatted by SQL Parse Format becomes clearer with wrapping and keywords in all caps:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">select</span> age <span style="color:#66d9ef">as</span> b, name <span style="color:#66d9ef">as</span> n <span style="color:#66d9ef">from</span> table1 <span style="color:#66d9ef">join</span> table2 <span style="color:#66d9ef">where</span> id <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span> <span style="color:#66d9ef">and</span> name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;lu&#39;</span>;
+<span style="color:#75715e">-- After Formatting
+</span><span style="color:#75715e"></span><span style="color:#66d9ef">SELECT</span> age <span style="color:#66d9ef">AS</span> b, name <span style="color:#66d9ef">AS</span> n
+<span style="color:#66d9ef">FROM</span> table1 <span style="color:#66d9ef">JOIN</span> table2
+<span style="color:#66d9ef">WHERE</span> 
+        id <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>
+        <span style="color:#66d9ef">and</span> name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;lu&#39;</span>;
+</code></pre></div><p>So far, we have covered the basics of the SQL Parse Format.</p>
+<blockquote>
+<p>Next, let’s answer the question: what is the concept of SQL Parse Format?</p>
+</blockquote>
+<p>How a SQL statement is formatted in Apache ShardingSphere? Take the following SQL as an example:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#66d9ef">select</span> order_id <span style="color:#66d9ef">from</span> t_order <span style="color:#66d9ef">where</span> status <span style="color:#f92672">=</span> <span style="color:#e6db74">&#39;OK&#39;</span>
+</code></pre></div><ol>
+<li>Apache ShardingSphere uses ANTLR4 as its parser engine generator. First, we need to follow the ANTLR4 method to define the syntax of select in the .g4 file (take MySQL as an example).</li>
+</ol>
+<pre><code>simpleSelect
+    : SELECT ALL? targetList? intoClause? fromClause? whereClause? groupClause? havingClause? windowClause?
+    | SELECT distinctClause targetList intoClause? fromClause? whereClause? groupClause? havingClause? windowClause?
+    | valuesClause
+    | TABLE relationExpr
+    ;
+</code></pre><ol start="2">
+<li>We can use IDEA’s ANTLR4 plugin to easily view the syntax tree of the SQL statement.</li>
+</ol>
+<p>For more information of ANTLR4 , please refer to: <a href="https://plugins.jetbrains.com/plugin/7358-antlr-v4.">https://plugins.jetbrains.com/plugin/7358-antlr-v4</a>.
+<img src="https://miro.medium.com/max/700/1*EiWkP_kYN3sLOH4qsPonDA.jpeg" alt="Image description"></p>
+<p>ANTLR4 can compile the syntax file we define: it first performs lexical analysis on the SQL statement, splits it into indivisible parts, namely tokens, and divides these tokens into keywords, expressions, according to the dictionary values of different databases.</p>
+<p>For example, in the image above, we get the keywords <code>SELECT</code>, <code>FROM</code>, <code>WHERE</code>, = and the variables <code>order_id</code>, <code>t_order</code>, <code>status</code>, <code>OK</code>.</p>
+<ol start="3">
+<li>Then ANTLR4 converts the output of the parser engine into the syntax tree as shown in the image above.</li>
+</ol>
+<p>Based on the source code of Apache ShardingSphere, the above-mentioned process is reproduced as follows.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;select order_id from t_order where status = &#39;OK&#39;&#34;</span><span style="color:#f92672">;</span>
+CacheOption cacheOption <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> CacheOption<span style="color:#f92672">(</span>128<span style="color:#f92672">,</span> 1024L<span style="color:#f92672">,</span> 4<span style="color:#f92672">);</span>
+SQLParserEngine parserEngine <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> SQLParserEngine<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;MySQL&#34;</span><span style="color:#f92672">,</span> cacheOption<span style="color:#f92672">,</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">);</span>
+ParseContext parseContext <span style="color:#f92672">=</span> parserEngine<span style="color:#f92672">.</span><span style="color:#a6e22e">parse</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">,</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">);</span>
+</code></pre></div><ol start="4">
+<li>The SQL Parser Engine of Apache ShardingSphere encapsulates and abstracts the ANTLR4 parser: it loads the SQL dialect parser through an SPI. Users can also extend data dialects through extension points of SPI. In addition, ShardingSphere adds a cache mechanism internally to improve performance. Take a look at the relevant code for parsing as follows:</li>
+</ol>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> ParseContext <span style="color:#a6e22e">parse</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String sql<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    ParseASTNode result <span style="color:#f92672">=</span> twoPhaseParse<span style="color:#f92672">(</span>sql<span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>result<span style="color:#f92672">.</span><span style="color:#a6e22e">getRootNode</span><span style="color:#f92672">()</span> <span style="color:#66d9ef">instanceof</span> ErrorNode<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> SQLParsingException<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;Unsupported SQL of `%s`&#34;</span><span style="color:#f92672">,</span> sql<span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> ParseContext<span style="color:#f92672">(</span>result<span style="color:#f92672">.</span><span style="color:#a6e22e">getRootNode</span><span style="color:#f92672">(),</span> result<span style="color:#f92672">.</span><span style="color:#a6e22e">getHiddenTokens</span><span style="color:#f92672">());</span>
+<span style="color:#f92672">}</span>
+
+<span style="color:#66d9ef">private</span> ParseASTNode <span style="color:#a6e22e">twoPhaseParse</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String sql<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    DatabaseTypedSQLParserFacade sqlParserFacade <span style="color:#f92672">=</span> DatabaseTypedSQLParserFacadeRegistry<span style="color:#f92672">.</span><span style="color:#a6e22e">getFacade</span><span style="color:#f92672">(</span>databaseType<span style="color:#f92672">);</span>
+    SQLParser sqlParser <span style="color:#f92672">=</span> SQLParserFactory<span style="color:#f92672">.</span><span style="color:#a6e22e">newInstance</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">,</span> sqlParserFacade<span style="color:#f92672">.</span><span style="color:#a6e22e">getLexerClass</span><span style="color:#f92672">(),</span> sqlParserFacade<span style="color:#f92672">.</span><span style="color:#a6e22e">getParserClass</span><span style="color:#f92672">(),</span> sqlCommentParseEnabled<span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
+        <span style="color:#f92672">((</span>Parser<span style="color:#f92672">)</span> sqlParser<span style="color:#f92672">).</span><span style="color:#a6e22e">getInterpreter</span><span style="color:#f92672">().</span><span style="color:#a6e22e">setPredictionMode</span><span style="color:#f92672">(</span>PredictionMode<span style="color:#f92672">.</span><span style="color:#a6e22e">SLL</span><span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">return</span> <span style="color:#f92672">(</span>ParseASTNode<span style="color:#f92672">)</span> sqlParser<span style="color:#f92672">.</span><span style="color:#a6e22e">parse</span><span style="color:#f92672">();</span>
+    <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ParseCancellationException ex<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+        <span style="color:#f92672">((</span>Parser<span style="color:#f92672">)</span> sqlParser<span style="color:#f92672">).</span><span style="color:#a6e22e">reset</span><span style="color:#f92672">();</span>
+        <span style="color:#f92672">((</span>Parser<span style="color:#f92672">)</span> sqlParser<span style="color:#f92672">).</span><span style="color:#a6e22e">getInterpreter</span><span style="color:#f92672">().</span><span style="color:#a6e22e">setPredictionMode</span><span style="color:#f92672">(</span>PredictionMode<span style="color:#f92672">.</span><span style="color:#a6e22e">LL</span><span style="color:#f92672">);</span>
+        <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">return</span> <span style="color:#f92672">(</span>ParseASTNode<span style="color:#f92672">)</span> sqlParser<span style="color:#f92672">.</span><span style="color:#a6e22e">parse</span><span style="color:#f92672">();</span>
+        <span style="color:#f92672">}</span> <span style="color:#66d9ef">catch</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ParseCancellationException e<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+            <span style="color:#66d9ef">throw</span> <span style="color:#66d9ef">new</span> SQLParsingException<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;You have an error in your SQL syntax&#34;</span><span style="color:#f92672">);</span>
+        <span style="color:#f92672">}</span>
+    <span style="color:#f92672">}</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p><code>twoPhaseParse</code> is the core of the parser. First, it will be loaded into the correct parser class according to the database type, and then a parser instance of ANTLR4 will be generated due to the reflection mechanism. Then, ANTLR4 provides two parsing methods: fast parsing is performed first, and if it fails, regular parsing will be performed. Users can obtain parsing results of most SQL statements via quick parsing, improving parsing performance as well. After parsing, we get the parse tree.</p>
+<p>So how does Apache ShardingSphere get the formatted SQL statement from the parse tree?</p>
+<p>In fact, ShardingSphere uses the <code>Visitor</code> method. ANTLR4 provides two ways to access syntax trees: Listener and <code>Visitor</code>. ShardingSphere chooses the latter to access syntax trees. The code below shows how to get formatted SQL from the syntax tree:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java">SQLVisitorEngine visitorEngine <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> SQLVisitorEngine<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;MySQL&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;FORMAT&#34;</span><span style="color:#f92672">,</span> <span style="color:#66d9ef">new</span> Properties<span style="color:#f92672">());</span>
+String result <span style="color:#f92672">=</span> visitorEngine<span style="color:#f92672">.</span><span style="color:#a6e22e">visit</span><span style="color:#f92672">(</span>parseContext<span style="color:#f92672">);</span>
+</code></pre></div><p>Apache ShardingSphere’s <code>SQLVisitorEngine</code> also abstracts and encapsulates various dialect visitors. The core method is shown below:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> T <span style="color:#a6e22e">visit</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ParseContext parseContext<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    ParseTreeVisitor<span style="color:#f92672">&lt;</span>T<span style="color:#f92672">&gt;</span> visitor <span style="color:#f92672">=</span> SQLVisitorFactory<span style="color:#f92672">.</span><span style="color:#a6e22e">newInstance</span><span style="color:#f92672">(</span>databaseType<span style="color:#f92672">,</span> visitorType<span style="color:#f92672">,</span> SQLVisitorRule<span style="color:#f92672">.</span><span style="color:#a6e22e">valueOf</span><span style="color:#f92672">(</span>parseContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getParseTree</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getClass</span><span style="color:#f92672">()),</span> props<span style="color:#f92672">);</span>
+    T result <span style="color:#f92672">=</span> parseContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getParseTree</span><span style="color:#f92672">().</span><span style="color:#a6e22e">accept</span><span style="color:#f92672">(</span>visitor<span style="color:#f92672">);</span>
+    appendSQLComments<span style="color:#f92672">(</span>parseContext<span style="color:#f92672">,</span> result<span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">return</span> result<span style="color:#f92672">;</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>At first, in terms of the above-mentioned <code>Visitor</code> method, the visitor to be used is decided according to the database type and the type of the visitor, and the visitor is also internally instantiated by the reflection mechanism. Currently, <code>visitorType</code> supports two methods: <code>FORMAT</code> and <code>STATEMENT</code>. The latter is commonly used by Apache ShardingSphere and can convert SQL into <code>Statement</code> information, extract relevant context information, and serve the features such as data sharding. In fact, this is the only difference between SQL Parse Format and other ordinary parser engine functions.</p>
+<p>Next, let’s still take the SQL statement as an example and provide specific code to show how <code>Visitor</code> formats it.</p>
+<p><code>MySQLFormatSQLVisitor</code> is used to visit SQL. Based on the <code>DEBUG</code> code, we can clearly see the execution path of this visit as shown in the figure below. Visitor traverses all parts of the syntax tree, and ANTLR4 generates default methods for visiting each node according to the defined grammar rules. Apache ShardingSphere leverages key methods and successfully develops complete the SQL formatting function.
+<img src="https://miro.medium.com/max/700/1*xjjACczbInC-K4t8EX-pEw.jpeg" alt="Image description"></p>
+<p>The following code can help us better understand how <code>Visitor</code> can format SQL.</p>
+<p>When the <code>Visitor</code> traverses to <code>select</code>, the <code>Visitor</code> will format it first, and then visit <code>projection</code>. The internal formatting of <code>projection</code> will be further implemented through the <code>visitProjections</code> method.</p>
+<p>Empty lines are handled before accessing <code>from</code>. The object instantiated by the <code>Visitor</code> maintains a <code>StringBuilder</code> to store the formatted result. Since the parser and visitor of each SQL are newly-created instantiated objects, there are no thread issues. After the final traversal, Apache ShardingSphere outputs the result in <code>StringBuilder</code>, and then we get formatted SQL.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> String <span style="color:#a6e22e">visitQuerySpecification</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> QuerySpecificationContext ctx<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    formatPrint<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;SELECT &#34;</span><span style="color:#f92672">);</span>
+    <span style="color:#66d9ef">int</span> selectSpecCount <span style="color:#f92672">=</span> ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">selectSpecification</span><span style="color:#f92672">().</span><span style="color:#a6e22e">size</span><span style="color:#f92672">();</span>
+    <span style="color:#66d9ef">for</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">int</span> i <span style="color:#f92672">=</span> 0<span style="color:#f92672">;</span> i <span style="color:#f92672">&lt;</span> selectSpecCount<span style="color:#f92672">;</span> i<span style="color:#f92672">++)</span> <span style="color:#f92672">{</span>
+        visit<span style="color:#f92672">(</span>ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">selectSpecification</span><span style="color:#f92672">(</span>i<span style="color:#f92672">));</span>
+        formatPrint<span style="color:#f92672">(</span><span style="color:#e6db74">&#34; &#34;</span><span style="color:#f92672">);</span>
+    <span style="color:#f92672">}</span>
+    visit<span style="color:#f92672">(</span>ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">projections</span><span style="color:#f92672">());</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">!=</span> ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">fromClause</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        formatPrintln<span style="color:#f92672">();</span>
+        visit<span style="color:#f92672">(</span>ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">fromClause</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">!=</span> ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">whereClause</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        formatPrintln<span style="color:#f92672">();</span>
+        visit<span style="color:#f92672">(</span>ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">whereClause</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">!=</span> ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">groupByClause</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        formatPrintln<span style="color:#f92672">();</span>
+        visit<span style="color:#f92672">(</span>ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">groupByClause</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">!=</span> ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">havingClause</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        formatPrintln<span style="color:#f92672">();</span>
+        visit<span style="color:#f92672">(</span>ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">havingClause</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">!=</span> ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">windowClause</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
+        formatPrintln<span style="color:#f92672">();</span>
+        visit<span style="color:#f92672">(</span>ctx<span style="color:#f92672">.</span><span style="color:#a6e22e">windowClause</span><span style="color:#f92672">());</span>
+    <span style="color:#f92672">}</span>
+    <span style="color:#66d9ef">return</span> result<span style="color:#f92672">.</span><span style="color:#a6e22e">toString</span><span style="color:#f92672">();</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><p>Now, based on the process analysis and code snippets above, you can understand the principle of SQL Parse Format.</p>
+<h2 id="user-guide-for-sql-parse-format">User Guide for SQL Parse Format</h2>
+<p>You may find it’s easy to use the SQL Parse Format function in Apache ShardingSphere as long as you know its principle.</p>
+<p>As for Java applications, users only need to add dependencies and call the API.</p>
+<ul>
+<li>Add the Dependency</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#f92672">&lt;dependency&gt;</span>
+    <span style="color:#f92672">&lt;groupId&gt;</span>org.apache.shardingsphere<span style="color:#f92672">&lt;/groupId&gt;</span>
+    <span style="color:#f92672">&lt;artifactId&gt;</span>shardingsphere-sql-parser-engine<span style="color:#f92672">&lt;/artifactId&gt;</span>
+    <span style="color:#f92672">&lt;version&gt;</span>${project.version}<span style="color:#f92672">&lt;/version&gt;</span>
+<span style="color:#f92672">&lt;/dependency&gt;</span>
+
+<span style="color:#f92672">&lt;dependency&gt;</span>
+    <span style="color:#f92672">&lt;groupId&gt;</span>org.apache.shardingsphere<span style="color:#f92672">&lt;/groupId&gt;</span>
+    <span style="color:#f92672">&lt;artifactId&gt;</span>shardingsphere-sql-parser-mysql<span style="color:#f92672">&lt;/artifactId&gt;</span>
+    <span style="color:#f92672">&lt;version&gt;</span>${project.version}<span style="color:#f92672">&lt;/version&gt;</span>
+<span style="color:#f92672">&lt;/dependency&gt;</span>
+</code></pre></div><ul>
+<li>Call the API</li>
+</ul>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">main</span><span style="color:#f92672">(</span>String<span style="color:#f92672">[]</span> args<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
+    String sql <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;select order_id from t_order where status = &#39;OK&#39;&#34;</span><span style="color:#f92672">;</span>
+    CacheOption cacheOption <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> CacheOption<span style="color:#f92672">(</span>128<span style="color:#f92672">,</span> 1024L<span style="color:#f92672">,</span> 4<span style="color:#f92672">);</span>
+    SQLParserEngine parserEngine <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> SQLParserEngine<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;MySQL&#34;</span><span style="color:#f92672">,</span> cacheOption<span style="color:#f92672">,</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">);</span>
+    ParseContext parseContext <span style="color:#f92672">=</span> parserEngine<span style="color:#f92672">.</span><span style="color:#a6e22e">parse</span><span style="color:#f92672">(</span>sql<span style="color:#f92672">,</span> <span style="color:#66d9ef">false</span><span style="color:#f92672">);</span>
+    SQLVisitorEngine visitorEngine <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> SQLVisitorEngine<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;MySQL&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;FORMAT&#34;</span><span style="color:#f92672">,</span> <span style="color:#66d9ef">new</span> Properties<span style="color:#f92672">());</span>
+    String result <span style="color:#f92672">=</span> visitorEngine<span style="color:#f92672">.</span><span style="color:#a6e22e">visit</span><span style="color:#f92672">(</span>parseContext<span style="color:#f92672">);</span>
+    System<span style="color:#f92672">.</span><span style="color:#a6e22e">out</span><span style="color:#f92672">.</span><span style="color:#a6e22e">println</span><span style="color:#f92672">(</span>result<span style="color:#f92672">);</span>
+<span style="color:#f92672">}</span>
+</code></pre></div><ul>
+<li>Parameters Supported by Properties
+<img src="https://miro.medium.com/max/550/1*1Ft7G0EKkayVy5vrbcsDBg.png" alt="Image description"></li>
+</ul>
+<p>You can also use DistSQL in ShardingSphere-Proxy to perform operations on the SQL Parse Format function:</p>
+<pre><code>mysql&gt; FORMAT select order_id from t_user where status = 'OK';
++-----------------------------------------------------+
+| formatted_result                                    |
++-----------------------------------------------------+
+| SELECT order_id
+FROM t_user
+WHERE
+        status = 'OK'; |
++-----------------------------------------------------+
+</code></pre><p>In terms of the above-mentioned <code>Statement</code> mode, it can also enable users to easily view the results of <code>SQLStatement</code> converted from the SQL.</p>
+<pre><code>mysql&gt; parse SELECT id, name FROM t_user WHERE status = 'ACTIVE' AND age &gt; 18;
++----------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| parsed_statement     | parsed_statement_detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
++----------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| MySQLSelectStatement | {&quot;projections&quot;:{&quot;startIndex&quot;:7,&quot;stopIndex&quot;:14,&quot;distinctRow&quot;:false,&quot;projections&quot;:[{&quot;column&quot;:{&quot;startIndex&quot;:7,&quot;stopIndex&quot;:8,&quot;identifier&quot;:{&quot;value&quot;:&quot;id&quot;,&quot;quoteCharacter&quot;:&quot;NONE&quot;}}},{&quot;column&quot;:{&quot;startIndex&quot;:11,&quot;stopIndex&quot;:14,&quot;identifier&quot;:{&quot;value&quot;:&quot;name&quot;,&quot;quoteCharacter&quot;:&quot;NONE&quot;}}}]},&quot;from&quot;:{&quot;tableName&quot;:{&quot;startIndex&quot;:21,&quot;stopIndex&quot;:26,&quot;identifier&quot;:{&quot;value&quot;:&quot;t_user&quot;,&quot;quoteCharacter&quot;:&quot;NONE&quot;}}},&quot;where&quot;:{&quot;startIndex&quot;:28,&quot;stopIndex&quot;:63,&quot;expr&quot;:{&quot;startIndex&quot;:34,&quot;stopIndex&quot;:63,&quot;left&quot;:{&quot;startIndex&quot;:34,&quot;stopIndex&quot;:50,&quot;left&quot;:{&quot;startIndex&quot;:34,&quot;stopIndex&quot;:39,&quot;identifier&quot;:{&quot;value&quot;:&quot;status&quot;,&quot;quoteCharacter&quot;:&quot;NONE&quot;}},&quot;right&quot;:{&quot;startIndex&quot;:43,&quot;stopIndex&quot;:50,&quot;literals&quot;:&quot;ACTIVE&quot;},&quot;operator&quot;:&quot;\u003d&quot;,&quot;text&quot;:&quot;status \u003d \u0027ACTIVE\u0027&quot;},&quot;right&quot;:{&quot;startIndex&quot;:56,&quot;stopIndex&quot;:63,&quot;left&quot;:{&quot;startIndex&quot;:56,&quot;stopIndex&quot;:58,&quot;identifier&quot;:{&quot;value&quot;:&quot;age&quot;,&quot;quoteCharacter&quot;:&quot;NONE&quot;}},&quot;right&quot;:{&quot;startIndex&quot;:62,&quot;stopIndex&quot;:63,&quot;literals&quot;:18},&quot;operator&quot;:&quot;\u003e&quot;,&quot;text&quot;:&quot;age \u003e 18&quot;},&quot;operator&quot;:&quot;AND&quot;,&quot;text&quot;:&quot;status \u003d \u0027ACTIVE\u0027 AND age \u003e 18&quot;}},&quot;unionSegments&quot;:[],&quot;parameterCount&quot;:0,&quot;commentSegments&quot;:[]} |
++----------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+</code></pre><p>For more <a href="https://opensource.com/article/21/9/distsql">DistSQL</a> functions, please refer to the documentation: <a href="https://shardingsphere.apache.org/document/current/cn/concepts/distsql/">https://shardingsphere.apache.org/document/current/cn/concepts/distsql/</a></p>
+<h2 id="conclusion">Conclusion</h2>
+<p>Currently, Apache ShardingSphere’s Format function only supports <a href="https://www.mysql.com/">MySQL</a>. After understanding its concept and how to use it, if you’re interested, you are welcome to contribute to developing the SQL Parse Format function.</p>
+<h3 id="apache-shardingsphere-open-source-project-links">Apache ShardingSphere Open Source Project Links:</h3>
+<p><a href="https://github.com/apache/shardingsphere/issues?page=1&amp;q=is%3Aopen+is%3Aissue+label%3A%22project%3A+OpenForce+2022%22">ShardingSphere Github
+</a>
+<a href="https://twitter.com/ShardingSphere">ShardingSphere Twitter</a></p>
+<p><a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg">ShardingSphere Slack</a></p>
+<p><a href="https://shardingsphere.apache.org/community/cn/involved/">Contributor Guide</a></p>
+<h2 id="author">Author</h2>
+<p><strong>Chen Chuxin</strong>
+<img src="https://miro.medium.com/max/634/1*smrIU5STVJsJRais0_Tghg.png" alt="Image description"></p>
+<blockquote>
+<p>SphereEx Middleware Engineer &amp; Apache ShardingSphere Committer</p>
+</blockquote>
+<blockquote>
+<p>Currently, he devotes himself to developing the kernel module of Apache ShardingSphere.</p>
+</blockquote>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2022_03_11_asias_e-commerce_giant_dangdang_increases_order_processing_speed_by_30_saves_over_ten_million_in_technology_budget_with_apache_shardingsphere/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/mar_23_distsql_cluster_governance_capabilities/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

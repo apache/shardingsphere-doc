@@ -1,0 +1,1 @@
+typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.single.api.config","l":"SingleRuleConfiguration"},{"p":"org.apache.shardingsphere.single.api.constant","l":"SingleTableConstants"}]

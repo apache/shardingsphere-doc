@@ -50,7 +50,9 @@ if [ ${#TAGS} -gt 0 ] ; then
         dir=$tag
         env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
           HUGO_PARAMS_EDITURL="" \
+          set -e
           bash docs/build.sh
+          set +e
         find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
         mv docs/target/document/current/ ../document/$dir
       fi
@@ -85,7 +87,9 @@ else
     mv docs ssdocs
     
     echo build hugo ss documents
+    set -e
     sh ./ssdocs/build.sh
+    set +e
     cp -rf ssdocs/target ./
     rm -rf ssdocs
     mv target sstarget
@@ -154,7 +158,9 @@ else
     rm -rf _elasticjob
     
     echo build hugo elasticjob documents
+    set -e
     sh ./ejdocs/build.sh
+    set +e
     mkdir ejtarget
     cp -rf ejdocs/public/* ./ejtarget
     rm -rf ejdocs
@@ -200,7 +206,9 @@ if [ ${#TAGS} -gt 0 ] ; then
         dir=$tag
         env HUGO_BASEURL="https://shardingsphere.apache.org/oncloud/$dir/" \
           HUGO_PARAMS_EDITURL="" \
+          set -e
           bash docs/build.sh
+          set +e
         find docs/target/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/current|<option id="\1" value="/'$dir'|g' {} \;
         mv docs/target/current/ ../oncloud/$dir
       fi
@@ -232,7 +240,9 @@ else
     mv docs ocdocs
     
     echo build hugo oncloud documents
+    set -e
     sh ./ocdocs/build.sh
+    set +e
     cp -rf ocdocs/target ./
     rm -rf ocdocs
     mv target octarget

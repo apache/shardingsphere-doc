@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en-us">
+    <head>
+        <style>
+            a {
+                word-wrap: break-word;
+            }
+        </style>
+    </head>  
+    <body>
+        <head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>ShardingSphere-Proxy Database Protocol Interaction Explained &middot; ShardingSphere - Blog</title>
+
+		
+  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
+		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
+		
+		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
+		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
+		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+
+		
+		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+	</head>
+
+        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
+			<div class="nav-container">
+				<a href="https://shardingsphere.apache.org/blog/">
+					<h1 class="nav-title">ShardingSphere - Blog</h1>
+				</a>
+
+				<span style="padding-left: 65px;">
+					
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/material/">
+							<h3>Articles</h3>
+						</a>
+					</li>
+					
+					<li>
+						<a href="https://shardingsphere.apache.org/blog/en/videos/">
+							<h3>Videos</h3>
+						</a>
+					</li>
+					
+				</span>
+
+				<span style="position: relative; left: 75px; 
+				background: rgba(0, 0, 0, 0.664);
+				font-weight: bold;
+				padding:0.1rem; 
+				padding-left:15px; 
+				padding-right:15px; 
+				padding-top: 2px; 
+				padding-bottom: 5px; 
+				border-radius:10px;">
+					
+				</span>
+			</div>
+			</div>
+		</nav></div>
+        
+
+<main>
+	<div class="post">
+		<h1 class="post-title">ShardingSphere-Proxy Database Protocol Interaction Explained</h1>
+
+		<div class="post-info">
+        
+</div>
+
+		
+
+		<p>Database protocols are considered relatively unknown knowledge for most developers. Generally, users and developers use databases through off-the-shelf database clients and drivers, without manipulating database protocols directly.</p>
+<p>However, having some basic understanding of the features and processes of database protocols can help developers provide some ideas to identify troubleshooting problems when it comes to database functionality and performance issues.</p>
+<p>In this post, we will introduce the features of commonly used open source database protocols such as MySQL and PostgreSQL, and explain how ShardingSphere-Proxy interacts with clients at the database protocol level.</p>
+<h1 id="introduction-to-the-shardingsphere-access-side">Introduction to the ShardingSphere Access Side</h1>
+<p>The Apache ShardingSphere ecosystem includes ShardingSphere-JDBC and ShardingSphere-Proxy, deployable independently or in a hybrid deployment.</p>
+<p>They both provide standardised incremental functionality based on databases as storage nodes for a variety of application scenarios such as Java homogeneous, heterogeneous languages, cloud native and more.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained1.png)</p>
+<p>ShardingSphere-JDBC is a Java-based SDK that implements the standard JDBC and is lightweight and high performance, but also has obvious limitations. Nevertheless, the limitations of ShardingSphere-JDBC in terms of access are addressed by ShardingSphere-Proxy on the access side.</p>
+<ul>
+<li>ShardingSphere-Proxy supports connections via any database client, database driver, and is not limited to JVM-based languages such as Java.</li>
+<li>Simplifies data management. In particular, in scenarios where data sharding or encryption is used, ShardingSphere-Proxy can be used as a unified portal to manipulate data without having to consider the actual node where the data is stored or to manually decrypt it, etc.</li>
+<li>Provides unified operation and maintenance control capabilities. In cluster mode, ShardingSphere-Proxy can be used to unify the management of ShardingSphere rules and configurations.</li>
+<li>Heavyweight operations can be performed. ShardingSphere-JDBC is in the same process as the application, where heavyweight computation and I/O operations may impact application performance, while ShardingSphere-Proxy starts as a separate process and supports horizontal scaling, and performing heavyweight operations without impacting application performance.</li>
+</ul>
+<h1 id="database-protocol-features">Database Protocol Features</h1>
+<p>There are already a number of specific interpretations of MySQL or PostgreSQL protocols on the Internet, so we won&rsquo;t go into detail in this article.</p>
+<p>This section focuses on the features of each database protocol, such as its support for Pipelining and how bulk operations are represented in the protocol.</p>
+<h2 id="mysql-protocol">MySQL Protocol</h2>
+<p>The MySQL protocol is typically a “one question, one answer&rdquo; protocol, e.g. to execute SQL using Prepared Statement. At the protocol level, you need to execute <code>COM_STMT_PREPARE</code> and <code>COM_STMT_EXECUTE</code> respectively.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained2.png)</p>
+<p><strong>Image source:</strong> <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/mysqlx_protocol_use_cases.html">MySQL documentation</a>.</p>
+<p>MySQL has added an X Plugin since 5.7.12, which allows MySQL to add support for document type stores while maintaining the original relational store.</p>
+<p>The X Plugin uses a new communication protocol, X Protocol, which uses port 33060 by default and supports pipelining, i.e. the client can send a batch of commands to the client at a time, reducing the RTT (Round-trip time) associated with the “one question, one answer&rdquo; model (Round-trip time).</p>
+<p>For example, if a SQL is executed using <code>Prepared Statement</code>, at the protocol level there are <code>Prepare</code> and <code>Execute</code> steps, but at the network transport level, these two steps can be combined and sent. This can theoretically reduce the RTT by one compared to the original protocol.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained3.png)</p>
+<p><strong>Image source:</strong> <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/mysqlx_protocol_use_cases.html">MySQL documentation</a>.</p>
+<p>However, the X Plugin for MySQL does not seem to be catching on at the moment, and most scenarios are still based on the original MySQL protocol for client and server communication.</p>
+<p>In the case of batch operations, the MySQL protocol command <code>COM_STMT_EXECUTE</code>, which executes the <code>Prepared Statement </code>statement, can only send one set of parameters at a time, making the &ldquo;one question, one answer&rdquo; approach somewhat inefficient:</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained4.png)</p>
+<p><strong>Image source:</strong> <a href="https://dev.mysql.com/doc/dev/mysql-server/latest/mysqlx_protocol_use_cases.html">MySQL documentation</a>.</p>
+<p>The protocol itself is not designed to support batch operations, so they can only be optimised at the client level.</p>
+<p>In the case of MySQL Connector/J, for example, when the parameter <code>rewriteBatchedStatements</code> is enabled, MySQL Connector/J will internally take the multiple sets of parameters set by the <code>addBatch</code> method, combine insert values or compose update/delete into multiple statements, and send them at the protocol level sent in one go.</p>
+<p>This is a small increase in CPU overhead in exchange for a reduction in RTT. For example, for a Prepared Statement insert statement, add multiple parameters to execute:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-Mysql" data-lang="Mysql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> tbl <span style="color:#66d9ef">VALUES</span> (<span style="color:#f92672">?</span>, <span style="color:#f92672">?</span>, <span style="color:#f92672">?</span>);
+addBatch [<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#34;foo&#34;</span>, <span style="color:#e6db74">&#34;bar&#34;</span>]
+addBatch [<span style="color:#ae81ff">2</span>, <span style="color:#e6db74">&#34;baz&#34;</span>, <span style="color:#e6db74">&#34;fuz&#34;</span>]
+</code></pre></div><p>MySQL Connector/J Actual Execution Statement:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-Mysql" data-lang="Mysql"><span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> tbl <span style="color:#66d9ef">VALUES</span> (<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#34;foo&#34;</span>, <span style="color:#e6db74">&#34;bar&#34;</span>),(<span style="color:#ae81ff">2</span>, <span style="color:#e6db74">&#34;baz&#34;</span>, <span style="color:#e6db74">&#34;fuz&#34;</span>);
+</code></pre></div><p>For bulk update / delete, MySQL Connector/J will execute multiple statements via <code>COM_QUERY</code>, e.g:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-Mysql" data-lang="Mysql"><span style="color:#66d9ef">UPDATE</span> tbl <span style="color:#66d9ef">SET</span> name <span style="color:#f92672">=</span> <span style="color:#f92672">?</span> <span style="color:#66d9ef">WHERE</span> id <span style="color:#f92672">=</span> <span style="color:#f92672">?</span>;
+addBatch [<span style="color:#e6db74">&#34;foo&#34;</span>, <span style="color:#ae81ff">1</span>]
+addBatch [<span style="color:#e6db74">&#34;bar&#34;</span>, <span style="color:#ae81ff">2</span>]
+</code></pre></div><p>MySQL Connector/J Actual Execution Statement:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-Mysql" data-lang="Mysql"><span style="color:#66d9ef">UPDATE</span> tbl <span style="color:#66d9ef">SET</span> name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;foo&#34;</span> <span style="color:#66d9ef">WHERE</span> id <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;<span style="color:#66d9ef">UPDATE</span> tbl <span style="color:#66d9ef">SET</span> name <span style="color:#f92672">=</span> <span style="color:#e6db74">&#34;bar&#34;</span> <span style="color:#66d9ef">WHERE</span> id <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>;
+</code></pre></div><h2 id="postgresql-protocol">PostgreSQL Protocol</h2>
+<p>Compared to the MySQL protocol, the PostgreSQL protocol definition looks simpler and the PostgreSQL protocol supports Pipelining:</p>
+<p>PostgreSQL&rsquo;s Extended Query breaks up SQL execution into multiple steps, with the following common operations.</p>
+<ul>
+<li><strong>Parse:</strong> parses the SQL into a <code>Prepared Statement</code>.</li>
+<li><strong>Describe:</strong> Get the metadata of a <code>Prepared Statement</code> or <code>Portal</code>.</li>
+<li><strong>Bind:</strong> Bind the actual parameters of the <code>Prepared Statement</code> to produce an executable <code>Portal</code>; <code>Bind: Bind </code>the actual parameters of the <code>Prepared Statement</code> to produce an executable <code>Portal</code>.</li>
+<li><strong>Execute:</strong> executing the <code>Portal</code>.</li>
+<li><strong>Close:</strong> closes the <code>Prepared Statement</code> or <code>Portal</code>.</li>
+</ul>
+<p>An example of the PostgreSQL JDBC protocol interaction with the database is as follows:</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained5.png)</p>
+<p>In a bulk operation scenario, the client can send multiple sets of parameters in one continuous <code>Bind</code>, <code>Execute</code>, which is multiple packets at the protocol level, but at the TCP transport level, one batch of packets can be sent out at a time.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained6.png)</p>
+<p>Pipelining-enabled protocols, combined with I/O multiplexing, offer certain advantages in terms of throughput. For example, Vert.x PostgreSQL, a database driver based on multiplexed I/O, scored first place in the TechEmpower Benchmark Round 15 test in the Single Query scenario (database spotting).</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained7.png)</p>
+<p>Image source: <a href="https://www.techempower.com/benchmarks/#section=data-r15&amp;test=db">Tech Empower</a>.</p>
+<h2 id="opengauss-protocol">openGauss Protocol</h2>
+<p>openGauss adds a Batch Bind message to the PostgreSQL Protocol 3.0, which only sends one set of parameters at a time.</p>
+<p>openGauss adds a Batch Bind message to support sending multiple sets of parameters at the same time.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained8.png)</p>
+<p>Additionally, openGauss has been enhanced in terms of authentication security. The general flow of the protocol is identical to that of PostgreSQL.</p>
+<h1 id="shardingsphere-proxy-front-end-interaction-flow-explained">ShardingSphere-Proxy Front-End Interaction Flow Explained</h1>
+<h2 id="relationship-between-shardingsphere-proxy-and-database-protocol">Relationship between ShardingSphere-Proxy and Database Protocol</h2>
+<p>Database protocols, like HTTP and other protocols, are the standard for communication between the client and the server. Each database defines its own protocol.</p>
+<p>For example, the MySQL database defines its own set of protocols, as well as the Protobuf-based X Protocol; PostgreSQL also defines its own set of protocols and etc.</p>
+<p>The average user or developer uses an off-the-shelf client or corresponding driver and the protocol is relatively transparent to them. Therefore, ShardingSphere-Proxy implements the database protocol and serves it to the public, so that users can use ShardingSphere-Proxy as if it were a database.</p>
+<p>The specific database protocol versions currently supported by ShardingSphere-Proxy are:</p>
+<ul>
+<li>MySQL Protocol 4.1 (since MySQL 4.1)</li>
+<li>PostgreSQL Protocol 3.0 (since PostgreSQL 7.4)</li>
+<li>openGauss Protocol 3.00 / 3.50 / 3.51</li>
+</ul>
+<h2 id="overall-process-for-the-access-side">Overall Process for the Access Side</h2>
+<p>ShardingSphere-Proxy and ShardingSphere-JDBC share the ShardingSphere kernel module and provide different access to users.</p>
+<p>ShardingSphere-Proxy exists as a standalone process and provides services to the outside world as a database protocol. ShardingSphere-JDBC is a set of SDKs that can be called directly by users through code.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained9.png)</p>
+<h2 id="shardingsphere-proxy-front-end-process">ShardingSphere-Proxy Front-end Process</h2>
+<p>The ShardingSphere-Proxy front-end uses Netty to implement the database protocol. The Netty event-driven approach to front-end connections allows the ShardingSphere-Proxy front-end to maintain a large number of client connections.</p>
+<p>The protocol unwrapping and encoding logic is mainly performed in the Netty <code>EventLoop</code> thread. As the ShardingSphere-Proxy backend still uses JDBC to interact with the database, a dedicated thread pool is used to execute the ShardingSphere kernel logic and database interaction after the protocol data has been unpacked to avoid blocking in the Netty <code>EventLoop</code> thread.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained10.png)</p>
+<p><code>PacketCodecs</code> are mainly used for unpacking and encoding data. As mentioned earlier in the introduction to database protocols, the PostgreSQL protocol supports pipelining and can send a batch of packets at a time.</p>
+<h2 id="example">Example:</h2>
+<p>The following diagram shows the request protocol for a PostgreSQL client to execute the <code>select current_schema()</code> statement using <code>Prepared Statement</code>, where the SQL parsing and execution steps of <code>Prepared Statement</code> are sent by the client to the server for execution in one go.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained11.png)</p>
+<p>What the server receives is a stream of bytes. How can this stream be split into multiple protocol packets?</p>
+<p>Taking the PostgreSQL protocol format as an example, except for the Startup Message, the format of each protocol packet is 1 byte of message type + 4 bytes of data length (including the length itself) + data, with the following structure:</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained12.png)</p>
+<p>The MySQL protocol packet format is similar.</p>
+<p>The <code>PacketCodec</code> simply follows the protocol format definition and splits the incoming byte stream correctly.</p>
+<p>After the byte stream has been split, the remaining steps are to parse the data according to the database protocol and get the SQL and parameters to be executed.</p>
+<p>Once the SQL and parameters are available, the rest of the execution process is essentially the same as executing SQL via ShardingSphere-JDBC.</p>
+<p>After the ShardingSphere-Proxy backend executes SQL via JDBC, the result set is a Java object and the <code>PacketCodec</code> calls the specific encoding logic to convert the Java object into a byte stream according to the database protocol, assembles it into a packet and responds to the client.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained13.png)</p>
+<p>This is the general flow of the ShardingSphere-Proxy front-end database protocol interaction.</p>
+<h2 id="how-to-feedback-suspected-proxy-protocol-issues-to-the-shardingsphere-community">How to Feedback Suspected Proxy Protocol Issues to the ShardingSphere Community?</h2>
+<p>Due to the differences in computing power between ShardingSphere-Proxy and databases, the Proxy does not yet have 100% support for database protocols, and there are inevitably some unsupported cases in the process.</p>
+<p>This article gives some suggestions for feedback when users encounter problems with Proxy that are suspected to be caused by imperfect implementation of the Proxy protocol.</p>
+<h2 id="demo-available-for-simple-problem-replication">Demo Available for Simple Problem Replication</h2>
+<p>If you have a problem that can be reproduced by constructing simple code (e.g. just using Python and installing a few simple dependencies), you can provide the code and steps to reproduce the problem directly in the Github issue.</p>
+<p><strong>Case:</strong> a community member has submitted a problem with aDjango.db <a href="https://github.com/apache/shardingsphere/issues/18461">transaction to ShardingSphere-Proxy MySQL</a>.</p>
+<p>The author provided a reproduction in the issue to help the ShardingSphere team fix the problem.</p>
+<h2 id="directly-submit-a-problem-fix-pr">Directly Submit a Problem Fix PR</h2>
+<p>For relatively simple issues, the ShardingSphere team can provide ideas for fixing them, and community members who are in a position to do so can consider submitting a PR to fix them directly.</p>
+<p><strong>Case:</strong> a community member gave feedback on an issue with ShardingSphere-Proxy that was reporting an error<a href="https://github.com/apache/shardingsphere/issues/23885"> when connecting to it via Python asyncpg</a>.</p>
+<p>The problem is that the Python asyncpg database driver adds quotes to the encoding name when sending <code>client_encoding</code> to ShardingSphere-Proxy. The ShardingSphere-Proxy PostgreSQL does not take into account that the encoding name contains quotes (which is supported by the PostgreSQL database), resulting in an encoding recognition error.</p>
+<p>The issue&rsquo;s author was already in a position to reproduce the problem, and submitted a PR to fix the problem directly under the guidance of the ShardingSphere team.</p>
+<h2 id="capture-the-traffic-between-the-client-and-the-proxy-using-a-packet-capture-tool">Capture the Traffic Between the Client and the Proxy Using a Packet Capture Tool</h2>
+<p>Some heterogeneous languages users may encounter issues with ShardingSphere-Proxy that are not related to a specific functionality and are suspected to be at the protocol level.</p>
+<p>Due to differences in the technology stack between the user and the ShardingSphere team, the ShardingSphere team may not be able to quickly reproduce the issue locally. In this case, consider feeding back to the ShardingSphere community by capturing network traffic between the client and the ShardingSphere-Proxy.</p>
+<p>There is a lot of information available on the Internet on how to use this tool, so we won&rsquo;t mention them here.</p>
+<p><strong>Case:</strong> A .NET MySqlConnector using ShardingSphere-Proxy issue was submitted by a community member some time ago <a href="https://github.com/apache/shardingsphere/issues/23857">with the following problem</a>.</p>
+<p>There is an error about the .NET connection to ShardingSphere-Proxy reported in the Issue. According to the stack, the error is caused during <code>TryResetConnectionAsync</code> and the last exception is thrown under the Protocol-related code, so this could be a ShardingSphere-Proxy protocol implementation does not behave the same way as MySQL.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-plaintext" data-lang="plaintext">An error occurred using the connection to database .....
+
+ MySqlConnector.MySqlProtocolException: Packet received out-of-order. Expected 1; got 2.
+         at MySqlConnector.Protocol.Serialization.ProtocolUtility.&lt;DoReadPayloadAsync&gt;g__AddContinuation|5_0(ValueTask`1 readPacketTask, BufferedByteReader bufferedByteReader, IByteHandler byteHandler, F
+unc`1 getNextSequenceNumber, ArraySegmentHolder`1 previousPayloads, ProtocolErrorBehavior protocolErrorBehavior, IOBehavior ioBehavior) in /_/src/MySqlConnector/Protocol/Serialization/ProtocolUtility.cs:
+line 476
+         at MySqlConnector.Core.ServerSession.ReceiveReplyAsyncAwaited(ValueTask`1 task) in /_/src/MySqlConnector/Core/ServerSession.cs:line 943
+         at MySqlConnector.Core.ServerSession.TryResetConnectionAsync(ConnectionSettings cs, MySqlConnection connection, IOBehavior ioBehavior, CancellationToken cancellationToken) in /_/src/MySqlConnect
+or/Core/ServerSession.cs:line 616
+</code></pre></div><p>As this issue is costly to reproduce, it&rsquo;s not easy for the ShardingSphere team to reproduce the issue locally, and the community has provided protocol traffic between the client and the Proxy.</p>
+<p>![img](<a href="https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database">https://shardingsphere.apache.org/blog/img/2023_02_23_ShardingSphere-Proxy_Database</a> Protocol_Interaction_Explained14.png)</p>
+<p>Based on the protocol packet capture results, the ShardingSphere team immediately identified the issue as a problem with the implementation of the ShardingSphere-Proxy MySQL packet encoding logic.</p>
+<h2 id="relevant-links">Relevant Links:</h2>
+<p><strong>🔗</strong> <a href="https://shardingsphere.apache.org/"><strong>ShardingSphere Official Website</strong></a></p>
+<p><strong>🔗</strong> <a href="https://github.com/apache/shardingsphere"><strong>ShardingSphere Official Project Repo</strong></a></p>
+<p><strong>🔗</strong> <a href="https://twitter.com/ShardingSphere"><strong>ShardingSphere Twitter</strong></a></p>
+<p><strong>🔗</strong> <a href="https://join.slack.com/t/apacheshardingsphere/shared_invite/zt-sbdde7ie-SjDqo9~I4rYcR18bq0SYTg"><strong>ShardingSphere Slack</strong></a></p>
+
+
+		
+	</div>
+
+	<div class="pagination">
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_02_23_shardingsphere-proxy_database_protocol_interaction_explained/" class="left arrow">&#8592;</a>
+		<a href="https://shardingsphere.apache.org/blog/en/material/2023_02_17_dynamic_data_masking_shardingsphere_5.3.1_deep_dive/" class="right arrow">&#8594;</a>
+
+		<a href="#" class="top">Top</a>
+	</div>
+</main>
+
+
+        		<footer>
+			<span>
+			
+			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
+			</span>
+		</footer>
+
+    </body>
+</html>

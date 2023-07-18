@@ -1519,11 +1519,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/metadata/persist/MetaDataPersistService.java</td>
 <td>shardingsphere-metadata-core</td>
-<td><a href="./xref/org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#L80">80</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#L81">81</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.java</td>
 <td>shardingsphere-metadata-core</td>
-<td><a href="./xref/org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.html#L81">81</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/metadata/persist/NewMetaDataPersistService.html#L82">82</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>metaDataVersionPersistService = new MetaDataVersionPersistService(repository);
@@ -1539,11 +1539,11 @@
     @Override
     public void persistConfigurations(final String databaseName, final DatabaseConfiguration databaseConfigs,
                                       final Map&lt;String, DataSource&gt; dataSources, final Collection&lt;ShardingSphereRule&gt; rules) {
-        Map&lt;String, DataSourceProperties&gt; dataSourcePropertiesMap = getDataSourcePropertiesMap(databaseConfigs.getDataSources());
+        Map&lt;String, DataSourceProperties&gt; dataSourcePropertiesMap = getDataSourcePropertiesMap(databaseConfigs);
         if (dataSourcePropertiesMap.isEmpty() &amp;&amp; databaseConfigs.getRuleConfigurations().isEmpty()) {
             databaseMetaDataService.addDatabase(databaseName);
         } else {
-            dataSourceUnitService.persist(databaseName, getDataSourcePropertiesMap(databaseConfigs.getDataSources()));
+            dataSourceUnitService.persist(databaseName, dataSourcePropertiesMap);
             databaseRulePersistService.persist(databaseName, decorateRuleConfigs(databaseName, dataSources, rules));
         }
     }
@@ -1562,6 +1562,13 @@
         return result;
     }
     
+    private Map&lt;String, DataSourceProperties&gt; getDataSourcePropertiesMap(final DatabaseConfiguration databaseConfigs) {
+        if (!databaseConfigs.getDataSources().isEmpty() &amp;&amp; databaseConfigs.getDataSourcePropsMap().isEmpty()) {
+            return getDataSourcePropertiesMap(databaseConfigs.getStorageResource().getStorageNodes());
+        }
+        return databaseConfigs.getDataSourcePropsMap();
+    }
+    
     private Map&lt;String, DataSourceProperties&gt; getDataSourcePropertiesMap(final Map&lt;String, DataSource&gt; dataSourceMap) {
         Map&lt;String, DataSourceProperties&gt; result = new LinkedHashMap&lt;&gt;(dataSourceMap.size(), 1F);
         for (Entry&lt;String, DataSource&gt; entry : dataSourceMap.entrySet()) {
@@ -1571,29 +1578,13 @@
     }
     
     @Override
-    public Map&lt;String, DataSource&gt; getEffectiveDataSources(final String databaseName, final Map&lt;String, ? extends DatabaseConfiguration&gt; databaseConfigs) {
+    public Map&lt;String, DataSourceConfiguration&gt; getEffectiveDataSources(final String databaseName, final Map&lt;String, ? extends DatabaseConfiguration&gt; databaseConfigs) {
         Map&lt;String, DataSourceProperties&gt; persistedDataPropsMap = dataSourceUnitService.load(databaseName);
-        return databaseConfigs.containsKey(databaseName)
-                ? mergeEffectiveDataSources(persistedDataPropsMap, databaseConfigs.get(databaseName).getDataSources())
-                : DataSourcePoolCreator.create(persistedDataPropsMap);
-    }
-    
-    private Map&lt;String, DataSource&gt; mergeEffectiveDataSources(final Map&lt;String, DataSourceProperties&gt; persistedDataSourcePropsMap, final Map&lt;String, DataSource&gt; localConfiguredDataSources) {
-        Map&lt;String, DataSource&gt; result = new LinkedHashMap&lt;&gt;(persistedDataSourcePropsMap.size(), 1F);
-        for (Entry&lt;String, DataSourceProperties&gt; entry : persistedDataSourcePropsMap.entrySet()) {
-            String dataSourceName = entry.getKey();
-            DataSourceProperties persistedDataSourceProps = entry.getValue();
-            DataSource localConfiguredDataSource = localConfiguredDataSources.get(dataSourceName);
-            if (null == localConfiguredDataSource) {
-                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
-            } else if (DataSourcePropertiesCreator.create(localConfiguredDataSource).equals(persistedDataSourceProps)) {
-                result.put(dataSourceName, localConfiguredDataSource);
-            } else {
-                result.put(dataSourceName, DataSourcePoolCreator.create(persistedDataSourceProps));
-                new DataSourcePoolDestroyer(localConfiguredDataSource).asyncDestroy();
-            }
+        if (databaseConfigs.containsKey(databaseName) &amp;&amp; !databaseConfigs.get(databaseName).getDataSources().isEmpty()) {
+            databaseConfigs.get(databaseName).getStorageResource().getStorageNodes().values().forEach(each -&gt; new DataSourcePoolDestroyer(each).asyncDestroy());
         }
-        return result;
+        return persistedDataPropsMap.entrySet().stream().collect(Collectors.toMap(Entry::getKey,
+                entry -&gt; DataSourcePropertiesCreator.createConfiguration(entry.getValue()), (key, value) -&gt; value, LinkedHashMap::new));
     }
 }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
@@ -1757,17 +1748,17 @@
 <tr class="b">
 <td>org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L117">117</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L118">118</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L119">119</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L120">120</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>final Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, final MetaDataPersistService persistService) {
-        Map&lt;String, DataSource&gt; effectiveDataSources = persistService.getEffectiveDataSources(databaseName, databaseConfigs);
+        Map&lt;String, DataSourceConfiguration&gt; effectiveDataSources = persistService.getEffectiveDataSources(databaseName, databaseConfigs);
         Collection&lt;RuleConfiguration&gt; databaseRuleConfigs = persistService.getDatabaseRulePersistService().load(databaseName);
-        return new DataSourceProvidedDatabaseConfiguration(effectiveDataSources, databaseRuleConfigs);
+        return new DataSourceGeneratedDatabaseConfiguration(effectiveDataSources, databaseRuleConfigs);
     }
     
     private static void checkDataSourceStates(final Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, final Map&lt;String, StorageNodeDataSource&gt; storageNodes, final boolean force) {
@@ -3483,11 +3474,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.html#L129">129</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.html#L131">131</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.html#L276">276</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.html#L278">278</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>metaDataContexts.get().getMetaData().getDatabases().putAll(renewDatabase(metaDataContexts.get().getMetaData().getDatabase(databaseName), switchingResource));
@@ -5702,11 +5693,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L82">82</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L83">83</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L83">83</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L84">84</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>public static MetaDataContexts create(final MetaDataPersistService persistService, final ContextManagerBuilderParameter param,
@@ -7436,13 +7427,13 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/infra/database/core/metadata/dialect/MariaDBDataSourceMetaData.java</td>
-<td>shardingsphere-infra-database-core</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/database/core/metadata/dialect/MariaDBDataSourceMetaData.html#L60">60</a></td></tr>
+<td>org/apache/shardingsphere/infra/database/mariadb/MariaDBDataSourceMetaData.java</td>
+<td>shardingsphere-infra-database-mariadb</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/database/mariadb/MariaDBDataSourceMetaData.html#L60">60</a></td></tr>
 <tr class="a">
-<td>org/apache/shardingsphere/infra/database/core/metadata/dialect/MySQLDataSourceMetaData.java</td>
-<td>shardingsphere-infra-database-core</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/database/core/metadata/dialect/MySQLDataSourceMetaData.html#L60">60</a></td></tr>
+<td>org/apache/shardingsphere/infra/database/mysql/MySQLDataSourceMetaData.java</td>
+<td>shardingsphere-infra-database-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/database/mysql/MySQLDataSourceMetaData.html#L64">64</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>defaultQueryProperties.setProperty(&quot;prepStmtCacheSize&quot;, &quot;200000&quot;);
@@ -8658,13 +8649,13 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/infra/database/core/type/dialect/OpenGaussDatabaseType.java</td>
-<td>shardingsphere-infra-database-core</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/database/core/type/dialect/OpenGaussDatabaseType.html#L84">84</a></td></tr>
+<td>org/apache/shardingsphere/infra/database/opengauss/OpenGaussDatabaseType.java</td>
+<td>shardingsphere-infra-database-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/database/opengauss/OpenGaussDatabaseType.html#L83">83</a></td></tr>
 <tr class="a">
-<td>org/apache/shardingsphere/infra/database/core/type/dialect/PostgreSQLDatabaseType.java</td>
-<td>shardingsphere-infra-database-core</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/database/core/type/dialect/PostgreSQLDatabaseType.html#L80">80</a></td></tr>
+<td>org/apache/shardingsphere/infra/database/postgresql/PostgreSQLDatabaseType.java</td>
+<td>shardingsphere-infra-database-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/infra/database/postgresql/PostgreSQLDatabaseType.html#L79">79</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>return new OpenGaussDataSourceMetaData(url);
@@ -10015,11 +10006,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L94">94</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L95">95</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L95">95</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L96">96</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>? InternalMetaDataFactory.create(persistService, effectiveDatabaseConfigs, props, instanceContext)
@@ -10742,35 +10733,6 @@ public final class AgentReflectionUtils {
                 : currentRuleConfig.getDefaultDatabaseShardingStrategy();
         return Optional.ofNullable(result);
     }</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/infra/database/core/metadata/dialect/MariaDBDataSourceMetaData.java</td>
-<td>shardingsphere-infra-database-core</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/database/core/metadata/dialect/MariaDBDataSourceMetaData.html#L47">47</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/infra/database/core/metadata/dialect/MySQLDataSourceMetaData.java</td>
-<td>shardingsphere-infra-database-core</td>
-<td><a href="./xref/org/apache/shardingsphere/infra/database/core/metadata/dialect/MySQLDataSourceMetaData.html#L47">47</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>public MariaDBDataSourceMetaData(final String url) {
-        JdbcUrl jdbcUrl = new StandardJdbcUrlParser().parse(url);
-        hostname = jdbcUrl.getHostname();
-        port = -1 == jdbcUrl.getPort() ? DEFAULT_PORT : jdbcUrl.getPort();
-        catalog = jdbcUrl.getDatabase();
-        schema = null;
-        queryProperties = jdbcUrl.getQueryProperties();
-        buildDefaultQueryProperties();
-    }
-    
-    private void buildDefaultQueryProperties() {
-        defaultQueryProperties.setProperty(&quot;useServerPrepStmts&quot;, Boolean.TRUE.toString());
-        defaultQueryProperties.setProperty(&quot;cachePrepStmts&quot;, Boolean.TRUE.toString());
-        defaultQueryProperties.setProperty(&quot;prepStmtCacheSize&quot;, &quot;200000&quot;);</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

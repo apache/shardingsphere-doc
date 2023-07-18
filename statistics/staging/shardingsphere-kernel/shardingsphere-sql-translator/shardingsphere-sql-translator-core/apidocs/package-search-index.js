@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.sqltranslator.constant"},{"l":"org.apache.shardingsphere.sqltranslator.rule"},{"l":"org.apache.shardingsphere.sqltranslator.rule.builder"},{"l":"org.apache.shardingsphere.sqltranslator.yaml.config"},{"l":"org.apache.shardingsphere.sqltranslator.yaml.swapper"}]

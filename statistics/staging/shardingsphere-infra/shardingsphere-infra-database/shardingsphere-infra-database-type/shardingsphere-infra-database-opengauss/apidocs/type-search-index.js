@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.infra.database.opengauss","l":"OpenGaussDatabaseType"},{"p":"org.apache.shardingsphere.infra.database.opengauss","l":"OpenGaussDataSourceMetaData"}]

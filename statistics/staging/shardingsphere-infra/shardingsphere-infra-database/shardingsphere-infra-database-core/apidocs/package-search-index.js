@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.infra.database.core"},{"l":"org.apache.shardingsphere.infra.database.core.spi"},{"l":"org.apache.shardingsphere.infra.database.core.type"},{"l":"org.apache.shardingsphere.infra.database.core.type.checker"},{"l":"org.apache.shardingsphere.infra.database.core.url"}]

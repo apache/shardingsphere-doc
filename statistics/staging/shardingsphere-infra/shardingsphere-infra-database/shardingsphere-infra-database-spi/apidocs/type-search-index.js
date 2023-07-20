@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.infra.database.spi","l":"DatabaseType"},{"p":"org.apache.shardingsphere.infra.database.spi","l":"DataSourceMetaData"}]

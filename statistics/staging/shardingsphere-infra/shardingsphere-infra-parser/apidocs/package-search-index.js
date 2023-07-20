@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.infra.parser"},{"l":"org.apache.shardingsphere.infra.parser.cache"},{"l":"org.apache.shardingsphere.infra.parser.sql"}]

@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.infra.database.mariadb","l":"MariaDBDatabaseType"},{"p":"org.apache.shardingsphere.infra.database.mariadb","l":"MariaDBDataSourceMetaData"}]

@@ -1,1 +1,0 @@
-typeSearchIndex = [{"l":"All Classes","url":"allclasses-index.html"},{"p":"org.apache.shardingsphere.infra.database.postgresql","l":"PostgreSQLDatabaseType"},{"p":"org.apache.shardingsphere.infra.database.postgresql","l":"PostgreSQLDataSourceMetaData"}]

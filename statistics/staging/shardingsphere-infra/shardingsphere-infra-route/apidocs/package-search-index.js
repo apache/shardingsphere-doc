@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","url":"allpackages-index.html"},{"l":"org.apache.shardingsphere.infra.route"},{"l":"org.apache.shardingsphere.infra.route.context"},{"l":"org.apache.shardingsphere.infra.route.engine"},{"l":"org.apache.shardingsphere.infra.route.engine.impl"}]

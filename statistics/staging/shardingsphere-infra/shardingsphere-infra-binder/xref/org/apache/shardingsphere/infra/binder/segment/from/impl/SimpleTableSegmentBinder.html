@@ -85,7 +85,7 @@
 <a class="jxr_linenumber" name="L77" href="#L77">77</a>          <em class="jxr_comment">// TODO check database and schema</em>
 <a class="jxr_linenumber" name="L78" href="#L78">78</a>          ShardingSphereSchema schema = metaData.getDatabase(originalDatabase.getValue()).getSchema(originalSchema.getValue());
 <a class="jxr_linenumber" name="L79" href="#L79">79</a>          tableBinderContexts.put(segment.getAliasName().orElseGet(() -&gt; segment.getTableName().getIdentifier().getValue()),
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>                  createSimpleTableBinderContext(segment, schema, originalDatabase, originalSchema));
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>                  createSimpleTableBinderContext(segment, schema, originalDatabase, originalSchema, databaseType));
 <a class="jxr_linenumber" name="L81" href="#L81">81</a>          segment.getTableName().setOriginalDatabase(originalDatabase);
 <a class="jxr_linenumber" name="L82" href="#L82">82</a>          segment.getTableName().setOriginalSchema(originalSchema);
 <a class="jxr_linenumber" name="L83" href="#L83">83</a>          <strong class="jxr_keyword">return</strong> segment;
@@ -110,23 +110,25 @@
 <a class="jxr_linenumber" name="L102" href="#L102">102</a>     }
 <a class="jxr_linenumber" name="L103" href="#L103">103</a>     
 <a class="jxr_linenumber" name="L104" href="#L104">104</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="TableSegmentBinderContext" href="../../../../../../../../org/apache/shardingsphere/infra/binder/segment/from/TableSegmentBinderContext.html#TableSegmentBinderContext">TableSegmentBinderContext</a> createSimpleTableBinderContext(<strong class="jxr_keyword">final</strong> SimpleTableSegment segment, <strong class="jxr_keyword">final</strong> ShardingSphereSchema schema,
-<a class="jxr_linenumber" name="L105" href="#L105">105</a>                                                                             <strong class="jxr_keyword">final</strong> IdentifierValue originalDatabase, <strong class="jxr_keyword">final</strong> IdentifierValue originalSchema) {
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>                                                                             <strong class="jxr_keyword">final</strong> IdentifierValue originalDatabase, <strong class="jxr_keyword">final</strong> IdentifierValue originalSchema, <strong class="jxr_keyword">final</strong> DatabaseType databaseType) {
 <a class="jxr_linenumber" name="L106" href="#L106">106</a>         Collection&lt;ShardingSphereColumn&gt; columnNames =
 <a class="jxr_linenumber" name="L107" href="#L107">107</a>                 Optional.ofNullable(schema.getTable(segment.getTableName().getIdentifier().getValue())).map(ShardingSphereTable::getColumnValues).orElseGet(Collections::emptyList);
 <a class="jxr_linenumber" name="L108" href="#L108">108</a>         Collection&lt;ProjectionSegment&gt; projectionSegments = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
-<a class="jxr_linenumber" name="L109" href="#L109">109</a>         <strong class="jxr_keyword">for</strong> (ShardingSphereColumn each : columnNames) {
-<a class="jxr_linenumber" name="L110" href="#L110">110</a>             ColumnSegment columnSegment = <strong class="jxr_keyword">new</strong> ColumnSegment(0, 0, <strong class="jxr_keyword">new</strong> IdentifierValue(each.getName()));
-<a class="jxr_linenumber" name="L111" href="#L111">111</a>             columnSegment.setOriginalDatabase(originalDatabase);
-<a class="jxr_linenumber" name="L112" href="#L112">112</a>             columnSegment.setOriginalSchema(originalSchema);
-<a class="jxr_linenumber" name="L113" href="#L113">113</a>             columnSegment.setOriginalTable(segment.getTableName().getIdentifier());
-<a class="jxr_linenumber" name="L114" href="#L114">114</a>             columnSegment.setOriginalColumn(<strong class="jxr_keyword">new</strong> IdentifierValue(each.getName()));
-<a class="jxr_linenumber" name="L115" href="#L115">115</a>             ColumnProjectionSegment columnProjectionSegment = <strong class="jxr_keyword">new</strong> ColumnProjectionSegment(columnSegment);
-<a class="jxr_linenumber" name="L116" href="#L116">116</a>             columnProjectionSegment.setVisible(each.isVisible());
-<a class="jxr_linenumber" name="L117" href="#L117">117</a>             projectionSegments.add(columnProjectionSegment);
-<a class="jxr_linenumber" name="L118" href="#L118">118</a>         }
-<a class="jxr_linenumber" name="L119" href="#L119">119</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="TableSegmentBinderContext" href="../../../../../../../../org/apache/shardingsphere/infra/binder/segment/from/TableSegmentBinderContext.html#TableSegmentBinderContext">TableSegmentBinderContext</a>(projectionSegments);
-<a class="jxr_linenumber" name="L120" href="#L120">120</a>     }
-<a class="jxr_linenumber" name="L121" href="#L121">121</a> }
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>         DialectDatabaseMetaData dialectDatabaseMetaData = DatabaseTypedSPILoader.getService(DialectDatabaseMetaData.<strong class="jxr_keyword">class</strong>, databaseType);
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>         <strong class="jxr_keyword">for</strong> (ShardingSphereColumn each : columnNames) {
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>             ColumnSegment columnSegment = <strong class="jxr_keyword">new</strong> ColumnSegment(0, 0, <strong class="jxr_keyword">new</strong> IdentifierValue(each.getName(), dialectDatabaseMetaData.getQuoteCharacter()));
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>             columnSegment.setOwner(<strong class="jxr_keyword">new</strong> OwnerSegment(0, 0, segment.getAlias().orElse(segment.getTableName().getIdentifier())));
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>             columnSegment.setOriginalDatabase(originalDatabase);
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>             columnSegment.setOriginalSchema(originalSchema);
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>             columnSegment.setOriginalTable(segment.getTableName().getIdentifier());
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>             columnSegment.setOriginalColumn(<strong class="jxr_keyword">new</strong> IdentifierValue(each.getName()));
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>             ColumnProjectionSegment columnProjectionSegment = <strong class="jxr_keyword">new</strong> ColumnProjectionSegment(columnSegment);
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>             columnProjectionSegment.setVisible(each.isVisible());
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>             projectionSegments.add(columnProjectionSegment);
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>         }
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="TableSegmentBinderContext" href="../../../../../../../../org/apache/shardingsphere/infra/binder/segment/from/TableSegmentBinderContext.html#TableSegmentBinderContext">TableSegmentBinderContext</a>(projectionSegments);
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>     }
+<a class="jxr_linenumber" name="L123" href="#L123">123</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2023 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

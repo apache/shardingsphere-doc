@@ -56,7 +56,7 @@
 <a class="jxr_linenumber" name="L48" href="#L48">48</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String ORDER_BY_ORDINAL_POSITION = <span class="jxr_string">" ORDER BY ORDINAL_POSITION"</span>;
 <a class="jxr_linenumber" name="L49" href="#L49">49</a>      
 <a class="jxr_linenumber" name="L50" href="#L50">50</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String TABLE_META_DATA_NO_ORDER =
-<a class="jxr_linenumber" name="L51" href="#L51">51</a>              <span class="jxr_string">"SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_KEY, EXTRA, COLLATION_NAME, ORDINAL_POSITION, COLUMN_TYPE FROM information_schema.columns "</span>
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>              <span class="jxr_string">"SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, COLUMN_KEY, EXTRA, COLLATION_NAME, ORDINAL_POSITION, COLUMN_TYPE, IS_NULLABLE FROM information_schema.columns "</span>
 <a class="jxr_linenumber" name="L52" href="#L52">52</a>                      + <span class="jxr_string">"WHERE TABLE_SCHEMA=?"</span>;
 <a class="jxr_linenumber" name="L53" href="#L53">53</a>      
 <a class="jxr_linenumber" name="L54" href="#L54">54</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String TABLE_META_DATA_SQL = TABLE_META_DATA_NO_ORDER + ORDER_BY_ORDINAL_POSITION;
@@ -139,55 +139,56 @@
 <a class="jxr_linenumber" name="L131" href="#L131">131</a>         <strong class="jxr_keyword">boolean</strong> caseSensitive = <strong class="jxr_keyword">null</strong> != collationName &amp;&amp; !collationName.endsWith(<span class="jxr_string">"_ci"</span>);
 <a class="jxr_linenumber" name="L132" href="#L132">132</a>         <strong class="jxr_keyword">boolean</strong> visible = !<span class="jxr_string">"INVISIBLE"</span>.equalsIgnoreCase(extra);
 <a class="jxr_linenumber" name="L133" href="#L133">133</a>         <strong class="jxr_keyword">boolean</strong> unsigned = resultSet.getString(<span class="jxr_string">"COLUMN_TYPE"</span>).toUpperCase().contains(<span class="jxr_string">"UNSIGNED"</span>);
-<a class="jxr_linenumber" name="L134" href="#L134">134</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="ColumnMetaData" href="../../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/data/model/ColumnMetaData.html#ColumnMetaData">ColumnMetaData</a>(columnName, dataTypeMap.get(dataType), primaryKey, generated, caseSensitive, visible, unsigned);
-<a class="jxr_linenumber" name="L135" href="#L135">135</a>     }
-<a class="jxr_linenumber" name="L136" href="#L136">136</a>     
-<a class="jxr_linenumber" name="L137" href="#L137">137</a>     <strong class="jxr_keyword">private</strong> String getTableMetaDataSQL(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tables) {
-<a class="jxr_linenumber" name="L138" href="#L138">138</a>         <strong class="jxr_keyword">return</strong> tables.isEmpty() ? TABLE_META_DATA_SQL : String.format(TABLE_META_DATA_SQL_IN_TABLES, tables.stream().map(each -&gt; String.format(<span class="jxr_string">"'%s'"</span>, each)).collect(Collectors.joining(<span class="jxr_string">","</span>)));
-<a class="jxr_linenumber" name="L139" href="#L139">139</a>     }
-<a class="jxr_linenumber" name="L140" href="#L140">140</a>     
-<a class="jxr_linenumber" name="L141" href="#L141">141</a>     <strong class="jxr_keyword">private</strong> Map&lt;String, Collection&lt;IndexMetaData&gt;&gt; loadIndexMetaData(<strong class="jxr_keyword">final</strong> DataSource dataSource, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tableNames) <strong class="jxr_keyword">throws</strong> SQLException {
-<a class="jxr_linenumber" name="L142" href="#L142">142</a>         Map&lt;String, Map&lt;String, IndexMetaData&gt;&gt; tableToIndex = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;();
-<a class="jxr_linenumber" name="L143" href="#L143">143</a>         <strong class="jxr_keyword">try</strong> (
-<a class="jxr_linenumber" name="L144" href="#L144">144</a>                 Connection connection = dataSource.getConnection();
-<a class="jxr_linenumber" name="L145" href="#L145">145</a>                 PreparedStatement preparedStatement = connection.prepareStatement(getIndexMetaDataSQL(tableNames))) {
-<a class="jxr_linenumber" name="L146" href="#L146">146</a>             String databaseName = <span class="jxr_string">""</span>.equals(connection.getCatalog()) ? GlobalDataSourceRegistry.getInstance().getCachedDatabaseTables().get(tableNames.iterator().next()) : connection.getCatalog();
-<a class="jxr_linenumber" name="L147" href="#L147">147</a>             preparedStatement.setString(1, databaseName);
-<a class="jxr_linenumber" name="L148" href="#L148">148</a>             <strong class="jxr_keyword">try</strong> (ResultSet resultSet = preparedStatement.executeQuery()) {
-<a class="jxr_linenumber" name="L149" href="#L149">149</a>                 <strong class="jxr_keyword">while</strong> (resultSet.next()) {
-<a class="jxr_linenumber" name="L150" href="#L150">150</a>                     String indexName = resultSet.getString(<span class="jxr_string">"INDEX_NAME"</span>);
-<a class="jxr_linenumber" name="L151" href="#L151">151</a>                     String tableName = resultSet.getString(<span class="jxr_string">"TABLE_NAME"</span>);
-<a class="jxr_linenumber" name="L152" href="#L152">152</a>                     <strong class="jxr_keyword">if</strong> (!tableToIndex.containsKey(tableName)) {
-<a class="jxr_linenumber" name="L153" href="#L153">153</a>                         tableToIndex.put(tableName, <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;());
-<a class="jxr_linenumber" name="L154" href="#L154">154</a>                     }
-<a class="jxr_linenumber" name="L155" href="#L155">155</a>                     Map&lt;String, IndexMetaData&gt; indexMap = tableToIndex.get(tableName);
-<a class="jxr_linenumber" name="L156" href="#L156">156</a>                     <strong class="jxr_keyword">if</strong> (!indexMap.containsKey(indexName)) {
-<a class="jxr_linenumber" name="L157" href="#L157">157</a>                         <a name="IndexMetaData" href="../../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/data/model/IndexMetaData.html#IndexMetaData">IndexMetaData</a> indexMetaData = <strong class="jxr_keyword">new</strong> <a name="IndexMetaData" href="../../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/data/model/IndexMetaData.html#IndexMetaData">IndexMetaData</a>(indexName);
-<a class="jxr_linenumber" name="L158" href="#L158">158</a>                         indexMetaData.getColumns().add(resultSet.getString(<span class="jxr_string">"COLUMN_NAME"</span>));
-<a class="jxr_linenumber" name="L159" href="#L159">159</a>                         indexMetaData.setUnique(<span class="jxr_string">"0"</span>.equals(resultSet.getString(<span class="jxr_string">"NON_UNIQUE"</span>)));
-<a class="jxr_linenumber" name="L160" href="#L160">160</a>                         indexMap.put(indexName, indexMetaData);
-<a class="jxr_linenumber" name="L161" href="#L161">161</a>                     } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L162" href="#L162">162</a>                         indexMap.get(indexName).getColumns().add(resultSet.getString(<span class="jxr_string">"COLUMN_NAME"</span>));
-<a class="jxr_linenumber" name="L163" href="#L163">163</a>                     }
-<a class="jxr_linenumber" name="L164" href="#L164">164</a>                 }
-<a class="jxr_linenumber" name="L165" href="#L165">165</a>             }
-<a class="jxr_linenumber" name="L166" href="#L166">166</a>         }
-<a class="jxr_linenumber" name="L167" href="#L167">167</a>         Map&lt;String, Collection&lt;IndexMetaData&gt;&gt; result = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;(tableToIndex.size(), 1);
-<a class="jxr_linenumber" name="L168" href="#L168">168</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, Map&lt;String, IndexMetaData&gt;&gt; entry : tableToIndex.entrySet()) {
-<a class="jxr_linenumber" name="L169" href="#L169">169</a>             result.put(entry.getKey(), entry.getValue().values());
-<a class="jxr_linenumber" name="L170" href="#L170">170</a>         }
-<a class="jxr_linenumber" name="L171" href="#L171">171</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L172" href="#L172">172</a>     }
-<a class="jxr_linenumber" name="L173" href="#L173">173</a>     
-<a class="jxr_linenumber" name="L174" href="#L174">174</a>     <strong class="jxr_keyword">private</strong> String getIndexMetaDataSQL(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tableNames) {
-<a class="jxr_linenumber" name="L175" href="#L175">175</a>         <strong class="jxr_keyword">return</strong> String.format(INDEX_META_DATA_SQL, tableNames.stream().map(each -&gt; String.format(<span class="jxr_string">"'%s'"</span>, each)).collect(Collectors.joining(<span class="jxr_string">","</span>)));
-<a class="jxr_linenumber" name="L176" href="#L176">176</a>     }
-<a class="jxr_linenumber" name="L177" href="#L177">177</a>     
-<a class="jxr_linenumber" name="L178" href="#L178">178</a>     @Override
-<a class="jxr_linenumber" name="L179" href="#L179">179</a>     <strong class="jxr_keyword">public</strong> String getDatabaseType() {
-<a class="jxr_linenumber" name="L180" href="#L180">180</a>         <strong class="jxr_keyword">return</strong> <span class="jxr_string">"MySQL"</span>;
-<a class="jxr_linenumber" name="L181" href="#L181">181</a>     }
-<a class="jxr_linenumber" name="L182" href="#L182">182</a> }
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>         <strong class="jxr_keyword">boolean</strong> nullable = <span class="jxr_string">"YES"</span>.equals(resultSet.getString(<span class="jxr_string">"IS_NULLABLE"</span>));
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="ColumnMetaData" href="../../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/data/model/ColumnMetaData.html#ColumnMetaData">ColumnMetaData</a>(columnName, dataTypeMap.get(dataType), primaryKey, generated, caseSensitive, visible, unsigned, nullable);
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>     }
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>     
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>     <strong class="jxr_keyword">private</strong> String getTableMetaDataSQL(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tables) {
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>         <strong class="jxr_keyword">return</strong> tables.isEmpty() ? TABLE_META_DATA_SQL : String.format(TABLE_META_DATA_SQL_IN_TABLES, tables.stream().map(each -&gt; String.format(<span class="jxr_string">"'%s'"</span>, each)).collect(Collectors.joining(<span class="jxr_string">","</span>)));
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>     }
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>     
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>     <strong class="jxr_keyword">private</strong> Map&lt;String, Collection&lt;IndexMetaData&gt;&gt; loadIndexMetaData(<strong class="jxr_keyword">final</strong> DataSource dataSource, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tableNames) <strong class="jxr_keyword">throws</strong> SQLException {
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>         Map&lt;String, Map&lt;String, IndexMetaData&gt;&gt; tableToIndex = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;();
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>         <strong class="jxr_keyword">try</strong> (
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>                 Connection connection = dataSource.getConnection();
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>                 PreparedStatement preparedStatement = connection.prepareStatement(getIndexMetaDataSQL(tableNames))) {
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>             String databaseName = <span class="jxr_string">""</span>.equals(connection.getCatalog()) ? GlobalDataSourceRegistry.getInstance().getCachedDatabaseTables().get(tableNames.iterator().next()) : connection.getCatalog();
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>             preparedStatement.setString(1, databaseName);
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>             <strong class="jxr_keyword">try</strong> (ResultSet resultSet = preparedStatement.executeQuery()) {
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>                 <strong class="jxr_keyword">while</strong> (resultSet.next()) {
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>                     String indexName = resultSet.getString(<span class="jxr_string">"INDEX_NAME"</span>);
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>                     String tableName = resultSet.getString(<span class="jxr_string">"TABLE_NAME"</span>);
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>                     <strong class="jxr_keyword">if</strong> (!tableToIndex.containsKey(tableName)) {
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>                         tableToIndex.put(tableName, <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;());
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>                     }
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>                     Map&lt;String, IndexMetaData&gt; indexMap = tableToIndex.get(tableName);
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>                     <strong class="jxr_keyword">if</strong> (!indexMap.containsKey(indexName)) {
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>                         <a name="IndexMetaData" href="../../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/data/model/IndexMetaData.html#IndexMetaData">IndexMetaData</a> indexMetaData = <strong class="jxr_keyword">new</strong> <a name="IndexMetaData" href="../../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/data/model/IndexMetaData.html#IndexMetaData">IndexMetaData</a>(indexName);
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>                         indexMetaData.getColumns().add(resultSet.getString(<span class="jxr_string">"COLUMN_NAME"</span>));
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>                         indexMetaData.setUnique(<span class="jxr_string">"0"</span>.equals(resultSet.getString(<span class="jxr_string">"NON_UNIQUE"</span>)));
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>                         indexMap.put(indexName, indexMetaData);
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>                     } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L163" href="#L163">163</a>                         indexMap.get(indexName).getColumns().add(resultSet.getString(<span class="jxr_string">"COLUMN_NAME"</span>));
+<a class="jxr_linenumber" name="L164" href="#L164">164</a>                     }
+<a class="jxr_linenumber" name="L165" href="#L165">165</a>                 }
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>             }
+<a class="jxr_linenumber" name="L167" href="#L167">167</a>         }
+<a class="jxr_linenumber" name="L168" href="#L168">168</a>         Map&lt;String, Collection&lt;IndexMetaData&gt;&gt; result = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;(tableToIndex.size(), 1);
+<a class="jxr_linenumber" name="L169" href="#L169">169</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, Map&lt;String, IndexMetaData&gt;&gt; entry : tableToIndex.entrySet()) {
+<a class="jxr_linenumber" name="L170" href="#L170">170</a>             result.put(entry.getKey(), entry.getValue().values());
+<a class="jxr_linenumber" name="L171" href="#L171">171</a>         }
+<a class="jxr_linenumber" name="L172" href="#L172">172</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L173" href="#L173">173</a>     }
+<a class="jxr_linenumber" name="L174" href="#L174">174</a>     
+<a class="jxr_linenumber" name="L175" href="#L175">175</a>     <strong class="jxr_keyword">private</strong> String getIndexMetaDataSQL(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tableNames) {
+<a class="jxr_linenumber" name="L176" href="#L176">176</a>         <strong class="jxr_keyword">return</strong> String.format(INDEX_META_DATA_SQL, tableNames.stream().map(each -&gt; String.format(<span class="jxr_string">"'%s'"</span>, each)).collect(Collectors.joining(<span class="jxr_string">","</span>)));
+<a class="jxr_linenumber" name="L177" href="#L177">177</a>     }
+<a class="jxr_linenumber" name="L178" href="#L178">178</a>     
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>     @Override
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>     <strong class="jxr_keyword">public</strong> String getDatabaseType() {
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>         <strong class="jxr_keyword">return</strong> <span class="jxr_string">"MySQL"</span>;
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>     }
+<a class="jxr_linenumber" name="L183" href="#L183">183</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2023 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

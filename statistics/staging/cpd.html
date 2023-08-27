@@ -78,205 +78,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/mode/manager/standalone/NewStandaloneModeContextManager.java</td>
-<td>shardingsphere-standalone-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/NewStandaloneModeContextManager.html#L58">58</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.java</td>
-<td>shardingsphere-standalone-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.html#L55">55</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>public final class NewStandaloneModeContextManager implements ModeContextManager, ContextManagerAware {
-    
-    private ContextManager contextManager;
-    
-    @Override
-    public void createDatabase(final String databaseName) {
-        contextManager.getResourceMetaDataContextManager().addDatabase(databaseName);
-        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().addDatabase(databaseName);
-        clearServiceCache();
-    }
-    
-    @Override
-    public void dropDatabase(final String databaseName) {
-        contextManager.getResourceMetaDataContextManager().dropDatabase(databaseName);
-        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().dropDatabase(databaseName);
-        clearServiceCache();
-    }
-    
-    @Override
-    public void createSchema(final String databaseName, final String schemaName) {
-        ShardingSphereSchema schema = new ShardingSphereSchema();
-        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
-        database.putSchema(schemaName, schema);
-        refreshMetaDataHeldRule(database);
-        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().persist(databaseName, schemaName, schema);
-    }
-    
-    @Override
-    public void alterSchema(final AlterSchemaPOJO alterSchemaPOJO) {
-        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(alterSchemaPOJO.getDatabaseName());
-        putSchemaMetaData(database, alterSchemaPOJO.getSchemaName(), alterSchemaPOJO.getRenameSchemaName(), alterSchemaPOJO.getLogicDataSourceName());
-        removeSchemaMetaData(database, alterSchemaPOJO.getSchemaName());
-        refreshMetaDataHeldRule(database);
-        DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();
-        databaseMetaDataService.persist(alterSchemaPOJO.getDatabaseName(), alterSchemaPOJO.getRenameSchemaName(), database.getSchema(alterSchemaPOJO.getRenameSchemaName()));
-        databaseMetaDataService.getViewMetaDataPersistService().persist(alterSchemaPOJO.getDatabaseName(), alterSchemaPOJO.getRenameSchemaName(),
-                database.getSchema(alterSchemaPOJO.getRenameSchemaName()).getViews());
-        databaseMetaDataService.dropSchema(alterSchemaPOJO.getDatabaseName(), alterSchemaPOJO.getSchemaName());
-    }
-    
-    private void putSchemaMetaData(final ShardingSphereDatabase database, final String schemaName, final String renameSchemaName, final String logicDataSourceName) {
-        ShardingSphereSchema schema = database.getSchema(schemaName);
-        database.putSchema(renameSchemaName, schema);
-        addDataNode(database, logicDataSourceName, schemaName, schema.getAllTableNames());
-    }
-    
-    private void addDataNode(final ShardingSphereDatabase database, final String logicDataSourceName, final String schemaName, final Collection&lt;String&gt; tobeAddedTableNames) {
-        tobeAddedTableNames.forEach(each -&gt; {
-            if (!Strings.isNullOrEmpty(logicDataSourceName) &amp;&amp; isSingleTable(each, database)) {
-                database.getRuleMetaData().findRules(MutableDataNodeRule.class).forEach(rule -&gt; rule.put(logicDataSourceName, schemaName, each));
-            }
-        });
-    }
-    
-    private void addDataNode(final ShardingSphereDatabase database, final String logicDataSourceName, final String schemaName, final Map&lt;String, ShardingSphereTable&gt; toBeAddedTables,
-                             final Map&lt;String, ShardingSphereView&gt; toBeAddedViews) {
-        addTablesToDataNode(database, schemaName, logicDataSourceName, toBeAddedTables);
-        addViewsToDataNode(database, schemaName, logicDataSourceName, toBeAddedTables, toBeAddedViews);
-    }
-    
-    private void addTablesToDataNode(final ShardingSphereDatabase database, final String schemaName, final String logicDataSourceName, final Map&lt;String, ShardingSphereTable&gt; toBeAddedTables) {
-        for (Entry&lt;String, ShardingSphereTable&gt; entry : toBeAddedTables.entrySet()) {
-            if (!Strings.isNullOrEmpty(logicDataSourceName) &amp;&amp; isSingleTable(entry.getKey(), database)) {
-                database.getRuleMetaData().findRules(MutableDataNodeRule.class).forEach(rule -&gt; rule.put(logicDataSourceName, schemaName, entry.getKey()));
-            }
-            database.getSchema(schemaName).putTable(entry.getKey(), entry.getValue());
-        }
-    }
-    
-    private void addViewsToDataNode(final ShardingSphereDatabase database, final String schemaName, final String logicDataSourceName,
-                                    final Map&lt;String, ShardingSphereTable&gt; toBeAddedTables, final Map&lt;String, ShardingSphereView&gt; toBeAddedViews) {
-        for (Entry&lt;String, ShardingSphereView&gt; entry : toBeAddedViews.entrySet()) {
-            if (!Strings.isNullOrEmpty(logicDataSourceName) &amp;&amp; isSingleTable(entry.getKey(), database)) {
-                database.getRuleMetaData().findRules(MutableDataNodeRule.class).forEach(rule -&gt; rule.put(logicDataSourceName, schemaName, entry.getKey()));
-            }
-            database.getSchema(schemaName).putTable(entry.getKey(), toBeAddedTables.get(entry.getKey().toLowerCase()));
-            database.getSchema(schemaName).putView(entry.getKey(), entry.getValue());
-        }
-    }
-    
-    private boolean isSingleTable(final String tableName, final ShardingSphereDatabase database) {
-        return database.getRuleMetaData().findRules(TableContainedRule.class).stream().noneMatch(each -&gt; each.getDistributedTableMapper().contains(tableName));
-    }
-    
-    private void removeSchemaMetaData(final ShardingSphereDatabase database, final String schemaName) {
-        ShardingSphereSchema schema = new ShardingSphereSchema(database.getSchema(schemaName).getTables(), database.getSchema(schemaName).getViews());
-        database.removeSchema(schemaName);
-        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), Collections.singletonList(schemaName), schema.getAllTableNames());
-    }
-    
-    private void removeDataNode(final Collection&lt;MutableDataNodeRule&gt; rules, final Collection&lt;String&gt; schemaNames, final Collection&lt;String&gt; tobeRemovedTables) {
-        tobeRemovedTables.forEach(each -&gt; rules.forEach(rule -&gt; rule.remove(schemaNames, each)));
-    }
-    
-    private void removeDataNode(final ShardingSphereDatabase database, final String schemaName, final Collection&lt;String&gt; tobeRemovedTables, final Collection&lt;String&gt; tobeRemovedViews) {
-        removeTablesToDataNode(database, schemaName, tobeRemovedTables);
-        removeViewsToDataNode(database, schemaName, tobeRemovedTables, tobeRemovedViews);
-    }
-    
-    private void removeDataNode(final Collection&lt;MutableDataNodeRule&gt; rules, final String schemaName, final Collection&lt;String&gt; tobeRemovedTables) {
-        tobeRemovedTables.forEach(each -&gt; rules.forEach(rule -&gt; rule.remove(schemaName, each)));
-    }
-    
-    private void removeTablesToDataNode(final ShardingSphereDatabase database, final String schemaName, final Collection&lt;String&gt; toBeDroppedTables) {
-        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), schemaName, toBeDroppedTables);
-        toBeDroppedTables.forEach(each -&gt; database.getSchema(schemaName).removeTable(each));
-    }
-    
-    private void removeViewsToDataNode(final ShardingSphereDatabase database, final String schemaName, final Collection&lt;String&gt; toBeDroppedTables, final Collection&lt;String&gt; toBeDroppedViews) {
-        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), schemaName, toBeDroppedViews);
-        ShardingSphereSchema schema = database.getSchema(schemaName);
-        toBeDroppedTables.forEach(schema::removeTable);
-        toBeDroppedViews.forEach(schema::removeView);
-    }
-    
-    @Override
-    public void dropSchema(final String databaseName, final Collection&lt;String&gt; schemaNames) {
-        Collection&lt;String&gt; tobeRemovedTables = new LinkedHashSet&lt;&gt;();
-        Collection&lt;String&gt; tobeRemovedSchemas = new LinkedHashSet&lt;&gt;();
-        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
-        for (String each : schemaNames) {
-            ShardingSphereSchema schema = new ShardingSphereSchema(database.getSchema(each).getTables(), database.getSchema(each).getViews());
-            database.removeSchema(each);
-            Optional.of(schema).ifPresent(optional -&gt; tobeRemovedTables.addAll(optional.getAllTableNames()));
-            tobeRemovedSchemas.add(each.toLowerCase());
-        }
-        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), tobeRemovedSchemas, tobeRemovedTables);
-        refreshMetaDataHeldRule(database);
-    }
-    
-    @Override
-    public void alterSchemaMetaData(final AlterSchemaMetaDataPOJO alterSchemaMetaDataPOJO) {
-        String databaseName = alterSchemaMetaDataPOJO.getDatabaseName();
-        String schemaName = alterSchemaMetaDataPOJO.getSchemaName();
-        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
-        Map&lt;String, ShardingSphereTable&gt; tables = alterSchemaMetaDataPOJO.getAlteredTables().stream().collect(Collectors.toMap(ShardingSphereTable::getName, table -&gt; table));
-        Map&lt;String, ShardingSphereView&gt; views = alterSchemaMetaDataPOJO.getAlteredViews().stream().collect(Collectors.toMap(ShardingSphereView::getName, view -&gt; view));
-        addDataNode(database, alterSchemaMetaDataPOJO.getLogicDataSourceName(), schemaName, tables, views);
-        removeDataNode(database, schemaName, alterSchemaMetaDataPOJO.getDroppedTables(), alterSchemaMetaDataPOJO.getDroppedViews());
-        refreshMetaDataHeldRule(database);
-        DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();
-        databaseMetaDataService.getTableMetaDataPersistService().persist(databaseName, schemaName, tables);
-        databaseMetaDataService.getViewMetaDataPersistService().persist(databaseName, schemaName, views);
-        alterSchemaMetaDataPOJO.getDroppedTables().forEach(each -&gt; databaseMetaDataService.getTableMetaDataPersistService().delete(databaseName, schemaName, each));
-        alterSchemaMetaDataPOJO.getDroppedViews().forEach(each -&gt; databaseMetaDataService.getViewMetaDataPersistService().delete(databaseName, schemaName, each));
-    }
-    
-    private void refreshMetaDataHeldRule(final ShardingSphereDatabase database) {
-        contextManager.getMetaDataContexts().getMetaData().getGlobalRuleMetaData().findRules(MetaDataHeldRule.class).forEach(each -&gt; each.alterDatabase(database));
-    }
-    
-    @Override
-    public void registerStorageUnits(final String databaseName, final Map&lt;String, DataSourcePoolProperties&gt; toBeRegisteredProps) throws SQLException {
-        SwitchingResource switchingResource =
-                new ResourceSwitchManager().create(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getResourceMetaData(), toBeRegisteredProps);
-        contextManager.getMetaDataContexts().getMetaData().getDatabases().putAll(contextManager.getConfigurationContextManager().createChangedDatabases(databaseName, false, switchingResource, null));
-        contextManager.getMetaDataContexts().getMetaData().getGlobalRuleMetaData().findRules(ResourceHeldRule.class)
-                .forEach(each -&gt; each.addResource(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName)));
-        contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getSchemas()
-                .forEach((schemaName, schema) -&gt; contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService()
-                        .persist(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName(), schemaName, schema));
-        contextManager.getMetaDataContexts().getPersistService().getDataSourceUnitService().append(
-                contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName(), toBeRegisteredProps);
-        clearServiceCache();
-    }
-    
-    @Override
-    public void alterStorageUnits(final String databaseName, final Map&lt;String, DataSourcePoolProperties&gt; toBeUpdatedProps) throws SQLException {
-        SwitchingResource switchingResource =
-                new ResourceSwitchManager().create(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getResourceMetaData(), toBeUpdatedProps);
-        contextManager.getMetaDataContexts().getMetaData().getDatabases().putAll(contextManager.getConfigurationContextManager().createChangedDatabases(databaseName, true, switchingResource, null));
-        contextManager.getMetaDataContexts().getMetaData().getGlobalRuleMetaData().findRules(ResourceHeldRule.class)
-                .forEach(each -&gt; each.addResource(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName)));
-        contextManager.getMetaDataContexts().getPersistService().getDataSourceUnitService().append(
-                contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName(), toBeUpdatedProps);
-        switchingResource.closeStaleDataSources();
-        clearServiceCache();
-    }
-    
-    @Override
-    public void unregisterStorageUnits(final String databaseName, final Collection&lt;String&gt; toBeDroppedStorageUnitNames) throws SQLException {
-        Map&lt;String, DataSourcePoolProperties&gt; propsMap = contextManager.getMetaDataContexts().getPersistService().getDataSourceUnitService()
-                .load(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName());
-        Map&lt;String, DataSourcePoolProperties&gt; toBeDeletedPropsMap = getToBeDeletedPropertiesMap(propsMap, toBeDroppedStorageUnitNames);</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L208">208</a></td></tr>
@@ -970,6 +771,118 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/mode/manager/standalone/NewStandaloneModeContextManager.java</td>
+<td>shardingsphere-standalone-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/NewStandaloneModeContextManager.html#L145">145</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.java</td>
+<td>shardingsphere-standalone-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.html#L142">142</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), Collections.singletonList(schemaName), schema.getAllTableNames());
+    }
+    
+    private void removeDataNode(final Collection&lt;MutableDataNodeRule&gt; rules, final Collection&lt;String&gt; schemaNames, final Collection&lt;String&gt; tobeRemovedTables) {
+        tobeRemovedTables.forEach(each -&gt; rules.forEach(rule -&gt; rule.remove(schemaNames, each)));
+    }
+    
+    private void removeDataNode(final ShardingSphereDatabase database, final String schemaName, final Collection&lt;String&gt; tobeRemovedTables, final Collection&lt;String&gt; tobeRemovedViews) {
+        removeTablesToDataNode(database, schemaName, tobeRemovedTables);
+        removeViewsToDataNode(database, schemaName, tobeRemovedTables, tobeRemovedViews);
+    }
+    
+    private void removeDataNode(final Collection&lt;MutableDataNodeRule&gt; rules, final String schemaName, final Collection&lt;String&gt; tobeRemovedTables) {
+        tobeRemovedTables.forEach(each -&gt; rules.forEach(rule -&gt; rule.remove(schemaName, each)));
+    }
+    
+    private void removeTablesToDataNode(final ShardingSphereDatabase database, final String schemaName, final Collection&lt;String&gt; toBeDroppedTables) {
+        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), schemaName, toBeDroppedTables);
+        toBeDroppedTables.forEach(each -&gt; database.getSchema(schemaName).removeTable(each));
+    }
+    
+    private void removeViewsToDataNode(final ShardingSphereDatabase database, final String schemaName, final Collection&lt;String&gt; toBeDroppedTables, final Collection&lt;String&gt; toBeDroppedViews) {
+        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), schemaName, toBeDroppedViews);
+        ShardingSphereSchema schema = database.getSchema(schemaName);
+        toBeDroppedTables.forEach(schema::removeTable);
+        toBeDroppedViews.forEach(schema::removeView);
+    }
+    
+    @Override
+    public void dropSchema(final String databaseName, final Collection&lt;String&gt; schemaNames) {
+        Collection&lt;String&gt; tobeRemovedTables = new LinkedHashSet&lt;&gt;();
+        Collection&lt;String&gt; tobeRemovedSchemas = new LinkedHashSet&lt;&gt;();
+        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
+        for (String each : schemaNames) {
+            ShardingSphereSchema schema = new ShardingSphereSchema(database.getSchema(each).getTables(), database.getSchema(each).getViews());
+            database.removeSchema(each);
+            Optional.of(schema).ifPresent(optional -&gt; tobeRemovedTables.addAll(optional.getAllTableNames()));
+            tobeRemovedSchemas.add(each.toLowerCase());
+        }
+        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), tobeRemovedSchemas, tobeRemovedTables);
+        refreshMetaDataHeldRule(database);
+    }
+    
+    @Override
+    public void alterSchemaMetaData(final AlterSchemaMetaDataPOJO alterSchemaMetaDataPOJO) {
+        String databaseName = alterSchemaMetaDataPOJO.getDatabaseName();
+        String schemaName = alterSchemaMetaDataPOJO.getSchemaName();
+        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
+        Map&lt;String, ShardingSphereTable&gt; tables = alterSchemaMetaDataPOJO.getAlteredTables().stream().collect(Collectors.toMap(ShardingSphereTable::getName, table -&gt; table));
+        Map&lt;String, ShardingSphereView&gt; views = alterSchemaMetaDataPOJO.getAlteredViews().stream().collect(Collectors.toMap(ShardingSphereView::getName, view -&gt; view));
+        addDataNode(database, alterSchemaMetaDataPOJO.getLogicDataSourceName(), schemaName, tables, views);
+        removeDataNode(database, schemaName, alterSchemaMetaDataPOJO.getDroppedTables(), alterSchemaMetaDataPOJO.getDroppedViews());
+        refreshMetaDataHeldRule(database);
+        DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();
+        databaseMetaDataService.getTableMetaDataPersistService().persist(databaseName, schemaName, tables);
+        databaseMetaDataService.getViewMetaDataPersistService().persist(databaseName, schemaName, views);
+        alterSchemaMetaDataPOJO.getDroppedTables().forEach(each -&gt; databaseMetaDataService.getTableMetaDataPersistService().delete(databaseName, schemaName, each));
+        alterSchemaMetaDataPOJO.getDroppedViews().forEach(each -&gt; databaseMetaDataService.getViewMetaDataPersistService().delete(databaseName, schemaName, each));
+    }
+    
+    private void refreshMetaDataHeldRule(final ShardingSphereDatabase database) {
+        contextManager.getMetaDataContexts().getMetaData().getGlobalRuleMetaData().findRules(MetaDataHeldRule.class).forEach(each -&gt; each.alterDatabase(database));
+    }
+    
+    @Override
+    public void registerStorageUnits(final String databaseName, final Map&lt;String, DataSourcePoolProperties&gt; toBeRegisteredProps) throws SQLException {
+        SwitchingResource switchingResource =
+                new ResourceSwitchManager().create(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getResourceMetaData(), toBeRegisteredProps);
+        contextManager.getMetaDataContexts().getMetaData().getDatabases().putAll(contextManager.getConfigurationContextManager().createChangedDatabases(databaseName, false, switchingResource, null));
+        contextManager.getMetaDataContexts().getMetaData().getGlobalRuleMetaData().findRules(ResourceHeldRule.class)
+                .forEach(each -&gt; each.addResource(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName)));
+        contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getSchemas()
+                .forEach((schemaName, schema) -&gt; contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService()
+                        .persist(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName(), schemaName, schema));
+        contextManager.getMetaDataContexts().getPersistService().getDataSourceUnitService().append(
+                contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName(), toBeRegisteredProps);
+        clearServiceCache();
+    }
+    
+    @Override
+    public void alterStorageUnits(final String databaseName, final Map&lt;String, DataSourcePoolProperties&gt; toBeUpdatedProps) throws SQLException {
+        SwitchingResource switchingResource =
+                new ResourceSwitchManager().create(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getResourceMetaData(), toBeUpdatedProps);
+        contextManager.getMetaDataContexts().getMetaData().getDatabases().putAll(contextManager.getConfigurationContextManager().createChangedDatabases(databaseName, true, switchingResource, null));
+        contextManager.getMetaDataContexts().getMetaData().getGlobalRuleMetaData().findRules(ResourceHeldRule.class)
+                .forEach(each -&gt; each.addResource(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName)));
+        contextManager.getMetaDataContexts().getPersistService().getDataSourceUnitService().append(
+                contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName(), toBeUpdatedProps);
+        switchingResource.closeStaleDataSources();
+        clearServiceCache();
+    }
+    
+    @Override
+    public void unregisterStorageUnits(final String databaseName, final Collection&lt;String&gt; toBeDroppedStorageUnitNames) throws SQLException {
+        Map&lt;String, DataSourcePoolProperties&gt; propsMap = contextManager.getMetaDataContexts().getPersistService().getDataSourceUnitService()
+                .load(contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName).getName());
+        Map&lt;String, DataSourcePoolProperties&gt; toBeDeletedPropsMap = getToBeDeletedPropertiesMap(propsMap, toBeDroppedStorageUnitNames);</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sql92</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.html#L223">223</a></td></tr>
@@ -1210,6 +1123,109 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/mode/manager/standalone/NewStandaloneModeContextManager.java</td>
+<td>shardingsphere-standalone-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/NewStandaloneModeContextManager.html#L58">58</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.java</td>
+<td>shardingsphere-standalone-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/standalone/StandaloneModeContextManager.html#L55">55</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>public final class NewStandaloneModeContextManager implements ModeContextManager, ContextManagerAware {
+    
+    private ContextManager contextManager;
+    
+    @Override
+    public void createDatabase(final String databaseName) {
+        contextManager.getResourceMetaDataContextManager().addDatabase(databaseName);
+        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().addDatabase(databaseName);
+        clearServiceCache();
+    }
+    
+    @Override
+    public void dropDatabase(final String databaseName) {
+        contextManager.getResourceMetaDataContextManager().dropDatabase(databaseName);
+        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().dropDatabase(databaseName);
+        clearServiceCache();
+    }
+    
+    @Override
+    public void createSchema(final String databaseName, final String schemaName) {
+        ShardingSphereSchema schema = new ShardingSphereSchema();
+        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
+        database.putSchema(schemaName, schema);
+        refreshMetaDataHeldRule(database);
+        contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().persist(databaseName, schemaName, schema);
+    }
+    
+    @Override
+    public void alterSchema(final AlterSchemaPOJO alterSchemaPOJO) {
+        ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(alterSchemaPOJO.getDatabaseName());
+        putSchemaMetaData(database, alterSchemaPOJO.getSchemaName(), alterSchemaPOJO.getRenameSchemaName(), alterSchemaPOJO.getLogicDataSourceName());
+        removeSchemaMetaData(database, alterSchemaPOJO.getSchemaName());
+        refreshMetaDataHeldRule(database);
+        DatabaseMetaDataBasedPersistService databaseMetaDataService = contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService();
+        databaseMetaDataService.persist(alterSchemaPOJO.getDatabaseName(), alterSchemaPOJO.getRenameSchemaName(), database.getSchema(alterSchemaPOJO.getRenameSchemaName()));
+        databaseMetaDataService.getViewMetaDataPersistService().persist(alterSchemaPOJO.getDatabaseName(), alterSchemaPOJO.getRenameSchemaName(),
+                database.getSchema(alterSchemaPOJO.getRenameSchemaName()).getViews());
+        databaseMetaDataService.dropSchema(alterSchemaPOJO.getDatabaseName(), alterSchemaPOJO.getSchemaName());
+    }
+    
+    private void putSchemaMetaData(final ShardingSphereDatabase database, final String schemaName, final String renameSchemaName, final String logicDataSourceName) {
+        ShardingSphereSchema schema = database.getSchema(schemaName);
+        database.putSchema(renameSchemaName, schema);
+        addDataNode(database, logicDataSourceName, schemaName, schema.getAllTableNames());
+    }
+    
+    private void addDataNode(final ShardingSphereDatabase database, final String logicDataSourceName, final String schemaName, final Collection&lt;String&gt; tobeAddedTableNames) {
+        tobeAddedTableNames.forEach(each -&gt; {
+            if (!Strings.isNullOrEmpty(logicDataSourceName) &amp;&amp; isSingleTable(each, database)) {
+                database.getRuleMetaData().findRules(MutableDataNodeRule.class).forEach(rule -&gt; rule.put(logicDataSourceName, schemaName, each));
+            }
+        });
+    }
+    
+    private void addDataNode(final ShardingSphereDatabase database, final String logicDataSourceName, final String schemaName, final Map&lt;String, ShardingSphereTable&gt; toBeAddedTables,
+                             final Map&lt;String, ShardingSphereView&gt; toBeAddedViews) {
+        addTablesToDataNode(database, schemaName, logicDataSourceName, toBeAddedTables);
+        addViewsToDataNode(database, schemaName, logicDataSourceName, toBeAddedTables, toBeAddedViews);
+    }
+    
+    private void addTablesToDataNode(final ShardingSphereDatabase database, final String schemaName, final String logicDataSourceName, final Map&lt;String, ShardingSphereTable&gt; toBeAddedTables) {
+        for (Entry&lt;String, ShardingSphereTable&gt; entry : toBeAddedTables.entrySet()) {
+            if (!Strings.isNullOrEmpty(logicDataSourceName) &amp;&amp; isSingleTable(entry.getKey(), database)) {
+                database.getRuleMetaData().findRules(MutableDataNodeRule.class).forEach(rule -&gt; rule.put(logicDataSourceName, schemaName, entry.getKey()));
+            }
+            database.getSchema(schemaName).putTable(entry.getKey(), entry.getValue());
+        }
+    }
+    
+    private void addViewsToDataNode(final ShardingSphereDatabase database, final String schemaName, final String logicDataSourceName,
+                                    final Map&lt;String, ShardingSphereTable&gt; toBeAddedTables, final Map&lt;String, ShardingSphereView&gt; toBeAddedViews) {
+        for (Entry&lt;String, ShardingSphereView&gt; entry : toBeAddedViews.entrySet()) {
+            if (!Strings.isNullOrEmpty(logicDataSourceName) &amp;&amp; isSingleTable(entry.getKey(), database)) {
+                database.getRuleMetaData().findRules(MutableDataNodeRule.class).forEach(rule -&gt; rule.put(logicDataSourceName, schemaName, entry.getKey()));
+            }
+            database.getSchema(schemaName).putTable(entry.getKey(), toBeAddedTables.get(entry.getKey().toLowerCase()));
+            database.getSchema(schemaName).putView(entry.getKey(), entry.getValue());
+        }
+    }
+    
+    private boolean isSingleTable(final String tableName, final ShardingSphereDatabase database) {
+        return database.getRuleMetaData().findRules(TableContainedRule.class).stream().noneMatch(each -&gt; each.getDistributedTableMapper().contains(tableName));
+    }
+    
+    private void removeSchemaMetaData(final ShardingSphereDatabase database, final String schemaName) {
+        ShardingSphereSchema schema = new ShardingSphereSchema(database.getSchema(schemaName).getTables(), database.getSchema(schemaName).getViews());
+        database.removeSchema(schemaName);
+        removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), Collections.singletonList(schemaName), schema.getAllTableNames());</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L414">414</a></td></tr>
@@ -1236,7 +1252,7 @@
         ColumnDefinitionContext columnDefinition = ctx.columnDefinition();
         if (null != columnDefinition) {
             AddColumnDefinitionSegment addColumnDefinition = new AddColumnDefinitionSegment(
-                    ctx.columnDefinition().getStart().getStartIndex(), columnDefinition.getStop().getStopIndex(), Collections.singletonList((ColumnDefinitionSegment) visit(columnDefinition)));
+                    ctx.columnDefinition().getStart().getStartIndex(), columnDefinition.getStop().getStopIndex(), Collections.singleton((ColumnDefinitionSegment) visit(columnDefinition)));
             result.getValue().add(addColumnDefinition);
         }
         return result;
@@ -1296,7 +1312,7 @@
     
     @Override
     public ASTNode visitDropColumnSpecification(final DropColumnSpecificationContext ctx) {
-        return new DropColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), Collections.singletonList((ColumnSegment) visit(ctx.columnName())));
+        return new DropColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), Collections.singleton((ColumnSegment) visit(ctx.columnName())));
     }
     
     @Override

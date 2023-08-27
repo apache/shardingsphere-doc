@@ -306,7 +306,7 @@
     @Override
     public final ASTNode visitIdentifier(final IdentifierContext ctx) {
         UnreservedWordContext unreservedWord = ctx.unreservedWord();
-        return null != unreservedWord ? visit(unreservedWord) : new IdentifierValue(ctx.getText());
+        return null == unreservedWord ? new IdentifierValue(ctx.getText()) : visit(unreservedWord);
     }
     
     @Override
@@ -604,7 +604,7 @@
     
     @Override
     public final ASTNode visitSortby(final SortbyContext ctx) {
-        OrderDirection orderDirection = null != ctx.ascDesc() ? generateOrderDirection(ctx.ascDesc()) : OrderDirection.ASC;
+        OrderDirection orderDirection = null == ctx.ascDesc() ? OrderDirection.ASC : generateOrderDirection(ctx.ascDesc());
         NullsOrderType nullsOrderType = generateNullsOrderType(ctx.nullsOrder());
         ASTNode expr = visit(ctx.aExpr());
         if (expr instanceof ColumnSegment) {
@@ -936,7 +936,7 @@
         }
         if (null != ctx.constTypeName() || null != ctx.funcName() &amp;&amp; null == ctx.LP_()) {
             LiteralExpressionSegment expression = new LiteralExpressionSegment(ctx.STRING_().getSymbol().getStartIndex(), ctx.STRING_().getSymbol().getStopIndex(), value.getValue().toString());
-            String dataType = null != ctx.constTypeName() ? ctx.constTypeName().getText() : ctx.funcName().getText();
+            String dataType = null == ctx.constTypeName() ? ctx.funcName().getText() : ctx.constTypeName().getText();
             return new TypeCastExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.getText(), expression, dataType);
         }
         return SQLUtils.createLiteralExpression(value, ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.getText());
@@ -1049,7 +1049,7 @@
         } else {
             right = (ExpressionSegment) visit(ctx.subquery());
         }
-        String operator = null != ctx.SAFE_EQ_() ? ctx.SAFE_EQ_().getText() : ctx.comparisonOperator().getText();
+        String operator = null == ctx.SAFE_EQ_() ? ctx.comparisonOperator().getText() : ctx.SAFE_EQ_().getText();
         String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
     }
@@ -1074,7 +1074,7 @@
         for (SimpleExprContext each : ctx.simpleExpr()) {
             right.getItems().add((ExpressionSegment) visit(each));
         }
-        String operator = null != ctx.NOT() ? &quot;NOT LIKE&quot; : &quot;LIKE&quot;;
+        String operator = null == ctx.NOT() ? &quot;LIKE&quot; : &quot;NOT LIKE&quot;;
         String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
     }
@@ -1867,7 +1867,7 @@
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L358">358</a></td></tr>
 <tr class="a"><td colspan='3'>
 <div>
-<pre>return new DatetimeExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, text);
+<pre>return new DatetimeExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, text);
     }
     
     private ASTNode createBinaryOperationExpression(final ExprContext ctx, final String operator) {
@@ -1993,7 +1993,7 @@
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L273">273</a></td></tr>
 <tr class="a"><td colspan='3'>
 <div>
-<pre>return null != unreservedWord ? visit(unreservedWord) : new IdentifierValue(ctx.getText());
+<pre>return null == unreservedWord ? new IdentifierValue(ctx.getText()) : visit(unreservedWord);
     }
     
     @Override
@@ -2635,6 +2635,64 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1184">1184</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1136">1136</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>JoinTableSegment result = new JoinTableSegment();
+        result.setLeft((TableSegment) visit(ctx.tableReference()));
+        int startIndex = null == ctx.LP_() ? ctx.tableReference().start.getStartIndex() : ctx.LP_().getSymbol().getStartIndex();
+        int stopIndex = 0;
+        AliasSegment alias = null;
+        if (null == ctx.aliasClause()) {
+            stopIndex = null == ctx.RP_() ? ctx.tableReference().start.getStopIndex() : ctx.RP_().getSymbol().getStopIndex();
+        } else {
+            alias = (AliasSegment) visit(ctx.aliasClause());
+            startIndex = null == ctx.RP_() ? ctx.joinedTable().stop.getStopIndex() : ctx.RP_().getSymbol().getStopIndex();
+        }
+        result.setStartIndex(startIndex);
+        result.setStopIndex(stopIndex);
+        visitJoinedTable(ctx.joinedTable(), result);
+        result.setAlias(alias);
+        return result;
+    }
+    
+    private JoinTableSegment visitJoinedTable(final JoinedTableContext ctx, final JoinTableSegment tableSegment) {
+        TableSegment right = (TableSegment) visit(ctx.tableReference());
+        tableSegment.setRight(right);
+        tableSegment.setJoinType(getJoinType(ctx));
+        tableSegment.setNatural(null != ctx.naturalJoinType());
+        return null == ctx.joinQual() ? tableSegment : visitJoinQual(ctx.joinQual(), tableSegment);
+    }
+    
+    private String getJoinType(final JoinedTableContext ctx) {
+        if (null != ctx.crossJoinType()) {
+            return JoinType.CROSS.name();
+        }
+        if (null != ctx.innerJoinType()) {
+            return JoinType.INNER.name();
+        }
+        if (null != ctx.outerJoinType()) {
+            return getOutJoinType(ctx.outerJoinType());
+        }
+        if (null != ctx.naturalJoinType()) {
+            return getNaturalJoinType(ctx.naturalJoinType());
+        }
+        return JoinType.COMMA.name();
+    }
+    
+    private String getOutJoinType(final OuterJoinTypeContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/proxy/backend/mysql/handler/admin/executor/ShowFunctionStatusExecutor.java</td>
 <td>shardingsphere-proxy-backend-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/proxy/backend/mysql/handler/admin/executor/ShowFunctionStatusExecutor.html#L47">47</a></td></tr>
@@ -3002,7 +3060,7 @@ public final class AgentReflectionUtils {
     @Override
     public final ASTNode visitIdentifier(final IdentifierContext ctx) {
         UnreservedWordContext unreservedWord = ctx.unreservedWord();
-        return null != unreservedWord ? visit(unreservedWord) : new IdentifierValue(ctx.getText());
+        return null == unreservedWord ? new IdentifierValue(ctx.getText()) : visit(unreservedWord);
     }
     
     @Override
@@ -3313,56 +3371,6 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.java</td>
-<td>shardingsphere-parser-sql-sql92</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.html#L178">178</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-sqlserver</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L273">273</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>return null != unreservedWord ? visit(unreservedWord) : new IdentifierValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitUnreservedWord(final UnreservedWordContext ctx) {
-        return new IdentifierValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitSchemaName(final SchemaNameContext ctx) {
-        return visit(ctx.identifier());
-    }
-    
-    @Override
-    public final ASTNode visitTableName(final TableNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(), ctx.name().getStop().getStopIndex(), (IdentifierValue) visit(ctx.name())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner(new OwnerSegment(owner.getStart().getStartIndex(), owner.getStop().getStopIndex(), (IdentifierValue) visit(owner.identifier())));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
-        ColumnSegment result = new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.name()));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner(new OwnerSegment(owner.getStart().getStartIndex(), owner.getStop().getStopIndex(), (IdentifierValue) visit(owner.identifier())));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitTableNames(final TableNamesContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/infra/database/opengauss/metadata/data/loader/OpenGaussMetaDataLoader.java</td>
 <td>shardingsphere-infra-database-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/infra/database/opengauss/metadata/data/loader/OpenGaussMetaDataLoader.html#L120">120</a></td></tr>
@@ -3432,7 +3440,7 @@ public final class AgentReflectionUtils {
         if (projection instanceof BinaryOperationExpression) {
             BinaryOperationExpression binaryExpression = (BinaryOperationExpression) projection;
             int startIndex = binaryExpression.getStartIndex();
-            int stopIndex = null != alias ? alias.getStopIndex() : binaryExpression.getStopIndex();
+            int stopIndex = null == alias ? binaryExpression.getStopIndex() : alias.getStopIndex();
             ExpressionProjectionSegment result = new ExpressionProjectionSegment(startIndex, stopIndex, binaryExpression.getText(), binaryExpression);
             result.setAlias(alias);
             return result;
@@ -3456,6 +3464,56 @@ public final class AgentReflectionUtils {
     
     @Override
     public ASTNode visitTableReferences(final TableReferencesContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.java</td>
+<td>shardingsphere-parser-sql-sql92</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.html#L178">178</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-sqlserver</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L273">273</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>return null == unreservedWord ? new IdentifierValue(ctx.getText()) : visit(unreservedWord);
+    }
+    
+    @Override
+    public final ASTNode visitUnreservedWord(final UnreservedWordContext ctx) {
+        return new IdentifierValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitSchemaName(final SchemaNameContext ctx) {
+        return visit(ctx.identifier());
+    }
+    
+    @Override
+    public final ASTNode visitTableName(final TableNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(), ctx.name().getStop().getStopIndex(), (IdentifierValue) visit(ctx.name())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner(new OwnerSegment(owner.getStart().getStartIndex(), owner.getStop().getStopIndex(), (IdentifierValue) visit(owner.identifier())));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
+        ColumnSegment result = new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.name()));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner(new OwnerSegment(owner.getStart().getStartIndex(), owner.getStop().getStopIndex(), (IdentifierValue) visit(owner.identifier())));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitTableNames(final TableNamesContext ctx) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -3973,7 +4031,7 @@ public final class AgentReflectionUtils {
     @Override
     public final ASTNode visitIdentifier(final IdentifierContext ctx) {
         UnreservedWordContext unreservedWord = ctx.unreservedWord();
-        return null != unreservedWord ? visit(unreservedWord) : new IdentifierValue(ctx.getText());
+        return null == unreservedWord ? new IdentifierValue(ctx.getText()) : visit(unreservedWord);
     }
     
     @Override
@@ -4266,55 +4324,6 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1193">1193</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1145">1145</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>stopIndex = null == ctx.RP_() ? ctx.tableReference().start.getStopIndex() : ctx.RP_().getSymbol().getStopIndex();
-        }
-        result.setStartIndex(startIndex);
-        result.setStopIndex(stopIndex);
-        visitJoinedTable(ctx.joinedTable(), result);
-        result.setAlias(alias);
-        return result;
-    }
-    
-    private JoinTableSegment visitJoinedTable(final JoinedTableContext ctx, final JoinTableSegment tableSegment) {
-        TableSegment right = (TableSegment) visit(ctx.tableReference());
-        tableSegment.setRight(right);
-        tableSegment.setJoinType(getJoinType(ctx));
-        tableSegment.setNatural(null != ctx.naturalJoinType());
-        return null == ctx.joinQual() ? tableSegment : visitJoinQual(ctx.joinQual(), tableSegment);
-    }
-    
-    private String getJoinType(final JoinedTableContext ctx) {
-        if (null != ctx.crossJoinType()) {
-            return JoinType.CROSS.name();
-        }
-        if (null != ctx.innerJoinType()) {
-            return JoinType.INNER.name();
-        }
-        if (null != ctx.outerJoinType()) {
-            return getOutJoinType(ctx.outerJoinType());
-        }
-        if (null != ctx.naturalJoinType()) {
-            return getNaturalJoinType(ctx.naturalJoinType());
-        }
-        return JoinType.COMMA.name();
-    }
-    
-    private String getOutJoinType(final OuterJoinTypeContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.java</td>
 <td>shardingsphere-infra-context</td>
 <td><a href="./xref/org/apache/shardingsphere/infra/connection/refresher/type/table/AlterTableStatementSchemaRefresher.html#L60">60</a></td></tr>
@@ -4552,7 +4561,7 @@ public final class AgentReflectionUtils {
     
     @Override
     public final ASTNode visitOrderByItem(final OrderByItemContext ctx) {
-        OrderDirection orderDirection = null != ctx.DESC() ? OrderDirection.DESC : OrderDirection.ASC;</pre></div></td></tr></table>
+        OrderDirection orderDirection = null == ctx.DESC() ? OrderDirection.ASC : OrderDirection.DESC;</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -5282,7 +5291,7 @@ public final class AgentReflectionUtils {
         for (SimpleExprContext each : ctx.simpleExpr()) {
             right.getItems().add((ExpressionSegment) visit(each));
         }
-        String operator = null != ctx.NOT() ? &quot;NOT LIKE&quot; : &quot;LIKE&quot;;
+        String operator = null == ctx.NOT() ? &quot;LIKE&quot; : &quot;NOT LIKE&quot;;
         String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
     }
@@ -5508,17 +5517,17 @@ public final class AgentReflectionUtils {
     
     @Override
     public Collection&lt;WhereSegment&gt; getWhereSegments() {
-        return null != cursorStatementContext ? cursorStatementContext.getWhereSegments() : Collections.emptyList();
+        return null == cursorStatementContext ? Collections.emptyList() : cursorStatementContext.getWhereSegments();
     }
     
     @Override
     public Collection&lt;ColumnSegment&gt; getColumnSegments() {
-        return null != cursorStatementContext ? cursorStatementContext.getColumnSegments() : Collections.emptyList();
+        return null == cursorStatementContext ? Collections.emptyList() : cursorStatementContext.getColumnSegments();
     }
     
     @Override
     public Collection&lt;BinaryOperationExpression&gt; getJoinConditions() {
-        return null != cursorStatementContext ? cursorStatementContext.getJoinConditions() : Collections.emptyList();
+        return null == cursorStatementContext ? Collections.emptyList() : cursorStatementContext.getJoinConditions();
     }
 }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
@@ -5584,7 +5593,7 @@ public final class AgentReflectionUtils {
 <div>
 <pre>right = new SubqueryExpressionSegment(new SubquerySegment(ctx.subquery().start.getStartIndex(), ctx.subquery().stop.getStopIndex(), (OracleSelectStatement) visit(ctx.subquery())));
         }
-        String operator = null != ctx.SAFE_EQ_() ? ctx.SAFE_EQ_().getText() : ctx.comparisonOperator().getText();
+        String operator = null == ctx.SAFE_EQ_() ? ctx.comparisonOperator().getText() : ctx.SAFE_EQ_().getText();
         String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
     }
@@ -5650,7 +5659,7 @@ public final class AgentReflectionUtils {
 <div>
 <pre>right = new SubqueryExpressionSegment(new SubquerySegment(ctx.subquery().start.getStartIndex(), ctx.subquery().stop.getStopIndex(), (MySQLSelectStatement) visit(ctx.subquery())));
         }
-        String operator = null != ctx.SAFE_EQ_() ? ctx.SAFE_EQ_().getText() : ctx.comparisonOperator().getText();
+        String operator = null == ctx.SAFE_EQ_() ? ctx.comparisonOperator().getText() : ctx.SAFE_EQ_().getText();
         String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
     }
@@ -6284,7 +6293,7 @@ public final class AgentReflectionUtils {
 <div>
 <pre>right = new SubqueryExpressionSegment(new SubquerySegment(ctx.subquery().start.getStartIndex(), ctx.subquery().stop.getStopIndex(), (MySQLSelectStatement) visit(ctx.subquery())));
         }
-        String operator = null != ctx.SAFE_EQ_() ? ctx.SAFE_EQ_().getText() : ctx.comparisonOperator().getText();
+        String operator = null == ctx.SAFE_EQ_() ? ctx.comparisonOperator().getText() : ctx.SAFE_EQ_().getText();
         String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
         return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
     }
@@ -6355,10 +6364,10 @@ public final class AgentReflectionUtils {
         String user = getIdentifierValue(ctx.user());
         String password = null == ctx.password() ? &quot;&quot; : getPassword(ctx.password());
         Properties props = getProperties(ctx.propertiesDefinition());
-        return null != ctx.urlSource() ? new URLBasedDataSourceSegment(getIdentifierValue(ctx.storageUnitName()),
-                getIdentifierValue(ctx.urlSource().url()), user, password, props)
-                : new HostnameAndPortBasedDataSourceSegment(getIdentifierValue(ctx.storageUnitName()),
-                        getIdentifierValue(ctx.simpleSource().hostname()), ctx.simpleSource().port().getText(), getIdentifierValue(ctx.simpleSource().dbName()), user, password, props);
+        return null == ctx.urlSource()
+                ? new HostnameAndPortBasedDataSourceSegment(getIdentifierValue(ctx.storageUnitName()),
+                        getIdentifierValue(ctx.simpleSource().hostname()), ctx.simpleSource().port().getText(), getIdentifierValue(ctx.simpleSource().dbName()), user, password, props)
+                : new URLBasedDataSourceSegment(getIdentifierValue(ctx.storageUnitName()), getIdentifierValue(ctx.urlSource().url()), user, password, props);
     }
     
     private String getPassword(final PasswordContext ctx) {
@@ -7381,17 +7390,17 @@ public final class AgentReflectionUtils {
     
     @Override
     public Collection&lt;WhereSegment&gt; getWhereSegments() {
-        return null != cursorStatementContext ? cursorStatementContext.getWhereSegments() : Collections.emptyList();
+        return null == cursorStatementContext ? Collections.emptyList() : cursorStatementContext.getWhereSegments();
     }
     
     @Override
     public Collection&lt;ColumnSegment&gt; getColumnSegments() {
-        return null != cursorStatementContext ? cursorStatementContext.getColumnSegments() : Collections.emptyList();
+        return null == cursorStatementContext ? Collections.emptyList() : cursorStatementContext.getColumnSegments();
     }
     
     @Override
     public Collection&lt;BinaryOperationExpression&gt; getJoinConditions() {
-        return null != cursorStatementContext ? cursorStatementContext.getJoinConditions() : Collections.emptyList();
+        return null == cursorStatementContext ? Collections.emptyList() : cursorStatementContext.getJoinConditions();
     }
 }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
@@ -9288,7 +9297,7 @@ public final class AgentReflectionUtils {
 <tr class="a">
 <td>org/apache/shardingsphere/distsql/parser/core/kernel/KernelDistSQLStatementVisitor.java</td>
 <td>shardingsphere-parser-distsql-engine</td>
-<td><a href="./xref/org/apache/shardingsphere/distsql/parser/core/kernel/KernelDistSQLStatementVisitor.html#L340">340</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/distsql/parser/core/kernel/KernelDistSQLStatementVisitor.html#L341">341</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>return null == ctx ? null : visit(ctx.algorithmDefinition());

@@ -820,7 +820,7 @@
         ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
         for (String each : schemaNames) {
             ShardingSphereSchema schema = new ShardingSphereSchema(database.getSchema(each).getTables(), database.getSchema(each).getViews());
-            database.removeSchema(each);
+            database.dropSchema(each);
             Optional.of(schema).ifPresent(optional -&gt; tobeRemovedTables.addAll(optional.getAllTableNames()));
             tobeRemovedSchemas.add(each.toLowerCase());
         }
@@ -1159,7 +1159,7 @@
     public void createSchema(final String databaseName, final String schemaName) {
         ShardingSphereSchema schema = new ShardingSphereSchema();
         ShardingSphereDatabase database = contextManager.getMetaDataContexts().getMetaData().getDatabase(databaseName);
-        database.putSchema(schemaName, schema);
+        database.addSchema(schemaName, schema);
         refreshMetaDataHeldRule(database);
         contextManager.getMetaDataContexts().getPersistService().getDatabaseMetaDataService().persist(databaseName, schemaName, schema);
     }
@@ -1179,7 +1179,7 @@
     
     private void putSchemaMetaData(final ShardingSphereDatabase database, final String schemaName, final String renameSchemaName, final String logicDataSourceName) {
         ShardingSphereSchema schema = database.getSchema(schemaName);
-        database.putSchema(renameSchemaName, schema);
+        database.addSchema(renameSchemaName, schema);
         addDataNode(database, logicDataSourceName, schemaName, schema.getAllTableNames());
     }
     
@@ -1223,7 +1223,7 @@
     
     private void removeSchemaMetaData(final ShardingSphereDatabase database, final String schemaName) {
         ShardingSphereSchema schema = new ShardingSphereSchema(database.getSchema(schemaName).getTables(), database.getSchema(schemaName).getViews());
-        database.removeSchema(schemaName);
+        database.dropSchema(schemaName);
         removeDataNode(database.getRuleMetaData().findRules(MutableDataNodeRule.class), Collections.singletonList(schemaName), schema.getAllTableNames());</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
@@ -1233,11 +1233,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L414">414</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L419">419</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L527">527</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L532">532</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>return new OpenGaussAlterDomainStatement();
@@ -1337,11 +1337,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L1056">1056</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L1061">1061</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L1252">1252</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L1257">1257</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>}
@@ -2412,6 +2412,69 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L332">332</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L415">415</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>return new OpenGaussAlterDefaultPrivilegesStatement();
+    }
+    
+    @Override
+    public ASTNode visitAlterDefinitionClause(final AlterDefinitionClauseContext ctx) {
+        CollectionValue&lt;AlterDefinitionSegment&gt; result = new CollectionValue&lt;&gt;();
+        if (null != ctx.alterTableActions()) {
+            result.getValue().addAll(ctx.alterTableActions().alterTableAction().stream().flatMap(each -&gt; getAlterDefinitionSegments(each).stream()).collect(Collectors.toList()));
+        }
+        if (null != ctx.renameColumnSpecification()) {
+            result.getValue().add((RenameColumnSegment) visit(ctx.renameColumnSpecification()));
+        }
+        if (null != ctx.renameTableSpecification()) {
+            result.getValue().add((RenameTableDefinitionSegment) visit(ctx.renameTableSpecification()));
+        }
+        return result;
+    }
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private Collection&lt;AlterDefinitionSegment&gt; getAlterDefinitionSegments(final AlterTableActionContext ctx) {
+        Collection&lt;AlterDefinitionSegment&gt; result = new LinkedList&lt;&gt;();
+        if (null != ctx.addColumnSpecification()) {
+            result.addAll(((CollectionValue&lt;AddColumnDefinitionSegment&gt;) visit(ctx.addColumnSpecification())).getValue());
+        }
+        if (null != ctx.addConstraintSpecification() &amp;&amp; null != ctx.addConstraintSpecification().tableConstraint()) {
+            result.add((AddConstraintDefinitionSegment) visit(ctx.addConstraintSpecification()));
+        }
+        if (null != ctx.validateConstraintSpecification()) {
+            result.add((ValidateConstraintDefinitionSegment) visit(ctx.validateConstraintSpecification()));
+        }
+        if (null != ctx.modifyColumnSpecification()) {
+            result.add((ModifyColumnDefinitionSegment) visit(ctx.modifyColumnSpecification()));
+        }
+        if (null != ctx.modifyConstraintSpecification()) {
+            result.add((ModifyConstraintDefinitionSegment) visit(ctx.modifyConstraintSpecification()));
+        }
+        if (null != ctx.dropColumnSpecification()) {
+            result.add((DropColumnDefinitionSegment) visit(ctx.dropColumnSpecification()));
+        }
+        if (null != ctx.dropConstraintSpecification()) {
+            result.add((DropConstraintDefinitionSegment) visit(ctx.dropConstraintSpecification()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitAlterForeignTable(final AlterForeignTableContext ctx) {
+        return new OpenGaussAlterForeignTableStatement();</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/NewStateChangedSubscriber.java</td>
 <td>shardingsphere-cluster-mode-core</td>
 <td><a href="./xref/org/apache/shardingsphere/mode/manager/cluster/coordinator/subscriber/NewStateChangedSubscriber.html#L52">52</a></td></tr>
@@ -2580,66 +2643,6 @@
     
     @Override
     public ASTNode visitDelete(final DeleteContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L330">330</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L413">413</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>return new OpenGaussAlterDefaultPrivilegesStatement();
-    }
-    
-    @Override
-    public ASTNode visitAlterDefinitionClause(final AlterDefinitionClauseContext ctx) {
-        CollectionValue&lt;AlterDefinitionSegment&gt; result = new CollectionValue&lt;&gt;();
-        if (null != ctx.alterTableActions()) {
-            result.getValue().addAll(ctx.alterTableActions().alterTableAction().stream().flatMap(each -&gt; getAlterDefinitionSegments(each).stream()).collect(Collectors.toList()));
-        }
-        if (null != ctx.renameTableSpecification()) {
-            result.getValue().add((RenameTableDefinitionSegment) visit(ctx.renameTableSpecification()));
-        }
-        return result;
-    }
-    
-    @SuppressWarnings(&quot;unchecked&quot;)
-    private Collection&lt;AlterDefinitionSegment&gt; getAlterDefinitionSegments(final AlterTableActionContext ctx) {
-        Collection&lt;AlterDefinitionSegment&gt; result = new LinkedList&lt;&gt;();
-        if (null != ctx.addColumnSpecification()) {
-            result.addAll(((CollectionValue&lt;AddColumnDefinitionSegment&gt;) visit(ctx.addColumnSpecification())).getValue());
-        }
-        if (null != ctx.addConstraintSpecification() &amp;&amp; null != ctx.addConstraintSpecification().tableConstraint()) {
-            result.add((AddConstraintDefinitionSegment) visit(ctx.addConstraintSpecification()));
-        }
-        if (null != ctx.validateConstraintSpecification()) {
-            result.add((ValidateConstraintDefinitionSegment) visit(ctx.validateConstraintSpecification()));
-        }
-        if (null != ctx.modifyColumnSpecification()) {
-            result.add((ModifyColumnDefinitionSegment) visit(ctx.modifyColumnSpecification()));
-        }
-        if (null != ctx.modifyConstraintSpecification()) {
-            result.add((ModifyConstraintDefinitionSegment) visit(ctx.modifyConstraintSpecification()));
-        }
-        if (null != ctx.dropColumnSpecification()) {
-            result.add((DropColumnDefinitionSegment) visit(ctx.dropColumnSpecification()));
-        }
-        if (null != ctx.dropConstraintSpecification()) {
-            result.add((DropConstraintDefinitionSegment) visit(ctx.dropConstraintSpecification()));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitAlterForeignTable(final AlterForeignTableContext ctx) {
-        return new OpenGaussAlterForeignTableStatement();</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -2911,11 +2914,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L525">525</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L530">530</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L663">663</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L668">668</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>result.setIndex((IndexSegment) visit(ctx.indexName()));
@@ -3584,11 +3587,57 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L587">587</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L297">297</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L725">725</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L370">370</a></td></tr>
+<tr class="b"><td colspan='3'>
+<div>
+<pre>OpenGaussAlterTableStatement result = new OpenGaussAlterTableStatement();
+        result.setTable((SimpleTableSegment) visit(ctx.tableNameClause().tableName()));
+        if (null != ctx.alterDefinitionClause()) {
+            for (AlterDefinitionSegment each : ((CollectionValue&lt;AlterDefinitionSegment&gt;) visit(ctx.alterDefinitionClause())).getValue()) {
+                if (each instanceof AddColumnDefinitionSegment) {
+                    result.getAddColumnDefinitions().add((AddColumnDefinitionSegment) each);
+                } else if (each instanceof ModifyColumnDefinitionSegment) {
+                    result.getModifyColumnDefinitions().add((ModifyColumnDefinitionSegment) each);
+                } else if (each instanceof DropColumnDefinitionSegment) {
+                    result.getDropColumnDefinitions().add((DropColumnDefinitionSegment) each);
+                } else if (each instanceof AddConstraintDefinitionSegment) {
+                    result.getAddConstraintDefinitions().add((AddConstraintDefinitionSegment) each);
+                } else if (each instanceof ValidateConstraintDefinitionSegment) {
+                    result.getValidateConstraintDefinitions().add((ValidateConstraintDefinitionSegment) each);
+                } else if (each instanceof ModifyConstraintDefinitionSegment) {
+                    result.getModifyConstraintDefinitions().add((ModifyConstraintDefinitionSegment) each);
+                } else if (each instanceof DropConstraintDefinitionSegment) {
+                    result.getDropConstraintDefinitions().add((DropConstraintDefinitionSegment) each);
+                } else if (each instanceof RenameTableDefinitionSegment) {
+                    result.setRenameTable(((RenameTableDefinitionSegment) each).getRenameTable());
+                } else if (each instanceof RenameColumnSegment) {
+                    result.getRenameColumnDefinitions().add((RenameColumnSegment) each);
+                }
+            }
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitAlterAggregate(final AlterAggregateContext ctx) {
+        return new OpenGaussAlterAggregateStatement();</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L592">592</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L730">730</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>OpenGaussDropIndexStatement result = new OpenGaussDropIndexStatement(null != ctx.ifExists());
@@ -3632,50 +3681,6 @@ public final class AgentReflectionUtils {
     @Override
     public ASTNode visitAlterFunction(final AlterFunctionContext ctx) {
         return new OpenGaussAlterFunctionStatement();</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L297">297</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L370">370</a></td></tr>
-<tr class="b"><td colspan='3'>
-<div>
-<pre>OpenGaussAlterTableStatement result = new OpenGaussAlterTableStatement();
-        result.setTable((SimpleTableSegment) visit(ctx.tableNameClause().tableName()));
-        if (null != ctx.alterDefinitionClause()) {
-            for (AlterDefinitionSegment each : ((CollectionValue&lt;AlterDefinitionSegment&gt;) visit(ctx.alterDefinitionClause())).getValue()) {
-                if (each instanceof AddColumnDefinitionSegment) {
-                    result.getAddColumnDefinitions().add((AddColumnDefinitionSegment) each);
-                } else if (each instanceof ModifyColumnDefinitionSegment) {
-                    result.getModifyColumnDefinitions().add((ModifyColumnDefinitionSegment) each);
-                } else if (each instanceof DropColumnDefinitionSegment) {
-                    result.getDropColumnDefinitions().add((DropColumnDefinitionSegment) each);
-                } else if (each instanceof AddConstraintDefinitionSegment) {
-                    result.getAddConstraintDefinitions().add((AddConstraintDefinitionSegment) each);
-                } else if (each instanceof ValidateConstraintDefinitionSegment) {
-                    result.getValidateConstraintDefinitions().add((ValidateConstraintDefinitionSegment) each);
-                } else if (each instanceof ModifyConstraintDefinitionSegment) {
-                    result.getModifyConstraintDefinitions().add((ModifyConstraintDefinitionSegment) each);
-                } else if (each instanceof DropConstraintDefinitionSegment) {
-                    result.getDropConstraintDefinitions().add((DropConstraintDefinitionSegment) each);
-                } else if (each instanceof RenameTableDefinitionSegment) {
-                    result.setRenameTable(((RenameTableDefinitionSegment) each).getRenameTable());
-                }
-            }
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitAlterAggregate(final AlterAggregateContext ctx) {
-        return new OpenGaussAlterAggregateStatement();</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -4271,11 +4276,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L1005">1005</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L1010">1010</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L1153">1153</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L1158">1158</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>private void setTableSegment(final OpenGaussCommentStatement statement, final Iterator&lt;NameSegment&gt; nameSegmentIterator) {
@@ -4477,11 +4482,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L389">389</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L394">394</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L477">477</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L482">482</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>return new OpenGaussAlterMaterializedViewStatement();
@@ -5744,11 +5749,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L859">859</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L864">864</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L972">972</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L977">977</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>OpenGaussDropSchemaStatement result = new OpenGaussDropSchemaStatement();
@@ -5920,11 +5925,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L758">758</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L763">763</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L881">881</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L886">886</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>OpenGaussPrepareStatement result = new OpenGaussPrepareStatement();
@@ -6043,11 +6048,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L569">569</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L574">574</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L707">707</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L712">712</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>OpenGaussAlterIndexStatement result = new OpenGaussAlterIndexStatement();
@@ -9404,11 +9409,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L989">989</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L994">994</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L1137">1137</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L1142">1142</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>OpenGaussCommentStatement result = new OpenGaussCommentStatement();
@@ -9608,11 +9613,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L836">836</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L841">841</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L949">949</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L954">954</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>OpenGaussCreateSchemaStatement result = new OpenGaussCreateSchemaStatement();
@@ -10243,11 +10248,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L669">669</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L674">674</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L812">812</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/type/PostgreSQLDDLStatementVisitor.html#L817">817</a></td></tr>
 <tr class="b"><td colspan='3'>
 <div>
 <pre>OpenGaussAlterViewStatement result = new OpenGaussAlterViewStatement();

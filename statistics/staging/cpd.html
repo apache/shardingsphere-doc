@@ -1746,6 +1746,67 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L118">118</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L120">120</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>final Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, final MetaDataPersistService persistService) {
+        Map&lt;String, DataSourceConfiguration&gt; effectiveDataSources = persistService.getEffectiveDataSources(databaseName, databaseConfigs);
+        Collection&lt;RuleConfiguration&gt; databaseRuleConfigs = persistService.getDatabaseRulePersistService().load(databaseName);
+        return new DataSourceGeneratedDatabaseConfiguration(effectiveDataSources, databaseRuleConfigs);
+    }
+    
+    private static void checkDataSourceStates(final Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, final Map&lt;String, StorageNodeDataSource&gt; storageNodes, final boolean force) {
+        Map&lt;String, DataSourceState&gt; storageDataSourceStates = getStorageDataSourceStates(storageNodes);
+        databaseConfigs.forEach((key, value) -&gt; {
+            if (!value.getDataSources().isEmpty()) {
+                DataSourceStateManager.getInstance().initStates(key, value.getDataSources(), storageDataSourceStates, force);
+            }
+        });
+    }
+    
+    private static Map&lt;String, DataSourceState&gt; getStorageDataSourceStates(final Map&lt;String, StorageNodeDataSource&gt; storageDataSourceStates) {
+        Map&lt;String, DataSourceState&gt; result = new HashMap&lt;&gt;(storageDataSourceStates.size(), 1F);
+        storageDataSourceStates.forEach((key, value) -&gt; {
+            List&lt;String&gt; values = Splitter.on(&quot;.&quot;).splitToList(key);
+            Preconditions.checkArgument(3 == values.size(), &quot;Illegal data source of storage node.&quot;);
+            String databaseName = values.get(0);
+            String dataSourceName = values.get(2);
+            result.put(databaseName + &quot;.&quot; + dataSourceName, DataSourceState.valueOf(value.getStatus().name()));
+        });
+        return result;
+    }
+    
+    private static void persistDatabaseConfigurations(final MetaDataContexts metadataContexts, final ContextManagerBuilderParameter param) {
+        metadataContexts.getPersistService().persistGlobalRuleConfiguration(param.getGlobalRuleConfigs(), param.getProps());
+        for (Entry&lt;String, ? extends DatabaseConfiguration&gt; entry : param.getDatabaseConfigs().entrySet()) {
+            String databaseName = entry.getKey();
+            metadataContexts.getPersistService().persistConfigurations(entry.getKey(), entry.getValue(),
+                    metadataContexts.getMetaData().getDatabase(databaseName).getResourceMetaData().getStorageUnitMetaData().getMetaDataMap().entrySet().stream()
+                            .collect(Collectors.toMap(Entry::getKey, each -&gt; each.getValue().getDataSource(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::new)),
+                    metadataContexts.getMetaData().getDatabase(databaseName).getRuleMetaData().getRules());
+        }
+    }
+    
+    private static void persistMetaData(final MetaDataContexts metaDataContexts) {
+        metaDataContexts.getMetaData().getDatabases().values().forEach(each -&gt; each.getSchemas()
+                .forEach((schemaName, schema) -&gt; metaDataContexts.getPersistService().getDatabaseMetaDataService().persist(each.getName(), schemaName, schema)));
+        metaDataContexts.getStatistics().getDatabaseData().forEach((databaseName, databaseData) -&gt; databaseData.getSchemaData().forEach((schemaName, schemaData) -&gt; metaDataContexts
+                .getPersistService().getShardingSphereDataPersistService().persist(databaseName, schemaName, schemaData, metaDataContexts.getMetaData().getDatabases())));
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/metadata/persist/MetaDataPersistService.java</td>
 <td>shardingsphere-metadata-core</td>
 <td><a href="./xref/org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#L83">83</a></td></tr>
@@ -1882,66 +1943,6 @@
             right = (ExpressionSegment) visit(ctx.predicate());
         } else {
             right = new SubqueryExpressionSegment(new SubquerySegment(ctx.subquery().start.getStartIndex(), ctx.subquery().stop.getStopIndex(), (OracleSelectStatement) visit(ctx.subquery())));</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.java</td>
-<td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L117">117</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.java</td>
-<td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L119">119</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>final Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, final MetaDataPersistService persistService) {
-        Map&lt;String, DataSourceConfiguration&gt; effectiveDataSources = persistService.getEffectiveDataSources(databaseName, databaseConfigs);
-        Collection&lt;RuleConfiguration&gt; databaseRuleConfigs = persistService.getDatabaseRulePersistService().load(databaseName);
-        return new DataSourceGeneratedDatabaseConfiguration(effectiveDataSources, databaseRuleConfigs);
-    }
-    
-    private static void checkDataSourceStates(final Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, final Map&lt;String, StorageNodeDataSource&gt; storageNodes, final boolean force) {
-        Map&lt;String, DataSourceState&gt; storageDataSourceStates = getStorageDataSourceStates(storageNodes);
-        databaseConfigs.forEach((key, value) -&gt; {
-            if (!value.getDataSources().isEmpty()) {
-                DataSourceStateManager.getInstance().initStates(key, value.getDataSources(), storageDataSourceStates, force);
-            }
-        });
-    }
-    
-    private static Map&lt;String, DataSourceState&gt; getStorageDataSourceStates(final Map&lt;String, StorageNodeDataSource&gt; storageDataSourceStates) {
-        Map&lt;String, DataSourceState&gt; result = new HashMap&lt;&gt;(storageDataSourceStates.size(), 1F);
-        storageDataSourceStates.forEach((key, value) -&gt; {
-            List&lt;String&gt; values = Splitter.on(&quot;.&quot;).splitToList(key);
-            Preconditions.checkArgument(3 == values.size(), &quot;Illegal data source of storage node.&quot;);
-            String databaseName = values.get(0);
-            String dataSourceName = values.get(2);
-            result.put(databaseName + &quot;.&quot; + dataSourceName, DataSourceState.valueOf(value.getStatus().name()));
-        });
-        return result;
-    }
-    
-    private static void persistDatabaseConfigurations(final MetaDataContexts metadataContexts, final ContextManagerBuilderParameter param) {
-        metadataContexts.getPersistService().persistGlobalRuleConfiguration(param.getGlobalRuleConfigs(), param.getProps());
-        for (Entry&lt;String, ? extends DatabaseConfiguration&gt; entry : param.getDatabaseConfigs().entrySet()) {
-            String databaseName = entry.getKey();
-            metadataContexts.getPersistService().persistConfigurations(entry.getKey(), entry.getValue(),
-                    metadataContexts.getMetaData().getDatabase(databaseName).getResourceMetaData().getStorageUnitMetaData().getDataSources(),
-                    metadataContexts.getMetaData().getDatabase(databaseName).getRuleMetaData().getRules());
-        }
-    }
-    
-    private static void persistMetaData(final MetaDataContexts metaDataContexts) {
-        metaDataContexts.getMetaData().getDatabases().values().forEach(each -&gt; each.getSchemas()
-                .forEach((schemaName, schema) -&gt; metaDataContexts.getPersistService().getDatabaseMetaDataService().persist(each.getName(), schemaName, schema)));
-        metaDataContexts.getStatistics().getDatabaseData().forEach((databaseName, databaseData) -&gt; databaseData.getSchemaData().forEach((schemaName, schemaData) -&gt; metaDataContexts
-                .getPersistService().getShardingSphereDataPersistService().persist(databaseName, schemaName, schemaData, metaDataContexts.getMetaData().getDatabases())));
-    }
-}</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -3738,7 +3739,7 @@ public final class AgentReflectionUtils {
 <tr class="a">
 <td align="left">org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.html#L238">238</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/manager/context/ConfigurationContextManager.html#L242">242</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -5880,11 +5881,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td align="left">org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L83">83</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L84">84</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L84">84</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L85">85</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -7159,6 +7160,35 @@ public final class AgentReflectionUtils {
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.java</td>
+<td>shardingsphere-proxy-backend-core</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.html#L130">130</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.java</td>
+<td>shardingsphere-proxy-backend-core</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.html#L102">102</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>}
+    
+    @SuppressWarnings({&quot;unchecked&quot;, &quot;rawtypes&quot;})
+    private RuleConfiguration decorateRuleConfiguration(final ShardingSphereDatabase database, final RuleConfiguration ruleConfig) {
+        Optional&lt;RuleConfigurationDecorator&gt; decorator = TypedSPILoader.findService(RuleConfigurationDecorator.class, ruleConfig.getClass());
+        return decorator.map(optional -&gt; optional.decorate(database.getName(),
+                database.getResourceMetaData().getStorageUnitMetaData().getMetaDataMap().entrySet().stream()
+                        .collect(Collectors.toMap(Entry::getKey, entry -&gt; entry.getValue().getDataSource(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::new)),
+                database.getRuleMetaData().getRules(), ruleConfig)).orElse(ruleConfig);
+    }
+    
+    @SuppressWarnings({&quot;rawtypes&quot;, &quot;unchecked&quot;})
+    private Collection&lt;MetaDataVersion&gt; processDrop(final ShardingSphereDatabase database, final T sqlStatement, final RuleDefinitionDropUpdater updater, final RuleConfiguration currentRuleConfig) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDCLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDCLStatementVisitor.html#L61">61</a></td></tr>
@@ -8054,11 +8084,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td align="left">org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.java</td>
 <td>shardingsphere-proxy-backend-core</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.html#L59">59</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.html#L62">62</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.java</td>
 <td>shardingsphere-proxy-backend-core</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.html#L51">51</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.html#L54">54</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -9891,11 +9921,11 @@ public final class AgentReflectionUtils {
 <tr class="b">
 <td align="left">org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L95">95</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/MetaDataContextsFactory.html#L96">96</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L96">96</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/NewMetaDataContextsFactory.html#L97">97</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -10711,33 +10741,6 @@ public final class AgentReflectionUtils {
         OwnerSegment owner = new OwnerSegment(ctx.colId().start.getStartIndex(), ctx.colId().stop.getStopIndex(), new IdentifierValue(ctx.colId().getText()));
         SimpleTableSegment result = new SimpleTableSegment(tableName);
         if (null == ctx.indirection().indirection()) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.java</td>
-<td>shardingsphere-proxy-backend-core</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/NewRuleDefinitionBackendHandler.html#L127">127</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.java</td>
-<td>shardingsphere-proxy-backend-core</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/backend/handler/distsql/rdl/rule/RuleDefinitionBackendHandler.html#L99">99</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>}
-    
-    @SuppressWarnings({&quot;unchecked&quot;, &quot;rawtypes&quot;})
-    private RuleConfiguration decorateRuleConfiguration(final ShardingSphereDatabase database, final RuleConfiguration ruleConfig) {
-        Optional&lt;RuleConfigurationDecorator&gt; decorator = TypedSPILoader.findService(RuleConfigurationDecorator.class, ruleConfig.getClass());
-        return decorator.map(optional -&gt; optional.decorate(database.getName(),
-                database.getResourceMetaData().getStorageUnitMetaData().getDataSources(), database.getRuleMetaData().getRules(), ruleConfig)).orElse(ruleConfig);
-    }
-    
-    @SuppressWarnings({&quot;rawtypes&quot;, &quot;unchecked&quot;})
-    private Collection&lt;MetaDataVersion&gt; processDrop(final ShardingSphereDatabase database, final T sqlStatement, final RuleDefinitionDropUpdater updater, final RuleConfiguration currentRuleConfig) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

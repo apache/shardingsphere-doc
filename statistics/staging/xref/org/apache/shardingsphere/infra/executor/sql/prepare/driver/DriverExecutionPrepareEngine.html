@@ -32,7 +32,7 @@
 <a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.executor.sql.execute.engine.ConnectionMode;
 <a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.executor.sql.execute.engine.driver.DriverExecutionUnit;
 <a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.executor.sql.prepare.AbstractExecutionPrepareEngine;
-<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.resource.unit.StorageUnitMetaData;
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.resource.unit.StorageUnit;
 <a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.rule.ShardingSphereRule;
 <a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
 <a class="jxr_linenumber" name="L30" href="#L30">30</a>  
@@ -63,17 +63,17 @@
 <a class="jxr_linenumber" name="L55" href="#L55">55</a>      @SuppressWarnings(<span class="jxr_string">"rawtypes"</span>)
 <a class="jxr_linenumber" name="L56" href="#L56">56</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="SQLExecutionUnitBuilder" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/prepare/driver/SQLExecutionUnitBuilder.html#SQLExecutionUnitBuilder">SQLExecutionUnitBuilder</a> sqlExecutionUnitBuilder;
 <a class="jxr_linenumber" name="L57" href="#L57">57</a>      
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> Map&lt;String, StorageUnitMetaData&gt; storageUnitMetaDataMap;
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> Map&lt;String, StorageUnit&gt; storageUnits;
 <a class="jxr_linenumber" name="L59" href="#L59">59</a>      
 <a class="jxr_linenumber" name="L60" href="#L60">60</a>      <strong class="jxr_keyword">public</strong> <a name="DriverExecutionPrepareEngine" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/prepare/driver/DriverExecutionPrepareEngine.html#DriverExecutionPrepareEngine">DriverExecutionPrepareEngine</a>(<strong class="jxr_keyword">final</strong> String type, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">int</strong> maxConnectionsSizePerQuery, <strong class="jxr_keyword">final</strong> DatabaseConnectionManager&lt;C&gt; databaseConnectionManager,
 <a class="jxr_linenumber" name="L61" href="#L61">61</a>                                          <strong class="jxr_keyword">final</strong> ExecutorStatementManager&lt;C, ?, ?&gt; statementManager, <strong class="jxr_keyword">final</strong> <a name="StorageResourceOption" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/prepare/driver/StorageResourceOption.html#StorageResourceOption">StorageResourceOption</a> option, <strong class="jxr_keyword">final</strong> Collection&lt;ShardingSphereRule&gt; rules,
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>                                          <strong class="jxr_keyword">final</strong> Map&lt;String, StorageUnitMetaData&gt; storageUnitMetaDataMap) {
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>                                          <strong class="jxr_keyword">final</strong> Map&lt;String, StorageUnit&gt; storageUnits) {
 <a class="jxr_linenumber" name="L63" href="#L63">63</a>          <strong class="jxr_keyword">super</strong>(maxConnectionsSizePerQuery, rules);
 <a class="jxr_linenumber" name="L64" href="#L64">64</a>          <strong class="jxr_keyword">this</strong>.databaseConnectionManager = databaseConnectionManager;
 <a class="jxr_linenumber" name="L65" href="#L65">65</a>          <strong class="jxr_keyword">this</strong>.statementManager = statementManager;
 <a class="jxr_linenumber" name="L66" href="#L66">66</a>          <strong class="jxr_keyword">this</strong>.option = option;
 <a class="jxr_linenumber" name="L67" href="#L67">67</a>          sqlExecutionUnitBuilder = getCachedSqlExecutionUnitBuilder(type);
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>          <strong class="jxr_keyword">this</strong>.storageUnitMetaDataMap = storageUnitMetaDataMap;
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>          <strong class="jxr_keyword">this</strong>.storageUnits = storageUnits;
 <a class="jxr_linenumber" name="L69" href="#L69">69</a>      }
 <a class="jxr_linenumber" name="L70" href="#L70">70</a>      
 <a class="jxr_linenumber" name="L71" href="#L71">71</a>      <em class="jxr_javadoccomment">/**</em>
@@ -105,7 +105,7 @@
 <a class="jxr_linenumber" name="L97" href="#L97">97</a>      @SuppressWarnings(<span class="jxr_string">"unchecked"</span>)
 <a class="jxr_linenumber" name="L98" href="#L98">98</a>      <strong class="jxr_keyword">private</strong> ExecutionGroup&lt;T&gt; createExecutionGroup(<strong class="jxr_keyword">final</strong> String dataSourceName, <strong class="jxr_keyword">final</strong> List&lt;SQLUnit&gt; sqlUnits, <strong class="jxr_keyword">final</strong> C connection, <strong class="jxr_keyword">final</strong> <a name="ConnectionMode" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/execute/engine/ConnectionMode.html#ConnectionMode">ConnectionMode</a> connectionMode) <strong class="jxr_keyword">throws</strong> SQLException {
 <a class="jxr_linenumber" name="L99" href="#L99">99</a>          List&lt;T&gt; inputs = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>         <a name="DatabaseType" href="../../../../../../../../org/apache/shardingsphere/infra/database/core/type/DatabaseType.html#DatabaseType">DatabaseType</a> databaseType = storageUnitMetaDataMap.get(dataSourceName).getStorageType();
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>         <a name="DatabaseType" href="../../../../../../../../org/apache/shardingsphere/infra/database/core/type/DatabaseType.html#DatabaseType">DatabaseType</a> databaseType = storageUnits.get(dataSourceName).getStorageType();
 <a class="jxr_linenumber" name="L101" href="#L101">101</a>         <strong class="jxr_keyword">for</strong> (<a name="SQLUnit" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/context/SQLUnit.html#SQLUnit">SQLUnit</a> each : sqlUnits) {
 <a class="jxr_linenumber" name="L102" href="#L102">102</a>             inputs.add((T) sqlExecutionUnitBuilder.build(<strong class="jxr_keyword">new</strong> <a name="ExecutionUnit" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/context/ExecutionUnit.html#ExecutionUnit">ExecutionUnit</a>(dataSourceName, each), statementManager, connection, connectionMode, option, databaseType));
 <a class="jxr_linenumber" name="L103" href="#L103">103</a>         }

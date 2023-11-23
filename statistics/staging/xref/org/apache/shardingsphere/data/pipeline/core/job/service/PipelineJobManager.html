@@ -33,7 +33,7 @@
 <a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.job.progress.PipelineJobItemProgress;
 <a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.metadata.node.PipelineMetaDataNode;
 <a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.pojo.PipelineJobInfo;
-<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.registrycenter.repository.GovernanceRepositoryAPI;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.registrycenter.repository.PipelineGovernanceFacade;
 <a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.common.util.PipelineDistributedBarrier;
 <a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.exception.job.PipelineJobCreationWithInvalidShardingCountException;
 <a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.exception.job.PipelineJobHasAlreadyStartedException;
@@ -82,13 +82,13 @@
 <a class="jxr_linenumber" name="L74" href="#L74">74</a>      <strong class="jxr_keyword">public</strong> Optional&lt;String&gt; start(<strong class="jxr_keyword">final</strong> <a name="PipelineJobConfiguration" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/config/job/PipelineJobConfiguration.html#PipelineJobConfiguration">PipelineJobConfiguration</a> jobConfig) {
 <a class="jxr_linenumber" name="L75" href="#L75">75</a>          String jobId = jobConfig.getJobId();
 <a class="jxr_linenumber" name="L76" href="#L76">76</a>          ShardingSpherePreconditions.checkState(0 != jobConfig.getJobShardingCount(), () -&gt; <strong class="jxr_keyword">new</strong> <a name="PipelineJobCreationWithInvalidShardingCountException" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/core/exception/job/PipelineJobCreationWithInvalidShardingCountException.html#PipelineJobCreationWithInvalidShardingCountException">PipelineJobCreationWithInvalidShardingCountException</a>(jobId));
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>          <a name="GovernanceRepositoryAPI" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/registrycenter/repository/GovernanceRepositoryAPI.html#GovernanceRepositoryAPI">GovernanceRepositoryAPI</a> repositoryAPI = PipelineAPIFactory.getGovernanceRepositoryAPI(PipelineJobIdUtils.parseContextKey(jobId));
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>          <strong class="jxr_keyword">if</strong> (repositoryAPI.getJobConfigurationGovernanceRepository().isExisted(jobId)) {
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>          <a name="PipelineGovernanceFacade" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/registrycenter/repository/PipelineGovernanceFacade.html#PipelineGovernanceFacade">PipelineGovernanceFacade</a> governanceFacade = PipelineAPIFactory.getPipelineGovernanceFacade(PipelineJobIdUtils.parseContextKey(jobId));
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>          <strong class="jxr_keyword">if</strong> (governanceFacade.getJobFacade().getConfiguration().isExisted(jobId)) {
 <a class="jxr_linenumber" name="L79" href="#L79">79</a>              log.warn(<span class="jxr_string">"jobId already exists in registry center, ignore, job id is `{}`"</span>, jobId);
 <a class="jxr_linenumber" name="L80" href="#L80">80</a>              <strong class="jxr_keyword">return</strong> Optional.of(jobId);
 <a class="jxr_linenumber" name="L81" href="#L81">81</a>          }
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>          repositoryAPI.getJobGovernanceRepository().create(jobId, jobAPI.getJobClass());
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>          repositoryAPI.getJobConfigurationGovernanceRepository().persist(jobId, jobConfig.convertToJobConfigurationPOJO());
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>          governanceFacade.getJobFacade().getJob().create(jobId, jobAPI.getJobClass());
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>          governanceFacade.getJobFacade().getConfiguration().persist(jobId, jobConfig.convertToJobConfigurationPOJO());
 <a class="jxr_linenumber" name="L84" href="#L84">84</a>          <strong class="jxr_keyword">return</strong> Optional.of(jobId);
 <a class="jxr_linenumber" name="L85" href="#L85">85</a>      }
 <a class="jxr_linenumber" name="L86" href="#L86">86</a>      
@@ -127,7 +127,7 @@
 <a class="jxr_linenumber" name="L119" href="#L119">119</a>     }
 <a class="jxr_linenumber" name="L120" href="#L120">120</a>     
 <a class="jxr_linenumber" name="L121" href="#L121">121</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> startNextDisabledJob(<strong class="jxr_keyword">final</strong> String jobId, <strong class="jxr_keyword">final</strong> String toBeStartDisabledNextJobType) {
-<a class="jxr_linenumber" name="L122" href="#L122">122</a>         PipelineAPIFactory.getGovernanceRepositoryAPI(PipelineJobIdUtils.parseContextKey(jobId)).getJobCheckGovernanceRepository().getLatestCheckJobId(jobId).ifPresent(optional -&gt; {
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>         PipelineAPIFactory.getPipelineGovernanceFacade(PipelineJobIdUtils.parseContextKey(jobId)).getJobFacade().getCheck().getLatestCheckJobId(jobId).ifPresent(optional -&gt; {
 <a class="jxr_linenumber" name="L123" href="#L123">123</a>             <strong class="jxr_keyword">try</strong> {
 <a class="jxr_linenumber" name="L124" href="#L124">124</a>                 <strong class="jxr_keyword">new</strong> <a name="PipelineJobManager" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/core/job/service/PipelineJobManager.html#PipelineJobManager">PipelineJobManager</a>(TypedSPILoader.getService(PipelineJobAPI.<strong class="jxr_keyword">class</strong>, toBeStartDisabledNextJobType)).startDisabledJob(optional);
 <a class="jxr_linenumber" name="L125" href="#L125">125</a>                 <em class="jxr_comment">// CHECKSTYLE:OFF</em>
@@ -149,7 +149,7 @@
 <a class="jxr_linenumber" name="L141" href="#L141">141</a>     }
 <a class="jxr_linenumber" name="L142" href="#L142">142</a>     
 <a class="jxr_linenumber" name="L143" href="#L143">143</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> stopPreviousJob(<strong class="jxr_keyword">final</strong> String jobId, <strong class="jxr_keyword">final</strong> String toBeStoppedPreviousJobType) {
-<a class="jxr_linenumber" name="L144" href="#L144">144</a>         PipelineAPIFactory.getGovernanceRepositoryAPI(PipelineJobIdUtils.parseContextKey(jobId)).getJobCheckGovernanceRepository().getLatestCheckJobId(jobId).ifPresent(optional -&gt; {
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>         PipelineAPIFactory.getPipelineGovernanceFacade(PipelineJobIdUtils.parseContextKey(jobId)).getJobFacade().getCheck().getLatestCheckJobId(jobId).ifPresent(optional -&gt; {
 <a class="jxr_linenumber" name="L145" href="#L145">145</a>             <strong class="jxr_keyword">try</strong> {
 <a class="jxr_linenumber" name="L146" href="#L146">146</a>                 <strong class="jxr_keyword">new</strong> <a name="PipelineJobManager" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/core/job/service/PipelineJobManager.html#PipelineJobManager">PipelineJobManager</a>(TypedSPILoader.getService(PipelineJobAPI.<strong class="jxr_keyword">class</strong>, toBeStoppedPreviousJobType)).stop(optional);
 <a class="jxr_linenumber" name="L147" href="#L147">147</a>                 <em class="jxr_comment">// CHECKSTYLE:OFF</em>
@@ -184,7 +184,7 @@
 <a class="jxr_linenumber" name="L176" href="#L176">176</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> drop(<strong class="jxr_keyword">final</strong> String jobId) {
 <a class="jxr_linenumber" name="L177" href="#L177">177</a>         <a name="PipelineContextKey" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/common/context/PipelineContextKey.html#PipelineContextKey">PipelineContextKey</a> contextKey = PipelineJobIdUtils.parseContextKey(jobId);
 <a class="jxr_linenumber" name="L178" href="#L178">178</a>         PipelineAPIFactory.getJobOperateAPI(contextKey).remove(String.valueOf(jobId), <strong class="jxr_keyword">null</strong>);
-<a class="jxr_linenumber" name="L179" href="#L179">179</a>         PipelineAPIFactory.getGovernanceRepositoryAPI(contextKey).getJobGovernanceRepository().delete(jobId);
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>         PipelineAPIFactory.getPipelineGovernanceFacade(contextKey).getJobFacade().getJob().delete(jobId);
 <a class="jxr_linenumber" name="L180" href="#L180">180</a>     }
 <a class="jxr_linenumber" name="L181" href="#L181">181</a>     
 <a class="jxr_linenumber" name="L182" href="#L182">182</a>     <em class="jxr_javadoccomment">/**</em>

@@ -77,7 +77,7 @@
 
 		<p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive1.png" alt="img"></p>
 <h1 id="1-background">1. Background</h1>
-<p><a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a> supports data encryption. By parsing users&rsquo; SQL input and rewriting the SQL according to the users&rsquo; encryption rules, the original data is encrypted and stored with ciphertext data in the underlying database at the same time.</p>
+<p><a href="https://shardingsphere.apache.org/">Apache ShardingSphere</a> supports data encryption. By parsing users' SQL input and rewriting the SQL according to the users' encryption rules, the original data is encrypted and stored with ciphertext data in the underlying database at the same time.</p>
 <p>When a user queries the data, it only fetches the ciphertext data from the database, decrypts it, and finally returns the decrypted original data to the user. However, because the encryption algorithm encrypts the whole string, fuzzy queries cannot be achieved.</p>
 <p>Nevertheless, many businesses still need fuzzy queries after the data is encrypted. <a href="https://medium.com/faun/shardingsphere-5-3-0-is-released-new-features-and-improvements-bf4d1c43b09b?source=your_stories_page-------------------------------------">In version 5.3.0</a>, Apache ShardingSphere provides users with a default fuzzy query algorithm, supporting the fuzzy query for encrypted fields. The algorithm also supports hot plugging, which can be customized by users, and the fuzzy query can be achieved through configuration.</p>
 <h1 id="2-how-to-achieve-fuzzy-query-in-encrypted-scenarios"><strong>2. How to achieve fuzzy query in encrypted scenarios?</strong></h1>
@@ -271,17 +271,17 @@
 <h1 id="4-the-fuzzy-algorithm-development-progress"><strong>4. The fuzzy algorithm development progress</strong></h1>
 <h2 id="41-the-first-edition">4.1 The first edition</h2>
 <p>Simply use <code>Unicode</code> and <code>mask</code> code of common characters to perform the <code>AND</code> operation.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">Mask</span>: 0b11111111111001111101
-<span style="color:#66d9ef">The original character</span>: 0b1000101110101111讯
-<span style="color:#66d9ef">After encryption</span>: 0b1000101000101101設
-Assuming we know the key and encryption algorithm, the original string after a backward pass is:<span style="color:#ae81ff">1.</span>0b1000101100101101 謭
-<span style="color:#ae81ff">2.</span>0b1000101100101111 謯
-<span style="color:#ae81ff">3.</span>0b1000101110101101 训
-<span style="color:#ae81ff">4.</span>0b1000101110101111 讯
-<span style="color:#ae81ff">5.</span>0b1000101010101101 読
-<span style="color:#ae81ff">6.</span>0b1000101010101111 誯
-<span style="color:#ae81ff">7.</span>0b1000101000101111 訯
-<span style="color:#ae81ff">8.</span>0b1000101000101101 設
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#f92672">Mask</span>: <span style="color:#ae81ff">0b11111111111001111101</span>
+<span style="color:#f92672">The original character</span>: <span style="color:#ae81ff">0b1000101110101111讯</span>
+<span style="color:#f92672">After encryption</span>: <span style="color:#ae81ff">0b1000101000101101設</span>
+<span style="color:#ae81ff">Assuming we know the key and encryption algorithm, the original string after a backward pass is:1.0b1000101100101101 謭</span>
+<span style="color:#ae81ff">2.</span><span style="color:#ae81ff">0b1000101100101111 謯</span>
+<span style="color:#ae81ff">3.</span><span style="color:#ae81ff">0b1000101110101101 训</span>
+<span style="color:#ae81ff">4.</span><span style="color:#ae81ff">0b1000101110101111 讯</span>
+<span style="color:#ae81ff">5.</span><span style="color:#ae81ff">0b1000101010101101 読</span>
+<span style="color:#ae81ff">6.</span><span style="color:#ae81ff">0b1000101010101111 誯</span>
+<span style="color:#ae81ff">7.</span><span style="color:#ae81ff">0b1000101000101111 訯</span>
+<span style="color:#ae81ff">8.</span><span style="color:#ae81ff">0b1000101000101101 設</span>
 </code></pre></div><p>We find that based on the missing bits, each string can be derived <code>2^n</code> Chinese characters backward. When the <code>Unicode</code> of common Chinese characters is decimal, their intervals are very large. Notice that the Chinese characters inferred backward are not common characters, and it&rsquo;s more likely to infer the original characters.</p>
 <p><img src="https://shardingsphere.apache.org/blog/img/2022_12_28_Fuzzy_query_for_CipherColumn__ShardingSphere_5.3.0_Deep_Dive2.png" alt="img"></p>
 <h2 id="42-the-second-edition">4.2 The second edition</h2>
@@ -322,41 +322,41 @@ Assuming we know the key and encryption algorithm, the original string after a b
 <h1 id="5-how-to-use-fuzzy-query"><strong>5. How to use fuzzy query</strong></h1>
 <p>Fuzzy query requires the configuration of <code>encryptors</code>(encryption algorithm configuration), <code>likeQueryColumn</code> (fuzzy query column name), and <code>likeQueryEncryptorName</code>(encryption algorithm name of fuzzy query column ) in the encryption configuration.</p>
 <p>Please refer to the following configuration. Add your own sharding algorithm and data source.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#66d9ef">dataSources</span>:
-  <span style="color:#66d9ef">ds_0</span>:
-    <span style="color:#66d9ef">dataSourceClassName</span>: com.zaxxer.hikari.HikariDataSource
-    <span style="color:#66d9ef">driverClassName</span>: com.mysql.jdbc.Driver
-    <span style="color:#66d9ef">jdbcUrl</span>: jdbc:mysql://<span style="color:#ae81ff">127.0.0.1</span>:<span style="color:#ae81ff">3306</span>/test?allowPublicKeyRetrieval=<span style="color:#66d9ef">true</span>
-    <span style="color:#66d9ef">username</span>: root
-    <span style="color:#66d9ef">password</span>: root
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#f92672">dataSources</span>:
+  <span style="color:#f92672">ds_0</span>:
+    <span style="color:#f92672">dataSourceClassName</span>: <span style="color:#ae81ff">com.zaxxer.hikari.HikariDataSource</span>
+    <span style="color:#f92672">driverClassName</span>: <span style="color:#ae81ff">com.mysql.jdbc.Driver</span>
+    <span style="color:#f92672">jdbcUrl</span>: <span style="color:#ae81ff">jdbc:mysql://127.0.0.1:3306/test?allowPublicKeyRetrieval=true</span>
+    <span style="color:#f92672">username</span>: <span style="color:#ae81ff">root</span>
+    <span style="color:#f92672">password</span>: <span style="color:#ae81ff">root</span>
     
-<span style="color:#66d9ef">rules</span>:
-- !ENCRYPT
-  <span style="color:#66d9ef">encryptors</span>:
-    <span style="color:#66d9ef">like_encryptor</span>:
-      <span style="color:#66d9ef">type</span>: CHAR_DIGEST_LIKE
-    <span style="color:#66d9ef">aes_encryptor</span>:
-      <span style="color:#66d9ef">type</span>: AES
-      <span style="color:#66d9ef">props</span>:
-        <span style="color:#66d9ef">aes-key-value</span>: 123456abc
-  <span style="color:#66d9ef">tables</span>:
-    <span style="color:#66d9ef">user</span>:
-      <span style="color:#66d9ef">columns</span>:
-        <span style="color:#66d9ef">name</span>:
-          <span style="color:#66d9ef">cipherColumn</span>: name
-          <span style="color:#66d9ef">encryptorName</span>: aes_encryptor
-          <span style="color:#66d9ef">assistedQueryColumn</span>: name_ext
-          <span style="color:#66d9ef">assistedQueryEncryptorName</span>: aes_encryptor
-          <span style="color:#66d9ef">likeQueryColumn</span>: name_like
-          <span style="color:#66d9ef">likeQueryEncryptorName</span>: like_encryptor
-        <span style="color:#66d9ef">phone</span>:
-          <span style="color:#66d9ef">cipherColumn</span>: phone
-          <span style="color:#66d9ef">encryptorName</span>: aes_encryptor
-          <span style="color:#66d9ef">likeQueryColumn</span>: phone_like
-          <span style="color:#66d9ef">likeQueryEncryptorName</span>: like_encryptor
+<span style="color:#f92672">rules</span>:
+- !<span style="color:#ae81ff">ENCRYPT</span>
+  <span style="color:#f92672">encryptors</span>:
+    <span style="color:#f92672">like_encryptor</span>:
+      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">CHAR_DIGEST_LIKE</span>
+    <span style="color:#f92672">aes_encryptor</span>:
+      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">AES</span>
+      <span style="color:#f92672">props</span>:
+        <span style="color:#f92672">aes-key-value</span>: <span style="color:#ae81ff">123456abc</span>
+  <span style="color:#f92672">tables</span>:
+    <span style="color:#f92672">user</span>:
+      <span style="color:#f92672">columns</span>:
+        <span style="color:#f92672">name</span>:
+          <span style="color:#f92672">cipherColumn</span>: <span style="color:#ae81ff">name</span>
+          <span style="color:#f92672">encryptorName</span>: <span style="color:#ae81ff">aes_encryptor</span>
+          <span style="color:#f92672">assistedQueryColumn</span>: <span style="color:#ae81ff">name_ext</span>
+          <span style="color:#f92672">assistedQueryEncryptorName</span>: <span style="color:#ae81ff">aes_encryptor</span>
+          <span style="color:#f92672">likeQueryColumn</span>: <span style="color:#ae81ff">name_like</span>
+          <span style="color:#f92672">likeQueryEncryptorName</span>: <span style="color:#ae81ff">like_encryptor</span>
+        <span style="color:#f92672">phone</span>:
+          <span style="color:#f92672">cipherColumn</span>: <span style="color:#ae81ff">phone</span>
+          <span style="color:#f92672">encryptorName</span>: <span style="color:#ae81ff">aes_encryptor</span>
+          <span style="color:#f92672">likeQueryColumn</span>: <span style="color:#ae81ff">phone_like</span>
+          <span style="color:#f92672">likeQueryEncryptorName</span>: <span style="color:#ae81ff">like_encryptor</span>
 
-<span style="color:#66d9ef">props</span>:
-  <span style="color:#66d9ef">sql-show</span>: <span style="color:#66d9ef">true</span>
+<span style="color:#f92672">props</span>:
+  <span style="color:#f92672">sql-show</span>: <span style="color:#66d9ef">true</span>
 </code></pre></div><p>Insert</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">Logic <span style="color:#66d9ef">SQL</span>: <span style="color:#66d9ef">insert</span> <span style="color:#66d9ef">into</span> <span style="color:#66d9ef">user</span> ( id, name, phone, sex) <span style="color:#66d9ef">values</span> ( <span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;熊高祥&#39;</span>, <span style="color:#e6db74">&#39;13012345678&#39;</span>, <span style="color:#e6db74">&#39;男&#39;</span>)
 Actual <span style="color:#66d9ef">SQL</span>: ds_0 ::: <span style="color:#66d9ef">insert</span> <span style="color:#66d9ef">into</span> <span style="color:#66d9ef">user</span> ( id, name, name_ext, name_like, phone, phone_like, sex) <span style="color:#66d9ef">values</span> (<span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;gyVPLyhIzDIZaWDwTl3n4g==&#39;</span>, <span style="color:#e6db74">&#39;gyVPLyhIzDIZaWDwTl3n4g==&#39;</span>, <span style="color:#e6db74">&#39;佹堝偀&#39;</span>, <span style="color:#e6db74">&#39;qEmE7xRzW0d7EotlOAt6ww==&#39;</span>, <span style="color:#e6db74">&#39;04101454589&#39;</span>, <span style="color:#e6db74">&#39;男&#39;</span>)

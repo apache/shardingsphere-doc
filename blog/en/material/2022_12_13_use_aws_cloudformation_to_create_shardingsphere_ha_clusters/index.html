@@ -131,183 +131,183 @@
 <p>First, we deploy a Zookeeper EC2 instance in each AZ to ensure the HA of the ZooKeeper cluster.</p>
 <p>Then we create an internal domain name for each Zookeeper instance, and ShardingSphere-Proxy uses these domain names.</p>
 <p>When the ZooKeeer instance starts, cloud-init is used to automatically deploy the Zookeeper service. You can view the cloud-init configuration <a href="https://github.com/apache/shardingsphere-on-cloud/blob/main/cloudformation/multi-az/zookeeper-cloud-init.yml">here</a>.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">(<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">2</span>).each do |i<span style="color:#e6db74">| 
-</span><span style="color:#e6db74">    name = &#34;ZK#{i+1}&#34;</span>
-    EC2_Instance(name) {
-      AvailabilityZone FnSelect(i, FnGetAZs(Ref(<span style="color:#e6db74">&#34;AWS::Region&#34;</span>)))
-      InstanceType Ref(<span style="color:#e6db74">&#34;ZookeeperInstanceType&#34;</span>)
-      ImageId Ref(<span style="color:#e6db74">&#34;ImageId&#34;</span>)
-      KeyName Ref(<span style="color:#e6db74">&#34;KeyName&#34;</span>)
-      SubnetId FnSelect(i, Ref(<span style="color:#e6db74">&#34;Subnets&#34;</span>))
-      SecurityGroupIds Ref(<span style="color:#e6db74">&#34;SecurityGroupIds&#34;</span>)
-      Tags [ 
-        Tag do 
-          Key <span style="color:#e6db74">&#34;Name&#34;</span>
-          Value <span style="color:#e6db74">&#34;ZK-#{i+1}&#34;</span>
-        end
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ae81ff">(0..2).each do |i| </span>
+    <span style="color:#ae81ff">name = &#34;ZK#{i+1}&#34;</span>
+    <span style="color:#ae81ff">EC2_Instance(name) {</span>
+      <span style="color:#ae81ff">AvailabilityZone FnSelect(i, FnGetAZs(Ref(&#34;AWS::Region&#34;)))</span>
+      <span style="color:#ae81ff">InstanceType Ref(&#34;ZookeeperInstanceType&#34;)</span>
+      <span style="color:#ae81ff">ImageId Ref(&#34;ImageId&#34;)</span>
+      <span style="color:#ae81ff">KeyName Ref(&#34;KeyName&#34;)</span>
+      <span style="color:#ae81ff">SubnetId FnSelect(i, Ref(&#34;Subnets&#34;))</span>
+      <span style="color:#ae81ff">SecurityGroupIds Ref(&#34;SecurityGroupIds&#34;)</span>
+      <span style="color:#ae81ff">Tags [ </span>
+        <span style="color:#ae81ff">Tag do </span>
+          <span style="color:#ae81ff">Key &#34;Name&#34;</span>
+          <span style="color:#ae81ff">Value &#34;ZK-#{i+1}&#34;</span>
+        <span style="color:#ae81ff">end</span>
       ]
 
-      server = <span style="color:#e6db74">&#34;server.%{idx}=zk-%{idx}.${HostedZoneName}:2888:3888&#34;</span>
-      UserData FnBase64(
-        FnSub(
-          IO.read(<span style="color:#e6db74">&#34;./zookeeper-cloud-init.yml&#34;</span>), 
-          :SERVERS =&gt; FnSub((<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">2</span>).map{|i| i == <span style="color:#ae81ff">0</span> ? server %{<span style="color:#66d9ef">:idx =&gt; i+1} </span>: (<span style="color:#e6db74">&#34;#{server}&#34;</span> %{:idx =&gt; i<span style="color:#ae81ff">+1</span>}).insert(<span style="color:#ae81ff">0</span>, <span style="color:#e6db74">&#34; &#34;</span> * <span style="color:#ae81ff">4</span>)}.join(<span style="color:#e6db74">&#34;\n&#34;</span>)), 
-          :VERSION =&gt; Ref(<span style="color:#e6db74">&#34;ZookeeperVersion&#34;</span>),
-          :ZK_HEAP =&gt; Ref(<span style="color:#e6db74">&#34;ZookeeperHeap&#34;</span>),
-          :INDEX =&gt; i<span style="color:#ae81ff">+1</span>,
-        )
-      )
+      <span style="color:#ae81ff">server = &#34;server.%{idx}=zk-%{idx}.${HostedZoneName}:2888:3888&#34;</span>
+      <span style="color:#ae81ff">UserData FnBase64(</span>
+        <span style="color:#ae81ff">FnSub(</span>
+          <span style="color:#ae81ff">IO.read(&#34;./zookeeper-cloud-init.yml&#34;), </span>
+          :<span style="color:#ae81ff">SERVERS =&gt; FnSub((0..2).map{|i| i == 0 ? server %{:idx =&gt; i+1} : (&#34;#{server}&#34; %{:idx =&gt; i+1}).insert(0, &#34; &#34; * 4)}.join(&#34;\n&#34;)), </span>
+          :<span style="color:#ae81ff">VERSION =&gt; Ref(&#34;ZookeeperVersion&#34;),</span>
+          :<span style="color:#ae81ff">ZK_HEAP =&gt; Ref(&#34;ZookeeperHeap&#34;),</span>
+          :<span style="color:#ae81ff">INDEX =&gt; i+1,</span>
+        <span style="color:#ae81ff">)</span>
+      <span style="color:#ae81ff">)</span>
     }
 
-    domain = <span style="color:#e6db74">&#34;zone#{name}&#34;</span>
-    Route53_RecordSet(domain) {
-      HostedZoneId Ref(<span style="color:#e6db74">&#34;HostedZoneId&#34;</span>)
-      Name FnSub(<span style="color:#e6db74">&#34;zk-#{i+1}.${HostedZoneName}&#34;</span>)
-      Type <span style="color:#e6db74">&#34;A&#34;</span>
-      ResourceRecords [FnGetAtt(name, <span style="color:#e6db74">&#34;PrivateIp&#34;</span>)]
-      TTL <span style="color:#e6db74">&#34;60&#34;</span>
+    <span style="color:#ae81ff">domain = &#34;zone#{name}&#34;</span>
+    <span style="color:#ae81ff">Route53_RecordSet(domain) {</span>
+      <span style="color:#ae81ff">HostedZoneId Ref(&#34;HostedZoneId&#34;)</span>
+      <span style="color:#ae81ff">Name FnSub(&#34;zk-#{i+1}.${HostedZoneName}&#34;)</span>
+      <span style="color:#ae81ff">Type &#34;A&#34;</span>
+      <span style="color:#ae81ff">ResourceRecords [FnGetAtt(name, &#34;PrivateIp&#34;)]</span>
+      <span style="color:#ae81ff">TTL &#34;60&#34;</span>
     }
-  end
+  <span style="color:#ae81ff">end</span>
 </code></pre></div><h1 id="shardingsphere-proxy-clusters">ShardingSphere-Proxy Clusters</h1>
 <h2 id="launchtemplate">LaunchTemplate</h2>
 <p>Next, we deploy an AutoScalingGroup in each AZ to ensure the HA of a ShardingSphere-Proxy cluster.</p>
 <p>Before creating the AutoScalingGroup, we need to create a LaunchTemplate in each AZ for the ShardingSphere-Proxy instance.</p>
 <p>Similarly, when the instance starts, cloud-init is used to automatically deploy the ShardingSphere-Proxy service. You can view the cloud-init configuration <a href="https://github.com/apache/shardingsphere-on-cloud/blob/main/cloudformation/multi-az/shardingsphere-cloud-init.yml">here</a>.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">(<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">2</span>).each do |i<span style="color:#e6db74">| 
-</span><span style="color:#e6db74">    name = &#34;launchtemplate#{i}&#34;</span>
-    EC2_LaunchTemplate(name) {
-      LaunchTemplateName FnSub(<span style="color:#e6db74">&#34;shardingsphere-${TMPL_NAME}&#34;</span>, :TMPL_NAME =&gt; FnSelect(i, FnGetAZs(Ref(<span style="color:#e6db74">&#39;AWS::Region&#39;</span>))))
-      LaunchTemplateData do 
-        ImageId Ref(<span style="color:#e6db74">&#34;ImageId&#34;</span>)
-        InstanceType Ref(<span style="color:#e6db74">&#34;ShardingSphereInstanceType&#34;</span>)
-        KeyName Ref(<span style="color:#e6db74">&#34;KeyName&#34;</span>)
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ae81ff">(0..2).each do |i| </span>
+    <span style="color:#ae81ff">name = &#34;launchtemplate#{i}&#34;</span>
+    <span style="color:#ae81ff">EC2_LaunchTemplate(name) {</span>
+      <span style="color:#ae81ff">LaunchTemplateName FnSub(&#34;shardingsphere-${TMPL_NAME}&#34;, :TMPL_NAME =&gt; FnSelect(i, FnGetAZs(Ref(&#39;AWS::Region&#39;))))</span>
+      <span style="color:#ae81ff">LaunchTemplateData do </span>
+        <span style="color:#ae81ff">ImageId Ref(&#34;ImageId&#34;)</span>
+        <span style="color:#ae81ff">InstanceType Ref(&#34;ShardingSphereInstanceType&#34;)</span>
+        <span style="color:#ae81ff">KeyName Ref(&#34;KeyName&#34;)</span>
 
-        MetadataOptions do
-          HttpEndpoint <span style="color:#e6db74">&#34;enabled&#34;</span>
-          HttpTokens   <span style="color:#e6db74">&#34;required&#34;</span>
-          InstanceMetadataTags <span style="color:#e6db74">&#34;enabled&#34;</span>
-        end
+        <span style="color:#ae81ff">MetadataOptions do</span>
+          <span style="color:#ae81ff">HttpEndpoint &#34;enabled&#34;</span>
+          <span style="color:#ae81ff">HttpTokens   &#34;required&#34;</span>
+          <span style="color:#ae81ff">InstanceMetadataTags &#34;enabled&#34;</span>
+        <span style="color:#ae81ff">end</span>
 
-        Monitoring do
-          Enabled  <span style="color:#66d9ef">true</span>
-        end
+        <span style="color:#ae81ff">Monitoring do</span>
+          <span style="color:#ae81ff">Enabled  true</span>
+        <span style="color:#ae81ff">end</span>
 
-        NetworkInterfaces [
+        <span style="color:#ae81ff">NetworkInterfaces [</span>
           {
-            :DeleteOnTermination =&gt; <span style="color:#66d9ef">false</span>,
-            :DeviceIndex =&gt; <span style="color:#ae81ff">0</span>,
-            :NetworkInterfaceId =&gt; FnGetAtt(<span style="color:#e6db74">&#34;networkiface#{i}&#34;</span>, <span style="color:#e6db74">&#34;Id&#34;</span>)
+            :<span style="color:#ae81ff">DeleteOnTermination =&gt; false,</span>
+            :<span style="color:#ae81ff">DeviceIndex =&gt; 0,</span>
+            :<span style="color:#ae81ff">NetworkInterfaceId =&gt; FnGetAtt(&#34;networkiface#{i}&#34;, &#34;Id&#34;)</span>
           }
         ]
         
-        TagSpecifications [
+        <span style="color:#ae81ff">TagSpecifications [</span>
           {
-            :ResourceType =&gt; <span style="color:#e6db74">&#34;instance&#34;</span>,
-            :Tags =&gt; [
+            :<span style="color:#ae81ff">ResourceType =&gt; &#34;instance&#34;,</span>
+            :<span style="color:#ae81ff">Tags =&gt; [</span>
               {
-                :Key =&gt; <span style="color:#e6db74">&#34;Name&#34;</span>,
-                :Value =&gt; <span style="color:#e6db74">&#34;shardingsphere-#{i+1}&#34;</span>
+                :<span style="color:#ae81ff">Key =&gt; &#34;Name&#34;,</span>
+                :<span style="color:#ae81ff">Value =&gt; &#34;shardingsphere-#{i+1}&#34;</span>
               }
             ]
           }
         ]
 
-        UserData FnBase64(
-          FnSub(
-            IO.read(<span style="color:#e6db74">&#34;./shardingsphere-cloud-init.yml&#34;</span>), 
-            :ZK_SERVERS =&gt; FnSub((<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">2</span>).map{|i| <span style="color:#e6db74">&#34;zk-#{i+1}.${HostedZoneName}:2181&#34;</span> }.join(<span style="color:#e6db74">&#34;,&#34;</span>)), 
-            :VERSION =&gt; Ref(<span style="color:#e6db74">&#34;ShardingSphereVersion&#34;</span>),
-            :JAVA_MEM_OPTS =&gt; Ref(<span style="color:#e6db74">&#34;ShardingSphereJavaMemOpts&#34;</span>)
-          )
-        )
-      end
+        <span style="color:#ae81ff">UserData FnBase64(</span>
+          <span style="color:#ae81ff">FnSub(</span>
+            <span style="color:#ae81ff">IO.read(&#34;./shardingsphere-cloud-init.yml&#34;), </span>
+            :<span style="color:#ae81ff">ZK_SERVERS =&gt; FnSub((0..2).map{|i| &#34;zk-#{i+1}.${HostedZoneName}:2181&#34; }.join(&#34;,&#34;)), </span>
+            :<span style="color:#ae81ff">VERSION =&gt; Ref(&#34;ShardingSphereVersion&#34;),</span>
+            :<span style="color:#ae81ff">JAVA_MEM_OPTS =&gt; Ref(&#34;ShardingSphereJavaMemOpts&#34;)</span>
+          <span style="color:#ae81ff">)</span>
+        <span style="color:#ae81ff">)</span>
+      <span style="color:#ae81ff">end</span>
     }
-  end
+  <span style="color:#ae81ff">end</span>
 </code></pre></div><h2 id="targetgroup">TargetGroup</h2>
 <p>As we use <a href="https://aws.amazon.com/elasticloadbalancing/">ELB</a> to load traffic between each ShardingSphere-Proxy, ELB should be used in combination with <a href="https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticloadbalancingv2-targetgroup.html">TargetGroup</a>.</p>
 <p>Instances created by AutoScalingGroup are automatically registered to TargetGroup. ELB will then forward the traffic to TargetGroup.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">ElasticLoadBalancingV2_TargetGroup(<span style="color:#e6db74">&#34;sslbtg&#34;</span>) {
-    Name <span style="color:#e6db74">&#34;shardingsphere-lb-tg&#34;</span>
-    Port Ref(<span style="color:#e6db74">&#34;ShardingSpherePort&#34;</span>)
-    Protocol <span style="color:#e6db74">&#34;TCP&#34;</span>
-    VpcId Ref(<span style="color:#e6db74">&#34;VpcId&#34;</span>)
-    TargetGroupAttributes [
-      TargetGroupAttribute do
-        Key <span style="color:#e6db74">&#34;preserve_client_ip.enabled&#34;</span>
-        Value <span style="color:#e6db74">&#34;false&#34;</span>
-      end
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ae81ff">ElasticLoadBalancingV2_TargetGroup(&#34;sslbtg&#34;) {</span>
+    <span style="color:#ae81ff">Name &#34;shardingsphere-lb-tg&#34;</span>
+    <span style="color:#ae81ff">Port Ref(&#34;ShardingSpherePort&#34;)</span>
+    <span style="color:#ae81ff">Protocol &#34;TCP&#34;</span>
+    <span style="color:#ae81ff">VpcId Ref(&#34;VpcId&#34;)</span>
+    <span style="color:#ae81ff">TargetGroupAttributes [</span>
+      <span style="color:#ae81ff">TargetGroupAttribute do</span>
+        <span style="color:#ae81ff">Key &#34;preserve_client_ip.enabled&#34;</span>
+        <span style="color:#ae81ff">Value &#34;false&#34;</span>
+      <span style="color:#ae81ff">end</span>
     ]
-    Tags [
-      Tag do
-        Key <span style="color:#e6db74">&#34;Name&#34;</span>
-        Value <span style="color:#e6db74">&#34;shardingsphere&#34;</span>
-      end
+    <span style="color:#ae81ff">Tags [</span>
+      <span style="color:#ae81ff">Tag do</span>
+        <span style="color:#ae81ff">Key &#34;Name&#34;</span>
+        <span style="color:#ae81ff">Value &#34;shardingsphere&#34;</span>
+      <span style="color:#ae81ff">end</span>
     ]
   }
 </code></pre></div><h2 id="autoscalinggroup">AutoScalingGroup</h2>
 <p>After creating the aforementioned resources, now we can create an AutoScalingGroup.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">(<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">2</span>).each do |i<span style="color:#e6db74">| 
-</span><span style="color:#e6db74">    name = &#34;autoscaling#{i}&#34;</span>
-    AutoScaling_AutoScalingGroup(name) {
-      AutoScalingGroupName <span style="color:#e6db74">&#34;shardingsphere-#{i}&#34;</span> 
-      AvailabilityZones [FnSelect(i, FnGetAZs(Ref(<span style="color:#e6db74">&#34;AWS::Region&#34;</span>)))]
-      DesiredCapacity <span style="color:#e6db74">&#34;1&#34;</span>
-      MaxSize <span style="color:#e6db74">&#34;1&#34;</span>
-      MinSize <span style="color:#e6db74">&#34;1&#34;</span>
-      HealthCheckGracePeriod  <span style="color:#ae81ff">60</span>
-      HealthCheckType <span style="color:#e6db74">&#34;EC2&#34;</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ae81ff">(0..2).each do |i| </span>
+    <span style="color:#ae81ff">name = &#34;autoscaling#{i}&#34;</span>
+    <span style="color:#ae81ff">AutoScaling_AutoScalingGroup(name) {</span>
+      <span style="color:#ae81ff">AutoScalingGroupName &#34;shardingsphere-#{i}&#34; </span>
+      <span style="color:#ae81ff">AvailabilityZones [FnSelect(i, FnGetAZs(Ref(&#34;AWS::Region&#34;)))]</span>
+      <span style="color:#ae81ff">DesiredCapacity &#34;1&#34;</span>
+      <span style="color:#ae81ff">MaxSize &#34;1&#34;</span>
+      <span style="color:#ae81ff">MinSize &#34;1&#34;</span>
+      <span style="color:#ae81ff">HealthCheckGracePeriod  60</span>
+      <span style="color:#ae81ff">HealthCheckType &#34;EC2&#34;</span>
 
-      TargetGroupARNs [ Ref(<span style="color:#e6db74">&#34;sslbtg&#34;</span>)]
+      <span style="color:#ae81ff">TargetGroupARNs [ Ref(&#34;sslbtg&#34;)]</span>
 
-      LaunchTemplate do
-        LaunchTemplateName  FnSub(<span style="color:#e6db74">&#34;shardingsphere-${TMPL_NAME}&#34;</span>, :TMPL_NAME =&gt; FnSelect(i, FnGetAZs(Ref(<span style="color:#e6db74">&#39;AWS::Region&#39;</span>))))
-        Version FnGetAtt(<span style="color:#e6db74">&#34;launchtemplate#{i}&#34;</span>, <span style="color:#e6db74">&#34;LatestVersionNumber&#34;</span>)
-      end
+      <span style="color:#ae81ff">LaunchTemplate do</span>
+        <span style="color:#ae81ff">LaunchTemplateName  FnSub(&#34;shardingsphere-${TMPL_NAME}&#34;, :TMPL_NAME =&gt; FnSelect(i, FnGetAZs(Ref(&#39;AWS::Region&#39;))))</span>
+        <span style="color:#ae81ff">Version FnGetAtt(&#34;launchtemplate#{i}&#34;, &#34;LatestVersionNumber&#34;)</span>
+      <span style="color:#ae81ff">end</span>
     }
-  end
+  <span style="color:#ae81ff">end</span>
 </code></pre></div><h2 id="loadbalancer--listener">LoadBalancer &amp; Listener</h2>
 <p>Create an internal LoadBalancer and Listener for the external service of the ShardingSphere-Proxy cluster.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">ElasticLoadBalancingV2_LoadBalancer(<span style="color:#e6db74">&#34;ssinternallb&#34;</span>) {
-    Name <span style="color:#e6db74">&#34;shardingsphere-internal-lb&#34;</span>
-    Scheme <span style="color:#e6db74">&#34;internal&#34;</span>
-    Type <span style="color:#e6db74">&#34;network&#34;</span>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ae81ff">ElasticLoadBalancingV2_LoadBalancer(&#34;ssinternallb&#34;) {</span>
+    <span style="color:#ae81ff">Name &#34;shardingsphere-internal-lb&#34;</span>
+    <span style="color:#ae81ff">Scheme &#34;internal&#34;</span>
+    <span style="color:#ae81ff">Type &#34;network&#34;</span>
     
-    mappings = (<span style="color:#ae81ff">0</span>..<span style="color:#ae81ff">2</span>).map { |x<span style="color:#e6db74">| 
-</span><span style="color:#e6db74">        SubnetMapping do</span>
-          SubnetId FnSelect(x, Ref(<span style="color:#e6db74">&#34;Subnets&#34;</span>))
-        end
+    <span style="color:#ae81ff">mappings = (0..2).map { |x| </span>
+        <span style="color:#ae81ff">SubnetMapping do</span>
+          <span style="color:#ae81ff">SubnetId FnSelect(x, Ref(&#34;Subnets&#34;))</span>
+        <span style="color:#ae81ff">end</span>
     }
-    SubnetMappings mappings
-    Tags [
-      Tag do
-        Key <span style="color:#e6db74">&#34;Name&#34;</span>
-        Value <span style="color:#e6db74">&#34;shardingsphere&#34;</span>
-      end
+    <span style="color:#ae81ff">SubnetMappings mappings</span>
+    <span style="color:#ae81ff">Tags [</span>
+      <span style="color:#ae81ff">Tag do</span>
+        <span style="color:#ae81ff">Key &#34;Name&#34;</span>
+        <span style="color:#ae81ff">Value &#34;shardingsphere&#34;</span>
+      <span style="color:#ae81ff">end</span>
     ]
   }
   
-  ElasticLoadBalancingV2_Listener(<span style="color:#e6db74">&#34;sslblistener&#34;</span>) {
-    Port Ref(<span style="color:#e6db74">&#34;ShardingSpherePort&#34;</span>)
-    LoadBalancerArn Ref(<span style="color:#e6db74">&#34;ssinternallb&#34;</span>)
-    Protocol <span style="color:#e6db74">&#34;TCP&#34;</span>
-    DefaultActions [
+  <span style="color:#ae81ff">ElasticLoadBalancingV2_Listener(&#34;sslblistener&#34;) {</span>
+    <span style="color:#ae81ff">Port Ref(&#34;ShardingSpherePort&#34;)</span>
+    <span style="color:#ae81ff">LoadBalancerArn Ref(&#34;ssinternallb&#34;)</span>
+    <span style="color:#ae81ff">Protocol &#34;TCP&#34;</span>
+    <span style="color:#ae81ff">DefaultActions [</span>
       {
-        :Type =&gt; <span style="color:#e6db74">&#34;forward&#34;</span>,
-        :TargetGroupArn =&gt; Ref(<span style="color:#e6db74">&#34;sslbtg&#34;</span>)
+        :<span style="color:#ae81ff">Type =&gt; &#34;forward&#34;,</span>
+        :<span style="color:#ae81ff">TargetGroupArn =&gt; Ref(&#34;sslbtg&#34;)</span>
       }
     ]
   }
 </code></pre></div><h2 id="internal-domain-names">Internal Domain Names</h2>
 <p>Finally, we create the internal domain names for the external service of the ShardingSphere-Prxoy cluster. Those domain names point to the internal LoadBalancer.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml">Route53_RecordSet(<span style="color:#e6db74">&#34;ssinternaldomain&#34;</span>) {
-    HostedZoneId Ref(<span style="color:#e6db74">&#34;HostedZoneId&#34;</span>)
-    Name FnSub(<span style="color:#e6db74">&#34;proxy.${HostedZoneName}&#34;</span>)
-    Type <span style="color:#e6db74">&#34;A&#34;</span>
-    AliasTarget do 
-      HostedZoneId FnGetAtt(<span style="color:#e6db74">&#34;ssinternallb&#34;</span>, <span style="color:#e6db74">&#34;CanonicalHostedZoneID&#34;</span>)
-      DNSName FnGetAtt(<span style="color:#e6db74">&#34;ssinternallb&#34;</span>, <span style="color:#e6db74">&#34;DNSName&#34;</span>)
-      EvaluateTargetHealth <span style="color:#66d9ef">true</span>
-    end
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#ae81ff">Route53_RecordSet(&#34;ssinternaldomain&#34;) {</span>
+    <span style="color:#ae81ff">HostedZoneId Ref(&#34;HostedZoneId&#34;)</span>
+    <span style="color:#ae81ff">Name FnSub(&#34;proxy.${HostedZoneName}&#34;)</span>
+    <span style="color:#ae81ff">Type &#34;A&#34;</span>
+    <span style="color:#ae81ff">AliasTarget do </span>
+      <span style="color:#ae81ff">HostedZoneId FnGetAtt(&#34;ssinternallb&#34;, &#34;CanonicalHostedZoneID&#34;)</span>
+      <span style="color:#ae81ff">DNSName FnGetAtt(&#34;ssinternallb&#34;, &#34;DNSName&#34;)</span>
+      <span style="color:#ae81ff">EvaluateTargetHealth true</span>
+    <span style="color:#ae81ff">end</span>
   }
 </code></pre></div><h1 id="deployment">Deployment</h1>
 <p>Use the command <code>cfndsl cf.rb -o cf.json --pretty</code> to generate the final <a href="https://github.com/apache/shardingsphere-on-cloud/blob/main/cloudformation/multi-az/cf.json">configuration</a>.</p>

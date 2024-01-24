@@ -36,7 +36,7 @@
 <a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
 <a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.proxy.backend.context.ProxyContext;
 <a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.proxy.backend.handler.distsql.rdl.rule.database.execute.DatabaseRuleRDLExecuteEngine;
-<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.single.distsql.statement.rdl.UnloadSingleTableStatement;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.single.api.config.SingleRuleConfiguration;
 <a class="jxr_linenumber" name="L32" href="#L32">32</a>  
 <a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
 <a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedHashMap;
@@ -58,7 +58,7 @@
 <a class="jxr_linenumber" name="L50" href="#L50">50</a>          <a name="RuleConfiguration" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> toBeAlteredRuleConfig = executor.buildToBeAlteredRuleConfiguration(sqlStatement);
 <a class="jxr_linenumber" name="L51" href="#L51">51</a>          executor.updateCurrentRuleConfiguration(currentRuleConfig, toBeAlteredRuleConfig);
 <a class="jxr_linenumber" name="L52" href="#L52">52</a>          <a name="ModeContextManager" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/instance/mode/ModeContextManager.html#ModeContextManager">ModeContextManager</a> modeContextManager = ProxyContext.getInstance().getContextManager().getInstanceContext().getModeContextManager();
-<a class="jxr_linenumber" name="L53" href="#L53">53</a>          <strong class="jxr_keyword">if</strong> (sqlStatement instanceof <a name="UnloadSingleTableStatement" href="../../../../../../../../../../../../org/apache/shardingsphere/single/distsql/statement/rdl/UnloadSingleTableStatement.html#UnloadSingleTableStatement">UnloadSingleTableStatement</a>) {
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>          <strong class="jxr_keyword">if</strong> (isSinglePersistNode(currentRuleConfig)) {
 <a class="jxr_linenumber" name="L54" href="#L54">54</a>              <strong class="jxr_keyword">return</strong> modeContextManager.alterRuleConfiguration(database.getName(), decorateRuleConfiguration(database, currentRuleConfig));
 <a class="jxr_linenumber" name="L55" href="#L55">55</a>          }
 <a class="jxr_linenumber" name="L56" href="#L56">56</a>          <a name="RuleConfiguration" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> toBeDroppedRuleConfig = executor.buildToBeDroppedRuleConfiguration(currentRuleConfig, toBeAlteredRuleConfig);
@@ -66,14 +66,18 @@
 <a class="jxr_linenumber" name="L58" href="#L58">58</a>          <strong class="jxr_keyword">return</strong> modeContextManager.alterRuleConfiguration(database.getName(), toBeAlteredRuleConfig);
 <a class="jxr_linenumber" name="L59" href="#L59">59</a>      }
 <a class="jxr_linenumber" name="L60" href="#L60">60</a>      
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>      @SuppressWarnings(<span class="jxr_string">"unchecked"</span>)
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>      <strong class="jxr_keyword">private</strong> <a name="RuleConfiguration" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> decorateRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig) {
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>          <strong class="jxr_keyword">return</strong> TypedSPILoader.findService(RuleConfigurationDecorator.<strong class="jxr_keyword">class</strong>, ruleConfig.getClass()).map(optional -&gt; optional.decorate(database.getName(),
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>                  database.getResourceMetaData().getStorageUnits().entrySet().stream()
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>                          .collect(Collectors.toMap(Entry::getKey, entry -&gt; entry.getValue().getDataSource(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::<strong class="jxr_keyword">new</strong>)),
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>                  database.getRuleMetaData().getRules(), ruleConfig)).orElse(ruleConfig);
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>      }
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>  }
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> isSinglePersistNode(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>          <strong class="jxr_keyword">return</strong> currentRuleConfig instanceof SingleRuleConfiguration;
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>      }
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>      
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>      @SuppressWarnings(<span class="jxr_string">"unchecked"</span>)
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>      <strong class="jxr_keyword">private</strong> <a name="RuleConfiguration" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> decorateRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig) {
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>          <strong class="jxr_keyword">return</strong> TypedSPILoader.findService(RuleConfigurationDecorator.<strong class="jxr_keyword">class</strong>, ruleConfig.getClass()).map(optional -&gt; optional.decorate(database.getName(),
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>                  database.getResourceMetaData().getStorageUnits().entrySet().stream()
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>                          .collect(Collectors.toMap(Entry::getKey, entry -&gt; entry.getValue().getDataSource(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::<strong class="jxr_keyword">new</strong>)),
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>                  database.getRuleMetaData().getRules(), ruleConfig)).orElse(ruleConfig);
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>      }
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

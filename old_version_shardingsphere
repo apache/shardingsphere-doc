@@ -1,129 +1,45 @@
-commit 2133c77a958efd45b5c2d6bd39516884a69a21c7
+commit 8646c49de58b01f49efbd334bf99e5b2adc2c8b1
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon Jan 29 21:57:22 2024 +0800
+Date:   Tue Jan 30 12:15:20 2024 +0800
 
-    Add ClasspathURLProvider implementation that reads environment variables (#29907)
-    
-    * Add ClasspathURLProvider implementation that reads environment variables
-    
-    * small refactoring
+    Add AbsolutePathURLProvider implementation that reads environment variables (#29909)
 
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
-index 6040b0e45b2..5070252bdc6 100644
+index 5070252bdc6..5e708f028e3 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
-@@ -13,7 +13,7 @@ chapter = true
- 在解析并加载 YAML 文件为 ShardingSphere 的元数据后，
- 会再次通过[模式配置](../../../java-api/mode)的相关配置决定下一步行为。讨论两种情况：
- 1. 元数据持久化仓库中不存在 ShardingSphere 的元数据，本地元数据将被存储到元数据持久化仓库。
--2. 元数据持久化仓库中已存在与本地元数据不同的 ShardingSphere 的元数据，本地元数据将被元数据持久化仓库的元数据覆盖。
-+2. 元数据持久化仓库中已存在 ShardingSphere 的元数据，无论是否与本地元数据相同，本地元数据将被元数据持久化仓库的元数据覆盖。
- 
- 对元数据持久化仓库的配置需参考[元数据持久化仓库](../../../../common-config/builtin-algorithm/metadata-repository)。
- 
-@@ -33,5 +33,42 @@ chapter = true
+@@ -70,5 +70,14 @@ ds_1:
  用例：
- - `jdbc:shardingsphere:absolutepath:/path/to/config.yaml`
+ - `jdbc:shardingsphere:classpath-environment:config.yaml`
  
-+### 从类路径中加载包含环境变量的配置文件
++### 从绝对路径中加载包含环境变量的配置文件
 +
-+加载 classpath 中包含环境变量的 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:classpath-environment:` 前缀识别。
-+配置文件为 `xxx.yaml`，配置文件格式与 [YAML 配置](../../../yaml-config)基本一致。
-+在涉及的 YAML 文件中，允许通过环境变量设置特定YAML属性的值，并配置可选的默认值。这常用于 Docker Image 的部署场景。
-+环境变量的名称和其可选的默认值通过`::`分割，在最外层通过`$${`和`}`包裹。
-+
-+讨论两种情况。
-+1. 当对应的环境变量不存在时，此 YAML 属性的值将被设置为`::`右侧的默认值。
-+2. 当对应的环境变量和`::`右侧的默认值均不存在时，此属性将被设置为空。
-+
-+假设存在以下一组环境变量，
-+1. 存在环境变量`FIXTURE_JDBC_URL`为`jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL`。
-+2. 存在环境变量`FIXTURE_USERNAME`为`sa`。
-+
-+则对于以下 YAML 文件的截取片段，
-+```yaml
-+ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: $${FIXTURE_DRIVER_CLASS_NAME::org.h2.Driver}
-+    jdbcUrl: $${FIXTURE_JDBC_URL::jdbc:h2:mem:foo_ds_do_not_use}
-+    username: $${FIXTURE_USERNAME::}
-+    password: $${FIXTURE_PASSWORD::}
-+```
-+此 YAML 截取片段将被解析为，
-+```yaml
-+ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.h2.Driver
-+    jdbcUrl: jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL
-+    username: sa
-+    password:
-+```
++加载绝对路径中包含环境变量的 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:absolutepath-environment:` 前缀识别。
++配置文件为 `xxx.yaml`，配置文件格式与`jdbc:shardingsphere:classpath-environment:`一致。
++与 `jdbc:shardingsphere:classpath-environment:` 的区别仅在于 YAML 文件的加载位置。
 +
 +用例：
-+- `jdbc:shardingsphere:classpath-environment:config.yaml`
++- `jdbc:shardingsphere:absolutepath-environment:/path/to/config.yaml`
 +
  ### 其他实现
  具体可参考 https://github.com/apache/shardingsphere-plugin 。
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
-index a78f2579e2d..08bdcc9b49f 100644
+index 08bdcc9b49f..f896c247342 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
-@@ -12,10 +12,11 @@ allows YAML configuration files to be fetched from multiple sources and File Sys
- 
- After parsing and loading the YAML file into ShardingSphere's metadata,
- The next behavior will be determined again through the relevant configuration of [Mode Configuration](../../../java-api/mode). Discuss two situations:
--1. ShardingSphere’s metadata does not exist in the metadata persistence warehouse, and local metadata will be stored in the metadata persistence warehouse.
--2. Metadata of ShardingSphere that is different from local metadata already exists in the metadata persistence warehouse, and the local metadata will be overwritten by the metadata of the metadata persistence warehouse.
-+1. ShardingSphere’s metadata does not exist in the metadata repository, and local metadata will be stored in the metadata repository.
-+2. ShardingSphere’s metadata already exists in the metadata repository, regardless of whether it is the same as the local metadata, 
-+the local metadata will be overwritten by the metadata of the metadata repository.
- 
--For the configuration of the metadata persistence warehouse, please refer to [Metadata Persistence Warehouse](../../../../common-config/builtin-algorithm/metadata-repository).
-+For the configuration of the metadata repository, please refer to [Metadata Repository](../../../../common-config/builtin-algorithm/metadata-repository).
- 
- ## URL configuration
- 
-@@ -33,5 +34,43 @@ The configuration file is `xxx.yaml`, and the configuration file format is consi
+@@ -72,5 +72,15 @@ ds_1:
  Example:
- - `jdbc:shardingsphere:absolutepath:/path/to/config.yaml`
+ - `jdbc:shardingsphere:classpath-environment:config.yaml`
  
-+### Load configuration file containing environment variables from classpath
++### Load configuration file containing environment variables from absolute path
 +
-+JDBC URL to load the config.yaml configuration file that contains environment variables in classpath, identified by the `jdbc:shardingsphere:classpath-environment:` prefix.
-+The configuration file is `xxx.yaml`, and the configuration file format is basically the same as [YAML configuration](../../../yaml-config).
-+Allows setting the value of specific YAML properties via environment variables and configuring optional default values in the involved YAML files. 
-+This is commonly used in Docker Image deployment scenarios.
-+The name of an environment variable and its optional default value are separated by `::` and wrapped in the outermost layer by `$${` and `}`.
-+
-+Discuss two situations.
-+1. When the corresponding environment variable does not exist, the value of this YAML attribute will be set to the default value on the right side of `::`.
-+2. When the corresponding environment variable and the default value on the right side of `::` do not exist, this property will be set to empty.
-+
-+Assume that the following set of environment variables exists,
-+1. The existing environment variable `FIXTURE_JDBC_URL` is `jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL`.
-+2. The existing environment variable `FIXTURE_USERNAME` is `sa`.
-+
-+Then for the intercepted fragment of the following YAML file,
-+```yaml
-+ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: $${FIXTURE_DRIVER_CLASS_NAME::org.h2.Driver}
-+    jdbcUrl: $${FIXTURE_JDBC_URL::jdbc:h2:mem:foo_ds_do_not_use}
-+    username: $${FIXTURE_USERNAME::}
-+    password: $${FIXTURE_PASSWORD::}
-+```
-+This YAML snippet will be parsed as,
-+```yaml
-+ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.h2.Driver
-+    jdbcUrl: jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL
-+    username: sa
-+    password:
-+```
++JDBC URL to load the config.yaml configuration file that contains environment variables in absolute path, 
++identified by the `jdbc:shardingsphere:absolutepath-environment:` prefix.
++The configuration file is `xxx.yaml`, and the configuration file format is consistent with `jdbc:shardingsphere:classpath-environment:`.
++The difference from `jdbc:shardingsphere:classpath-environment:` is only where the YAML file is loaded.
 +
 +Example:
-+- `jdbc:shardingsphere:classpath-environment:config.yaml`
++- `jdbc:shardingsphere:absolutepath-environment:/path/to/config.yaml`
 +
  ### Other implementations
  For details, please refer to https://github.com/apache/shardingsphere-plugin .

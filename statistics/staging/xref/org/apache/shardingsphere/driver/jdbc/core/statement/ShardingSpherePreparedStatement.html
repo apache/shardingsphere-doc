@@ -690,86 +690,90 @@
 <a class="jxr_linenumber" name="L682" href="#L682">682</a>         }
 <a class="jxr_linenumber" name="L683" href="#L683">683</a>         <strong class="jxr_keyword">try</strong> {
 <a class="jxr_linenumber" name="L684" href="#L684">684</a>             <em class="jxr_comment">// TODO add raw SQL executor</em>
-<a class="jxr_linenumber" name="L685" href="#L685">685</a>             initBatchPreparedStatementExecutor();
-<a class="jxr_linenumber" name="L686" href="#L686">686</a>             <strong class="jxr_keyword">int</strong>[] results = batchPreparedStatementExecutor.executeBatch(executionContext.getSqlStatementContext());
-<a class="jxr_linenumber" name="L687" href="#L687">687</a>             <strong class="jxr_keyword">if</strong> (statementOption.isReturnGeneratedKeys() &amp;&amp; generatedValues.isEmpty()) {
-<a class="jxr_linenumber" name="L688" href="#L688">688</a>                 List&lt;Statement&gt; batchPreparedStatementExecutorStatements = batchPreparedStatementExecutor.getStatements();
-<a class="jxr_linenumber" name="L689" href="#L689">689</a>                 <strong class="jxr_keyword">for</strong> (Statement statement : batchPreparedStatementExecutorStatements) {
-<a class="jxr_linenumber" name="L690" href="#L690">690</a>                     statements.add((PreparedStatement) statement);
-<a class="jxr_linenumber" name="L691" href="#L691">691</a>                 }
-<a class="jxr_linenumber" name="L692" href="#L692">692</a>                 currentBatchGeneratedKeysResultSet = getGeneratedKeys();
-<a class="jxr_linenumber" name="L693" href="#L693">693</a>                 statements.clear();
-<a class="jxr_linenumber" name="L694" href="#L694">694</a>             }
-<a class="jxr_linenumber" name="L695" href="#L695">695</a>             <strong class="jxr_keyword">return</strong> results;
-<a class="jxr_linenumber" name="L696" href="#L696">696</a>             <em class="jxr_comment">// CHECKSTYLE:OFF</em>
-<a class="jxr_linenumber" name="L697" href="#L697">697</a>         } <strong class="jxr_keyword">catch</strong> (<strong class="jxr_keyword">final</strong> RuntimeException ex) {
-<a class="jxr_linenumber" name="L698" href="#L698">698</a>             <em class="jxr_comment">// CHECKSTYLE:ON</em>
-<a class="jxr_linenumber" name="L699" href="#L699">699</a>             handleExceptionInTransaction(connection, metaDataContexts);
-<a class="jxr_linenumber" name="L700" href="#L700">700</a>             <strong class="jxr_keyword">throw</strong> SQLExceptionTransformEngine.toSQLException(ex, metaDataContexts.getMetaData().getDatabase(databaseName).getProtocolType());
-<a class="jxr_linenumber" name="L701" href="#L701">701</a>         } <strong class="jxr_keyword">finally</strong> {
-<a class="jxr_linenumber" name="L702" href="#L702">702</a>             clearBatch();
-<a class="jxr_linenumber" name="L703" href="#L703">703</a>         }
-<a class="jxr_linenumber" name="L704" href="#L704">704</a>     }
-<a class="jxr_linenumber" name="L705" href="#L705">705</a>     
-<a class="jxr_linenumber" name="L706" href="#L706">706</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> initBatchPreparedStatementExecutor() <strong class="jxr_keyword">throws</strong> SQLException {
-<a class="jxr_linenumber" name="L707" href="#L707">707</a>         DriverExecutionPrepareEngine&lt;JDBCExecutionUnit, Connection&gt; prepareEngine = <strong class="jxr_keyword">new</strong> DriverExecutionPrepareEngine&lt;&gt;(JDBCDriverType.PREPARED_STATEMENT, metaDataContexts.getMetaData().getProps()
-<a class="jxr_linenumber" name="L708" href="#L708">708</a>                 .&lt;Integer&gt;getValue(ConfigurationPropertyKey.MAX_CONNECTIONS_SIZE_PER_QUERY), connection.getDatabaseConnectionManager(), statementManager, statementOption,
-<a class="jxr_linenumber" name="L709" href="#L709">709</a>                 metaDataContexts.getMetaData().getDatabase(databaseName).getRuleMetaData().getRules(),
-<a class="jxr_linenumber" name="L710" href="#L710">710</a>                 metaDataContexts.getMetaData().getDatabase(databaseName).getResourceMetaData().getStorageUnits());
-<a class="jxr_linenumber" name="L711" href="#L711">711</a>         List&lt;ExecutionUnit&gt; executionUnits = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(batchPreparedStatementExecutor.getBatchExecutionUnits().size());
-<a class="jxr_linenumber" name="L712" href="#L712">712</a>         <strong class="jxr_keyword">for</strong> (<a name="BatchExecutionUnit" href="../../../../../../../org/apache/shardingsphere/driver/executor/batch/BatchExecutionUnit.html#BatchExecutionUnit">BatchExecutionUnit</a> each : batchPreparedStatementExecutor.getBatchExecutionUnits()) {
-<a class="jxr_linenumber" name="L713" href="#L713">713</a>             <a name="ExecutionUnit" href="../../../../../../../org/apache/shardingsphere/infra/executor/sql/context/ExecutionUnit.html#ExecutionUnit">ExecutionUnit</a> executionUnit = each.getExecutionUnit();
-<a class="jxr_linenumber" name="L714" href="#L714">714</a>             executionUnits.add(executionUnit);
-<a class="jxr_linenumber" name="L715" href="#L715">715</a>         }
-<a class="jxr_linenumber" name="L716" href="#L716">716</a>         batchPreparedStatementExecutor.init(prepareEngine.prepare(executionContext.getRouteContext(), executionUnits, <strong class="jxr_keyword">new</strong> <a name="ExecutionGroupReportContext" href="../../../../../../../org/apache/shardingsphere/infra/executor/kernel/model/ExecutionGroupReportContext.html#ExecutionGroupReportContext">ExecutionGroupReportContext</a>(databaseName)));
-<a class="jxr_linenumber" name="L717" href="#L717">717</a>         setBatchParametersForStatements();
-<a class="jxr_linenumber" name="L718" href="#L718">718</a>     }
-<a class="jxr_linenumber" name="L719" href="#L719">719</a>     
-<a class="jxr_linenumber" name="L720" href="#L720">720</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> setBatchParametersForStatements() <strong class="jxr_keyword">throws</strong> SQLException {
-<a class="jxr_linenumber" name="L721" href="#L721">721</a>         <strong class="jxr_keyword">for</strong> (Statement each : batchPreparedStatementExecutor.getStatements()) {
-<a class="jxr_linenumber" name="L722" href="#L722">722</a>             List&lt;List&lt;Object&gt;&gt; paramSet = batchPreparedStatementExecutor.getParameterSet(each);
-<a class="jxr_linenumber" name="L723" href="#L723">723</a>             <strong class="jxr_keyword">for</strong> (List&lt;Object&gt; eachParams : paramSet) {
-<a class="jxr_linenumber" name="L724" href="#L724">724</a>                 replaySetParameter((PreparedStatement) each, eachParams);
-<a class="jxr_linenumber" name="L725" href="#L725">725</a>                 ((PreparedStatement) each).addBatch();
-<a class="jxr_linenumber" name="L726" href="#L726">726</a>             }
-<a class="jxr_linenumber" name="L727" href="#L727">727</a>         }
-<a class="jxr_linenumber" name="L728" href="#L728">728</a>     }
-<a class="jxr_linenumber" name="L729" href="#L729">729</a>     
-<a class="jxr_linenumber" name="L730" href="#L730">730</a>     @Override
-<a class="jxr_linenumber" name="L731" href="#L731">731</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> clearBatch() {
-<a class="jxr_linenumber" name="L732" href="#L732">732</a>         currentResultSet = <strong class="jxr_keyword">null</strong>;
-<a class="jxr_linenumber" name="L733" href="#L733">733</a>         batchPreparedStatementExecutor.clear();
-<a class="jxr_linenumber" name="L734" href="#L734">734</a>         clearParameters();
-<a class="jxr_linenumber" name="L735" href="#L735">735</a>     }
-<a class="jxr_linenumber" name="L736" href="#L736">736</a>     
-<a class="jxr_linenumber" name="L737" href="#L737">737</a>     @SuppressWarnings(<span class="jxr_string">"MagicConstant"</span>)
-<a class="jxr_linenumber" name="L738" href="#L738">738</a>     @Override
-<a class="jxr_linenumber" name="L739" href="#L739">739</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">int</strong> getResultSetType() {
-<a class="jxr_linenumber" name="L740" href="#L740">740</a>         <strong class="jxr_keyword">return</strong> statementOption.getResultSetType();
-<a class="jxr_linenumber" name="L741" href="#L741">741</a>     }
-<a class="jxr_linenumber" name="L742" href="#L742">742</a>     
-<a class="jxr_linenumber" name="L743" href="#L743">743</a>     @SuppressWarnings(<span class="jxr_string">"MagicConstant"</span>)
-<a class="jxr_linenumber" name="L744" href="#L744">744</a>     @Override
-<a class="jxr_linenumber" name="L745" href="#L745">745</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">int</strong> getResultSetConcurrency() {
-<a class="jxr_linenumber" name="L746" href="#L746">746</a>         <strong class="jxr_keyword">return</strong> statementOption.getResultSetConcurrency();
-<a class="jxr_linenumber" name="L747" href="#L747">747</a>     }
-<a class="jxr_linenumber" name="L748" href="#L748">748</a>     
-<a class="jxr_linenumber" name="L749" href="#L749">749</a>     @Override
-<a class="jxr_linenumber" name="L750" href="#L750">750</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">int</strong> getResultSetHoldability() {
-<a class="jxr_linenumber" name="L751" href="#L751">751</a>         <strong class="jxr_keyword">return</strong> statementOption.getResultSetHoldability();
-<a class="jxr_linenumber" name="L752" href="#L752">752</a>     }
-<a class="jxr_linenumber" name="L753" href="#L753">753</a>     
-<a class="jxr_linenumber" name="L754" href="#L754">754</a>     @Override
-<a class="jxr_linenumber" name="L755" href="#L755">755</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">boolean</strong> isAccumulate() {
-<a class="jxr_linenumber" name="L756" href="#L756">756</a>         <strong class="jxr_keyword">return</strong> metaDataContexts.getMetaData().getDatabase(databaseName).getRuleMetaData().findRules(DataNodeContainedRule.<strong class="jxr_keyword">class</strong>).stream()
-<a class="jxr_linenumber" name="L757" href="#L757">757</a>                 .anyMatch(each -&gt; each.isNeedAccumulate(executionContext.getSqlStatementContext().getTablesContext().getTableNames()));
-<a class="jxr_linenumber" name="L758" href="#L758">758</a>     }
-<a class="jxr_linenumber" name="L759" href="#L759">759</a>     
-<a class="jxr_linenumber" name="L760" href="#L760">760</a>     @Override
-<a class="jxr_linenumber" name="L761" href="#L761">761</a>     <strong class="jxr_keyword">public</strong> Collection&lt;PreparedStatement&gt; getRoutedStatements() {
-<a class="jxr_linenumber" name="L762" href="#L762">762</a>         <strong class="jxr_keyword">return</strong> statements;
-<a class="jxr_linenumber" name="L763" href="#L763">763</a>     }
-<a class="jxr_linenumber" name="L764" href="#L764">764</a> }
+<a class="jxr_linenumber" name="L685" href="#L685">685</a>             <strong class="jxr_keyword">return</strong> doExecuteBatch(batchPreparedStatementExecutor);
+<a class="jxr_linenumber" name="L686" href="#L686">686</a>             <em class="jxr_comment">// CHECKSTYLE:OFF</em>
+<a class="jxr_linenumber" name="L687" href="#L687">687</a>         } <strong class="jxr_keyword">catch</strong> (<strong class="jxr_keyword">final</strong> RuntimeException ex) {
+<a class="jxr_linenumber" name="L688" href="#L688">688</a>             <em class="jxr_comment">// CHECKSTYLE:ON</em>
+<a class="jxr_linenumber" name="L689" href="#L689">689</a>             handleExceptionInTransaction(connection, metaDataContexts);
+<a class="jxr_linenumber" name="L690" href="#L690">690</a>             <strong class="jxr_keyword">throw</strong> SQLExceptionTransformEngine.toSQLException(ex, metaDataContexts.getMetaData().getDatabase(databaseName).getProtocolType());
+<a class="jxr_linenumber" name="L691" href="#L691">691</a>         } <strong class="jxr_keyword">finally</strong> {
+<a class="jxr_linenumber" name="L692" href="#L692">692</a>             clearBatch();
+<a class="jxr_linenumber" name="L693" href="#L693">693</a>         }
+<a class="jxr_linenumber" name="L694" href="#L694">694</a>     }
+<a class="jxr_linenumber" name="L695" href="#L695">695</a>     
+<a class="jxr_linenumber" name="L696" href="#L696">696</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong>[] doExecuteBatch(<strong class="jxr_keyword">final</strong> <a name="BatchPreparedStatementExecutor" href="../../../../../../../org/apache/shardingsphere/driver/executor/batch/BatchPreparedStatementExecutor.html#BatchPreparedStatementExecutor">BatchPreparedStatementExecutor</a> batchExecutor) <strong class="jxr_keyword">throws</strong> SQLException {
+<a class="jxr_linenumber" name="L697" href="#L697">697</a>         initBatchPreparedStatementExecutor(batchExecutor);
+<a class="jxr_linenumber" name="L698" href="#L698">698</a>         <strong class="jxr_keyword">int</strong>[] result = batchExecutor.executeBatch(executionContext.getSqlStatementContext());
+<a class="jxr_linenumber" name="L699" href="#L699">699</a>         <strong class="jxr_keyword">if</strong> (statementOption.isReturnGeneratedKeys() &amp;&amp; generatedValues.isEmpty()) {
+<a class="jxr_linenumber" name="L700" href="#L700">700</a>             List&lt;Statement&gt; batchPreparedStatementExecutorStatements = batchExecutor.getStatements();
+<a class="jxr_linenumber" name="L701" href="#L701">701</a>             <strong class="jxr_keyword">for</strong> (Statement statement : batchPreparedStatementExecutorStatements) {
+<a class="jxr_linenumber" name="L702" href="#L702">702</a>                 statements.add((PreparedStatement) statement);
+<a class="jxr_linenumber" name="L703" href="#L703">703</a>             }
+<a class="jxr_linenumber" name="L704" href="#L704">704</a>             currentBatchGeneratedKeysResultSet = getGeneratedKeys();
+<a class="jxr_linenumber" name="L705" href="#L705">705</a>             statements.clear();
+<a class="jxr_linenumber" name="L706" href="#L706">706</a>         }
+<a class="jxr_linenumber" name="L707" href="#L707">707</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L708" href="#L708">708</a>     }
+<a class="jxr_linenumber" name="L709" href="#L709">709</a>     
+<a class="jxr_linenumber" name="L710" href="#L710">710</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> initBatchPreparedStatementExecutor(<strong class="jxr_keyword">final</strong> <a name="BatchPreparedStatementExecutor" href="../../../../../../../org/apache/shardingsphere/driver/executor/batch/BatchPreparedStatementExecutor.html#BatchPreparedStatementExecutor">BatchPreparedStatementExecutor</a> batchExecutor) <strong class="jxr_keyword">throws</strong> SQLException {
+<a class="jxr_linenumber" name="L711" href="#L711">711</a>         DriverExecutionPrepareEngine&lt;JDBCExecutionUnit, Connection&gt; prepareEngine = <strong class="jxr_keyword">new</strong> DriverExecutionPrepareEngine&lt;&gt;(JDBCDriverType.PREPARED_STATEMENT, metaDataContexts.getMetaData().getProps()
+<a class="jxr_linenumber" name="L712" href="#L712">712</a>                 .&lt;Integer&gt;getValue(ConfigurationPropertyKey.MAX_CONNECTIONS_SIZE_PER_QUERY), connection.getDatabaseConnectionManager(), statementManager, statementOption,
+<a class="jxr_linenumber" name="L713" href="#L713">713</a>                 metaDataContexts.getMetaData().getDatabase(databaseName).getRuleMetaData().getRules(),
+<a class="jxr_linenumber" name="L714" href="#L714">714</a>                 metaDataContexts.getMetaData().getDatabase(databaseName).getResourceMetaData().getStorageUnits());
+<a class="jxr_linenumber" name="L715" href="#L715">715</a>         List&lt;ExecutionUnit&gt; executionUnits = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(batchExecutor.getBatchExecutionUnits().size());
+<a class="jxr_linenumber" name="L716" href="#L716">716</a>         <strong class="jxr_keyword">for</strong> (<a name="BatchExecutionUnit" href="../../../../../../../org/apache/shardingsphere/driver/executor/batch/BatchExecutionUnit.html#BatchExecutionUnit">BatchExecutionUnit</a> each : batchExecutor.getBatchExecutionUnits()) {
+<a class="jxr_linenumber" name="L717" href="#L717">717</a>             <a name="ExecutionUnit" href="../../../../../../../org/apache/shardingsphere/infra/executor/sql/context/ExecutionUnit.html#ExecutionUnit">ExecutionUnit</a> executionUnit = each.getExecutionUnit();
+<a class="jxr_linenumber" name="L718" href="#L718">718</a>             executionUnits.add(executionUnit);
+<a class="jxr_linenumber" name="L719" href="#L719">719</a>         }
+<a class="jxr_linenumber" name="L720" href="#L720">720</a>         batchExecutor.init(prepareEngine.prepare(executionContext.getRouteContext(), executionUnits, <strong class="jxr_keyword">new</strong> <a name="ExecutionGroupReportContext" href="../../../../../../../org/apache/shardingsphere/infra/executor/kernel/model/ExecutionGroupReportContext.html#ExecutionGroupReportContext">ExecutionGroupReportContext</a>(databaseName)));
+<a class="jxr_linenumber" name="L721" href="#L721">721</a>         setBatchParametersForStatements(batchExecutor);
+<a class="jxr_linenumber" name="L722" href="#L722">722</a>     }
+<a class="jxr_linenumber" name="L723" href="#L723">723</a>     
+<a class="jxr_linenumber" name="L724" href="#L724">724</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> setBatchParametersForStatements(<strong class="jxr_keyword">final</strong> <a name="BatchPreparedStatementExecutor" href="../../../../../../../org/apache/shardingsphere/driver/executor/batch/BatchPreparedStatementExecutor.html#BatchPreparedStatementExecutor">BatchPreparedStatementExecutor</a> batchExecutor) <strong class="jxr_keyword">throws</strong> SQLException {
+<a class="jxr_linenumber" name="L725" href="#L725">725</a>         <strong class="jxr_keyword">for</strong> (Statement each : batchExecutor.getStatements()) {
+<a class="jxr_linenumber" name="L726" href="#L726">726</a>             List&lt;List&lt;Object&gt;&gt; paramSet = batchExecutor.getParameterSet(each);
+<a class="jxr_linenumber" name="L727" href="#L727">727</a>             <strong class="jxr_keyword">for</strong> (List&lt;Object&gt; eachParams : paramSet) {
+<a class="jxr_linenumber" name="L728" href="#L728">728</a>                 replaySetParameter((PreparedStatement) each, eachParams);
+<a class="jxr_linenumber" name="L729" href="#L729">729</a>                 ((PreparedStatement) each).addBatch();
+<a class="jxr_linenumber" name="L730" href="#L730">730</a>             }
+<a class="jxr_linenumber" name="L731" href="#L731">731</a>         }
+<a class="jxr_linenumber" name="L732" href="#L732">732</a>     }
+<a class="jxr_linenumber" name="L733" href="#L733">733</a>     
+<a class="jxr_linenumber" name="L734" href="#L734">734</a>     @Override
+<a class="jxr_linenumber" name="L735" href="#L735">735</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> clearBatch() {
+<a class="jxr_linenumber" name="L736" href="#L736">736</a>         currentResultSet = <strong class="jxr_keyword">null</strong>;
+<a class="jxr_linenumber" name="L737" href="#L737">737</a>         batchPreparedStatementExecutor.clear();
+<a class="jxr_linenumber" name="L738" href="#L738">738</a>         clearParameters();
+<a class="jxr_linenumber" name="L739" href="#L739">739</a>     }
+<a class="jxr_linenumber" name="L740" href="#L740">740</a>     
+<a class="jxr_linenumber" name="L741" href="#L741">741</a>     @SuppressWarnings(<span class="jxr_string">"MagicConstant"</span>)
+<a class="jxr_linenumber" name="L742" href="#L742">742</a>     @Override
+<a class="jxr_linenumber" name="L743" href="#L743">743</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">int</strong> getResultSetType() {
+<a class="jxr_linenumber" name="L744" href="#L744">744</a>         <strong class="jxr_keyword">return</strong> statementOption.getResultSetType();
+<a class="jxr_linenumber" name="L745" href="#L745">745</a>     }
+<a class="jxr_linenumber" name="L746" href="#L746">746</a>     
+<a class="jxr_linenumber" name="L747" href="#L747">747</a>     @SuppressWarnings(<span class="jxr_string">"MagicConstant"</span>)
+<a class="jxr_linenumber" name="L748" href="#L748">748</a>     @Override
+<a class="jxr_linenumber" name="L749" href="#L749">749</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">int</strong> getResultSetConcurrency() {
+<a class="jxr_linenumber" name="L750" href="#L750">750</a>         <strong class="jxr_keyword">return</strong> statementOption.getResultSetConcurrency();
+<a class="jxr_linenumber" name="L751" href="#L751">751</a>     }
+<a class="jxr_linenumber" name="L752" href="#L752">752</a>     
+<a class="jxr_linenumber" name="L753" href="#L753">753</a>     @Override
+<a class="jxr_linenumber" name="L754" href="#L754">754</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">int</strong> getResultSetHoldability() {
+<a class="jxr_linenumber" name="L755" href="#L755">755</a>         <strong class="jxr_keyword">return</strong> statementOption.getResultSetHoldability();
+<a class="jxr_linenumber" name="L756" href="#L756">756</a>     }
+<a class="jxr_linenumber" name="L757" href="#L757">757</a>     
+<a class="jxr_linenumber" name="L758" href="#L758">758</a>     @Override
+<a class="jxr_linenumber" name="L759" href="#L759">759</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">boolean</strong> isAccumulate() {
+<a class="jxr_linenumber" name="L760" href="#L760">760</a>         <strong class="jxr_keyword">return</strong> metaDataContexts.getMetaData().getDatabase(databaseName).getRuleMetaData().findRules(DataNodeContainedRule.<strong class="jxr_keyword">class</strong>).stream()
+<a class="jxr_linenumber" name="L761" href="#L761">761</a>                 .anyMatch(each -&gt; each.isNeedAccumulate(executionContext.getSqlStatementContext().getTablesContext().getTableNames()));
+<a class="jxr_linenumber" name="L762" href="#L762">762</a>     }
+<a class="jxr_linenumber" name="L763" href="#L763">763</a>     
+<a class="jxr_linenumber" name="L764" href="#L764">764</a>     @Override
+<a class="jxr_linenumber" name="L765" href="#L765">765</a>     <strong class="jxr_keyword">public</strong> Collection&lt;PreparedStatement&gt; getRoutedStatements() {
+<a class="jxr_linenumber" name="L766" href="#L766">766</a>         <strong class="jxr_keyword">return</strong> statements;
+<a class="jxr_linenumber" name="L767" href="#L767">767</a>     }
+<a class="jxr_linenumber" name="L768" href="#L768">768</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

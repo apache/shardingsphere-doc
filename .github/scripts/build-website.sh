@@ -48,11 +48,11 @@ if [ ${#TAGS} -gt 0 ] ; then
       if [ ! -d ../document/$tag ] ; then
         count=1
         dir=$tag
+        set -e
         env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
           HUGO_PARAMS_EDITURL="" \
-          set -e
           bash docs/build.sh
-          set +e
+        set +e
         find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
         mv docs/target/document/current/ ../document/$dir
       fi
@@ -204,11 +204,11 @@ if [ ${#TAGS} -gt 0 ] ; then
       if [ ! -d ../oncloud/$tag ] ; then
         count=1
         dir=$tag
+        set -e
         env HUGO_BASEURL="https://shardingsphere.apache.org/oncloud/$dir/" \
           HUGO_PARAMS_EDITURL="" \
-          set -e
           bash docs/build.sh
-          set +e
+        set +e
         find docs/target/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/current|<option id="\1" value="/'$dir'|g' {} \;
         mv docs/target/current/ ../oncloud/$dir
       fi

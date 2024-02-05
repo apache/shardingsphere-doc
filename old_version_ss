@@ -1,159 +1,134 @@
-commit 68c07e1a1b05b450a7ce71026afc29fda73645ac
+commit 235c3fb7cfba115ba2b34c7d7149088c5a392601
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon Feb 5 12:43:52 2024 +0800
+Date:   Mon Feb 5 16:27:16 2024 +0800
 
-    Add ClasspathURLProvider implementation that reads system properties (#29995)
-    
-    * Add ClasspathURLProvider implementation that reads system properties
-    
-    * Small refactoring
+    Avoid using hardcoded ports in nativeTest (#30003)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
-index 5e708f028e3..b104066ad03 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
-@@ -79,5 +79,68 @@ ds_1:
- 用例：
- - `jdbc:shardingsphere:absolutepath-environment:/path/to/config.yaml`
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+index 997ec74af48..f70c8a456f5 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+@@ -37,15 +37,12 @@ ShardingSphere JDBC 要求在如下或更高版本的 `GraalVM CE` 完成构建
+             <plugin>
+                 <groupId>org.graalvm.buildtools</groupId>
+                 <artifactId>native-maven-plugin</artifactId>
+-                <version>0.9.28</version>
++                <version>0.10.0</version>
+                 <extensions>true</extensions>
+                 <configuration>
+                     <buildArgs>
+                         <buildArg>-H:+AddAllCharsets</buildArg>
+                     </buildArgs>
+-                    <metadataRepository>
+-                        <enabled>true</enabled>
+-                    </metadataRepository>
+                 </configuration>
+                 <executions>
+                     <execution>
+@@ -76,7 +73,7 @@ ShardingSphere JDBC 要求在如下或更高版本的 `GraalVM CE` 完成构建
  
-+### 从类路径中加载包含系统属性的配置文件
-+
-+加载类路径中包含系统属性的 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:classpath-system-props:` 前缀识别。
-+配置文件为 `xxx.yaml`，配置文件格式与`jdbc:shardingsphere:classpath-environment:`一致。
-+与 `jdbc:shardingsphere:classpath-environment:` 的区别仅在于读取属性值的位置。
-+
-+假设存在以下一组系统属性，
-+
-+1. 存在系统属性`fixture.config.driver.jdbc-url`为`jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL`。
-+2. 存在系统属性`fixture.config.driver.username`为`sa`。
-+
-+则对于以下 YAML 文件的截取片段，
-+
-+```yaml
-+ds_1:
-+  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+  driverClassName: $${fixture.config.driver.driver-class-name::org.h2.Driver}
-+  jdbcUrl: $${fixture.config.driver.jdbc-url::jdbc:h2:mem:foo_ds_do_not_use}
-+  username: $${fixture.config.driver.username::}
-+  password: $${fixture.config.driver.password::}
-+```
-+
-+此 YAML 截取片段将被解析为，
-+
-+```yaml
-+ds_1:
-+  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+  driverClassName: org.h2.Driver
-+  jdbcUrl: jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL
-+  username: sa
-+  password:
-+```
-+
-+在实际情况下，系统变量通常是动态定义的。
-+假设如上系统变量均未定义，存在包含如上YAML截取片段的YAML文件`config.yaml`，
-+可参考如下方法创建 DataSource 实例。
-+
-+```java
-+import com.zaxxer.hikari.HikariConfig;
-+import com.zaxxer.hikari.HikariDataSource;
-+
-+import javax.sql.DataSource;
-+
-+public DataSource createDataSource() {
-+    HikariConfig config = new HikariConfig();
-+    config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
-+    config.setJdbcUrl("jdbc:shardingsphere:classpath-system-props:config.yaml");
-+    try {
-+        assert null == System.getProperty("fixture.config.driver.jdbc-url");
-+        assert null == System.getProperty("fixture.config.driver.username");
-+        System.setProperty("fixture.config.driver.jdbc-url", "jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL");
-+        System.setProperty("fixture.config.driver.username", "sa");
-+        return new HikariDataSource(config);
-+    } finally {
-+        System.clearProperty("fixture.config.driver.jdbc-url");
-+        System.clearProperty("fixture.config.driver.username");
-+    }
-+}
-+```
-+
-+用例：
-+- `jdbc:shardingsphere:classpath-system-props:config.yaml`
-+
- ### 其他实现
- 具体可参考 https://github.com/apache/shardingsphere-plugin 。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
-index f896c247342..37c5af9f458 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
-@@ -82,5 +82,71 @@ The difference from `jdbc:shardingsphere:classpath-environment:` is only where t
- Example:
- - `jdbc:shardingsphere:absolutepath-environment:/path/to/config.yaml`
+ ```groovy
+ plugins {
+-   id 'org.graalvm.buildtools.native' version '0.9.28'
++   id 'org.graalvm.buildtools.native' version '0.10.0'
+ }
  
-+### Load configuration file containing system properties from classpath
-+
-+JDBC URL to load the config.yaml configuration file containing system properties in the classpath, 
-+identified by the `jdbc:shardingsphere:classpath-system-props:` prefix.
-+The configuration file is `xxx.yaml`, 
-+and the configuration file format is consistent with `jdbc:shardingsphere:classpath-environment:`.
-+The difference from `jdbc:shardingsphere:classpath-environment:` is only where the property value is read.
-+
-+Assume the following set of system properties exists,
-+
-+1. The system property `fixture.config.driver.jdbc-url` exists as `jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL`.
-+2. The system property `fixture.config.driver.username` exists as `sa`.
-+
-+Then for the intercepted fragment of the following YAML file,
-+
-+```yaml
-+ds_1:
-+  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+  driverClassName: $${fixture.config.driver.driver-class-name::org.h2.Driver}
-+  jdbcUrl: $${fixture.config.driver.jdbc-url::jdbc:h2:mem:foo_ds_do_not_use}
-+  username: $${fixture.config.driver.username::}
-+  password: $${fixture.config.driver.password::}
-+```
-+
-+This YAML snippet will be parsed as,
-+
-+```yaml
-+ds_1:
-+  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+  driverClassName: org.h2.Driver
-+  jdbcUrl: jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL
-+  username: sa
-+  password:
-+```
-+
-+In real situations, system variables are usually defined dynamically.
-+Assume that none of the above system variables are defined, 
-+and there is a YAML file `config.yaml` containing the above YAML interception fragment,
-+Users can refer to the following methods to create a DataSource instance.
-+
-+```java
-+import com.zaxxer.hikari.HikariConfig;
-+import com.zaxxer.hikari.HikariDataSource;
-+
-+import javax.sql.DataSource;
-+
-+public DataSource createDataSource() {
-+    HikariConfig config = new HikariConfig();
-+    config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
-+    config.setJdbcUrl("jdbc:shardingsphere:classpath-system-props:config.yaml");
-+    try {
-+        assert null == System.getProperty("fixture.config.driver.jdbc-url");
-+        assert null == System.getProperty("fixture.config.driver.username");
-+        System.setProperty("fixture.config.driver.jdbc-url", "jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL");
-+        System.setProperty("fixture.config.driver.username", "sa");
-+        return new HikariDataSource(config);
-+    } finally {
-+        System.clearProperty("fixture.config.driver.jdbc-url");
-+        System.clearProperty("fixture.config.driver.username");
-+    }
-+}
-+```
-+
-+Example:
-+- `jdbc:shardingsphere:classpath-system-props:config.yaml`
-+
- ### Other implementations
- For details, please refer to https://github.com/apache/shardingsphere-plugin .
+ dependencies {
+@@ -92,9 +89,6 @@ graalvmNative {
+          buildArgs.add('-H:+AddAllCharsets')
+       }
+    }
+-   metadataRepository {
+-      enabled = true
+-   }
+ }
+ ```
+ 
+@@ -240,8 +234,8 @@ ShardingSphere 定义了 `nativeTestInShardingSphere` 的 Maven Profile 用于
+ sudo apt install unzip zip curl sed -y
+ curl -s "https://get.sdkman.io" | bash
+ source "$HOME/.sdkman/bin/sdkman-init.sh"
+-sdk install java 21.0.1-graalce
+-sdk use java 21.0.1-graalce
++sdk install java 21.0.2-graalce
++sdk use java 21.0.2-graalce
+ sudo apt-get install build-essential libz-dev zlib1g-dev -y
+ 
+ git clone git@github.com:apache/shardingsphere.git
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+index 7e797961d8b..57d083e7667 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+@@ -39,15 +39,12 @@ and the documentation of GraalVM Native Build Tools shall prevail.
+              <plugin>
+                  <groupId>org.graalvm.buildtools</groupId>
+                  <artifactId>native-maven-plugin</artifactId>
+-                 <version>0.9.28</version>
++                 <version>0.10.0</version>
+                  <extensions>true</extensions>
+                  <configuration>
+                     <buildArgs>
+                        <buildArg>-H:+AddAllCharsets</buildArg>
+                     </buildArgs>
+-                    <metadataRepository>
+-                       <enabled>true</enabled>
+-                    </metadataRepository>
+                  </configuration>
+                  <executions>
+                      <execution>
+@@ -79,7 +76,7 @@ and the documentation of GraalVM Native Build Tools shall prevail.
+ 
+ ```groovy
+ plugins {
+-     id 'org.graalvm.buildtools.native' version '0.9.28'
++     id 'org.graalvm.buildtools.native' version '0.10.0'
+ }
+ 
+ dependencies {
+@@ -95,9 +92,6 @@ graalvmNative {
+          buildArgs.add('-H:+AddAllCharsets')
+       }
+    }
+-   metadataRepository {
+-      enabled = true
+-   }
+ }
+ ```
+ 
+@@ -250,8 +244,8 @@ You must install Docker Engine to execute `testcontainers-java` related unit tes
+ sudo apt install unzip zip curl sed -y
+ curl -s "https://get.sdkman.io" | bash
+ source "$HOME/.sdkman/bin/sdkman-init.sh"
+-sdk install java 21.0.1-graalce
+-sdk use java 21.0.1-graalce
++sdk install java 21.0.2-graalce
++sdk use java 21.0.2-graalce
+ sudo apt-get install build-essential libz-dev zlib1g-dev -y
+ 
+ git clone git@github.com:apache/shardingsphere.git
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md
+index 702e1b6329a..4ec820253fc 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.cn.md
+@@ -40,7 +40,7 @@ ShardingSphere-Proxy 支持配置多个逻辑数据源，每个以 `config-` 前
+ 
+ ShardingSphere-Proxy 默认集成 ZooKeeper Curator 客户端，集群模式使用 ZooKeeper 无须引入其他依赖。
+ 
+-如果集群模式使用 Etcd，需要将 Etcd 依赖的 [vertx-grpc 4.4.4](https://repo1.maven.org/maven2/io/vertx/vertx-grpc/4.4.4/vertx-grpc-4.4.4.jar) 和 [vertx-core 4.4.4](https://repo1.maven.org/maven2/io/vertx/vertx-core/4.4.4/vertx-core-4.4.4.jar) 复制至目录 `ext-lib`。
++如果集群模式使用 Etcd，需要将 Etcd 依赖的 [vertx-grpc 4.5.1](https://repo1.maven.org/maven2/io/vertx/vertx-grpc/4.5.1/vertx-grpc-4.5.1.jar) 和 [vertx-core 4.5.1](https://repo1.maven.org/maven2/io/vertx/vertx-core/4.5.1/vertx-core-4.5.1.jar) 复制至目录 `ext-lib`。
+ 
+ 6. （可选）引入分布式事务所需依赖
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md
+index 970f4833083..3a2f8b38f91 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/bin.en.md
+@@ -41,7 +41,7 @@ If the backend is connected to a MySQL database, please download [mysql-connecto
+ 
+ ShardingSphere-Proxy integrates the ZooKeeper Curator client by default. ZooKeeper is used in cluster mode without introducing other dependencies.
+ 
+-If the cluster mode uses Etcd, please copy [vertx-grpc 4.4.4](https://repo1.maven.org/maven2/io/vertx/vertx-grpc/4.4.4/vertx-grpc-4.4.4.jar) and [vertx-core 4.4.4](https://repo1.maven.org/maven2/io/vertx/vertx-core/4.4.4/vertx-core-4.4.4.jar) that Etcd depends on into the `ext-lib` directory.
++If the cluster mode uses Etcd, please copy [vertx-grpc 4.5.1](https://repo1.maven.org/maven2/io/vertx/vertx-grpc/4.5.1/vertx-grpc-4.5.1.jar) and [vertx-core 4.5.1](https://repo1.maven.org/maven2/io/vertx/vertx-core/4.5.1/vertx-core-4.5.1.jar) that Etcd depends on into the `ext-lib` directory.
+ 
+ 6. Introduce dependencies required by distributed transactions (Optional)
+ 

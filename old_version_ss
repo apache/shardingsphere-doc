@@ -1,30 +1,262 @@
-commit 6d26a383e5712ae738395667e90e4317f313840e
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Thu Feb 8 16:53:59 2024 +0800
+commit a1ae45f505cf52926352fefbbd1dd8ce30576147
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Wed Feb 14 16:20:13 2024 +0800
 
-    Refactor show processlist and kill logic (#30075)
+    Use placeholder type instead of config type in ShardingSphereURLProvider (#30120)
 
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index 2d8149b54d9..39d90ec239a 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -62,6 +62,7 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
- | 08000     | 13020       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
- | 08000     | 13030       | Connection has been closed.                                                                                                                                                                                                 |
- | 08000     | 13031       | Result set has been closed.                                                                                                                                                                                                 |
-+| 08000     | 13032       | SQL execution has been interrupted.                                                                                                                                                                                         |
- | HY000     | 13090       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
+index b104066ad03..c8221cbe950 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.cn.md
+@@ -20,24 +20,27 @@ chapter = true
+ ## URL 配置
  
- ### 事务
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index ee3f90f4c43..f4b6a98dc38 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -62,6 +62,7 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- | 08000     | 13020       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
- | 08000     | 13030       | Connection has been closed.                                                                                                                                                                                                 |
- | 08000     | 13031       | Result set has been closed.                                                                                                                                                                                                 |
-+| 08000     | 13032       | SQL execution has been interrupted.                                                                                                                                                                                         |
- | HY000     | 13090       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
+ ### 从类路径中加载配置文件
+-加载 classpath 中 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:classpath:` 前缀识别。
++
++加载类路径中 `config.yaml` 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:classpath:` 前缀识别。
+ 配置文件为 `xxx.yaml`，配置文件格式与 [YAML 配置](../../../yaml-config)一致。
  
- ### Transaction
+ 用例：
+ - `jdbc:shardingsphere:classpath:config.yaml`
+ 
+ ### 从绝对路径中加载配置文件
+-加载绝对路径中 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:absolutepath:` 前缀识别。
++
++加载绝对路径中 `config.yaml` 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:absolutepath:` 前缀识别。
+ 配置文件为 `xxx.yaml`，配置文件格式与 [YAML 配置](../../../yaml-config)一致。
+ 
+ 用例：
+ - `jdbc:shardingsphere:absolutepath:/path/to/config.yaml`
+ 
+-### 从类路径中加载包含环境变量的配置文件
++### 加载包含环境变量的配置文件
+ 
+-加载 classpath 中包含环境变量的 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:classpath-environment:` 前缀识别。
++加载路径中包含环境变量的 `config.yaml` 配置文件的 JDBC URL，通过追加 `placeholder-type=xxx` 参数识别。
++`placeholder-type` 的取值范围包括 `none`（默认值）， `environment` 和 `system_props`。
+ 配置文件为 `xxx.yaml`，配置文件格式与 [YAML 配置](../../../yaml-config)基本一致。
+-在涉及的 YAML 文件中，允许通过环境变量设置特定YAML属性的值，并配置可选的默认值。这常用于 Docker Image 的部署场景。
++在涉及的 YAML 文件中，允许通过环境变量设置特定 YAML 属性的值，并配置可选的默认值，这常用于 Docker 镜像的部署场景。
+ 环境变量的名称和其可选的默认值通过`::`分割，在最外层通过`$${`和`}`包裹。
+ 
+ 讨论两种情况。
+@@ -48,7 +51,8 @@ chapter = true
+ 1. 存在环境变量`FIXTURE_JDBC_URL`为`jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL`。
+ 2. 存在环境变量`FIXTURE_USERNAME`为`sa`。
+ 
+-则对于以下 YAML 文件的截取片段，
++则对于以下 YAML 文件的截取片段：
++
+ ```yaml
+ ds_1:
+     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+@@ -57,7 +61,8 @@ ds_1:
+     username: $${FIXTURE_USERNAME::}
+     password: $${FIXTURE_PASSWORD::}
+ ```
+-此 YAML 截取片段将被解析为，
++此 YAML 截取片段将被解析为：
++
+ ```yaml
+ ds_1:
+     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+@@ -68,52 +73,10 @@ ds_1:
+ ```
+ 
+ 用例：
+-- `jdbc:shardingsphere:classpath-environment:config.yaml`
+-
+-### 从绝对路径中加载包含环境变量的配置文件
+-
+-加载绝对路径中包含环境变量的 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:absolutepath-environment:` 前缀识别。
+-配置文件为 `xxx.yaml`，配置文件格式与`jdbc:shardingsphere:classpath-environment:`一致。
+-与 `jdbc:shardingsphere:classpath-environment:` 的区别仅在于 YAML 文件的加载位置。
+-
+-用例：
+-- `jdbc:shardingsphere:absolutepath-environment:/path/to/config.yaml`
+-
+-### 从类路径中加载包含系统属性的配置文件
+-
+-加载类路径中包含系统属性的 config.yaml 配置文件的 JDBC URL，通过 `jdbc:shardingsphere:classpath-system-props:` 前缀识别。
+-配置文件为 `xxx.yaml`，配置文件格式与`jdbc:shardingsphere:classpath-environment:`一致。
+-与 `jdbc:shardingsphere:classpath-environment:` 的区别仅在于读取属性值的位置。
+-
+-假设存在以下一组系统属性，
+-
+-1. 存在系统属性`fixture.config.driver.jdbc-url`为`jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL`。
+-2. 存在系统属性`fixture.config.driver.username`为`sa`。
+-
+-则对于以下 YAML 文件的截取片段，
+-
+-```yaml
+-ds_1:
+-  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+-  driverClassName: $${fixture.config.driver.driver-class-name::org.h2.Driver}
+-  jdbcUrl: $${fixture.config.driver.jdbc-url::jdbc:h2:mem:foo_ds_do_not_use}
+-  username: $${fixture.config.driver.username::}
+-  password: $${fixture.config.driver.password::}
+-```
+-
+-此 YAML 截取片段将被解析为，
+-
+-```yaml
+-ds_1:
+-  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+-  driverClassName: org.h2.Driver
+-  jdbcUrl: jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL
+-  username: sa
+-  password:
+-```
++- `jdbc:shardingsphere:classpath:config.yaml?placeholder-type=environment`
+ 
+ 在实际情况下，系统变量通常是动态定义的。
+-假设如上系统变量均未定义，存在包含如上YAML截取片段的YAML文件`config.yaml`，
++假设如上系统变量均未定义，存在包含如上 YAML 截取片段的 YAML 文件 `config.yaml`，
+ 可参考如下方法创建 DataSource 实例。
+ 
+ ```java
+@@ -125,7 +88,7 @@ import javax.sql.DataSource;
+ public DataSource createDataSource() {
+     HikariConfig config = new HikariConfig();
+     config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
+-    config.setJdbcUrl("jdbc:shardingsphere:classpath-system-props:config.yaml");
++    config.setJdbcUrl("jdbc:shardingsphere:classpath:config.yaml?placeholder-type=system_props");
+     try {
+         assert null == System.getProperty("fixture.config.driver.jdbc-url");
+         assert null == System.getProperty("fixture.config.driver.username");
+@@ -140,7 +103,8 @@ public DataSource createDataSource() {
+ ```
+ 
+ 用例：
+-- `jdbc:shardingsphere:classpath-system-props:config.yaml`
++- `jdbc:shardingsphere:classpath:config.yaml?placeholder-type=system_props`
+ 
+ ### 其他实现
++
+ 具体可参考 https://github.com/apache/shardingsphere-plugin 。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
+index 37c5af9f458..263bf729dfc 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/yaml-config/jdbc-driver/known-implementation/_index.en.md
+@@ -21,22 +21,25 @@ For the configuration of the metadata repository, please refer to [Metadata Repo
+ ## URL configuration
+ 
+ ### Load configuration files from classpath
+-Load the JDBC URL of the config.yaml configuration file in classpath, identified by the `jdbc:shardingsphere:classpath:` prefix.
++
++Load the JDBC URL of the `config.yaml` configuration file in classpath, identified by the `jdbc:shardingsphere:classpath:` prefix.
+ The configuration file is `xxx.yaml`, and the configuration file format is consistent with [YAML configuration](../../../yaml-config).
+ 
+ Example:
+ - `jdbc:shardingsphere:classpath:config.yaml`
+ 
+ ### Load configuration file from absolute path
+-JDBC URL to load the config.yaml configuration file in an absolute path, identified by the `jdbc:shardingsphere:absolutepath:` prefix.
++
++JDBC URL to load the `config.yaml` configuration file in an absolute path, identified by the `jdbc:shardingsphere:absolutepath:` prefix.
+ The configuration file is `xxx.yaml`, and the configuration file format is consistent with [YAML configuration](../../../yaml-config).
+ 
+ Example:
+ - `jdbc:shardingsphere:absolutepath:/path/to/config.yaml`
+ 
+-### Load configuration file containing environment variables from classpath
++### Load configuration file containing environment variables
+ 
+-JDBC URL to load the config.yaml configuration file that contains environment variables in classpath, identified by the `jdbc:shardingsphere:classpath-environment:` prefix.
++Loading the JDBC URL from the `config.yaml` configuration file whose path contains environment variables, and appending the `placeholder-type=xxx` parameter to identify it.
++The value range of `placeholder-type` includes `none` (default value), `environment`, and `system_props`.
+ The configuration file is `xxx.yaml`, and the configuration file format is basically the same as [YAML configuration](../../../yaml-config).
+ Allows setting the value of specific YAML properties via environment variables and configuring optional default values in the involved YAML files. 
+ This is commonly used in Docker Image deployment scenarios.
+@@ -51,6 +54,7 @@ Assume that the following set of environment variables exists,
+ 2. The existing environment variable `FIXTURE_USERNAME` is `sa`.
+ 
+ Then for the intercepted fragment of the following YAML file,
++
+ ```yaml
+ ds_1:
+     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+@@ -59,7 +63,8 @@ ds_1:
+     username: $${FIXTURE_USERNAME::}
+     password: $${FIXTURE_PASSWORD::}
+ ```
+-This YAML snippet will be parsed as,
++This YAML snippet will be parsed as:
++
+ ```yaml
+ ds_1:
+     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+@@ -70,52 +75,7 @@ ds_1:
+ ```
+ 
+ Example:
+-- `jdbc:shardingsphere:classpath-environment:config.yaml`
+-
+-### Load configuration file containing environment variables from absolute path
+-
+-JDBC URL to load the config.yaml configuration file that contains environment variables in absolute path, 
+-identified by the `jdbc:shardingsphere:absolutepath-environment:` prefix.
+-The configuration file is `xxx.yaml`, and the configuration file format is consistent with `jdbc:shardingsphere:classpath-environment:`.
+-The difference from `jdbc:shardingsphere:classpath-environment:` is only where the YAML file is loaded.
+-
+-Example:
+-- `jdbc:shardingsphere:absolutepath-environment:/path/to/config.yaml`
+-
+-### Load configuration file containing system properties from classpath
+-
+-JDBC URL to load the config.yaml configuration file containing system properties in the classpath, 
+-identified by the `jdbc:shardingsphere:classpath-system-props:` prefix.
+-The configuration file is `xxx.yaml`, 
+-and the configuration file format is consistent with `jdbc:shardingsphere:classpath-environment:`.
+-The difference from `jdbc:shardingsphere:classpath-environment:` is only where the property value is read.
+-
+-Assume the following set of system properties exists,
+-
+-1. The system property `fixture.config.driver.jdbc-url` exists as `jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL`.
+-2. The system property `fixture.config.driver.username` exists as `sa`.
+-
+-Then for the intercepted fragment of the following YAML file,
+-
+-```yaml
+-ds_1:
+-  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+-  driverClassName: $${fixture.config.driver.driver-class-name::org.h2.Driver}
+-  jdbcUrl: $${fixture.config.driver.jdbc-url::jdbc:h2:mem:foo_ds_do_not_use}
+-  username: $${fixture.config.driver.username::}
+-  password: $${fixture.config.driver.password::}
+-```
+-
+-This YAML snippet will be parsed as,
+-
+-```yaml
+-ds_1:
+-  dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+-  driverClassName: org.h2.Driver
+-  jdbcUrl: jdbc:h2:mem:foo_ds_1;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false;MODE=MySQL
+-  username: sa
+-  password:
+-```
++- `jdbc:shardingsphere:classpath:config.yaml?placeholder-type=environment`
+ 
+ In real situations, system variables are usually defined dynamically.
+ Assume that none of the above system variables are defined, 
+@@ -131,7 +91,7 @@ import javax.sql.DataSource;
+ public DataSource createDataSource() {
+     HikariConfig config = new HikariConfig();
+     config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
+-    config.setJdbcUrl("jdbc:shardingsphere:classpath-system-props:config.yaml");
++    config.setJdbcUrl("jdbc:shardingsphere:classpath:config.yaml?placeholder-type=system_props");
+     try {
+         assert null == System.getProperty("fixture.config.driver.jdbc-url");
+         assert null == System.getProperty("fixture.config.driver.username");
+@@ -146,7 +106,8 @@ public DataSource createDataSource() {
+ ```
+ 
+ Example:
+-- `jdbc:shardingsphere:classpath-system-props:config.yaml`
++- `jdbc:shardingsphere:classpath:config.yaml?placeholder-type=system_props`
+ 
+ ### Other implementations
++
+ For details, please refer to https://github.com/apache/shardingsphere-plugin .

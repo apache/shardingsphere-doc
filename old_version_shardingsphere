@@ -1,19 +1,272 @@
-commit f61f1b92dff2bc2d5efcb5647602b8a2f7e2fdd9
-Author: 孙念君 Nianjun Sun <sunnianjun@apache.org>
-Date:   Wed Feb 21 20:25:06 2024 +0800
+commit ab0ed3d581059a0ff18117f30fa48db75f8f5e3b
+Author: Ling Hengqian <linghengqian@outlook.com>
+Date:   Thu Feb 22 10:19:25 2024 +0800
 
-    Fix : fix the deadlink (#30233)
+    Add GraalVM Reachability Metadata and corresponding nativeTest for Seata integration (#30138)
 
-diff --git a/docs/document/content/dev-manual/sharding.en.md b/docs/document/content/dev-manual/sharding.en.md
-index 53061b4f308..dd85c00cdcc 100644
---- a/docs/document/content/dev-manual/sharding.en.md
-+++ b/docs/document/content/dev-manual/sharding.en.md
-@@ -34,7 +34,7 @@ Sharding Algorithm definition
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+index ba5877f4750..283ccba5248 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+@@ -78,6 +78,7 @@ plugins {
  
- ### Fully-qualified class name
+ dependencies {
+    implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
++   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.0', classifier: 'repository', ext: 'zip')
+ }
  
--[`org.apache.shardingsphere.keygen.core.algorithm.KeyGenerateAlgorithm`](https://github.com/apache/shardingsphere/blob/master/infra/algorithm/key-generator/core/src/main/java/org/apache/shardingsphere/keygen/core/algorithm/KeyGenerateAlgorithm.java)
-+[`org.apache.shardingsphere.keygen.core.algorithm.KeyGenerateAlgorithm`](https://github.com/apache/shardingsphere/blob/master/infra/algorithm/key-generator/core/src/main/java/org/apache/shardingsphere/infra/algorithm/keygen/core/KeyGenerateAlgorithm.java)
+ graalvmNative {
+@@ -89,6 +90,9 @@ graalvmNative {
+          buildArgs.add('-H:+AddAllCharsets')
+       }
+    }
++   metadataRepository {
++        enabled.set(false)
++   }
+ }
+ ```
  
- ### Definition
+@@ -181,7 +185,7 @@ Image 下使用。
+ ```
  
+ 2. 对于 `读写分离` 的功能，你需要使用 `行表达式` SPI 的其他实现，以在配置 `logic database name`，`writeDataSourceName` 和 `readDataSourceNames` 
+-时绕开对 GroovyShell 的调用。一个可能的配置是使用 `LITERAL` 的 `行表达式` SPI 的实现。对于 `数据分片` 的功能的 `actualDataNodes` 同理。
++时绕开对 GroovyShell 的调用。一个可能的配置是使用 `LITERAL` 的 `行表达式` SPI 的实现。
+ ```yaml
+ rules:
+ - !READWRITE_SPLITTING
+@@ -193,6 +197,18 @@ rules:
+         - <LITERAL>ds_2
+ ```
+ 
++对于 `数据分片` 的功能的 `actualDataNodes` 同理。
++
++```yaml
++- !SHARDING
++   tables:
++      t_order:
++         actualDataNodes: <LITERAL>ds_0.t_order_0, ds_0.t_order_1, ds_1.t_order_0, ds_1.t_order_1
++         keyGenerateStrategy:
++            column: order_id
++            keyGeneratorName: snowflake
++```
++
+ 3. 使用者依然需要在 `src/main/resources/META-INF/native-image` 文件夹或 `src/test/resources/META-INF/native-image` 文件夹配置独立
+ 文件的 GraalVM Reachability Metadata。使用者可通过 GraalVM Native Build Tools 的 GraalVM Tracing Agent 来快速采集 GraalVM 
+ Reachability Metadata。
+@@ -201,11 +217,6 @@ Reachability Metadata。
+ 当遇到如下 Error，使用者需要添加 `-H:+AddAllCharsets` 的 `buildArg` 到 GraalVM Native Build Tools 的配置中。
+ 
+ ```shell
+-Caused by: java.io.UnsupportedEncodingException: SQL Server collation SQL_Latin1_General_CP1_CI_AS is not supported by this driver.
+- com.microsoft.sqlserver.jdbc.SQLCollation.encodingFromSortId(SQLCollation.java:506)
+- com.microsoft.sqlserver.jdbc.SQLCollation.<init>(SQLCollation.java:63)
+- com.microsoft.sqlserver.jdbc.SQLServerConnection.processEnvChange(SQLServerConnection.java:3174)
+- [...]
+ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supported by the Java environment.
+  com.microsoft.sqlserver.jdbc.Encoding.checkSupported(SQLCollation.java:572)
+  com.microsoft.sqlserver.jdbc.SQLCollation$SortOrder.getEncoding(SQLCollation.java:473)
+@@ -213,6 +224,37 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+  [...]
+ ```
+ 
++5. 当使用 Seata 的 BASE 集成时，用户需要使用特定的 `io.seata:seata-all:1.8.0` 版本以避开对 ByteBuddy Java API 的使用，
++并排除 `io.seata:seata-all:1.8.0` 中过时的 `org.antlr:antlr4-runtime:4.8` 的 Maven 依赖。可能的配置例子如下，
++
++```xml
++<project>
++    <dependencies>
++      <dependency>
++         <groupId>org.apache.shardingsphere</groupId>
++         <artifactId>shardingsphere-jdbc</artifactId>
++         <version>${shardingsphere.version}</version>
++      </dependency>
++      <dependency>
++         <groupId>org.apache.shardingsphere</groupId>
++         <artifactId>shardingsphere-transaction-base-seata-at</artifactId>
++         <version>${shardingsphere.version}</version>
++      </dependency>
++      <dependency>
++         <groupId>io.seata</groupId>
++         <artifactId>seata-all</artifactId>
++         <version>1.8.0</version>
++         <exclusions>
++            <exclusion>
++               <groupId>org.antlr</groupId>
++               <artifactId>antlr4-runtime</artifactId>
++            </exclusion>
++         </exclusions>
++      </dependency>
++    </dependencies>
++</project>
++```
++
+ ## 贡献 GraalVM Reachability Metadata
+ 
+ ShardingSphere 对在 GraalVM Native Image 下的可用性的验证，是通过 GraalVM Native Build Tools 的 Maven Plugin 子项目来完成的。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+index 52dbadae44c..adfca28f289 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+@@ -76,11 +76,12 @@ and the documentation of GraalVM Native Build Tools shall prevail.
+ 
+ ```groovy
+ plugins {
+-     id 'org.graalvm.buildtools.native' version '0.10.0'
++   id 'org.graalvm.buildtools.native' version '0.10.0'
+ }
+ 
+ dependencies {
+-     implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
++   implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
++   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.0', classifier: 'repository', ext: 'zip')
+ }
+ 
+ graalvmNative {
+@@ -92,6 +93,9 @@ graalvmNative {
+          buildArgs.add('-H:+AddAllCharsets')
+       }
+    }
++   metadataRepository {
++      enabled.set(false)
++   }
+ }
+ ```
+ 
+@@ -186,9 +190,8 @@ normally under GraalVM Native Image.
+ ```
+ 
+ 2. For the `ReadWrite Splitting` feature, you need to use other implementations of `Row Value Expressions` SPI to configure 
+-`logic database name`, `writeDataSourceName` and `readDataSourceNames` when bypassing calls to GroovyShell. One possible 
+-configuration is to use the `Row Value Expressions` SPI implementation of `LITERAL`. The same applies to `actualDataNodes` 
+-for the `Sharding` feature.
++`logic database name`, `writeDataSourceName` and `readDataSourceNames` when bypassing calls to GroovyShell. 
++One possible configuration is to use the `Row Value Expressions` SPI implementation of `LITERAL`.
+ 
+ ```yaml
+ rules:
+@@ -201,6 +204,18 @@ rules:
+          - <LITERAL>ds_2
+ ```
+ 
++The same applies to `actualDataNodes` for the `Sharding` feature.
++
++```yaml
++- !SHARDING
++   tables:
++      t_order:
++         actualDataNodes: <LITERAL>ds_0.t_order_0, ds_0.t_order_1, ds_1.t_order_0, ds_1.t_order_1
++         keyGenerateStrategy:
++            column: order_id
++            keyGeneratorName: snowflake
++```
++
+ 3. Users still need to configure GraalVM Reachability Metadata for independent files in the `src/main/resources/META-INF/native-image` 
+ folder or `src/test/resources/META-INF/native-image` folder. Users can quickly collect GraalVM Reachability Metadata through 
+ the GraalVM Tracing Agent of GraalVM Native Build Tools. 
+@@ -210,11 +225,6 @@ will dynamically load different character sets based on the encoding used in the
+ When encountering the following Error, users need to add the `buildArg` of `-H:+AddAllCharsets` to the configuration of GraalVM Native Build Tools.
+ 
+ ```shell
+-Caused by: java.io.UnsupportedEncodingException: SQL Server collation SQL_Latin1_General_CP1_CI_AS is not supported by this driver.
+- com.microsoft.sqlserver.jdbc.SQLCollation.encodingFromSortId(SQLCollation.java:506)
+- com.microsoft.sqlserver.jdbc.SQLCollation.<init>(SQLCollation.java:63)
+- com.microsoft.sqlserver.jdbc.SQLServerConnection.processEnvChange(SQLServerConnection.java:3174)
+- [...]
+ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supported by the Java environment.
+  com.microsoft.sqlserver.jdbc.Encoding.checkSupported(SQLCollation.java:572)
+  com.microsoft.sqlserver.jdbc.SQLCollation$SortOrder.getEncoding(SQLCollation.java:473)
+@@ -222,6 +232,39 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+  [...]
+ ```
+ 
++5. When using Seata's BASE integration, 
++users need to use a specific `io.seata:seata-all:1.8.0` version to avoid using the ByteBuddy Java API,
++and exclude the outdated Maven dependency of `org.antlr:antlr4-runtime:4.8` in `io.seata:seata-all:1.8.0`.
++Possible configuration examples are as follows,
++
++```xml
++<project>
++    <dependencies>
++      <dependency>
++         <groupId>org.apache.shardingsphere</groupId>
++         <artifactId>shardingsphere-jdbc</artifactId>
++         <version>${shardingsphere.version}</version>
++      </dependency>
++      <dependency>
++         <groupId>org.apache.shardingsphere</groupId>
++         <artifactId>shardingsphere-transaction-base-seata-at</artifactId>
++         <version>${shardingsphere.version}</version>
++      </dependency>
++      <dependency>
++         <groupId>io.seata</groupId>
++         <artifactId>seata-all</artifactId>
++         <version>1.8.0</version>
++         <exclusions>
++            <exclusion>
++               <groupId>org.antlr</groupId>
++               <artifactId>antlr4-runtime</artifactId>
++            </exclusion>
++         </exclusions>
++      </dependency>
++    </dependencies>
++</project>
++```
++
+ ## Contribute GraalVM Reachability Metadata
+ 
+ The verification of ShardingSphere's availability under GraalVM Native Image is completed through the Maven Plugin subproject 
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
+index 81ecb003433..3aba211b51b 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
+@@ -89,7 +89,7 @@ ALTER TABLE `undo_log` ADD INDEX `ix_log_created` (`log_created`);
+ 
+ ```conf
+ sharding.transaction.seata.at.enable = true
+-sharding.transaction.seata.tx.timeout = 30
++sharding.transaction.seata.tx.timeout = 60
+ 
+ client {
+     application.id = example
+@@ -117,9 +117,11 @@ ShardingSphere 的 Seata 集成将获取到的 Seata 全局事务置入线程的
+ 
+ 3. 在函数上使用 Jakarta EE 9/10 的 `jakarta.transaction.Transactional` 注解，这是被允许的。
+ 
+-4. 在函数上使用 `io.seata.spring.annotation.GlobalTransactional` 注解，这是不被允许的。
++4. 在函数上使用 Spring Framework 的 `org.springframework.transaction.annotation.Transactional` 注解，这是被允许的。
+ 
+-5. 手动从 `io.seata.tm.api.GlobalTransactionContext ` 创建 `io.seata.tm.api.GlobalTransaction` 实例，
++5. 在函数上使用 `io.seata.spring.annotation.GlobalTransactional` 注解，这是不被允许的。
++
++6. 手动从 `io.seata.tm.api.GlobalTransactionContext ` 创建 `io.seata.tm.api.GlobalTransaction` 实例，
+ 调用 `io.seata.tm.api.GlobalTransaction` 实例的 `begin()`, `commit()` 和 `rollback()` 方法，这是不被允许的。
+ 
+ 长话短说，在使用 ShardingSphere 的 Seata 集成时，你不应该使用 Seata Java API。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
+index 3bc47267962..22d58d09d5f 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
+@@ -90,7 +90,7 @@ A fully configured `seata.conf` is as follows,
+ 
+ ```conf
+ sharding.transaction.seata.at.enable = true
+-sharding.transaction.seata.tx.timeout = 30
++sharding.transaction.seata.tx.timeout = 60
+ 
+ client {
+     application.id = example
+@@ -118,9 +118,11 @@ For ShardingSphere data source, discuss 5 situations,
+ 
+ 3. Using Jakarta EE 9/10’s `jakarta.transaction.Transactional` annotation on functions is allowed.
+ 
+-4. Using the `io.seata.spring.annotation.GlobalTransactional` annotation on the function is not allowed.
++4. Using Spring Framework’s `org.springframework.transaction.annotation.Transactional` annotation on functions is allowed.
+ 
+-5. Manually create `io.seata.tm.api.GlobalTransaction` instance from `io.seata.tm.api.GlobalTransactionContext`,
++5. Using the `io.seata.spring.annotation.GlobalTransactional` annotation on the function is not allowed.
++
++6. Manually create `io.seata.tm.api.GlobalTransaction` instance from `io.seata.tm.api.GlobalTransactionContext`,
+ calling the `begin()`, `commit()` and `rollback()` methods of an `io.seata.tm.api.GlobalTransaction` instance is not allowed.
+ 
+ Long story short, you should not use the Seata Java API when using ShardingSphere's Seata integration.

@@ -1,32 +1,170 @@
-commit 103b19953817c2ef5d14db71962b76c2ccfd678d
-Author: Raigor <raigor.jiang@gmail.com>
-Date:   Mon Mar 11 18:23:45 2024 +0800
+commit 52f36c0f6a025bcdb4bbc7d1045fc72a1494e67a
+Author: Zhengqiang Duan <duanzhengqiang@apache.org>
+Date:   Tue Mar 12 16:20:06 2024 +0800
 
-    Add invalid mode exception (#30451)
+    Add FAQ to answer how solve exception for Table or view `%s` does not exist. (#30467)
 
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index bf16c6b2db5..1c37d08bb84 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -161,6 +161,8 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
- | 44000     | 19151       | %s algorithm(s) \`%s\` do not exist in database \`%s\`.     |
- | 44000     | 19152       | %s algorithms \`%s\` in database \`%s\` are still in used.  |
- | 44000     | 19153       | Duplicate %s algorithms \`%s\` in database \`%s\`.          |
-+| 44000     | 19154       | Invalid mode, error message is: \`%s\`.                     |
-+| 44000     | 19155       | Plugin class \`%s\` not found..                             |
+diff --git a/docs/document/content/faq/_index.cn.md b/docs/document/content/faq/_index.cn.md
+index 2f95de0d67c..f3b87df7528 100644
+--- a/docs/document/content/faq/_index.cn.md
++++ b/docs/document/content/faq/_index.cn.md
+@@ -5,18 +5,6 @@ weight = 8
+ chapter = true
+ +++
  
- ## 功能异常
+-## MODE
+-
+-### [MODE] 单机模式 `Standalone` 和 `Compatible_Standalone` 区别?
+-
+-在 5.4.0 版本中调整了元数据存储结构，`Standalone` 代表新版本的元数据结构，`Compatible_Standalone` 则代表 5.4.0 之前版本的元数据结构。
+-
+-### [MODE] 集群模式 `Cluster` 和 `Compatible_Cluster` 区别?
+-
+-回答:
+-
+-在 5.4.0 版本中调整了元数据存储结构，`Cluster` 代表新版本的元数据结构，`Compatible_Cluster` 则代表 5.4.0 之前版本的元数据结构。
+-
+ ## JDBC
  
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 67751bf492d..320ea5dae87 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -161,6 +161,8 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- | 44000     | 19151       | %s algorithm(s) \`%s\` do not exist in database \`%s\`.     |
- | 44000     | 19152       | %s algorithms \`%s\` in database \`%s\` are still in used.  |
- | 44000     | 19153       | Duplicate %s algorithms \`%s\` in database \`%s\`.          |
-+| 44000     | 19154       | Invalid mode, error message is: \`%s\`.                     |
-+| 44000     | 19155       | Plugin class \`%s\` not found..                             |
+ ### [JDBC] 引入 `shardingsphere-transaction-xa-core` 后，如何避免 spring-boot 自动加载默认的 JtaTransactionManager？
+@@ -24,7 +12,9 @@ chapter = true
+ 回答:
  
- ## Feature Exception
+ 1. 需要在 spring-boot 的引导类中添加 `@SpringBootApplication(exclude = JtaAutoConfiguration.class)`。
++
+ ### [JDBC] Oracle 表名、字段名配置大小写在加载 `metadata` 元数据时结果不正确？
++
+ 回答：
+ 需要注意，Oracle 表名和字段名，默认元数据都是大写，除非建表语句中带双引号，如 `CREATE TABLE "TableName"("Id" number)` 元数据为双引号中内容，可参考以下SQL查看元数据的具体情况：
+ ```sql
+@@ -182,6 +172,51 @@ ShardingSphere 采用 snowflake 算法作为默认的分布式自增主键策略
+ 由于 ShardingSphere 并不知晓数据库的表结构，而原生自增主键是不包含在原始 SQL 中内的，因此 ShardingSphere 无法将该字段解析为分片字段。如自增主键非分片键，则无需关注，可正常返回；若自增主键同时作为分片键使用，ShardingSphere 无法解析其分片值，导致 SQL 路由至多张表，从而影响应用的正确性。
+ 而原生自增主键返回的前提条件是 INSERT SQL 必须最终路由至一张表，因此，面对返回多表的 INSERT SQL，自增主键则会返回零。
  
++## 单表
++
++### [单表] Table or view `%s` does not exist. 异常如何解决？
++
++回答：
++
++在 ShardingSphere 5.4.0 之前的版本，单表采用了自动加载的方式，这种方式在实际使用中存在诸多问题：
++
++1. 逻辑库中注册大量数据源后，自动加载的单表数量过多会导致 ShardingSphere-Proxy/JDBC 启动变慢；
++2. 用户通过 DistSQL 方式使用时，通过会按照：**注册存储单元 -> 创建分片、加密、读写分离等规则 -> 创建表**的顺序进行操作。由于单表自动加载机制的存在，会导致操作过程中多次访问数据库进行加载，并且在多个规则混合使用时会导致单表元数据的错乱；
++3. 自动加载全部数据源中的单表，用户无法排除不想被 ShardingSphere 管理的单表或废弃表。
++
++为了解决以上问题，从 ShardingSphere 5.4.0 版本开始，调整了单表的加载方式，用户需要通过 YAML 配置或者 DistSQL 的方式手动加载数据库中的单表。
++需要注意的是，使用 DistSQL LOAD 语句加载单表时，需要保证所有数据源完成注册，所以规则创建完成后，再基于逻辑数据源（不存在逻辑数据源则使用物理数据源）进行单表 LOAD 操作。
++
++* YAML 加载单表示例：
++
++```yaml
++rules:
++  - !SINGLE
++    tables:
++      - "*.*"
++  - !READWRITE_SPLITTING
++    dataSources:
++      readwrite_ds:
++        writeDataSourceName: write_ds
++        readDataSourceNames:
++          - read_ds_0
++          - read_ds_1
++        loadBalancerName: random
++    loadBalancers:
++      random:
++        type: RANDOM
++```
++
++更多加载单表 YAML 配置请参考[单表](/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/single/)。
++
++* DistSQL 加载单表示例：
++
++```sql
++LOAD SINGLE TABLE *.*;
++```
++
++更多 LOAD 单表 DistSQL 请参考[单表加载](/cn/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table/)。
++
+ ## DistSQL
+ 
+ ### [DistSQL] 使用 DistSQL 添加数据源时，如何设置自定义的 JDBC 连接参数或连接池属性？
+diff --git a/docs/document/content/faq/_index.en.md b/docs/document/content/faq/_index.en.md
+index 72cb596b715..a57c8215ea0 100644
+--- a/docs/document/content/faq/_index.en.md
++++ b/docs/document/content/faq/_index.en.md
+@@ -5,22 +5,6 @@ weight = 8
+ chapter = true
+ +++
+ 
+-## MODE
+-
+-### [MODE] What is the difference between standalone mode `Standalone` and `Compatible_Standalone`?
+-
+-Answer:
+-
+-The metadata structure was adjusted in version 5.4.0, `Standalone` represents the metadata structure of the new version,
+-and `Compatible_Standalone` represents the metadata structure of versions before 5.4.0.
+-
+-### [MODE] What is the difference between cluster mode `Cluster` and `Compatible_Cluster`?
+-
+-Answer:
+-
+-The metadata structure was adjusted in version 5.4.0, `Cluster` represents the metadata structure of the new version, 
+-and `Compatible_Cluster` represents the metadata structure of versions before 5.4.0.
+-
+ ## JDBC
+ 
+ ### [JDBC] Found a JtaTransactionManager in spring boot project when integrating with XAtransaction.
+@@ -191,6 +175,51 @@ Yes. But there is restriction to the use of native auto-increment keys, which me
+ Since ShardingSphere does not have the database table structure and native auto-increment key is not included in original SQL, it cannot parse that field to the sharding field. If the auto-increment key is not sharding key, it can be returned normally and is needless to be cared. But if the auto-increment key is also used as sharding key, ShardingSphere cannot parse its sharding value, which will make SQL routed to multiple tables and influence the rightness of the application.
+ The premise for returning native auto-increment key is that INSERT SQL is eventually routed to one table. Therefore, auto-increment key will return zero when INSERT SQL returns multiple tables.
+ 
++## Single table
++
++### [Single table] Table or view `%s` does not exist. How to solve the exception?
++
++Answer:
++
++In versions before ShardingSphere 5.4.0, single tables used automatic loading. This way has many problems in actual use:
++
++1. After a large number of data sources are registered in the logical database, too many automatically loaded single tables will cause ShardingSphere-Proxy/JDBC to start slowly;
++2. When users use DistSQL, they will operate in the order of: **Register storage unit -> Create sharding, encryption, read-write separation and other rules -> Create table**. Due to the existence of the single-table automatic loading mechanism, the database will be accessed multiple times for loading during the operation, and when multiple rules are mixed and used, the single-table metadata will be confused;
++3. Automatically load single tables from all data sources. Users cannot exclude single tables or abandoned tables that they do not want to be managed by ShardingSphere.
++
++In order to solve the above problems, starting from ShardingSphere 5.4.0 version, the loading method of single tables has been adjusted. Users need to manually load a single table in the database through YAML configuration or DistSQL.
++It should be noted that when using the DistSQL LOAD statement to load a single table, you need to ensure that all data sources are registered. Therefore, after the rules are created, the single table LOAD operation is performed based on the logical data source (if there is no logical data source, use the physical data source).
++
++* YAML loading single table example:
++
++```yaml
++rules:
++   - !SINGLE
++     tables:
++       - "*.*"
++   - !READWRITE_SPLITTING
++     dataSources:
++       readwrite_ds:
++         writeDataSourceName: write_ds
++         readDataSourceNames:
++           - read_ds_0
++           - read_ds_1
++         loadBalancerName: random
++     loadBalancers:
++       random:
++         type: RANDOM
++```
++
++For more YAML configuration of loading single table, please refer to [Single](/en/user-manual/shardingsphere-jdbc/yaml-config/rules/single/).
++
++* DistSQL loading single table example:
++
++```sql
++LOAD SINGLE TABLE *.*;
++```
++
++For more LOAD single table DistSQL, please refer to [Load Single Table](/en/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table/).
++
+ ## DistSQL
+ 
+ ### [DistSQL] How to set custom JDBC connection properties or connection pool properties when adding a data source using DistSQL?

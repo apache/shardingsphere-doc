@@ -1,56 +1,52 @@
-commit 4f71ffcf03bd1895fd3160d7b3a3fa9d440196d8
+commit 097556f689b400837e7949d80d52d5fc1f426b06
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Sat Mar 16 20:39:33 2024 +0800
+Date:   Sat Mar 16 21:39:36 2024 +0800
 
-    Refactor GenerateKeyStrategyNotFoundException to AlgorithmNotFoundException (#30515)
+    Refactor SnowflakeClockMoveBackException to AlgorithmExecuteException (#30517)
 
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index 5f6d4c79c03..10f0a577e90 100644
+index 10f0a577e90..346177fd439 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -23,6 +23,7 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+@@ -22,8 +22,9 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 42S02     | 10006       | Unknown column '%s' in '%s'.                                                   |
  | 42S02     | 10007       | Table or view \`%s\` does not exist.                                           |
  | 42000     | 10010       | Rule does not exist.                                                           |
- | 44000     | 10011       | '%s.'%s' initialization failed, reason is: %s.                                 |
-+| 44000     | 10012       | Can not find '%s' algorithm on table '%s'.                                     |
+-| 44000     | 10011       | '%s.'%s' initialization failed, reason is: %s.                                 |
++| 44000     | 10011       | Algorithm '%s.'%s' initialization failed, reason is: %s.                       |
+ | 44000     | 10012       | Can not find '%s' algorithm on table '%s'.                                     |
++| 44000     | 10013       | Algorithm '%s.%s' execute failed, reason is: %s.                               |
  | 42S02     | 10020       | Schema \`%s\` does not exist.                                                  |
  | 42S02     | 10021       | Single table \`%s\` does not exist.                                            |
  | HY000     | 10022       | Can not load table with database name \`%s\` and data source name \`%s\`.      |
-@@ -276,12 +277,6 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
- |-----------|-------------|-------------------------------------------------------------|
- | 42S02     | 20990       | Invalid mask algorithm \`%s\` in database \`%s\`.           |
+@@ -212,7 +213,6 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 44000     | 20086       | Some routed data sources do not belong to configured data sources. routed data sources: \`%s\`, configured data sources: \`%s\`. |
+ | 44000     | 20087       | Please check your sharding conditions \`%s\` to avoid same record in table \`%s\` routing to multiple data nodes.                |
+ | 44000     | 20088       | Cannot found routing table factor, data source: %s, actual table: %s.                                                            |
+-| HY000     | 20092       | Clock is moving backwards, last time is %d milliseconds, current time is %d milliseconds.                                        |
+ | HY000     | 20099       | Sharding plugin error, reason is: %s                                                                                             |
  
--### 基础算法 - 分布式序列
--
--| SQL State | Vendor Code | 错误信息                                                                |
--|-----------|-------------|---------------------------------------------------------------------|
--| 44000     | 21180       | Can not find strategy for generate keys with table \`%s\`.          |
--
- ### 联邦查询
- 
- | SQL State | Vendor Code | 错误信息                                                      |
+ ### 读写分离
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 094491b2120..b1ae0044a31 100644
+index b1ae0044a31..dc06b30e7fe 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -23,6 +23,7 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+@@ -22,8 +22,9 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 42S02     | 10006       | Unknown column '%s' in '%s'.                                                   |
  | 42S02     | 10007       | Table or view \`%s\` does not exist.                                           |
  | 42000     | 10010       | Rule does not exist.                                                           |
- | 44000     | 10011       | '%s.'%s' initialization failed, reason is: %s.                                 |
-+| 44000     | 10012       | Can not find '%s' algorithm on table '%s'.                                     |
+-| 44000     | 10011       | '%s.'%s' initialization failed, reason is: %s.                                 |
++| 44000     | 10011       | Algorithm '%s.'%s' initialization failed, reason is: %s.                       |
+ | 44000     | 10012       | Can not find '%s' algorithm on table '%s'.                                     |
++| 44000     | 10013       | Algorithm '%s.%s' execute failed, reason is: %s.                               |
  | 42S02     | 10020       | Schema \`%s\` does not exist.                                                  |
  | 42S02     | 10021       | Single table \`%s\` does not exist.                                            |
  | HY000     | 10022       | Can not load table with database name \`%s\` and data source name \`%s\`.      |
-@@ -291,12 +292,6 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- |-----------|-------------|-------------------------------------------------------------|
- | 42S02     | 20990       | Invalid mask algorithm \`%s\` in database \`%s\`.           |
+@@ -212,7 +213,6 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 44000     | 20086       | Some routed data sources do not belong to configured data sources. routed data sources: \`%s\`, configured data sources: \`%s\`. |
+ | 44000     | 20087       | Please check your sharding conditions \`%s\` to avoid same record in table \`%s\` routing to multiple data nodes.                |
+ | 44000     | 20088       | Cannot found routing table factor, data source: %s, actual table: %s.                                                            |
+-| HY000     | 20092       | Clock is moving backwards, last time is %d milliseconds, current time is %d milliseconds.                                        |
+ | HY000     | 20099       | Sharding plugin error, reason is: %s                                                                                             |
  
--### Infra algorithm - key generate
--
--| SQL State | Vendor Code | Reason                                                              |
--|-----------|-------------|---------------------------------------------------------------------|
--| 44000     | 21180       | Can not find strategy for generate keys with table \`%s\`.          |
--
- ### SQL Federation
- 
- | SQL State | Vendor Code | Reason                                                    |
+ ### Readwrite-splitting

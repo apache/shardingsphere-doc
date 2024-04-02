@@ -1,38 +1,58 @@
-commit dc80ce0652a224ddb2d03f61816a39d5824cf053
+commit 5c3d23688049259a1297a862deb6afe60225db41
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Tue Apr 2 23:29:11 2024 +0800
+Date:   Wed Apr 3 00:15:36 2024 +0800
 
-    Refactor SyntaxSQLException (#30748)
+    Add DriverConnectionException (#30749)
 
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index 2c9018a1c04..bea2e001140 100644
+index bea2e001140..17372bad8d4 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -58,9 +58,9 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
- | 42000     | 12001       | Can not accept SQL type '%s'.            |
- | 42000     | 12002       | SQL String can not be NULL or empty.     |
- | 42000     | 12010       | Can not support variable '%s'.           |
--| 42S02     | 12011       | Can not find column label '%s'.          |
- | HV008     | 12020       | Column index '%d' is out of range.       |
--| HY000     | 12021       | Column '%s' in %s is ambiguous.          |
-+| 42S02     | 12021       | Can not find column label '%s'.          |
-+| HY000     | 12022       | Column '%s' in %s is ambiguous.          |
- | 0A000     | 12100       | DROP TABLE ... CASCADE is not supported. |
+@@ -67,18 +67,17 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
  
- ### 连接
+ | SQL State | Vendor Code | 错误信息                                                                                                                                                                                                                        |
+ |-----------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+-| 08000     | 13000       | Can not register driver, reason is: %s                                                                                                                                                                                      |
+-| 08000     | 13001       | Can not register SQL federation driver, reason is: %s                                                                                                                                                                       |
+ | 08000     | 13002       | The URL '%s' is not recognized, please refer to the pattern '%s'.                                                                                                                                                           |
+ | 0A000     | 13003       | Unsupported storage type of URL '%s'.                                                                                                                                                                                       |
+ | 01000     | 13010       | Circuit break open, the request has been ignored.                                                                                                                                                                           |
+ | 01000     | 13011       | The cluster status is read-only.                                                                                                                                                                                            |
+ | 01000     | 13012       | The cluster status is unavailable.                                                                                                                                                                                          |
+ | 08000     | 13020       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
+-| 08000     | 13030       | Connection has been closed.                                                                                                                                                                                                 |
+-| 08000     | 13031       | Result set has been closed.                                                                                                                                                                                                 |
+ | 08000     | 13032       | SQL execution has been interrupted.                                                                                                                                                                                         |
+ | HY000     | 13090       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
++| 08000     | 13100       | Can not register driver.                                                                                                                                                                                                    |
++| 08000     | 13101       | Connection has been closed.                                                                                                                                                                                                 |
++| 08000     | 13102       | Result set has been closed.                                                                                                                                                                                                 |
+ 
+ ### 事务
+ 
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 6408d98809e..3aae7c4bbb8 100644
+index 3aae7c4bbb8..e1169f81a9e 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -58,9 +58,9 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- | 42000     | 12001       | Can not accept SQL type '%s'.            |
- | 42000     | 12002       | SQL String can not be NULL or empty.     |
- | 42000     | 12010       | Can not support variable '%s'.           |
--| 42S02     | 12011       | Can not find column label '%s'.          |
- | HV008     | 12020       | Column index '%d' is out of range.       |
--| HY000     | 12021       | Column '%s' in %s is ambiguous.          |
-+| 42S02     | 12021       | Can not find column label '%s'.          |
-+| HY000     | 12022       | Column '%s' in %s is ambiguous.          |
- | 0A000     | 12100       | DROP TABLE ... CASCADE is not supported. |
+@@ -67,18 +67,17 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
  
- ### Connection
+ | SQL State | Vendor Code | Reason                                                                                                                                                                                                                      |
+ |-----------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+-| 08000     | 13000       | Can not register driver, reason is: %s                                                                                                                                                                                      |
+-| 08000     | 13001       | Can not register SQL federation driver, reason is: %s                                                                                                                                                                       |
+ | 08000     | 13002       | The URL '%s' is not recognized, please refer to the pattern '%s'.                                                                                                                                                           |
+ | 0A000     | 13003       | Unsupported storage type of URL '%s'.                                                                                                                                                                                       |
+ | 01000     | 13010       | Circuit break open, the request has been ignored.                                                                                                                                                                           |
+ | 01000     | 13011       | The cluster status is read-only.                                                                                                                                                                                            |
+ | 01000     | 13012       | The cluster status is unavailable.                                                                                                                                                                                          |
+ | 08000     | 13020       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
+-| 08000     | 13030       | Connection has been closed.                                                                                                                                                                                                 |
+-| 08000     | 13031       | Result set has been closed.                                                                                                                                                                                                 |
+ | 08000     | 13032       | SQL execution has been interrupted.                                                                                                                                                                                         |
+ | HY000     | 13090       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
++| 08000     | 13100       | Can not register driver.                                                                                                                                                                                                    |
++| 08000     | 13101       | Connection has been closed.                                                                                                                                                                                                 |
++| 08000     | 13102       | Result set has been closed.                                                                                                                                                                                                 |
+ 
+ ### Transaction
+ 

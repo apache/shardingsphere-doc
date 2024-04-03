@@ -1,52 +1,70 @@
-commit 15b2a8069ef9d6556034b95e141027ee86bbe2ba
+commit 10b2cb54e79a3103950622c515aade0007a54046
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Wed Apr 3 17:53:38 2024 +0800
+Date:   Wed Apr 3 23:55:17 2024 +0800
 
-    Adjust error code for ConnectionSQLException (#30759)
+    Refactor AuditSQLException (#30762)
 
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index d54811652fb..717b25bfc00 100644
+index 717b25bfc00..6ec92098229 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -67,12 +67,12 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+@@ -62,6 +62,8 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 42S02     | 12021       | Can not find column label '%s'.          |
+ | HY000     | 12022       | Column '%s' in %s is ambiguous.          |
+ | 0A000     | 12100       | DROP TABLE ... CASCADE is not supported. |
++| 42000     | 12200       | SQL audit failed, error message: %s.     |
++| 42000     | 12201       | Hint datasource '%s' does not exist.     |
  
- | SQL State | Vendor Code | 错误信息                                                                                                                                                                                                                        |
- |-----------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
--| 08000     | 13002       | The URL '%s' is not recognized, please refer to the pattern '%s'.                                                                                                                                                           |
--| 0A000     | 13003       | Unsupported storage type of URL '%s'.                                                                                                                                                                                       |
--| 01000     | 13010       | Circuit break open, the request has been ignored.                                                                                                                                                                           |
--| 08000     | 13020       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
--| 08000     | 13032       | SQL execution has been interrupted.                                                                                                                                                                                         |
--| HY000     | 13090       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
-+| 0A000     | 13000       | Unsupported storage type of URL '%s'.                                                                                                                                                                                       |
-+| 08000     | 13001       | The URL '%s' is not recognized, please refer to the pattern '%s'.                                                                                                                                                           |
-+| 08000     | 13010       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
-+| 08000     | 13011       | SQL execution has been interrupted.                                                                                                                                                                                         |
-+| 01000     | 13030       | Circuit break open, the request has been ignored.                                                                                                                                                                           |
-+| HY000     | 13040       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
- | 08000     | 13100       | Can not register driver.                                                                                                                                                                                                    |
- | 08000     | 13101       | Connection has been closed.                                                                                                                                                                                                 |
- | 08000     | 13102       | Result set has been closed.                                                                                                                                                                                                 |
+ ### 连接
+ 
+@@ -93,18 +95,6 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 25000     | 14301       | ShardingSphere Seata-AT transaction has been disabled.                             |
+ | 25000     | 14302       | Please config application id within seata.conf file.                               |
+ 
+-### 审计
+-
+-| SQL State | Vendor Code | 错误信息                                 |
+-|-----------|-------------|--------------------------------------|
+-| 44000     | 16000       | SQL audit failed, error message: %s. |
+-| 44000     | 16001       | Hint data source: %s is not exist.   |
+-
+-### 权限
+-
+-| SQL State | Vendor Code | 错误信息                              |
+-|-----------|-------------|-----------------------------------|
+-
+ ### 集群
+ 
+ | SQL State | Vendor Code | 错误信息                                                          |
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 2b94b8d10f6..c374d1ea392 100644
+index c374d1ea392..61773bf6ef5 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -67,12 +67,12 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+@@ -62,6 +62,8 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 42S02     | 12021       | Can not find column label '%s'.          |
+ | HY000     | 12022       | Column '%s' in %s is ambiguous.          |
+ | 0A000     | 12100       | DROP TABLE ... CASCADE is not supported. |
++| 42000     | 12200       | SQL audit failed, error message: %s.     |
++| 42000     | 12201       | Hint datasource '%s' does not exist.     |
  
- | SQL State | Vendor Code | Reason                                                                                                                                                                                                                      |
- |-----------|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
--| 08000     | 13002       | The URL '%s' is not recognized, please refer to the pattern '%s'.                                                                                                                                                           |
--| 0A000     | 13003       | Unsupported storage type of URL '%s'.                                                                                                                                                                                       |
--| 01000     | 13010       | Circuit break open, the request has been ignored.                                                                                                                                                                           |
--| 08000     | 13020       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
--| 08000     | 13032       | SQL execution has been interrupted.                                                                                                                                                                                         |
--| HY000     | 13090       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
-+| 0A000     | 13000       | Unsupported storage type of URL '%s'.                                                                                                                                                                                       |
-+| 08000     | 13001       | The URL '%s' is not recognized, please refer to the pattern '%s'.                                                                                                                                                           |
-+| 08000     | 13010       | Can not get %d connections one time, partition succeed connection(%d) have released. Please consider increasing the \`maxPoolSize\` of the data sources or decreasing the \`max-connections-size-per-query\` in properties. |
-+| 08000     | 13011       | SQL execution has been interrupted.                                                                                                                                                                                         |
-+| 01000     | 13030       | Circuit break open, the request has been ignored.                                                                                                                                                                           |
-+| HY000     | 13040       | Load datetime from database failed, reason: %s                                                                                                                                                                              |
- | 08000     | 13100       | Can not register driver.                                                                                                                                                                                                    |
- | 08000     | 13101       | Connection has been closed.                                                                                                                                                                                                 |
- | 08000     | 13102       | Result set has been closed.                                                                                                                                                                                                 |
+ ### Connection
+ 
+@@ -93,18 +95,6 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 25000     | 14301       | ShardingSphere Seata-AT transaction has been disabled.                             |
+ | 25000     | 14302       | Please config application id within seata.conf file.                               |
+ 
+-### Audit
+-
+-| SQL State | Vendor Code | Reason                               |
+-|-----------|-------------|--------------------------------------|
+-| 44000     | 16000       | SQL audit failed, error message: %s. |
+-| 44000     | 16001       | Hint datasource: %s is not exist.    |
+-
+-### Authority
+-
+-| SQL State | Vendor Code | Reason                            |
+-|-----------|-------------|-----------------------------------|
+-
+ ### Cluster
+ 
+ | SQL State | Vendor Code | Reason                                                        |

@@ -1,41 +1,94 @@
-commit 2e2843d7a4b82c0a98178549fb0badc7d452630a
+commit 0b9e29d3f403fad1a5c043f6289a59b47020d52f
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Fri Apr 5 21:52:15 2024 +0800
+Date:   Sat Apr 6 07:16:16 2024 +0800
 
-    Refactor FileIOException (#30784)
+    Refactor TransactionSQLException's impl (#30786)
+    
+    * Refactor TransactionSQLException's impl
+    
+    * Refactor TransactionSQLException's impl
 
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index 33786a21731..e415dd3cc24 100644
+index e415dd3cc24..33e343a8225 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -102,7 +102,6 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
- |-------------|-----------|---------------------------------------------------------------|
- | 17000       | 44000     | Mode must be 'cluster'.                                       |
- | 17001       | HY000     | Work ID assigned failed, which can not exceed 1024.           |
--| 17002       | HY000     | File access failed, file is: %s                               |
- | 17010       | HY000     | Cluster persist repository error, reason is: %s               |
- | 17020       | HY000     | The cluster status is %s, can not support SQL statement '%s'. |
+@@ -82,19 +82,20 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
  
-@@ -259,3 +258,4 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ ### 事务
+ 
+-| Vendor Code | SQL State | 错误信息                                                                               |
+-|-------------|-----------|------------------------------------------------------------------------------------|
+-| 14000       | 25000     | Switch transaction type failed, please terminate the current transaction.          |
+-| 14001       | 25000     | Can not find transaction manager of \`%s\`.                                        |
+-| 14002       | 25000     | Transaction timeout should more than 0s.                                           |
+-| 14200       | 25000     | Can not start new XA transaction in a active transaction.                          |
+-| 14201       | 25000     | Failed to create \`%s\` XA data source.                                            |
+-| 14202       | 25000     | Max length of xa unique resource name \`%s\` exceeded: should be less than 45.     |
+-| 14203       | 25000     | Check privileges failed on data source, reason is: \`%s\`                          |
+-| 14204       | 25000     | Failed to create XA transaction manager, requires \`%s\` privileges                |
+-| 14205       | 25000     | Close transaction manager failed, \`%s\`                                           |
+-| 14301       | 25000     | ShardingSphere Seata-AT transaction has been disabled.                             |
+-| 14302       | 25000     | Please config application id within seata.conf file.                               |
++| Vendor Code | SQL State | 错误信息                                                                           |
++|-------------|-----------|--------------------------------------------------------------------------------|
++| 14000       | 25000     | Switch transaction type failed, please terminate the current transaction.      |
++| 14001       | 42S02     | Can not find transaction manager of '%s'.                                      |
++| 14002       | 44000     | Max length of unique resource name '%s' exceeded, should be less than 45.      |
++| 14003       | 25000     | Transaction timeout should more than 0.                                        |
++| 14004       | 25000     | Close transaction manager failed.                                              |
++| 14200       | 25000     | Can not start new XA transaction in a active transaction.                      |
++| 14201       | 25000     | Failed to create \`%s\` XA data source.                                        |
++| 14202       | 25000     | Max length of xa unique resource name \`%s\` exceeded: should be less than 45. |
++| 14203       | 25000     | Check privileges failed on data source, reason is: \`%s\`                      |
++| 14204       | 25000     | Failed to create XA transaction manager, requires \`%s\` privileges            |
++| 14301       | 25000     | ShardingSphere Seata-AT transaction has been disabled.                         |
++| 14302       | 25000     | Please config application id within seata.conf file.                           |
+ 
+ ### 集群
+ 
+@@ -258,4 +259,4 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
  | 30003       | 0A000     | Unsupported command: %s         |
  | 30004       | HY000     | Server exception: %s            |
  | 30010       | HY000     | Can not find plugin class '%s'. |
-+| 30020       | HY000     | File access failed, file is: %s |
+-| 30020       | HY000     | File access failed, file is: %s |
 \ No newline at end of file
++| 30020       | HY000     | File access failed, file is: %s |
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index e5fed060234..3db04781bd6 100644
+index 3db04781bd6..50e11a6ded0 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -103,7 +103,6 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- |-------------|-----------|---------------------------------------------------------------|
- | 17000       | 44000     | Mode must be 'cluster'.                                       |
- | 17001       | HY000     | Work ID assigned failed, which can not exceed 1024.           |
--| 17002       | HY000     | File access failed, file is: %s                               |
- | 17010       | HY000     | Cluster persist repository error, reason is: %s               |
- | 17020       | HY000     | The cluster status is %s, can not support SQL statement '%s'. |
+@@ -83,19 +83,21 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
  
-@@ -260,3 +259,4 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
- | 30003       | 0A000     | Unsupported command: %s         |
- | 30004       | HY000     | Server exception: %s            |
- | 30010       | HY000     | Can not find plugin class '%s'. |
-+| 30020       | HY000     | File access failed, file is: %s |
+ ### Transaction
+ 
+-| Vendor Code | SQL State | Reason                                                                             |
+-|-------------|-----------|------------------------------------------------------------------------------------|
+-| 14000       | 25000     | Switch transaction type failed, please terminate the current transaction.          |
+-| 14001       | 25000     | Can not find transaction manager of \`%s\`.                                        |
+-| 14002       | 25000     | Transaction timeout should more than 0s.                                           |
+-| 14200       | 25000     | Can not start new XA transaction in a active transaction.                          |
+-| 14201       | 25000     | Failed to create \`%s\` XA data source.                                            |
+-| 14202       | 25000     | Max length of xa unique resource name \`%s\` exceeded: should be less than 45.     |
+-| 14203       | 25000     | Check privileges failed on data source, reason is: \`%s\`                          |
+-| 14204       | 25000     | Failed to create XA transaction manager, requires \`%s\` privileges                |
+-| 14205       | 25000     | Close transaction manager failed, \`%s\`                                           |
+-| 14301       | 25000     | ShardingSphere Seata-AT transaction has been disabled.                             |
+-| 14302       | 25000     | Please config application id within seata.conf file.                               |
++| Vendor Code | SQL State | Reason                                                                         |
++|-------------|-----------|--------------------------------------------------------------------------------|
++| 14000       | 25000     | Switch transaction type failed, please terminate the current transaction.      |
++| 14001       | 42S02     | Can not find transaction manager of '%s'.                                      |
++| 14002       | 44000     | Max length of unique resource name '%s' exceeded, should be less than 45.      |
++| 14003       | 25000     | Transaction timeout should more than 0.                                        |
++| 14004       | 25000     | Close transaction manager failed.                                              |
++| 14200       | 25000     | Can not start new XA transaction in a active transaction.                      |
++| 14201       | 25000     | Failed to create \`%s\` XA data source.                                        |
++| 14202       | 25000     | Max length of xa unique resource name \`%s\` exceeded: should be less than 45. |
++| 14203       | 25000     | Check privileges failed on data source, reason is: \`%s\`                      |
++| 14204       | 25000     | Failed to create XA transaction manager, requires \`%s\` privileges            |
++| 14205       | 25000     | Close transaction manager failed.                                              |
++| 14301       | 25000     | ShardingSphere Seata-AT transaction has been disabled.                         |
++| 14302       | 25000     | Please config application id within seata.conf file.                           |
+ 
+ ### Cluster
+ 

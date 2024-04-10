@@ -1,76 +1,86 @@
-commit 5eb9814df2e0d3ccb5bb0f51be1a7c1aa7be6647
+commit cd163feae5eed9a5f5371d736dffe0ddf93d4917
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Wed Apr 10 17:27:55 2024 +0800
+Date:   Wed Apr 10 18:33:14 2024 +0800
 
-    Adjust error codes on EncryptSQLException (#30831)
+    Refactor SQLTranslationException (#30833)
+    
+    * Refactor UnsupportedTranslatedDatabaseException
+    
+    * Remove UnsupportedTranslatedDatabaseException
+    
+    * Remove UnsupportedTranslatedDatabaseException
+    
+    * Refactor SQLTranslationException
 
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index a99e075ea96..979242955b6 100644
+index 979242955b6..d9a1c0798c6 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -219,17 +219,17 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+@@ -38,7 +38,8 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 10402       | 42S02     | '%s' algorithm '%s' on %s is unregistered.                                          |
+ | 10403       | 44000     | %s algorithms '%s' in database '%s' are still in used.                              |
+ | 10404       | 44000     | Invalid %s algorithm configuration '%s'.                                            |
+-| 10450       | HY000     | Algorithm '%s.%s' execute failed, reason is: %s.                                    |
++| 10410       | 0A000     | Unsupported %s.%s with database type '%s'.                                          |
++| 10440       | HY000     | Algorithm '%s.%s' execute failed, reason is: %s.                                    |
+ | 10500       | 44000     | Invalid single rule configuration, reason is: %s.                                   |
+ | 10501       | 42S02     | Single table '%s' does not exist.                                                   |
+ | 10502       | HY000     | Can not load table with database name '%s' and data source name '%s', reason is: %s |
+@@ -127,7 +128,6 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 18200       | HY000     | Before data record is '%s', after data record is '%s'.                         |
+ | 18201       | 08000     | Data check table '%s' failed.                                                  |
+ | 18202       | 0A000     | Unsupported pipeline database type '%s'.                                       |
+-| 18210       | 0A000     | Unsupported '%s' data consistency calculate algorithm with database type '%s'. |
+ | 18400       | 42S02     | Can not find stream data source table.                                         |
+ | 18401       | 42S02     | Database '%s' does not exist.                                                  |
+ | 18410       | 42S02     | CDC Login request body is empty.                                               |
+@@ -204,10 +204,9 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
  
- | Vendor Code | SQL State | 错误信息                                                                                               |
- |-------------|-----------|----------------------------------------------------------------------------------------------------|
--| 20700       | 44000     | Can not find logic encrypt column by \`%s\`.                                                       |
--| 20701       | 44000     | Fail to find encrypt column \`%s\` from table \`%s\`.                                              |
--| 20702       | 44000     | Altered column \`%s\` must use same encrypt algorithm with previous column \`%s\` in table \`%s\`. |
--| 20740       | 42000     | Insert value of index \`%s\` can not support for encrypt.                                          |
--| 20741       | 0A000     | The SQL clause \`%s\` is unsupported in encrypt rule.                                              |
--| 20781       | HY004     | \`%s\` column's encryptor name \`%s\` does not match encrypt algorithm type \`%s\`.                |
--| 20703       | 44000     | Cipher column of \`%s\` can not be null in database \`%s\`.                                        |
--| 20704       | 44000     | Can not find (STANDARD\|ASSIST_QUERY\|LIKE_QUERY) encryptor in table \`%s\` and column \`%s\`.     |
--| 20705       | 44000     | Assisted query column of \`%s\` can not be null in database \`%s\`.                                |
--| 20707       | 44000     | Like query column of \`%s\` can not be null in database \`%s\`.                                    |
--| 20709       | 44000     | Can not find encrypt table: \`%s\`.                                                                |
-+| 21000       | 44000     | Can not find logic encrypt column by \`%s\`.                                                       |
-+| 21001       | 44000     | Fail to find encrypt column \`%s\` from table \`%s\`.                                              |
-+| 21002       | 44000     | Altered column \`%s\` must use same encrypt algorithm with previous column \`%s\` in table \`%s\`. |
-+| 21040       | 42000     | Insert value of index \`%s\` can not support for encrypt.                                          |
-+| 21041       | 0A000     | The SQL clause \`%s\` is unsupported in encrypt rule.                                              |
-+| 21081       | HY004     | \`%s\` column's encryptor name \`%s\` does not match encrypt algorithm type \`%s\`.                |
-+| 21003       | 44000     | Cipher column of \`%s\` can not be null in database \`%s\`.                                        |
-+| 21004       | 44000     | Can not find (STANDARD\|ASSIST_QUERY\|LIKE_QUERY) encryptor in table \`%s\` and column \`%s\`.     |
-+| 21005       | 44000     | Assisted query column of \`%s\` can not be null in database \`%s\`.                                |
-+| 21007       | 44000     | Like query column of \`%s\` can not be null in database \`%s\`.                                    |
-+| 21009       | 44000     | Can not find encrypt table: \`%s\`.                                                                |
+ ### SQL 方言转换
  
- ### 影子库
+-| Vendor Code | SQL State | 错误信息                                                |
+-|-------------|-----------|-----------------------------------------------------|
+-| 20440       | 42000     | Can not support database \`%s\` in SQL translation. |
+-| 20441       | 42000     | Translation error, SQL is: %s                       |
++| Vendor Code | SQL State | 错误信息                                              |
++|-------------|-----------|---------------------------------------------------|
++| 20400       | 0A000     | Can not support database '%s' in SQL translation. |
+ 
+ ### 流量治理
  
 diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 4e985bc2ce7..040515881a9 100644
+index 040515881a9..4a6ffb5776e 100644
 --- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
 +++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -218,19 +218,19 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+@@ -38,7 +38,8 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 10402       | 42S02     | '%s' algorithm '%s' on %s is unregistered.                                          |
+ | 10403       | 44000     | %s algorithms '%s' in database '%s' are still in used.                              |
+ | 10404       | 44000     | Invalid %s algorithm configuration '%s'.                                            |
+-| 10450       | HY000     | Algorithm '%s.%s' execute failed, reason is: %s.                                    |
++| 10410       | 0A000     | Unsupported %s.%s with database type '%s'.                                          |
++| 10440       | HY000     | Algorithm '%s.%s' execute failed, reason is: %s.                                    |
+ | 10500       | 44000     | Invalid single rule configuration, reason is: %s.                                   |
+ | 10501       | 42S02     | Single table '%s' does not exist.                                                   |
+ | 10502       | HY000     | Can not load table with database name '%s' and data source name '%s', reason is: %s |
+@@ -128,7 +129,6 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 18200       | HY000     | Before data record is '%s', after data record is '%s'.                         |
+ | 18201       | 08000     | Data check table '%s' failed.                                                  |
+ | 18202       | 0A000     | Unsupported pipeline database type '%s'.                                       |
+-| 18210       | 0A000     | Unsupported '%s' data consistency calculate algorithm with database type '%s'. |
+ | 18400       | 42S02     | Can not find stream data source table.                                         |
+ | 18401       | 42S02     | Database '%s' does not exist.                                                  |
+ | 18410       | 42S02     | CDC Login request body is empty.                                               |
+@@ -205,10 +205,9 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
  
- ### Data Encrypt
+ ### SQL Dialect Translator
  
--| Vendor Code | SQL State | Reason                                                                                                |
--|-------------|-----------|-------------------------------------------------------------------------------------------------------|
--| 20700       | 44000     | Can not find logic encrypt column by \`%s\`.                                                          |
--| 20701       | 44000     | Fail to find encrypt column \`%s\` from table \`%s\`.                                                 |
--| 20702       | 44000     | Altered column \`%s\` must use same encrypt algorithm with previous column \`%s\` in table \`%s\`.    |
--| 20740       | 42000     | Insert value of index \`%s\` can not support for encrypt.                                             |
--| 20741       | 0A000     | The SQL clause \`%s\` is unsupported in encrypt rule.                                                 |
--| 20781       | HY004     | \`%s\` column's encryptor name \`%s\` does not match encrypt algorithm type \`%s\ in database \`%s\`. |
--| 20703       | 44000     | Cipher column of \`%s\` can not be null in database \`%s\`.                                           |
--| 20704       | 44000     | Can not find (STANDARD\|ASSIST_QUERY\|LIKE_QUERY) encryptor in table \`%s\` and column \`%s\`.        |
--| 20705       | 44000     | Assisted query column of \`%s\` can not be null in database \`%s\`.                                   |
--| 20707       | 44000     | Like query column of \`%s\` can not be null in database \`%s\`.                                       |
--| 20709       | 44000     | Can not find encrypt table: \`%s\`.                                                                   |
-+| Vendor Code | SQL State | Reason                                                                                             |
-+|-------------|-----------|----------------------------------------------------------------------------------------------------|
-+| 21000       | 44000     | Can not find logic encrypt column by \`%s\`.                                                       |
-+| 21001       | 44000     | Fail to find encrypt column \`%s\` from table \`%s\`.                                              |
-+| 21002       | 44000     | Altered column \`%s\` must use same encrypt algorithm with previous column \`%s\` in table \`%s\`. |
-+| 21040       | 42000     | Insert value of index \`%s\` can not support for encrypt.                                          |
-+| 21041       | 0A000     | The SQL clause \`%s\` is unsupported in encrypt rule.                                              |
-+| 21081       | HY004     | \`%s\` column's encryptor name \`%s\` does not match encrypt algorithm type \`%s\`.                |
-+| 21003       | 44000     | Cipher column of \`%s\` can not be null in database \`%s\`.                                        |
-+| 21004       | 44000     | Can not find (STANDARD\|ASSIST_QUERY\|LIKE_QUERY) encryptor in table \`%s\` and column \`%s\`.     |
-+| 21005       | 44000     | Assisted query column of \`%s\` can not be null in database \`%s\`.                                |
-+| 21007       | 44000     | Like query column of \`%s\` can not be null in database \`%s\`.                                    |
-+| 21009       | 44000     | Can not find encrypt table: \`%s\`.                                                                |
+-| Vendor Code | SQL State | Reason                                              |
+-|-------------|-----------|-----------------------------------------------------|
+-| 20440       | 42000     | Can not support database \`%s\` in SQL translation. |
+-| 20441       | 42000     | Translation error, SQL is: %s                       |
++| Vendor Code | SQL State | Reason                                            |
++|-------------|-----------|---------------------------------------------------|
++| 20400       | 0A000     | Can not support database '%s' in SQL translation. |
  
- ### Shadow Database
+ ### Traffic Management
  

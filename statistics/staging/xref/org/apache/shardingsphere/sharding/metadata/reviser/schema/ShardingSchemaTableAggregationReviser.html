@@ -26,10 +26,10 @@
 <a class="jxr_linenumber" name="L18" href="#L18">18</a>  <strong class="jxr_keyword">package</strong> org.apache.shardingsphere.sharding.metadata.reviser.schema;
 <a class="jxr_linenumber" name="L19" href="#L19">19</a>  
 <a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> lombok.RequiredArgsConstructor;
-<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.reviser.schema.SchemaTableAggregationReviser;
-<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.database.core.metadata.data.model.TableMetaData;
-<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
-<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.exception.metadata.InconsistentShardingTableMetaDataException;
+<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.database.core.metadata.data.model.TableMetaData;
+<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.exception.core.ShardingSpherePreconditions;
+<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.exception.kernel.metadata.RuleAndStorageMetaDataMismatchedException;
+<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.reviser.schema.SchemaTableAggregationReviser;
 <a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.metadata.TableMetaDataViolation;
 <a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.rule.ShardingRule;
 <a class="jxr_linenumber" name="L27" href="#L27">27</a>  
@@ -71,9 +71,18 @@
 <a class="jxr_linenumber" name="L63" href="#L63">63</a>          <a name="TableMetaData" href="../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/data/model/TableMetaData.html#TableMetaData">TableMetaData</a> sample = tableMetaDataList.iterator().next();
 <a class="jxr_linenumber" name="L64" href="#L64">64</a>          Collection&lt;TableMetaDataViolation&gt; violations = tableMetaDataList.stream()
 <a class="jxr_linenumber" name="L65" href="#L65">65</a>                  .filter(each -&gt; !sample.equals(each)).map(each -&gt; <strong class="jxr_keyword">new</strong> <a name="TableMetaDataViolation" href="../../../../../../../org/apache/shardingsphere/sharding/metadata/TableMetaDataViolation.html#TableMetaDataViolation">TableMetaDataViolation</a>(each.getName(), each)).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>          ShardingSpherePreconditions.checkState(violations.isEmpty(), () -&gt; <strong class="jxr_keyword">new</strong> <a name="InconsistentShardingTableMetaDataException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/metadata/InconsistentShardingTableMetaDataException.html#InconsistentShardingTableMetaDataException">InconsistentShardingTableMetaDataException</a>(logicTableName, violations));
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>          ShardingSpherePreconditions.checkState(violations.isEmpty(), () -&gt; <strong class="jxr_keyword">new</strong> <a name="RuleAndStorageMetaDataMismatchedException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/RuleAndStorageMetaDataMismatchedException.html#RuleAndStorageMetaDataMismatchedException">RuleAndStorageMetaDataMismatchedException</a>(createErrorReason(logicTableName, violations)));
 <a class="jxr_linenumber" name="L67" href="#L67">67</a>      }
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>  }
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>      
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>      <strong class="jxr_keyword">private</strong> String createErrorReason(<strong class="jxr_keyword">final</strong> String logicTableName, <strong class="jxr_keyword">final</strong> Collection&lt;TableMetaDataViolation&gt; violations) {
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>          StringBuilder result = <strong class="jxr_keyword">new</strong> StringBuilder(
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>                  <span class="jxr_string">"Can not get uniformed table structure for logic table '%s', it has different meta data of actual tables are as follows: "</span>).append(System.lineSeparator());
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>          <strong class="jxr_keyword">for</strong> (<a name="TableMetaDataViolation" href="../../../../../../../org/apache/shardingsphere/sharding/metadata/TableMetaDataViolation.html#TableMetaDataViolation">TableMetaDataViolation</a> each : violations) {
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>              result.append(<span class="jxr_string">"actual table: "</span>).append(each.getActualTableName()).append(<span class="jxr_string">", meta data: "</span>).append(each.getTableMetaData()).append(System.lineSeparator());
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>          }
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>          <strong class="jxr_keyword">return</strong> String.format(result.toString(), logicTableName);
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>      }
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

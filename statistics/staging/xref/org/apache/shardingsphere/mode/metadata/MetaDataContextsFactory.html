@@ -47,7 +47,7 @@
 <a class="jxr_linenumber" name="L39" href="#L39">39</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.metadata.factory.ExternalMetaDataFactory;
 <a class="jxr_linenumber" name="L40" href="#L40">40</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.metadata.factory.InternalMetaDataFactory;
 <a class="jxr_linenumber" name="L41" href="#L41">41</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.metadata.persist.MetaDataPersistService;
-<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.storage.StorageNodeDataSource;
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.storage.QualifiedDataSourceStatus;
 <a class="jxr_linenumber" name="L43" href="#L43">43</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.ContextManagerBuilderParameter;
 <a class="jxr_linenumber" name="L44" href="#L44">44</a>  
 <a class="jxr_linenumber" name="L45" href="#L45">45</a>  <strong class="jxr_keyword">import</strong> javax.sql.DataSource;
@@ -86,17 +86,17 @@
 <a class="jxr_linenumber" name="L78" href="#L78">78</a>  <em class="jxr_javadoccomment">     * @param persistService persist service</em>
 <a class="jxr_linenumber" name="L79" href="#L79">79</a>  <em class="jxr_javadoccomment">     * @param param context manager builder parameter</em>
 <a class="jxr_linenumber" name="L80" href="#L80">80</a>  <em class="jxr_javadoccomment">     * @param instanceContext instance context</em>
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>  <em class="jxr_javadoccomment">     * @param storageNodes storage nodes</em>
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>  <em class="jxr_javadoccomment">     * @param statusMap qualified data source status map</em>
 <a class="jxr_linenumber" name="L82" href="#L82">82</a>  <em class="jxr_javadoccomment">     * @return meta data contexts</em>
 <a class="jxr_linenumber" name="L83" href="#L83">83</a>  <em class="jxr_javadoccomment">     * @throws SQLException SQL exception</em>
 <a class="jxr_linenumber" name="L84" href="#L84">84</a>  <em class="jxr_javadoccomment">     */</em>
 <a class="jxr_linenumber" name="L85" href="#L85">85</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <a name="MetaDataContexts" href="../../../../../org/apache/shardingsphere/mode/metadata/MetaDataContexts.html#MetaDataContexts">MetaDataContexts</a> create(<strong class="jxr_keyword">final</strong> <a name="MetaDataPersistService" href="../../../../../org/apache/shardingsphere/metadata/persist/MetaDataPersistService.html#MetaDataPersistService">MetaDataPersistService</a> persistService, <strong class="jxr_keyword">final</strong> <a name="ContextManagerBuilderParameter" href="../../../../../org/apache/shardingsphere/mode/manager/ContextManagerBuilderParameter.html#ContextManagerBuilderParameter">ContextManagerBuilderParameter</a> param,
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>                                            <strong class="jxr_keyword">final</strong> <a name="InstanceContext" href="../../../../../org/apache/shardingsphere/infra/instance/InstanceContext.html#InstanceContext">InstanceContext</a> instanceContext, <strong class="jxr_keyword">final</strong> Map&lt;String, StorageNodeDataSource&gt; storageNodes) <strong class="jxr_keyword">throws</strong> SQLException {
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>                                            <strong class="jxr_keyword">final</strong> <a name="InstanceContext" href="../../../../../org/apache/shardingsphere/infra/instance/InstanceContext.html#InstanceContext">InstanceContext</a> instanceContext, <strong class="jxr_keyword">final</strong> Map&lt;String, QualifiedDataSourceStatus&gt; statusMap) <strong class="jxr_keyword">throws</strong> SQLException {
 <a class="jxr_linenumber" name="L87" href="#L87">87</a>          <strong class="jxr_keyword">boolean</strong> isDatabaseMetaDataExisted = !persistService.getDatabaseMetaDataService().loadAllDatabaseNames().isEmpty();
 <a class="jxr_linenumber" name="L88" href="#L88">88</a>          Map&lt;String, DatabaseConfiguration&gt; effectiveDatabaseConfigs = isDatabaseMetaDataExisted
 <a class="jxr_linenumber" name="L89" href="#L89">89</a>                  ? createEffectiveDatabaseConfigurations(getDatabaseNames(instanceContext, param.getDatabaseConfigs(), persistService), param.getDatabaseConfigs(), persistService)
 <a class="jxr_linenumber" name="L90" href="#L90">90</a>                  : param.getDatabaseConfigs();
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>          checkDataSourceStates(effectiveDatabaseConfigs, storageNodes, param.isForce());
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>          checkDataSourceStates(effectiveDatabaseConfigs, statusMap, param.isForce());
 <a class="jxr_linenumber" name="L92" href="#L92">92</a>          <em class="jxr_comment">// TODO load global data sources from persist service</em>
 <a class="jxr_linenumber" name="L93" href="#L93">93</a>          Map&lt;String, DataSource&gt; globalDataSources = param.getGlobalDataSources();
 <a class="jxr_linenumber" name="L94" href="#L94">94</a>          Collection&lt;RuleConfiguration&gt; globalRuleConfigs = isDatabaseMetaDataExisted ? persistService.getGlobalRuleService().load() : param.getGlobalRuleConfigs();
@@ -138,8 +138,8 @@
 <a class="jxr_linenumber" name="L130" href="#L130">130</a>         }
 <a class="jxr_linenumber" name="L131" href="#L131">131</a>     }
 <a class="jxr_linenumber" name="L132" href="#L132">132</a>     
-<a class="jxr_linenumber" name="L133" href="#L133">133</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDataSourceStates(<strong class="jxr_keyword">final</strong> Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, <strong class="jxr_keyword">final</strong> Map&lt;String, StorageNodeDataSource&gt; storageNodes, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> force) {
-<a class="jxr_linenumber" name="L134" href="#L134">134</a>         Map&lt;String, DataSourceState&gt; storageDataSourceStates = getStorageDataSourceStates(storageNodes);
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDataSourceStates(<strong class="jxr_keyword">final</strong> Map&lt;String, DatabaseConfiguration&gt; databaseConfigs, <strong class="jxr_keyword">final</strong> Map&lt;String, QualifiedDataSourceStatus&gt; statusMap, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> force) {
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>         Map&lt;String, DataSourceState&gt; storageDataSourceStates = getStorageDataSourceStates(statusMap);
 <a class="jxr_linenumber" name="L135" href="#L135">135</a>         databaseConfigs.forEach((key, value) -&gt; {
 <a class="jxr_linenumber" name="L136" href="#L136">136</a>             <strong class="jxr_keyword">if</strong> (!value.getStorageUnits().isEmpty()) {
 <a class="jxr_linenumber" name="L137" href="#L137">137</a>                 DataSourceStateManager.getInstance().initStates(key, value.getStorageUnits(), storageDataSourceStates, force);
@@ -147,9 +147,9 @@
 <a class="jxr_linenumber" name="L139" href="#L139">139</a>         });
 <a class="jxr_linenumber" name="L140" href="#L140">140</a>     }
 <a class="jxr_linenumber" name="L141" href="#L141">141</a>     
-<a class="jxr_linenumber" name="L142" href="#L142">142</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Map&lt;String, DataSourceState&gt; getStorageDataSourceStates(<strong class="jxr_keyword">final</strong> Map&lt;String, StorageNodeDataSource&gt; storageDataSourceStates) {
-<a class="jxr_linenumber" name="L143" href="#L143">143</a>         Map&lt;String, DataSourceState&gt; result = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;(storageDataSourceStates.size(), 1F);
-<a class="jxr_linenumber" name="L144" href="#L144">144</a>         storageDataSourceStates.forEach((key, value) -&gt; {
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Map&lt;String, DataSourceState&gt; getStorageDataSourceStates(<strong class="jxr_keyword">final</strong> Map&lt;String, QualifiedDataSourceStatus&gt; statusMap) {
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>         Map&lt;String, DataSourceState&gt; result = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;(statusMap.size(), 1F);
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>         statusMap.forEach((key, value) -&gt; {
 <a class="jxr_linenumber" name="L145" href="#L145">145</a>             List&lt;String&gt; values = Splitter.on(<span class="jxr_string">"."</span>).splitToList(key);
 <a class="jxr_linenumber" name="L146" href="#L146">146</a>             Preconditions.checkArgument(3 == values.size(), <span class="jxr_string">"Illegal data source of storage node."</span>);
 <a class="jxr_linenumber" name="L147" href="#L147">147</a>             String databaseName = values.get(0);

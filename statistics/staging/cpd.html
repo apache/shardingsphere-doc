@@ -5738,89 +5738,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td align="left">org/apache/shardingsphere/proxy/frontend/opengauss/command/query/simple/OpenGaussComQueryExecutor.java</td>
-<td>shardingsphere-proxy-frontend-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/opengauss/command/query/simple/OpenGaussComQueryExecutor.html#L70">70</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/proxy/frontend/postgresql/command/query/simple/PostgreSQLComQueryExecutor.java</td>
-<td>shardingsphere-proxy-frontend-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/postgresql/command/query/simple/PostgreSQLComQueryExecutor.html#L70">70</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>public OpenGaussComQueryExecutor(final PortalContext portalContext, final PostgreSQLComQueryPacket packet, final ConnectionSession connectionSession) throws SQLException {
-        this.portalContext = portalContext;
-        DatabaseType databaseType = TypedSPILoader.getService(DatabaseType.class, &quot;openGauss&quot;);
-        SQLStatement sqlStatement = ProxySQLComQueryParser.parse(packet.getSQL(), databaseType, connectionSession);
-        proxyBackendHandler = ProxyBackendHandlerFactory.newInstance(databaseType, packet.getSQL(), sqlStatement, connectionSession, packet.getHintValueContext());
-    }
-    
-    @Override
-    public Collection&lt;DatabasePacket&gt; execute() throws SQLException {
-        ResponseHeader responseHeader = proxyBackendHandler.execute();
-        if (responseHeader instanceof QueryResponseHeader) {
-            return Collections.singleton(createRowDescriptionPacket((QueryResponseHeader) responseHeader));
-        }
-        responseType = ResponseType.UPDATE;
-        return createUpdatePacket((UpdateResponseHeader) responseHeader);
-    }
-    
-    private PostgreSQLRowDescriptionPacket createRowDescriptionPacket(final QueryResponseHeader queryResponseHeader) {
-        responseType = ResponseType.QUERY;
-        return new PostgreSQLRowDescriptionPacket(createColumnDescriptions(queryResponseHeader));
-    }
-    
-    private Collection&lt;PostgreSQLColumnDescription&gt; createColumnDescriptions(final QueryResponseHeader queryResponseHeader) {
-        Collection&lt;PostgreSQLColumnDescription&gt; result = new LinkedList&lt;&gt;();
-        int columnIndex = 0;
-        for (QueryHeader each : queryResponseHeader.getQueryHeaders()) {
-            result.add(new PostgreSQLColumnDescription(each.getColumnLabel(), ++columnIndex, each.getColumnType(), each.getColumnLength(), each.getColumnTypeName()));
-        }
-        return result;
-    }
-    
-    private Collection&lt;DatabasePacket&gt; createUpdatePacket(final UpdateResponseHeader updateResponseHeader) throws SQLException {
-        SQLStatement sqlStatement = updateResponseHeader.getSqlStatement();
-        if (sqlStatement instanceof CommitStatement || sqlStatement instanceof RollbackStatement) {
-            portalContext.closeAll();
-        }
-        if (sqlStatement instanceof SetStatement) {
-            return createParameterStatusResponse((SetStatement) sqlStatement);
-        }
-        return Collections.singletonList(sqlStatement instanceof EmptyStatement ? new PostgreSQLEmptyQueryResponsePacket()
-                : new PostgreSQLCommandCompletePacket(PostgreSQLCommand.valueOf(sqlStatement.getClass()).map(PostgreSQLCommand::getTag).orElse(&quot;&quot;), updateResponseHeader.getUpdateCount()));
-    }
-    
-    private Collection&lt;DatabasePacket&gt; createParameterStatusResponse(final SetStatement sqlStatement) {
-        Collection&lt;DatabasePacket&gt; result = new ArrayList&lt;&gt;(2);
-        result.add(new PostgreSQLCommandCompletePacket(&quot;SET&quot;, 0L));
-        for (VariableAssignSegment each : sqlStatement.getVariableAssigns()) {
-            result.add(new PostgreSQLParameterStatusPacket(each.getVariable().getVariable(), IdentifierValue.getQuotedContent(each.getAssignValue())));
-        }
-        return result;
-    }
-    
-    @Override
-    public boolean next() throws SQLException {
-        return proxyBackendHandler.next();
-    }
-    
-    @Override
-    public PostgreSQLPacket getQueryRowPacket() throws SQLException {
-        return new PostgreSQLDataRowPacket(proxyBackendHandler.getRowData().getData());
-    }
-    
-    @Override
-    public void close() throws SQLException {
-        proxyBackendHandler.close();
-    }
-}</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/clickhouse/visitor/statement/type/ClickHouseDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-clickhouse</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/clickhouse/visitor/statement/type/ClickHouseDMLStatementVisitor.html#L279">279</a></td></tr>
@@ -6013,6 +5930,87 @@
         if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
             return createCompareSegment(ctx);
         }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/proxy/frontend/opengauss/command/query/simple/OpenGaussComQueryExecutor.java</td>
+<td>shardingsphere-proxy-frontend-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/opengauss/command/query/simple/OpenGaussComQueryExecutor.html#L72">72</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/proxy/frontend/postgresql/command/query/simple/PostgreSQLComQueryExecutor.java</td>
+<td>shardingsphere-proxy-frontend-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/proxy/frontend/postgresql/command/query/simple/PostgreSQLComQueryExecutor.html#L72">72</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>DatabaseType databaseType = TypedSPILoader.getService(DatabaseType.class, &quot;openGauss&quot;);
+        SQLStatement sqlStatement = ProxySQLComQueryParser.parse(packet.getSQL(), databaseType, connectionSession);
+        proxyBackendHandler = ProxyBackendHandlerFactory.newInstance(databaseType, packet.getSQL(), sqlStatement, connectionSession, packet.getHintValueContext());
+    }
+    
+    @Override
+    public Collection&lt;DatabasePacket&gt; execute() throws SQLException {
+        ResponseHeader responseHeader = proxyBackendHandler.execute();
+        if (responseHeader instanceof QueryResponseHeader) {
+            return Collections.singleton(createRowDescriptionPacket((QueryResponseHeader) responseHeader));
+        }
+        responseType = ResponseType.UPDATE;
+        return createUpdatePacket((UpdateResponseHeader) responseHeader);
+    }
+    
+    private PostgreSQLRowDescriptionPacket createRowDescriptionPacket(final QueryResponseHeader queryResponseHeader) {
+        responseType = ResponseType.QUERY;
+        return new PostgreSQLRowDescriptionPacket(createColumnDescriptions(queryResponseHeader));
+    }
+    
+    private Collection&lt;PostgreSQLColumnDescription&gt; createColumnDescriptions(final QueryResponseHeader queryResponseHeader) {
+        Collection&lt;PostgreSQLColumnDescription&gt; result = new LinkedList&lt;&gt;();
+        int columnIndex = 0;
+        for (QueryHeader each : queryResponseHeader.getQueryHeaders()) {
+            result.add(new PostgreSQLColumnDescription(each.getColumnLabel(), ++columnIndex, each.getColumnType(), each.getColumnLength(), each.getColumnTypeName()));
+        }
+        return result;
+    }
+    
+    private Collection&lt;DatabasePacket&gt; createUpdatePacket(final UpdateResponseHeader updateResponseHeader) throws SQLException {
+        SQLStatement sqlStatement = updateResponseHeader.getSqlStatement();
+        if (sqlStatement instanceof CommitStatement || sqlStatement instanceof RollbackStatement) {
+            portalContext.closeAll();
+        }
+        if (sqlStatement instanceof SetStatement) {
+            return createParameterStatusResponse((SetStatement) sqlStatement);
+        }
+        return Collections.singletonList(sqlStatement instanceof EmptyStatement ? new PostgreSQLEmptyQueryResponsePacket()
+                : new PostgreSQLCommandCompletePacket(PostgreSQLCommand.valueOf(sqlStatement.getClass()).map(PostgreSQLCommand::getTag).orElse(&quot;&quot;), updateResponseHeader.getUpdateCount()));
+    }
+    
+    private Collection&lt;DatabasePacket&gt; createParameterStatusResponse(final SetStatement sqlStatement) {
+        Collection&lt;DatabasePacket&gt; result = new ArrayList&lt;&gt;(2);
+        result.add(new PostgreSQLCommandCompletePacket(&quot;SET&quot;, 0L));
+        for (VariableAssignSegment each : sqlStatement.getVariableAssigns()) {
+            result.add(new PostgreSQLParameterStatusPacket(each.getVariable().getVariable(), IdentifierValue.getQuotedContent(each.getAssignValue())));
+        }
+        return result;
+    }
+    
+    @Override
+    public boolean next() throws SQLException {
+        return proxyBackendHandler.next();
+    }
+    
+    @Override
+    public PostgreSQLPacket getQueryRowPacket() throws SQLException {
+        return new PostgreSQLDataRowPacket(proxyBackendHandler.getRowData().getData());
+    }
+    
+    @Override
+    public void close() throws SQLException {
+        proxyBackendHandler.close();
+    }
+}</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -14733,7 +14731,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L456">456</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L457">457</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc</td>
@@ -15105,7 +15103,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L642">642</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L643">643</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc</td>
@@ -16949,7 +16947,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L435">435</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L436">436</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc</td>

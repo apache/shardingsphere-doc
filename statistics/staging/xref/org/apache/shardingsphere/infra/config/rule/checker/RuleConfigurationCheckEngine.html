@@ -57,37 +57,41 @@
 <a class="jxr_linenumber" name="L49" href="#L49">49</a>      @SuppressWarnings({<span class="jxr_string">"unchecked"</span>, <span class="jxr_string">"rawtypes"</span>})
 <a class="jxr_linenumber" name="L50" href="#L50">50</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> check(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database) {
 <a class="jxr_linenumber" name="L51" href="#L51">51</a>          <a name="RuleConfigurationChecker" href="../../../../../../../org/apache/shardingsphere/infra/config/rule/checker/RuleConfigurationChecker.html#RuleConfigurationChecker">RuleConfigurationChecker</a> checker = OrderedSPILoader.getServicesByClass(RuleConfigurationChecker.<strong class="jxr_keyword">class</strong>, Collections.singleton(ruleConfig.getClass())).get(ruleConfig.getClass());
-<a class="jxr_linenumber" name="L52" href="#L52">52</a>          Collection&lt;String&gt; requiredDataSourceNames = checker.getRequiredDataSourceNames(ruleConfig);
-<a class="jxr_linenumber" name="L53" href="#L53">53</a>          <strong class="jxr_keyword">if</strong> (!requiredDataSourceNames.isEmpty()) {
-<a class="jxr_linenumber" name="L54" href="#L54">54</a>              checkDataSourcesExisted(database, requiredDataSourceNames);
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>          <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == checker) {
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>              <em class="jxr_comment">// TODO Remove after implementing the checker of BroadcastRuleConfiguration and SingleRuleConfiguration</em>
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>              <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L55" href="#L55">55</a>          }
-<a class="jxr_linenumber" name="L56" href="#L56">56</a>          Collection&lt;String&gt; tableNames = checker.getTableNames(ruleConfig);
-<a class="jxr_linenumber" name="L57" href="#L57">57</a>          <strong class="jxr_keyword">if</strong> (!tableNames.isEmpty()) {
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>              checkTablesNotDuplicated(ruleConfig, database.getName(), tableNames);
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>          Collection&lt;String&gt; requiredDataSourceNames = checker.getRequiredDataSourceNames(ruleConfig);
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>          <strong class="jxr_keyword">if</strong> (!requiredDataSourceNames.isEmpty()) {
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>              checkDataSourcesExisted(database, requiredDataSourceNames);
 <a class="jxr_linenumber" name="L59" href="#L59">59</a>          }
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>          Map&lt;String, DataSource&gt; dataSources = database.getResourceMetaData().getStorageUnits().entrySet().stream().collect(Collectors.toMap(Entry::getKey, entry -&gt; entry.getValue().getDataSource()));
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>          checker.check(database.getName(), ruleConfig, dataSources, database.getRuleMetaData().getRules());
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>      }
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>      
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDataSourcesExisted(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; requiredDataSourceNames) {
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>          Collection&lt;String&gt; notExistedDataSources = database.getResourceMetaData().getNotExistedDataSources(requiredDataSourceNames);
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>          Collection&lt;String&gt; logicDataSources = database.getRuleMetaData().getAttributes(DataSourceMapperRuleAttribute.<strong class="jxr_keyword">class</strong>).stream()
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>                  .flatMap(each -&gt; each.getDataSourceMapper().keySet().stream()).collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>          notExistedDataSources.removeIf(logicDataSources::contains);
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>          ShardingSpherePreconditions.checkMustEmpty(notExistedDataSources, () -&gt; <strong class="jxr_keyword">new</strong> <a name="MissingRequiredStorageUnitsException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/resource/storageunit/MissingRequiredStorageUnitsException.html#MissingRequiredStorageUnitsException">MissingRequiredStorageUnitsException</a>(database.getName(), notExistedDataSources));
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>      }
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>      
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTablesNotDuplicated(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig, <strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tableNames) {
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>          Collection&lt;String&gt; duplicatedTables = tableNames.stream()
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>                  .collect(Collectors.groupingBy(each -&gt; each, Collectors.counting())).entrySet().stream().filter(each -&gt; each.getValue() &gt; 1L).map(Entry::getKey).collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>          ShardingSpherePreconditions.checkMustEmpty(duplicatedTables, () -&gt; <strong class="jxr_keyword">new</strong> <a name="DuplicateRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/DuplicateRuleException.html#DuplicateRuleException">DuplicateRuleException</a>(getRuleType(ruleConfig), databaseName, duplicatedTables));
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>      }
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>      
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> String getRuleType(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig) {
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>          String ruleConfigClassName = ruleConfig.getClass().getSimpleName();
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>          <strong class="jxr_keyword">return</strong> ruleConfigClassName.substring(0, ruleConfigClassName.indexOf(<span class="jxr_string">"RuleConfiguration"</span>));
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>      }
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>  }
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>          Collection&lt;String&gt; tableNames = checker.getTableNames(ruleConfig);
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>          <strong class="jxr_keyword">if</strong> (!tableNames.isEmpty()) {
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>              checkTablesNotDuplicated(ruleConfig, database.getName(), tableNames);
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>          }
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>          Map&lt;String, DataSource&gt; dataSources = database.getResourceMetaData().getStorageUnits().entrySet().stream().collect(Collectors.toMap(Entry::getKey, entry -&gt; entry.getValue().getDataSource()));
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>          checker.check(database.getName(), ruleConfig, dataSources, database.getRuleMetaData().getRules());
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>      }
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>      
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDataSourcesExisted(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; requiredDataSourceNames) {
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>          Collection&lt;String&gt; notExistedDataSources = database.getResourceMetaData().getNotExistedDataSources(requiredDataSourceNames);
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>          Collection&lt;String&gt; logicDataSources = database.getRuleMetaData().getAttributes(DataSourceMapperRuleAttribute.<strong class="jxr_keyword">class</strong>).stream()
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>                  .flatMap(each -&gt; each.getDataSourceMapper().keySet().stream()).collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>          notExistedDataSources.removeIf(logicDataSources::contains);
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>          ShardingSpherePreconditions.checkMustEmpty(notExistedDataSources, () -&gt; <strong class="jxr_keyword">new</strong> <a name="MissingRequiredStorageUnitsException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/resource/storageunit/MissingRequiredStorageUnitsException.html#MissingRequiredStorageUnitsException">MissingRequiredStorageUnitsException</a>(database.getName(), notExistedDataSources));
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>      }
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>      
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTablesNotDuplicated(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig, <strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; tableNames) {
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>          Collection&lt;String&gt; duplicatedTables = tableNames.stream()
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>                  .collect(Collectors.groupingBy(each -&gt; each, Collectors.counting())).entrySet().stream().filter(each -&gt; each.getValue() &gt; 1L).map(Entry::getKey).collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>          ShardingSpherePreconditions.checkMustEmpty(duplicatedTables, () -&gt; <strong class="jxr_keyword">new</strong> <a name="DuplicateRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/DuplicateRuleException.html#DuplicateRuleException">DuplicateRuleException</a>(getRuleType(ruleConfig), databaseName, duplicatedTables));
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>      }
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>      
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> String getRuleType(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig) {
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>          String ruleConfigClassName = ruleConfig.getClass().getSimpleName();
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>          <strong class="jxr_keyword">return</strong> ruleConfigClassName.substring(0, ruleConfigClassName.indexOf(<span class="jxr_string">"RuleConfiguration"</span>));
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>      }
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

@@ -7805,6 +7805,58 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.html#L139">139</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteQueryExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteQueryExecutor.html#L162">162</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>queryContext.getSqlStatementContext().getSqlStatement(), SQLExecutorExceptionHandler.isExceptionThrown());
+    }
+    
+    private boolean hasRawExecutionRule(final ShardingSphereDatabase database) {
+        return !database.getRuleMetaData().getAttributes(RawExecutionRuleAttribute.class).isEmpty();
+    }
+    
+    private Collection&lt;Statement&gt; getStatements(final ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
+        Collection&lt;Statement&gt; result = new LinkedList&lt;&gt;();
+        for (JDBCExecutionUnit each : executionGroup.getInputs()) {
+            result.add(each.getStorageResource());
+        }
+        return result;
+    }
+    
+    private Collection&lt;List&lt;Object&gt;&gt; getParameterSets(final ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
+        Collection&lt;List&lt;Object&gt;&gt; result = new LinkedList&lt;&gt;();
+        for (JDBCExecutionUnit each : executionGroup.getInputs()) {
+            result.add(each.getExecutionUnit().getSqlUnit().getParameters());
+        }
+        return result;
+    }
+    
+    private ExecutionContext createExecutionContext(final ShardingSphereDatabase database, final QueryContext queryContext) {
+        RuleMetaData globalRuleMetaData = metaData.getGlobalRuleMetaData();
+        SQLAuditEngine.audit(queryContext, globalRuleMetaData, database);
+        return new KernelProcessor().generateExecutionContext(queryContext, database, globalRuleMetaData, metaData.getProps(), connection.getDatabaseConnectionManager().getConnectionContext());
+    }
+    
+    private ExecutionGroupContext&lt;RawSQLExecutionUnit&gt; createRawExecutionGroupContext(final ShardingSphereDatabase database, final ExecutionContext executionContext) throws SQLException {
+        int maxConnectionsSizePerQuery = metaData.getProps().&lt;Integer&gt;getValue(ConfigurationPropertyKey.MAX_CONNECTIONS_SIZE_PER_QUERY);
+        return new RawExecutionPrepareEngine(maxConnectionsSizePerQuery, database.getRuleMetaData().getRules()).prepare(
+                executionContext.getRouteContext(), executionContext.getExecutionUnits(), new ExecutionGroupReportContext(connection.getProcessId(), database.getName(), new Grantee(&quot;&quot;, &quot;&quot;)));
+    }
+    
+    private &lt;T&gt; T executeWithImplicitCommitTransaction(final ImplicitTransactionCallback&lt;T&gt; callback, final Connection connection, final DatabaseType databaseType) throws SQLException {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1133">1133</a></td></tr>
@@ -10370,6 +10422,47 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.html#L165">165</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.html#L147">147</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return new KernelProcessor().generateExecutionContext(queryContext, database, globalRuleMetaData, metaData.getProps(), connection.getDatabaseConnectionManager().getConnectionContext());
+    }
+    
+    private ExecutionGroupContext&lt;RawSQLExecutionUnit&gt; createRawExecutionGroupContext(final ShardingSphereDatabase database, final ExecutionContext executionContext) throws SQLException {
+        int maxConnectionsSizePerQuery = metaData.getProps().&lt;Integer&gt;getValue(ConfigurationPropertyKey.MAX_CONNECTIONS_SIZE_PER_QUERY);
+        return new RawExecutionPrepareEngine(maxConnectionsSizePerQuery, database.getRuleMetaData().getRules()).prepare(
+                executionContext.getRouteContext(), executionContext.getExecutionUnits(), new ExecutionGroupReportContext(connection.getProcessId(), database.getName(), new Grantee(&quot;&quot;, &quot;&quot;)));
+    }
+    
+    private &lt;T&gt; T executeWithImplicitCommitTransaction(final ImplicitTransactionCallback&lt;T&gt; callback, final Connection connection, final DatabaseType databaseType) throws SQLException {
+        T result;
+        try {
+            connection.setAutoCommit(false);
+            result = callback.execute();
+            connection.commit();
+            // CHECKSTYLE:OFF
+        } catch (final Exception ex) {
+            // CHECKSTYLE:ON
+            connection.rollback();
+            throw SQLExceptionTransformEngine.toSQLException(ex, databaseType);
+        } finally {
+            connection.setAutoCommit(true);
+        }
+        return result;
+    }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sqlfederation/optimizer/converter/statement/merge/MergeStatementConverter.java</td>
 <td>shardingsphere-sql-federation-optimizer</td>
 <td><a href="./xref/org/apache/shardingsphere/sqlfederation/optimizer/converter/statement/merge/MergeStatementConverter.html#L54">54</a></td></tr>
@@ -11799,6 +11892,50 @@
         }
         try {
             rules.removeIf(each -&gt; each.getConfiguration().getClass().isAssignableFrom(ruleConfig.getClass()));</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.html#L139">139</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteQueryExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteQueryExecutor.html#L162">162</a></td></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.html#L121">121</a></td></tr>
+<tr class="a">
+<td colspan="3" align="left">
+<div class="source">
+<pre>queryContext.getSqlStatementContext().getSqlStatement(), SQLExecutorExceptionHandler.isExceptionThrown());
+    }
+    
+    private boolean hasRawExecutionRule(final ShardingSphereDatabase database) {
+        return !database.getRuleMetaData().getAttributes(RawExecutionRuleAttribute.class).isEmpty();
+    }
+    
+    private Collection&lt;Statement&gt; getStatements(final ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
+        Collection&lt;Statement&gt; result = new LinkedList&lt;&gt;();
+        for (JDBCExecutionUnit each : executionGroup.getInputs()) {
+            result.add(each.getStorageResource());
+        }
+        return result;
+    }
+    
+    private Collection&lt;List&lt;Object&gt;&gt; getParameterSets(final ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
+        Collection&lt;List&lt;Object&gt;&gt; result = new LinkedList&lt;&gt;();
+        for (JDBCExecutionUnit each : executionGroup.getInputs()) {
+            result.add(each.getExecutionUnit().getSqlUnit().getParameters());
+        }
+        return result;
+    }
+    
+    private ExecutionContext createExecutionContext(final ShardingSphereDatabase database, final QueryContext queryContext) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -14694,11 +14831,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L318">318</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L316">316</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L345">345</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L339">339</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -15287,6 +15424,39 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteExecutor.html#L235">235</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.html#L215">215</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>}
+    
+    private boolean isNeedImplicitCommitTransaction(final ShardingSphereConnection connection, final SQLStatement sqlStatement, final boolean multiExecutionUnits) {
+        if (!connection.getAutoCommit()) {
+            return false;
+        }
+        TransactionType transactionType = connection.getContextManager().getMetaDataContexts().getMetaData().getGlobalRuleMetaData().getSingleRule(TransactionRule.class).getDefaultType();
+        boolean isInTransaction = connection.getDatabaseConnectionManager().getConnectionTransaction().isInTransaction();
+        if (!TransactionType.isDistributedTransaction(transactionType) || isInTransaction) {
+            return false;
+        }
+        return isWriteDMLStatement(sqlStatement) &amp;&amp; multiExecutionUnits;
+    }
+    
+    private boolean isWriteDMLStatement(final SQLStatement sqlStatement) {
+        return sqlStatement instanceof DMLStatement &amp;&amp; !(sqlStatement instanceof SelectStatement);
+    }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDCLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDCLStatementVisitor.html#L134">134</a></td></tr>
@@ -15671,11 +15841,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
 <td>shardingsphere-jdbc</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L489">489</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L487">487</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
 <td>shardingsphere-jdbc</td>
-<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L373">373</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L367">367</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -17002,6 +17172,32 @@
     
     @Override
     public ASTNode visitCreateDefinitionClause(final CreateDefinitionClauseContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteQueryExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteQueryExecutor.html#L188">188</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/executor/DriverExecuteUpdateExecutor.html#L147">147</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return new KernelProcessor().generateExecutionContext(queryContext, database, globalRuleMetaData, metaData.getProps(), connection.getDatabaseConnectionManager().getConnectionContext());
+    }
+    
+    private ExecutionGroupContext&lt;RawSQLExecutionUnit&gt; createRawExecutionGroupContext(final ShardingSphereDatabase database, final ExecutionContext executionContext) throws SQLException {
+        int maxConnectionsSizePerQuery = metaData.getProps().&lt;Integer&gt;getValue(ConfigurationPropertyKey.MAX_CONNECTIONS_SIZE_PER_QUERY);
+        return new RawExecutionPrepareEngine(maxConnectionsSizePerQuery, database.getRuleMetaData().getRules()).prepare(
+                executionContext.getRouteContext(), executionContext.getExecutionUnits(), new ExecutionGroupReportContext(connection.getProcessId(), database.getName(), new Grantee(&quot;&quot;, &quot;&quot;)));
+    }
+    
+    private MergedResult mergeQuery(final ShardingSphereDatabase database, final List&lt;QueryResult&gt; queryResults, final SQLStatementContext sqlStatementContext) throws SQLException {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -18822,6 +19018,39 @@
         if (null != ctx.selectWithInto()) {
             return visit(ctx.selectWithInto());
         }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSpherePreparedStatement.html#L296">296</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.java</td>
+<td>shardingsphere-jdbc</td>
+<td><a href="./xref/org/apache/shardingsphere/driver/jdbc/core/statement/ShardingSphereStatement.html#L321">321</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>}
+    
+    @Override
+    public ResultSet getResultSet() throws SQLException {
+        if (null != currentResultSet) {
+            return currentResultSet;
+        }
+        Optional&lt;ResultSet&gt; resultSet = driverExecutorFacade.getExecuteExecutor().getResultSet();
+        if (resultSet.isPresent()) {
+            return resultSet.get();
+        }
+        if (sqlStatementContext instanceof SelectStatementContext || sqlStatementContext.getSqlStatement() instanceof DALStatement) {
+            List&lt;ResultSet&gt; resultSets = getResultSets();
+            if (resultSets.isEmpty()) {
+                return currentResultSet;
+            }
+            MergedResult mergedResult = mergeQuery(getQueryResults(resultSets), sqlStatementContext);</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

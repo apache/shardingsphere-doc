@@ -4135,6 +4135,126 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.html#L102">102</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDMLStatementVisitor.html#L102">102</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return new DorisLoadXMLStatement((SimpleTableSegment) visit(ctx.tableName()));
+    }
+    
+    @Override
+    public ASTNode visitIndexHint(final IndexHintContext ctx) {
+        Collection&lt;String&gt; indexNames = new LinkedList&lt;&gt;();
+        if (null != ctx.indexNameList()) {
+            ctx.indexNameList().indexName().forEach(each -&gt; indexNames.add(each.getText()));
+        }
+        String useType;
+        if (null != ctx.USE()) {
+            useType = ctx.USE().getText();
+        } else if (null != ctx.IGNORE()) {
+            useType = ctx.IGNORE().getText();
+        } else {
+            useType = ctx.FORCE().getText();
+        }
+        IndexHintSegment result = new IndexHintSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), indexNames, useType,
+                null == ctx.INDEX() ? ctx.KEY().getText() : ctx.INDEX().getText(), getOriginalText(ctx));
+        if (null != ctx.indexHintClause().FOR()) {
+            String hintScope;
+            if (null != ctx.indexHintClause().JOIN()) {
+                hintScope = &quot;JOIN&quot;;
+            } else if (null != ctx.indexHintClause().ORDER()) {
+                hintScope = &quot;ORDER BY&quot;;
+            } else {
+                hintScope = &quot;GROUP BY&quot;;
+            }
+            result.setHintScope(hintScope);
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitWindowClause(final WindowClauseContext ctx) {
+        WindowSegment result = new WindowSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
+        for (WindowItemContext each : ctx.windowItem()) {
+            result.getItemSegments().add((WindowItemSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitWindowItem(final WindowItemContext ctx) {
+        WindowItemSegment result = new WindowItemSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
+        result.setWindowName(new IdentifierValue(ctx.identifier().getText()));
+        WindowItemSegment windowItemSegment = (WindowItemSegment) visit(ctx.windowSpecification());
+        result.setPartitionListSegments(windowItemSegment.getPartitionListSegments());
+        result.setOrderBySegment(windowItemSegment.getOrderBySegment());
+        result.setFrameClause(windowItemSegment.getFrameClause());
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitWindowSpecification(final WindowSpecificationContext ctx) {
+        WindowItemSegment result = new WindowItemSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
+        if (null != ctx.PARTITION()) {
+            result.setPartitionListSegments(getExpressions(ctx.expr()));
+        }
+        if (null != ctx.orderByClause()) {
+            result.setOrderBySegment((OrderBySegment) visit(ctx.orderByClause()));
+        }
+        if (null != ctx.frameClause()) {
+            result.setFrameClause(new CommonExpressionSegment(ctx.frameClause().start.getStartIndex(), ctx.frameClause().stop.getStopIndex(), ctx.frameClause().getText()));
+        }
+        if (null != ctx.identifier()) {
+            result.setWindowName(new IdentifierValue(ctx.identifier().getText()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitWindowFunction(final WindowFunctionContext ctx) {
+        super.visitWindowFunction(ctx);
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.funcName.getText(), getOriginalText(ctx));
+        if (null != ctx.NTILE()) {
+            result.getParameters().add((ExpressionSegment) visit(ctx.simpleExpr()));
+        }
+        if (null != ctx.LEAD() || null != ctx.LAG() || null != ctx.FIRST_VALUE() || null != ctx.LAST_VALUE()) {
+            result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
+        }
+        if (null != ctx.NTH_VALUE()) {
+            result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
+            result.getParameters().add((ExpressionSegment) visit(ctx.simpleExpr()));
+        }
+        result.setWindow((WindowItemSegment) visit(ctx.windowingClause()));
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitWindowingClause(final WindowingClauseContext ctx) {
+        WindowItemSegment result = new WindowItemSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
+        if (null != ctx.windowName) {
+            result.setWindowName((IdentifierValue) visit(ctx.windowName));
+        }
+        if (null != ctx.windowSpecification()) {
+            WindowItemSegment windowItemSegment = (WindowItemSegment) visit(ctx.windowSpecification());
+            result.setPartitionListSegments(windowItemSegment.getPartitionListSegments());
+            result.setOrderBySegment(windowItemSegment.getOrderBySegment());
+            result.setFrameClause(windowItemSegment.getFrameClause());
+        }
+        return result;
+    }
+}</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sql92</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/sql92/visitor/statement/SQL92StatementVisitor.html#L241">241</a></td></tr>
@@ -4954,103 +5074,6 @@
     @Override
     public final Object getObject(final int columnIndex, final Map&lt;String, Class&lt;?&gt;&gt; map) throws SQLException {
         throw new SQLFeatureNotSupportedException(&quot;getObject with map&quot;);
-    }
-}</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.html#L123">123</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDMLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDMLStatementVisitor.html#L125">125</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>} else if (null != ctx.ORDER()) {
-                hintScope = &quot;ORDER BY&quot;;
-            } else {
-                hintScope = &quot;GROUP BY&quot;;
-            }
-            result.setHintScope(hintScope);
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitWindowClause(final WindowClauseContext ctx) {
-        WindowSegment result = new WindowSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
-        for (WindowItemContext each : ctx.windowItem()) {
-            result.getItemSegments().add((WindowItemSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitWindowItem(final WindowItemContext ctx) {
-        WindowItemSegment result = new WindowItemSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
-        result.setWindowName(new IdentifierValue(ctx.identifier().getText()));
-        WindowItemSegment windowItemSegment = (WindowItemSegment) visit(ctx.windowSpecification());
-        result.setPartitionListSegments(windowItemSegment.getPartitionListSegments());
-        result.setOrderBySegment(windowItemSegment.getOrderBySegment());
-        result.setFrameClause(windowItemSegment.getFrameClause());
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitWindowSpecification(final WindowSpecificationContext ctx) {
-        WindowItemSegment result = new WindowItemSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
-        if (null != ctx.PARTITION()) {
-            result.setPartitionListSegments(getExpressions(ctx.expr()));
-        }
-        if (null != ctx.orderByClause()) {
-            result.setOrderBySegment((OrderBySegment) visit(ctx.orderByClause()));
-        }
-        if (null != ctx.frameClause()) {
-            result.setFrameClause(new CommonExpressionSegment(ctx.frameClause().start.getStartIndex(), ctx.frameClause().stop.getStopIndex(), ctx.frameClause().getText()));
-        }
-        if (null != ctx.identifier()) {
-            result.setWindowName(new IdentifierValue(ctx.identifier().getText()));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitWindowFunction(final WindowFunctionContext ctx) {
-        super.visitWindowFunction(ctx);
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.funcName.getText(), getOriginalText(ctx));
-        if (null != ctx.NTILE()) {
-            result.getParameters().add((ExpressionSegment) visit(ctx.simpleExpr()));
-        }
-        if (null != ctx.LEAD() || null != ctx.LAG() || null != ctx.FIRST_VALUE() || null != ctx.LAST_VALUE()) {
-            result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
-        }
-        if (null != ctx.NTH_VALUE()) {
-            result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
-            result.getParameters().add((ExpressionSegment) visit(ctx.simpleExpr()));
-        }
-        result.setWindow((WindowItemSegment) visit(ctx.windowingClause()));
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitWindowingClause(final WindowingClauseContext ctx) {
-        WindowItemSegment result = new WindowItemSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
-        if (null != ctx.windowName) {
-            result.setWindowName((IdentifierValue) visit(ctx.windowName));
-        }
-        if (null != ctx.windowSpecification()) {
-            WindowItemSegment windowItemSegment = (WindowItemSegment) visit(ctx.windowSpecification());
-            result.setPartitionListSegments(windowItemSegment.getPartitionListSegments());
-            result.setOrderBySegment(windowItemSegment.getOrderBySegment());
-            result.setFrameClause(windowItemSegment.getFrameClause());
-        }
-        return result;
     }
 }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
@@ -14899,7 +14922,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.html#L128">128</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.html#L130">130</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -15004,33 +15027,6 @@
     
     @Override
     public ASTNode visitShowTableStatus(final ShowTableStatusContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDMLStatementVisitor.html#L109">109</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDMLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDMLStatementVisitor.html#L111">111</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>String useType;
-        if (null != ctx.USE()) {
-            useType = ctx.USE().getText();
-        } else if (null != ctx.IGNORE()) {
-            useType = ctx.IGNORE().getText();
-        } else {
-            useType = ctx.FORCE().getText();
-        }
-        IndexHintSegment result = new IndexHintSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), indexNames, useType,
-                null == ctx.INDEX() ? ctx.KEY().getText() : ctx.INDEX().getText(), getOriginalText(ctx));
-        if (null != ctx.FOR()) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

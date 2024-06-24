@@ -82,15 +82,111 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L955">955</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L860">860</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L956">956</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L860">860</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
-<pre>result.getParameters().add(new LiteralExpressionSegment(ctx.jsonTableColumns().getStart().getStartIndex(), ctx.jsonTableColumns().getStop().getStopIndex(), ctx.jsonTableColumns().getText()));
+<pre>DorisSelectStatement result = new DorisSelectStatement();
+        result.setProjections(new ProjectionsSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
+        result.getProjections().getProjections().add(new ShorthandProjectionSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
+        result.setFrom(new SimpleTableSegment(new TableNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(ctx.tableName().getText()))));
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitHavingClause(final HavingClauseContext ctx) {
+        ExpressionSegment expr = (ExpressionSegment) visit(ctx.expr());
+        return new HavingSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), expr);
+    }
+    
+    @Override
+    public final ASTNode visitIntervalExpression(final IntervalExpressionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.INTERVAL().getSymbol().getStartIndex(), ctx.INTERVAL().getSymbol().getStopIndex(), ctx.INTERVAL().getText(), ctx.INTERVAL().getText());
+        result.getParameters().add((ExpressionSegment) visit(ctx.intervalValue().expr()));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.intervalValue().intervalUnit().getStart().getStartIndex(), ctx.intervalValue().intervalUnit().getStop().getStopIndex(),
+                ctx.intervalValue().intervalUnit().getText()));
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitFunctionCall(final FunctionCallContext ctx) {
+        if (null != ctx.aggregationFunction()) {
+            return visit(ctx.aggregationFunction());
+        }
+        if (null != ctx.specialFunction()) {
+            return visit(ctx.specialFunction());
+        }
+        if (null != ctx.regularFunction()) {
+            return visit(ctx.regularFunction());
+        }
+        if (null != ctx.jsonFunction()) {
+            return visit(ctx.jsonFunction());
+        }
+        if (null != ctx.udfFunction()) {
+            return visit(ctx.udfFunction());
+        }
+        throw new IllegalStateException(&quot;FunctionCallContext must have aggregationFunction, regularFunction, specialFunction, jsonFunction or udfFunction.&quot;);
+    }
+    
+    @Override
+    public ASTNode visitUdfFunction(final UdfFunctionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx), getOriginalText(ctx));
+        if (null != ctx.expr()) {
+            for (ExprContext each : ctx.expr()) {
+                result.getParameters().add((ExpressionSegment) visit(each));
+            }
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitAggregationFunction(final AggregationFunctionContext ctx) {
+        String aggregationType = ctx.aggregationFunctionName().getText();
+        return AggregationType.isAggregationType(aggregationType)
+                ? createAggregationSegment(ctx, aggregationType)
+                : new ExpressionProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx));
+    }
+    
+    @Override
+    public final ASTNode visitJsonFunction(final JsonFunctionContext ctx) {
+        JsonFunctionNameContext functionNameContext = ctx.jsonFunctionName();
+        String functionName;
+        FunctionSegment result;
+        if (null != functionNameContext) {
+            functionName = functionNameContext.getText();
+            result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
+            for (ExprContext each : ctx.expr()) {
+                result.getParameters().add((ExpressionSegment) visit(each));
+            }
+        } else if (null != ctx.JSON_SEPARATOR()) {
+            result = createJsonSeparatorFunction(ctx.JSON_SEPARATOR().getText(), ctx);
+        } else if (null != ctx.JSON_UNQUOTED_SEPARATOR()) {
+            result = createJsonSeparatorFunction(ctx.JSON_UNQUOTED_SEPARATOR().getText(), ctx);
+        } else {
+            result = (FunctionSegment) visitJsonTableFunction(ctx.jsonTableFunction());
+        }
+        return result;
+    }
+    
+    private FunctionSegment createJsonSeparatorFunction(final String functionName, final JsonFunctionContext ctx) {
+        FunctionSegment result;
+        result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.columnRef()));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.path().getStart().getStartIndex(), ctx.path().getStop().getStopIndex(), ctx.path().getText()));
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitJsonTableFunction(final JsonTableFunctionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.JSON_TABLE().getText(), getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.path().getStart().getStartIndex(), ctx.path().getStop().getStopIndex(), getOriginalText(ctx.path())));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.jsonTableColumns().getStart().getStartIndex(), ctx.jsonTableColumns().getStop().getStopIndex(),
+                getOriginalText(ctx.jsonTableColumns())));
         return result;
     }
     
@@ -2823,7 +2919,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1856">1856</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1857">1857</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -3310,7 +3406,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1639">1639</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1640">1640</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -4528,115 +4624,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L860">860</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L860">860</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>DorisSelectStatement result = new DorisSelectStatement();
-        result.setProjections(new ProjectionsSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
-        result.getProjections().getProjections().add(new ShorthandProjectionSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
-        result.setFrom(new SimpleTableSegment(new TableNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(ctx.tableName().getText()))));
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitHavingClause(final HavingClauseContext ctx) {
-        ExpressionSegment expr = (ExpressionSegment) visit(ctx.expr());
-        return new HavingSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), expr);
-    }
-    
-    @Override
-    public final ASTNode visitIntervalExpression(final IntervalExpressionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.INTERVAL().getSymbol().getStartIndex(), ctx.INTERVAL().getSymbol().getStopIndex(), ctx.INTERVAL().getText(), ctx.INTERVAL().getText());
-        result.getParameters().add((ExpressionSegment) visit(ctx.intervalValue().expr()));
-        result.getParameters().add(new LiteralExpressionSegment(ctx.intervalValue().intervalUnit().getStart().getStartIndex(), ctx.intervalValue().intervalUnit().getStop().getStopIndex(),
-                ctx.intervalValue().intervalUnit().getText()));
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitFunctionCall(final FunctionCallContext ctx) {
-        if (null != ctx.aggregationFunction()) {
-            return visit(ctx.aggregationFunction());
-        }
-        if (null != ctx.specialFunction()) {
-            return visit(ctx.specialFunction());
-        }
-        if (null != ctx.regularFunction()) {
-            return visit(ctx.regularFunction());
-        }
-        if (null != ctx.jsonFunction()) {
-            return visit(ctx.jsonFunction());
-        }
-        if (null != ctx.udfFunction()) {
-            return visit(ctx.udfFunction());
-        }
-        throw new IllegalStateException(&quot;FunctionCallContext must have aggregationFunction, regularFunction, specialFunction, jsonFunction or udfFunction.&quot;);
-    }
-    
-    @Override
-    public ASTNode visitUdfFunction(final UdfFunctionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx), getOriginalText(ctx));
-        if (null != ctx.expr()) {
-            for (ExprContext each : ctx.expr()) {
-                result.getParameters().add((ExpressionSegment) visit(each));
-            }
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitAggregationFunction(final AggregationFunctionContext ctx) {
-        String aggregationType = ctx.aggregationFunctionName().getText();
-        return AggregationType.isAggregationType(aggregationType)
-                ? createAggregationSegment(ctx, aggregationType)
-                : new ExpressionProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx));
-    }
-    
-    @Override
-    public final ASTNode visitJsonFunction(final JsonFunctionContext ctx) {
-        JsonFunctionNameContext functionNameContext = ctx.jsonFunctionName();
-        String functionName;
-        FunctionSegment result;
-        if (null != functionNameContext) {
-            functionName = functionNameContext.getText();
-            result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
-            for (ExprContext each : ctx.expr()) {
-                result.getParameters().add((ExpressionSegment) visit(each));
-            }
-        } else if (null != ctx.JSON_SEPARATOR()) {
-            result = createJsonSeparatorFunction(ctx.JSON_SEPARATOR().getText(), ctx);
-        } else if (null != ctx.JSON_UNQUOTED_SEPARATOR()) {
-            result = createJsonSeparatorFunction(ctx.JSON_UNQUOTED_SEPARATOR().getText(), ctx);
-        } else {
-            result = (FunctionSegment) visitJsonTableFunction(ctx.jsonTableFunction());
-        }
-        return result;
-    }
-    
-    private FunctionSegment createJsonSeparatorFunction(final String functionName, final JsonFunctionContext ctx) {
-        FunctionSegment result;
-        result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
-        result.getParameters().add((ExpressionSegment) visit(ctx.columnRef()));
-        result.getParameters().add(new LiteralExpressionSegment(ctx.path().getStart().getStartIndex(), ctx.path().getStop().getStopIndex(), ctx.path().getText()));
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitJsonTableFunction(final JsonTableFunctionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.JSON_TABLE().getText(), ctx.getText());</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDALStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDALStatementVisitor.html#L908">908</a></td></tr>
@@ -5633,7 +5620,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1518">1518</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1519">1519</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -5882,7 +5869,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1918">1918</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1919">1919</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -6499,7 +6486,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1692">1692</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1693">1693</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -7301,7 +7288,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1639">1639</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1640">1640</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -7378,7 +7365,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1303">1303</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1304">1304</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -7742,7 +7729,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1583">1583</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1584">1584</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -7944,7 +7931,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1423">1423</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1424">1424</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -8090,7 +8077,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1133">1133</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1134">1134</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -8243,7 +8230,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1876">1876</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1877">1877</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -8301,7 +8288,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1184">1184</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1185">1185</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -8352,7 +8339,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1423">1423</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1424">1424</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -8665,7 +8652,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1303">1303</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1304">1304</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -8861,7 +8848,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1881">1881</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1882">1882</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -9026,7 +9013,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1051">1051</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1052">1052</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -9086,7 +9073,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L992">992</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L993">993</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -9380,7 +9367,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1494">1494</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1495">1495</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -9519,7 +9506,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1814">1814</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1815">1815</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -9742,7 +9729,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1358">1358</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1359">1359</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -9887,7 +9874,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1260">1260</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1261">1261</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -10772,7 +10759,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1529">1529</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1530">1530</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -10827,11 +10814,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1422">1422</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1423">1423</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1493">1493</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1494">1494</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -11147,7 +11134,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1732">1732</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1733">1733</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -11397,7 +11384,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1401">1401</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1402">1402</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -11428,7 +11415,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1423">1423</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1424">1424</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -11459,7 +11446,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1473">1473</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1474">1474</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -11490,7 +11477,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1494">1494</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1495">1495</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -12070,15 +12057,15 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1422">1422</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1423">1423</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1472">1472</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1473">1473</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1493">1493</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1494">1494</a></td></tr>
 <tr class="a">
 <td colspan="3" align="left">
 <div class="source">
@@ -12407,7 +12394,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1668">1668</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1669">1669</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -12460,7 +12447,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1856">1856</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1857">1857</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -12587,7 +12574,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1975">1975</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1976">1976</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -12687,7 +12674,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1473">1473</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1474">1474</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -13021,11 +13008,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1423">1423</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1424">1424</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1494">1494</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1495">1495</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -13060,7 +13047,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1473">1473</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1474">1474</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -13346,7 +13333,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1102">1102</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1103">1103</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -13382,19 +13369,19 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1402">1402</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1403">1403</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1423">1423</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1424">1424</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1473">1473</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1474">1474</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1494">1494</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1495">1495</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -13887,7 +13874,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L972">972</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L973">973</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -14252,7 +14239,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1870">1870</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1871">1871</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -16267,11 +16254,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1964">1964</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1965">1965</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1980">1980</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1981">1981</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -16431,6 +16418,38 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/agent/plugin/metrics/core/exporter/impl/jdbc/JDBCMetaDataInfoExporter.java</td>
+<td>shardingsphere-agent-metrics-core</td>
+<td><a href="./xref/org/apache/shardingsphere/agent/plugin/metrics/core/exporter/impl/jdbc/JDBCMetaDataInfoExporter.html#L41">41</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/agent/plugin/metrics/core/exporter/impl/jdbc/JDBCStateExporter.java</td>
+<td>shardingsphere-agent-metrics-core</td>
+<td><a href="./xref/org/apache/shardingsphere/agent/plugin/metrics/core/exporter/impl/jdbc/JDBCStateExporter.html#L39">39</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>Arrays.asList(&quot;database&quot;, &quot;type&quot;), Collections.emptyMap());
+    
+    @Override
+    public Optional&lt;GaugeMetricFamilyMetricsCollector&gt; export(final String pluginType) {
+        GaugeMetricFamilyMetricsCollector result = MetricsCollectorRegistry.get(config, pluginType);
+        result.cleanMetrics();
+        for (Entry&lt;String, ContextManager&gt; entry : ContextManagerHolder.getDatabaseContextManager().entrySet()) {
+            addMetric(result, entry.getKey(), entry.getValue());
+        }
+        return Optional.of(result);
+    }
+    
+    private void addMetric(final GaugeMetricFamilyMetricsCollector collector, final String database, final ContextManager contextManager) {
+        ShardingSphereDatabase shardingSphereDatabase = contextManager.getDatabase(database);
+        if (null != shardingSphereDatabase) {
+            collector.addMetric(Arrays.asList(database, &quot;storage_unit_count&quot;), shardingSphereDatabase.getResourceMetaData().getStorageUnits().size());</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/agent/plugin/tracing/opentelemetry/advice/OpenTelemetryJDBCExecutorCallbackAdvice.java</td>
 <td>shardingsphere-agent-tracing-opentelemetry</td>
 <td><a href="./xref/org/apache/shardingsphere/agent/plugin/tracing/opentelemetry/advice/OpenTelemetryJDBCExecutorCallbackAdvice.html#L56">56</a></td></tr>
@@ -16465,7 +16484,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L961">961</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L962">962</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -16645,7 +16664,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1596">1596</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1597">1597</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -16848,7 +16867,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1430">1430</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1431">1431</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -17636,7 +17655,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1858">1858</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1859">1859</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
@@ -17842,7 +17861,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1791">1791</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1792">1792</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -18110,7 +18129,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1964">1964</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1965">1965</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -18140,7 +18159,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1980">1980</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1981">1981</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -18561,7 +18580,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1162">1162</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1163">1163</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -18906,7 +18925,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1240">1240</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1241">1241</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
@@ -19070,7 +19089,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1305">1305</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1306">1306</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>

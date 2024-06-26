@@ -921,15 +921,36 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDCLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDCLStatementVisitor.html#L188">188</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDCLStatementVisitor.html#L167">167</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDCLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDCLStatementVisitor.html#L187">187</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDCLStatementVisitor.html#L167">167</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
-<pre>return new GrantLevelSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), schemaName, tableName);
+<pre>private void fillRoleOrPrivileges(final DorisRevokeStatement statement, final RoleOrPrivilegesContext ctx) {
+        for (RoleOrPrivilegeContext each : ctx.roleOrPrivilege()) {
+            statement.getRoleOrPrivileges().add((RoleOrPrivilegeSegment) visit(each));
+        }
+    }
+    
+    private GrantLevelSegment generateGrantLevel(final GrantIdentifierContext ctx) {
+        if (ctx instanceof GrantLevelGlobalContext) {
+            return new GrantLevelSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), &quot;*&quot;, &quot;*&quot;);
+            
+        }
+        if (ctx instanceof GrantLevelDatabaseGlobalContext) {
+            String databaseName = new IdentifierValue(((GrantLevelDatabaseGlobalContext) ctx).databaseName().getText()).getValue();
+            return new GrantLevelSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), databaseName, &quot;*&quot;);
+        }
+        String databaseName = null;
+        String tableName;
+        if (null != ((GrantLevelTableContext) ctx).tableName().owner()) {
+            databaseName = new IdentifierValue(((GrantLevelTableContext) ctx).tableName().owner().getText()).getValue();
+        }
+        tableName = new IdentifierValue(((GrantLevelTableContext) ctx).tableName().name().getText()).getValue();
+        return new GrantLevelSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), databaseName, tableName);
     }
     
     @Override
@@ -1159,6 +1180,269 @@
     
     @Override
     public ASTNode visitRevokeFrom(final RevokeFromContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L253">253</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L253">253</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>public abstract class DorisStatementVisitor extends DorisStatementBaseVisitor&lt;ASTNode&gt; {
+    
+    private final Collection&lt;ParameterMarkerSegment&gt; parameterMarkerSegments = new LinkedList&lt;&gt;();
+    
+    @Override
+    public final ASTNode visitParameterMarker(final ParameterMarkerContext ctx) {
+        return new ParameterMarkerValue(parameterMarkerSegments.size(), ParameterMarkerType.QUESTION);
+    }
+    
+    @Override
+    public final ASTNode visitLiterals(final LiteralsContext ctx) {
+        if (null != ctx.stringLiterals()) {
+            return visit(ctx.stringLiterals());
+        }
+        if (null != ctx.numberLiterals()) {
+            return visit(ctx.numberLiterals());
+        }
+        if (null != ctx.temporalLiterals()) {
+            return visit(ctx.temporalLiterals());
+        }
+        if (null != ctx.hexadecimalLiterals()) {
+            return visit(ctx.hexadecimalLiterals());
+        }
+        if (null != ctx.bitValueLiterals()) {
+            return visit(ctx.bitValueLiterals());
+        }
+        if (null != ctx.booleanLiterals()) {
+            return visit(ctx.booleanLiterals());
+        }
+        if (null != ctx.nullValueLiterals()) {
+            return visit(ctx.nullValueLiterals());
+        }
+        throw new IllegalStateException(&quot;Literals must have string, number, dateTime, hex, bit, boolean or null.&quot;);
+    }
+    
+    @Override
+    public final ASTNode visitStringLiterals(final StringLiteralsContext ctx) {
+        return new StringLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public ASTNode visitString_(final String_Context ctx) {
+        return new StringLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitNumberLiterals(final NumberLiteralsContext ctx) {
+        return new NumberLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public ASTNode visitTemporalLiterals(final TemporalLiteralsContext ctx) {
+        // TODO deal with TemporalLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitHexadecimalLiterals(final HexadecimalLiteralsContext ctx) {
+        // TODO deal with hexadecimalLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitBitValueLiterals(final BitValueLiteralsContext ctx) {
+        // TODO deal with bitValueLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitBooleanLiterals(final BooleanLiteralsContext ctx) {
+        return new BooleanLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitNullValueLiterals(final NullValueLiteralsContext ctx) {
+        return new NullLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitIdentifier(final IdentifierContext ctx) {
+        return new IdentifierValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
+        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitTableName(final TableNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
+                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewName(final ViewNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
+                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitOwner(final OwnerContext ctx) {
+        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
+        if (null != ctx.owner()) {
+            result.setOwner((OwnerSegment) visit(ctx.owner()));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
+        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitIndexName(final IndexNameContext ctx) {
+        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
+    }
+    
+    @Override
+    public ASTNode visitTableList(final TableListContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (TableNameContext each : ctx.tableName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ViewNameContext each : ctx.viewName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
+        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ColumnNameContext each : ctx.columnName()) {
+            result.getValue().add((ColumnSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitExpr(final ExprContext ctx) {
+        if (null != ctx.booleanPrimary()) {
+            return visit(ctx.booleanPrimary());
+        }
+        if (null != ctx.XOR()) {
+            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
+        }
+        if (null != ctx.andOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
+        }
+        if (null != ctx.orOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
+        }
+        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
+    }
+    
+    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    @Override
+    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
+        if (null != ctx.IS()) {
+            // TODO optimize operatorToken
+            String rightText = &quot;&quot;;
+            if (null != ctx.NOT()) {
+                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;
+            }
+            Token operatorToken = null;
+            if (null != ctx.NULL()) {
+                operatorToken = ctx.NULL().getSymbol();
+            }
+            if (null != ctx.TRUE()) {
+                operatorToken = ctx.TRUE().getSymbol();
+            }
+            if (null != ctx.FALSE()) {
+                operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }
+        if (null != ctx.MEMBER()) {
+            int startIndex = ctx.MEMBER().getSymbol().getStopIndex() + 5;
+            int endIndex = ctx.stop.getStopIndex() - 1;
+            String rightText = ctx.start.getInputStream().getText(new Interval(startIndex, endIndex));
+            ExpressionSegment right = new ExpressionProjectionSegment(startIndex, endIndex, rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;MEMBER OF&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.assignmentOperator()) {
+            return createAssignmentSegment(ctx);
+        }
+        return visit(ctx.predicate());
+    }
+    
+    private ASTNode createAssignmentSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.predicate());
+        String operator = ctx.assignmentOperator().getText();
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    private ASTNode createCompareSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right;
+        if (null != ctx.predicate()) {
+            right = (ExpressionSegment) visit(ctx.predicate());
+        } else {
+            right = new SubqueryExpressionSegment(
+                    new SubquerySegment(ctx.subquery().start.getStartIndex(), ctx.subquery().stop.getStopIndex(), (DorisSelectStatement) visit(ctx.subquery()), getOriginalText(ctx.subquery())));</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -2089,185 +2373,6 @@
     
     @Override
     public ASTNode visitRenameTable(final RenameTableContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L337">337</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L337">337</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>public final ASTNode visitSchemaName(final SchemaNameContext ctx) {
-        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitTableName(final TableNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
-                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewName(final ViewNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
-                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitOwner(final OwnerContext ctx) {
-        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
-        if (null != ctx.owner()) {
-            result.setOwner((OwnerSegment) visit(ctx.owner()));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
-        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitIndexName(final IndexNameContext ctx) {
-        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
-    }
-    
-    @Override
-    public ASTNode visitTableList(final TableListContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (TableNameContext each : ctx.tableName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ViewNameContext each : ctx.viewName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
-        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ColumnNameContext each : ctx.columnName()) {
-            result.getValue().add((ColumnSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitExpr(final ExprContext ctx) {
-        if (null != ctx.booleanPrimary()) {
-            return visit(ctx.booleanPrimary());
-        }
-        if (null != ctx.XOR()) {
-            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
-        }
-        if (null != ctx.andOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
-        }
-        if (null != ctx.orOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
-        }
-        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
-    }
-    
-    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            // TODO optimize operatorToken
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;
-            }
-            Token operatorToken = null;
-            if (null != ctx.NULL()) {
-                operatorToken = ctx.NULL().getSymbol();
-            }
-            if (null != ctx.TRUE()) {
-                operatorToken = ctx.TRUE().getSymbol();
-            }
-            if (null != ctx.FALSE()) {
-                operatorToken = ctx.FALSE().getSymbol();
-            }
-            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
-            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
-            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
-            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-            String operator = &quot;IS&quot;;
-            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-        }
-        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
-            return createCompareSegment(ctx);
-        }
-        if (null != ctx.MEMBER()) {
-            int startIndex = ctx.MEMBER().getSymbol().getStopIndex() + 5;
-            int endIndex = ctx.stop.getStopIndex() - 1;
-            String rightText = ctx.start.getInputStream().getText(new Interval(startIndex, endIndex));
-            ExpressionSegment right = new ExpressionProjectionSegment(startIndex, endIndex, rightText);
-            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-            String operator = &quot;MEMBER OF&quot;;
-            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-        }
-        if (null != ctx.assignmentOperator()) {
-            return createAssignmentSegment(ctx);
-        }
-        return visit(ctx.predicate());
-    }
-    
-    private ASTNode createAssignmentSegment(final BooleanPrimaryContext ctx) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.predicate());
-        String operator = ctx.assignmentOperator().getText();
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    private ASTNode createCompareSegment(final BooleanPrimaryContext ctx) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-        ExpressionSegment right;
-        if (null != ctx.predicate()) {
-            right = (ExpressionSegment) visit(ctx.predicate());
-        } else {
-            right = new SubqueryExpressionSegment(
-                    new SubquerySegment(ctx.subquery().start.getStartIndex(), ctx.subquery().stop.getStopIndex(), (DorisSelectStatement) visit(ctx.subquery()), getOriginalText(ctx.subquery())));</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -3391,8 +3496,8 @@
         OwnerSegment owner = new OwnerSegment(identifier.getStart().getStartIndex(), identifier.getStop().getStopIndex(), new IdentifierValue(identifier.getText()));
         result.setOwner(owner);
         if (shorthand.identifier().size() &gt; 1) {
-            IdentifierContext schemaIdentifier = shorthand.identifier().get(0);
-            owner.setOwner(new OwnerSegment(schemaIdentifier.getStart().getStartIndex(), schemaIdentifier.getStop().getStopIndex(), new IdentifierValue(schemaIdentifier.getText())));
+            IdentifierContext databaseIdentifier = shorthand.identifier().get(0);
+            owner.setOwner(new OwnerSegment(databaseIdentifier.getStart().getStartIndex(), databaseIdentifier.getStop().getStopIndex(), new IdentifierValue(databaseIdentifier.getText())));
         }
         return result;
     }
@@ -3478,215 +3583,6 @@
             for (int i = 1; i &lt; ctx.tableReference().size(); i++) {
                 result = generateJoinTableSourceFromEscapedTableReference(ctx.tableReference(i), result);
             }</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L253">253</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/hive/visitor/statement/HiveStatementVisitor.html#L97">97</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>public abstract class DorisStatementVisitor extends DorisStatementBaseVisitor&lt;ASTNode&gt; {
-    
-    private final Collection&lt;ParameterMarkerSegment&gt; parameterMarkerSegments = new LinkedList&lt;&gt;();
-    
-    @Override
-    public final ASTNode visitParameterMarker(final ParameterMarkerContext ctx) {
-        return new ParameterMarkerValue(parameterMarkerSegments.size(), ParameterMarkerType.QUESTION);
-    }
-    
-    @Override
-    public final ASTNode visitLiterals(final LiteralsContext ctx) {
-        if (null != ctx.stringLiterals()) {
-            return visit(ctx.stringLiterals());
-        }
-        if (null != ctx.numberLiterals()) {
-            return visit(ctx.numberLiterals());
-        }
-        if (null != ctx.temporalLiterals()) {
-            return visit(ctx.temporalLiterals());
-        }
-        if (null != ctx.hexadecimalLiterals()) {
-            return visit(ctx.hexadecimalLiterals());
-        }
-        if (null != ctx.bitValueLiterals()) {
-            return visit(ctx.bitValueLiterals());
-        }
-        if (null != ctx.booleanLiterals()) {
-            return visit(ctx.booleanLiterals());
-        }
-        if (null != ctx.nullValueLiterals()) {
-            return visit(ctx.nullValueLiterals());
-        }
-        throw new IllegalStateException(&quot;Literals must have string, number, dateTime, hex, bit, boolean or null.&quot;);
-    }
-    
-    @Override
-    public final ASTNode visitStringLiterals(final StringLiteralsContext ctx) {
-        return new StringLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public ASTNode visitString_(final String_Context ctx) {
-        return new StringLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitNumberLiterals(final NumberLiteralsContext ctx) {
-        return new NumberLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public ASTNode visitTemporalLiterals(final TemporalLiteralsContext ctx) {
-        // TODO deal with TemporalLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitHexadecimalLiterals(final HexadecimalLiteralsContext ctx) {
-        // TODO deal with hexadecimalLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitBitValueLiterals(final BitValueLiteralsContext ctx) {
-        // TODO deal with bitValueLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitBooleanLiterals(final BooleanLiteralsContext ctx) {
-        return new BooleanLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitNullValueLiterals(final NullValueLiteralsContext ctx) {
-        return new NullLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitIdentifier(final IdentifierContext ctx) {
-        return new IdentifierValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitSchemaName(final SchemaNameContext ctx) {
-        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitTableName(final TableNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
-                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewName(final ViewNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
-                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitOwner(final OwnerContext ctx) {
-        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
-        if (null != ctx.owner()) {
-            result.setOwner((OwnerSegment) visit(ctx.owner()));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
-        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitIndexName(final IndexNameContext ctx) {
-        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
-    }
-    
-    @Override
-    public ASTNode visitTableList(final TableListContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (TableNameContext each : ctx.tableName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ViewNameContext each : ctx.viewName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
-        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ColumnNameContext each : ctx.columnName()) {
-            result.getValue().add((ColumnSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitExpr(final ExprContext ctx) {
-        if (null != ctx.booleanPrimary()) {
-            return visit(ctx.booleanPrimary());
-        }
-        if (null != ctx.XOR()) {
-            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
-        }
-        if (null != ctx.andOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
-        }
-        if (null != ctx.orOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
-        }
-        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
-    }
-    
-    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            // TODO optimize operatorToken
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -4515,17 +4411,21 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L337">337</a></td></tr>
+<tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/hive/visitor/statement/HiveStatementVisitor.html#L181">181</a></td></tr>
-<tr class="a">
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L337">337</a></td></tr>
-<tr class="b">
+<tr class="a">
 <td colspan="3" align="left">
 <div class="source">
-<pre>public final ASTNode visitSchemaName(final SchemaNameContext ctx) {
+<pre>public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
         return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
     }
     
@@ -4633,7 +4533,7 @@
             // TODO optimize operatorToken
             String rightText = &quot;&quot;;
             if (null != ctx.NOT()) {
-                rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(),</pre></div></td></tr></table>
+                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -5250,21 +5150,17 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L253">253</a></td></tr>
-<tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-hive</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/hive/visitor/statement/HiveStatementVisitor.html#L97">97</a></td></tr>
-<tr class="b">
+<tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/presto/visitor/statement/PrestoStatementVisitor.html#L106">106</a></td></tr>
-<tr class="a">
+<tr class="b">
 <td colspan="3" align="left">
 <div class="source">
-<pre>public abstract class DorisStatementVisitor extends DorisStatementBaseVisitor&lt;ASTNode&gt; {
+<pre>public abstract class HiveStatementVisitor extends HiveStatementBaseVisitor&lt;ASTNode&gt; {
     
     private final Collection&lt;ParameterMarkerSegment&gt; parameterMarkerSegments = new LinkedList&lt;&gt;();
     
@@ -6279,7 +6175,7 @@
     }
     
     @Override
-    public final ASTNode visitSchemaName(final SchemaNameContext ctx) {</pre></div></td></tr></table>
+    public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -6401,71 +6297,6 @@
     @Override
     public ASTNode visitAlterForeignTable(final AlterForeignTableContext ctx) {
         return new OpenGaussAlterForeignTableStatement();</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1693">1693</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.html#L1110">1110</a></td></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1693">1693</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.html#L1069">1069</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>ExpressionSegment exprProjection = (ExpressionSegment) visit(ctx.expr());
-        if (exprProjection instanceof ColumnSegment) {
-            ColumnProjectionSegment result = new ColumnProjectionSegment((ColumnSegment) exprProjection);
-            result.setAlias(alias);
-            return result;
-        }
-        if (exprProjection instanceof SubquerySegment) {
-            SubquerySegment subquerySegment = (SubquerySegment) exprProjection;
-            String text = ctx.start.getInputStream().getText(new Interval(subquerySegment.getStartIndex(), subquerySegment.getStopIndex()));
-            SubqueryProjectionSegment result = new SubqueryProjectionSegment((SubquerySegment) exprProjection, text);
-            result.setAlias(alias);
-            return result;
-        }
-        if (exprProjection instanceof ExistsSubqueryExpression) {
-            ExistsSubqueryExpression existsSubqueryExpression = (ExistsSubqueryExpression) exprProjection;
-            String text = ctx.start.getInputStream().getText(new Interval(existsSubqueryExpression.getStartIndex(), existsSubqueryExpression.getStopIndex()));
-            SubqueryProjectionSegment result = new SubqueryProjectionSegment(((ExistsSubqueryExpression) exprProjection).getSubquery(), text);
-            result.setAlias(alias);
-            return result;
-        }
-        return createProjection(ctx, alias, exprProjection);
-    }
-    
-    private ShorthandProjectionSegment createShorthandProjection(final QualifiedShorthandContext shorthand) {
-        ShorthandProjectionSegment result = new ShorthandProjectionSegment(shorthand.getStart().getStartIndex(), shorthand.getStop().getStopIndex());
-        IdentifierContext identifier = shorthand.identifier().get(shorthand.identifier().size() - 1);
-        OwnerSegment owner = new OwnerSegment(identifier.getStart().getStartIndex(), identifier.getStop().getStopIndex(), new IdentifierValue(identifier.getText()));
-        result.setOwner(owner);
-        if (shorthand.identifier().size() &gt; 1) {
-            IdentifierContext schemaIdentifier = shorthand.identifier().get(0);
-            owner.setOwner(new OwnerSegment(schemaIdentifier.getStart().getStartIndex(), schemaIdentifier.getStop().getStopIndex(), new IdentifierValue(schemaIdentifier.getText())));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitAlias(final AliasContext ctx) {
-        return new AliasSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(ctx.textOrIdentifier().getText()));
-    }
-    
-    private ASTNode createProjection(final ProjectionContext ctx, final AliasSegment alias, final ExpressionSegment projection) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -8314,6 +8145,60 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1693">1693</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.html#L1110">1110</a></td></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1693">1693</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.html#L1069">1069</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>ExpressionSegment exprProjection = (ExpressionSegment) visit(ctx.expr());
+        if (exprProjection instanceof ColumnSegment) {
+            ColumnProjectionSegment result = new ColumnProjectionSegment((ColumnSegment) exprProjection);
+            result.setAlias(alias);
+            return result;
+        }
+        if (exprProjection instanceof SubquerySegment) {
+            SubquerySegment subquerySegment = (SubquerySegment) exprProjection;
+            String text = ctx.start.getInputStream().getText(new Interval(subquerySegment.getStartIndex(), subquerySegment.getStopIndex()));
+            SubqueryProjectionSegment result = new SubqueryProjectionSegment((SubquerySegment) exprProjection, text);
+            result.setAlias(alias);
+            return result;
+        }
+        if (exprProjection instanceof ExistsSubqueryExpression) {
+            ExistsSubqueryExpression existsSubqueryExpression = (ExistsSubqueryExpression) exprProjection;
+            String text = ctx.start.getInputStream().getText(new Interval(existsSubqueryExpression.getStartIndex(), existsSubqueryExpression.getStopIndex()));
+            SubqueryProjectionSegment result = new SubqueryProjectionSegment(((ExistsSubqueryExpression) exprProjection).getSubquery(), text);
+            result.setAlias(alias);
+            return result;
+        }
+        return createProjection(ctx, alias, exprProjection);
+    }
+    
+    private ShorthandProjectionSegment createShorthandProjection(final QualifiedShorthandContext shorthand) {
+        ShorthandProjectionSegment result = new ShorthandProjectionSegment(shorthand.getStart().getStartIndex(), shorthand.getStop().getStopIndex());
+        IdentifierContext identifier = shorthand.identifier().get(shorthand.identifier().size() - 1);
+        OwnerSegment owner = new OwnerSegment(identifier.getStart().getStartIndex(), identifier.getStop().getStopIndex(), new IdentifierValue(identifier.getText()));
+        result.setOwner(owner);
+        if (shorthand.identifier().size() &gt; 1) {
+            IdentifierContext databaseIdentifier = shorthand.identifier().get(0);</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/proxy/frontend/opengauss/authentication/OpenGaussAuthenticationEngine.java</td>
 <td>shardingsphere-proxy-frontend-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/proxy/frontend/opengauss/authentication/OpenGaussAuthenticationEngine.html#L91">91</a></td></tr>
@@ -10066,8 +9951,8 @@
         if (null != ctx.fromTable()) {
             result.setTable(((FromTableSegment) visit(ctx.fromTable())).getTable());
         }
-        if (null != ctx.fromSchema()) {
-            result.setFromSchema((FromSchemaSegment) visit(ctx.fromSchema()));
+        if (null != ctx.fromDatabase()) {
+            result.setFromDatabase((FromDatabaseSegment) visit(ctx.fromDatabase()));
         }
         if (null != ctx.showFilter()) {
             result.setFilter((ShowFilterSegment) visit(ctx.showFilter()));
@@ -15086,6 +14971,41 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDALStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDALStatementVisitor.html#L984">984</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDALStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDALStatementVisitor.html#L984">984</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>DorisSetStatement result = new DorisSetStatement();
+        result.getVariableAssigns().add(characterSet);
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitFromDatabase(final FromDatabaseContext ctx) {
+        return new FromDatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (DatabaseSegment) visit(ctx.databaseName()));
+    }
+    
+    @Override
+    public ASTNode visitShowLike(final ShowLikeContext ctx) {
+        StringLiteralValue literalValue = (StringLiteralValue) visit(ctx.stringLiterals());
+        return new ShowLikeSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), literalValue.getValue());
+    }
+    
+    @Override
+    public ASTNode visitCreateLoadableFunction(final CreateLoadableFunctionContext ctx) {
+        return new DorisCreateLoadableFunctionStatement();</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-clickhouse</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L90">90</a></td></tr>
@@ -15289,8 +15209,8 @@
 <td colspan="3" align="left">
 <div class="source">
 <pre>DorisShowTriggersStatement result = new DorisShowTriggersStatement();
-        if (null != ctx.fromSchema()) {
-            result.setFromSchema((FromSchemaSegment) visit(ctx.fromSchema()));
+        if (null != ctx.fromDatabase()) {
+            result.setFromDatabase((FromDatabaseSegment) visit(ctx.fromDatabase()));
         }
         if (null != ctx.showFilter()) {
             result.setFilter((ShowFilterSegment) visit(ctx.showFilter()));
@@ -15604,6 +15524,36 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L337">337</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L337">337</a></td></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/PrestoStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/presto/visitor/statement/PrestoStatementVisitor.html#L190">190</a></td></tr>
+<tr class="a">
+<td colspan="3" align="left">
+<div class="source">
+<pre>public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
+        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitTableName(final TableNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
+                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDCLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDCLStatementVisitor.html#L134">134</a></td></tr>
@@ -15632,32 +15582,6 @@
     
     @Override
     public ASTNode visitGrantProxy(final GrantProxyContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L337">337</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/presto/visitor/statement/PrestoStatementVisitor.html#L190">190</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
-        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitTableName(final TableNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
-                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -18063,9 +17987,9 @@
 <td colspan="3" align="left">
 <div class="source">
 <pre>public static void assertIs(final SQLCaseAssertContext assertContext, final ShowEventsStatement actual, final ShowEventsStatementTestCase expected) {
-        if (actual.getFromSchema().isPresent()) {
-            DatabaseAssert.assertIs(assertContext, actual.getFromSchema().get().getSchema(), expected.getFromSchema().getSchema());
-            SQLSegmentAssert.assertIs(assertContext, actual.getFromSchema().get(), expected.getFromSchema());
+        if (actual.getFromDatabase().isPresent()) {
+            DatabaseAssert.assertIs(assertContext, actual.getFromDatabase().get().getDatabase(), expected.getFromDatabase().getDatabase());
+            SQLSegmentAssert.assertIs(assertContext, actual.getFromDatabase().get(), expected.getFromDatabase());
         }
         if (actual.getFilter().isPresent()) {
             ShowFilterAssert.assertIs(assertContext, actual.getFilter().get(), expected.getFilter());

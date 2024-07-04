@@ -1,100 +1,116 @@
-commit d2db3bc64180f037de9d6e53640da772618853ec
+commit aa18c5d581db136475c79b292d4a1019d3dae9bc
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon Jul 1 23:59:49 2024 +0800
+Date:   Thu Jul 4 14:33:47 2024 +0800
 
-    Add instructions for Apache Seata 2.1.0-RC4 to Seata AT integration documentation (#31934)
+    Add documentation for using XA distributed transactions in GraalVM Native Image (#31975)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
-index b2214541210..4d9c27207d3 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
-@@ -49,14 +49,20 @@ Apache ShardingSphere 提供 BASE 事务，集成了 Seata 的实现。本文所
- 
- ### 启动 Seata Server
- 
--按照 [seata-fescar-workshop](https://github.com/seata/fescar-workshop) 或 https://hub.docker.com/r/seataio/seata-server 中的步骤，
--下载并启动 Seata 服务器。
-+按照如下任一链接的步骤，下载并启动 Seata 服务器。
-+合理的启动方式应通过 Docker Hub 中的 `seataio/seata-server` 的 Docker Image 来实例化 Seata 服务器。
-+对于 `apache/incubator-seata:v2.0.0` 及更早的 Seata 版本，应使用 Docker Hub 中的 `seataio/seata-server`。
-+否则应使用 Docker Hub 中的 `apache/seata-server`。
-+
-+- [seata-fescar-workshop](https://github.com/seata/fescar-workshop)
-+- https://hub.docker.com/r/seataio/seata-server
-+- https://hub.docker.com/r/apache/seata-server
- 
- ### 创建 undo_log 表
- 
--在每一个分片数据库实例中执创建 `undo_log` 表（以 MySQL 为例）。
-+在每一个 ShardingSphere 涉及的真实数据库实例中创建 `undo_log` 表。
- SQL 的内容以 https://github.com/apache/incubator-seata/tree/v2.0.0/script/client/at/db 内对应的数据库为准。
--
-+以下内容以 MySQL 为例。
- ```sql
- CREATE TABLE IF NOT EXISTS `undo_log`
- (
-@@ -97,6 +103,16 @@ client {
- }
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+index 46339c7bd39..01e3523414c 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+@@ -234,7 +234,29 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+  [...]
  ```
  
-+一个最小配置的 `seata.conf` 如下。
-+请注意，由 ShardingSphere 管理的 `seata.conf` 中， `client.transaction.service.group` 的默认值设置为 `default` 是出于历史原因。
-+假设用户使用的 Seata Server 和 Seata Client 的 `registry.conf` 中，`registry.type` 和 `config.type` 均为 `file`，
-+则对于 `registry.conf` 的 `config.file.name` 配置的 `.conf` 文件中，事务分组名在 `apache/incubator-seata:v1.5.1` 之后默认值为 `default_tx_group`，
-+反之则为 `my_test_tx_group`。
+-5. 当使用 Seata 的 BASE 集成时，用户需要使用特定的 `io.seata:seata-all:1.8.0` 版本以避开对 ByteBuddy Java API 的使用，
++5. 讨论在 ShardingSphere JDBC 的 GraalVM Native Image 下使用 XA 分布式事务的所需步骤，则需要引入额外的已知前提，
++   - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` 会通过 `java.lang.Class#getDeclaredConstructors` 实例化各数据库驱动的 `javax.sql.XADataSource` 实现类。
++   - 各数据库驱动的 `javax.sql.XADataSource` 实现类的全类名通过实现 `org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition` 的 SPI，来存入 ShardingSphere 的元数据。
 +
-+```conf
-+client.application.id = example
++在 GraalVM Native Image 内部，这实际上要求定义第三方依赖的 GraalVM Reachability Metadata，而 ShardingSphere 自身仅为 `com.h2database:h2` 提供对应的 GraalVM Reachability Metadata。
++`com.mysql:mysql-connector-j` 等其他数据库驱动的 GraalVM Reachability Metadata 应自行定义，
++或将对应 JSON 提交到 https://github.com/oracle/graalvm-reachability-metadata 一侧。
++
++以 `com.mysql:mysql-connector-j:9.0.0` 的 `com.mysql.cj.jdbc.MysqlXADataSource` 类为例，这是 MySQL JDBC Driver 的 `javax.sql.XADataSource` 的实现。
++用户需要在自有项目的 claapath 的 `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` 文件夹的 `reflect-config.json`文件内定义如下 JSON，
++以在 GraalVM Native Image 内部定义 `com.mysql.cj.jdbc.MysqlXADataSource` 的构造函数。
++
++```json
++[
++{
++  "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
++  "name":"com.mysql.cj.jdbc.MysqlXADataSource",
++  "allDeclaredConstructors": true
++}
++]
 +```
 +
- 根据实际场景修改 Seata 的 `registry.conf` 文件。
++6. 当使用 Seata 的 BASE 集成时，用户需要使用特定的 `io.seata:seata-all:1.8.0` 版本以避开对 ByteBuddy Java API 的使用，
+ 并排除 `io.seata:seata-all:1.8.0` 中过时的 `org.antlr:antlr4-runtime:4.8` 的 Maven 依赖。可能的配置例子如下，
  
- ## 使用限制
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
-index 04104a8cd6d..c676c154611 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
-@@ -50,14 +50,21 @@ Introduce Maven dependencies and exclude the outdated Maven dependencies of `org
- 
- ### Start Seata Server
- 
--Follow the steps in [seata-fescar-workshop](https://github.com/seata/fescar-workshop) or https://hub.docker.com/r/seataio/seata-server ,
--download and start the Seata server.
-+Follow the steps in one of the links below to download and start Seata Server.
- 
--### Create undo_log table
-+The proper way to start Seata Server is to instantiate it through the Docker Image of `seataio/seata-server` in Docker Hub.
-+For `apache/incubator-seata:v2.0.0` and earlier Seata versions, `seataio/seata-server` from Docker Hub should be used.
-+Otherwise, `apache/seata-server` from Docker Hub should be used.
-+
-+- [seata-fescar-workshop](https://github.com/seata/fescar-workshop)
-+- https://hub.docker.com/r/seataio/seata-server
-+- https://hub.docker.com/r/apache/seata-server
- 
--Create the `undo_log` table in each shard database instance (take MySQL as an example).
--The content of SQL is subject to the corresponding database in https://github.com/apache/incubator-seata/tree/v2.0.0/script/client/at/db .
-+### Create undo_log table
- 
-+Create the `undo_log` table in each real database instance involved in ShardingSphere.
-+The SQL content is based on the corresponding database in https://github.com/apache/incubator-seata/tree/v2.0.0/script/client/at/db .
-+The following content takes MySQL as an example.
- ```sql
- CREATE TABLE IF NOT EXISTS `undo_log`
- (
-@@ -98,6 +105,16 @@ client {
- }
+ ```xml
+@@ -265,7 +287,7 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+ </project>
  ```
  
-+A minimally configured `seata.conf` is as follows.
-+Please note that in `seata.conf` managed by ShardingSphere, the default value of `client.transaction.service.group` is set to `default` for historical reasons.
-+Assuming that in the `registry.conf` of Seata Server and Seata Client used by the user, `registry.type` and `config.type` are both `file`,
-+then for the `.conf` file configured by `config.file.name` of `registry.conf`, 
-+the default value of the transaction group name is `default_tx_group` after `apache/incubator-seata:v1.5.1`, otherwise it is `my_test_tx_group`.
+-6. 当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
++7. 当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
+ 用户需要手动引入相关的可选模块和 classifier 为 `http` 的 ClickHouse JDBC 驱动。
+ 原则上，ShardingSphere 的 GraalVM Native Image 集成不希望使用 classifier 为 `all` 的 `com.clickhouse:clickhouse-jdbc`，
+ 因为 Uber Jar 会导致采集重复的 GraalVM Reachability Metadata。
+@@ -318,7 +340,7 @@ curl -s "https://get.sdkman.io" | bash
+ source "$HOME/.sdkman/bin/sdkman-init.sh"
+ sdk install java 22.0.1-graalce
+ sdk use java 22.0.1-graalce
+-sudo apt-get install build-essential libz-dev zlib1g-dev -y
++sudo apt-get install build-essential zlib1g-dev -y
+ 
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+index 3579f37a5a3..35b038fd882 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+@@ -243,7 +243,33 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+  [...]
+ ```
+ 
+-5. When using Seata's BASE integration, 
++5. To discuss the steps required to use XA distributed transactions under the GraalVM Native Image of ShardingSphere JDBC, 
++additional known prerequisites need to be introduced,
++   - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` will instantiate the `javax.sql.XADataSource` implementation class of each database driver through `java.lang.Class#getDeclaredConstructors`.
++   - The full class name of the `javax.sql.XADataSource` implementation class of each database driver is stored in the metadata of ShardingSphere by implementing the SPI of `org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition`.
 +
-+```conf
-+client.application.id = example
++In the GraalVM Native Image, this actually requires the definition of the GraalVM Reachability Metadata of the third-party dependencies,
++while ShardingSphere itself only provides the corresponding GraalVM Reachability Metadata for `com.h2database:h2`.
++
++GraalVM Reachability Metadata of other database drivers such as `com.mysql:mysql-connector-j` should be defined by themselves,
++or the corresponding JSON should be submitted to https://github.com/oracle/graalvm-reachability-metadata .
++
++Take the `com.mysql.cj.jdbc.MysqlXADataSource` class of `com.mysql:mysql-connector-j:9.0.0` as an example,
++which is the implementation of `javax.sql.XADataSource` of MySQL JDBC Driver.
++Users need to define the following JSON in the `reflect-config.json` file in the `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` folder of their own project's claapath,
++to define the constructor of `com.mysql.cj.jdbc.MysqlXADataSource` inside the GraalVM Native Image.
++
++```json
++[
++{
++"condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
++"name":"com.mysql.cj.jdbc.MysqlXADataSource",
++"allDeclaredConstructors": true
++}
++]
 +```
 +
- Modify the `registry.conf` file of Seata as required.
++6. When using Seata's BASE integration, 
+ users need to use a specific `io.seata:seata-all:1.8.0` version to avoid using the ByteBuddy Java API,
+ and exclude the outdated Maven dependency of `org.antlr:antlr4-runtime:4.8` in `io.seata:seata-all:1.8.0`.
+ Possible configuration examples are as follows,
+@@ -276,7 +302,7 @@ Possible configuration examples are as follows,
+ </project>
+ ```
  
- ## Usage restrictions
+-6. When using the ClickHouse dialect through ShardingSphere JDBC, 
++7. When using the ClickHouse dialect through ShardingSphere JDBC, 
+ users need to manually introduce the relevant optional modules and the ClickHouse JDBC driver with the classifier `http`.
+ In principle, ShardingSphere's GraalVM Native Image integration does not want to use `com.clickhouse:clickhouse-jdbc` with classifier `all`, 
+ because Uber Jar will cause the collection of duplicate GraalVM Reachability Metadata.
+@@ -330,7 +356,7 @@ curl -s "https://get.sdkman.io" | bash
+ source "$HOME/.sdkman/bin/sdkman-init.sh"
+ sdk install java 21.0.2-graalce
+ sdk use java 21.0.2-graalce
+-sudo apt-get install build-essential libz-dev zlib1g-dev -y
++sudo apt-get install build-essential zlib1g-dev -y
+ 
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/

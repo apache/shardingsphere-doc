@@ -12,22 +12,22 @@
     <title>GraalVM Native Image :: ShardingSphere</title>
 
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/fontawesome-all.min.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/atom-one-dark-reasonable.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/tabs.css?1719849759" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1719849759" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/fontawesome-all.min.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/atom-one-dark-reasonable.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/tabs.css?1720075040" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1720075040" rel="stylesheet">
     
-    <link href="https://shardingsphere.apache.org/document/current/css/theme-white.css?1719849759" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme-white.css?1720075040" rel="stylesheet">
     
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-3.3.1.min.js?1719849759"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-3.3.1.min.js?1720075040"></script>
     
     <script>
       var _hmt = _hmt || [];
@@ -310,14 +310,14 @@
     <span data-search-clear=""><i class="fas fa-times"></i></span>
 </div>
 
-<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/lunr.min.js?1719849759"></script>
-<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/auto-complete.js?1719849759"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/lunr.min.js?1720075040"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/auto-complete.js?1720075040"></script>
 <script type="text/javascript">
     
         var baseurl = "https:\/\/shardingsphere.apache.org\/document\/current\/\/en";
     
 </script>
-<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/search.js?1719849759"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/search.js?1720075040"></script>
 
       
     </div>
@@ -9466,6 +9466,30 @@ When encountering the following Error, users need to add the <code>buildArg</cod
  com.microsoft.sqlserver.jdbc.SQLCollation.encodingFromSortId<span style="color:#f92672">(</span>SQLCollation.java:501<span style="color:#f92672">)</span>
  <span style="color:#f92672">[</span>...<span style="color:#f92672">]</span>
 </code></pre></div><ol start="5">
+<li>To discuss the steps required to use XA distributed transactions under the GraalVM Native Image of ShardingSphere JDBC,
+additional known prerequisites need to be introduced,
+<ul>
+<li><code>org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)</code> will instantiate the <code>javax.sql.XADataSource</code> implementation class of each database driver through <code>java.lang.Class#getDeclaredConstructors</code>.</li>
+<li>The full class name of the <code>javax.sql.XADataSource</code> implementation class of each database driver is stored in the metadata of ShardingSphere by implementing the SPI of <code>org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition</code>.</li>
+</ul>
+</li>
+</ol>
+<p>In the GraalVM Native Image, this actually requires the definition of the GraalVM Reachability Metadata of the third-party dependencies,
+while ShardingSphere itself only provides the corresponding GraalVM Reachability Metadata for <code>com.h2database:h2</code>.</p>
+<p>GraalVM Reachability Metadata of other database drivers such as <code>com.mysql:mysql-connector-j</code> should be defined by themselves,
+or the corresponding JSON should be submitted to <a href="https://github.com/oracle/graalvm-reachability-metadata">https://github.com/oracle/graalvm-reachability-metadata</a> .</p>
+<p>Take the <code>com.mysql.cj.jdbc.MysqlXADataSource</code> class of <code>com.mysql:mysql-connector-j:9.0.0</code> as an example,
+which is the implementation of <code>javax.sql.XADataSource</code> of MySQL JDBC Driver.
+Users need to define the following JSON in the <code>reflect-config.json</code> file in the <code>/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/</code> folder of their own project&rsquo;s claapath,
+to define the constructor of <code>com.mysql.cj.jdbc.MysqlXADataSource</code> inside the GraalVM Native Image.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">[
+{
+<span style="color:#f92672">&#34;condition&#34;</span>:{<span style="color:#f92672">&#34;typeReachable&#34;</span>:<span style="color:#e6db74">&#34;com.mysql.cj.jdbc.MysqlXADataSource&#34;</span>},
+<span style="color:#f92672">&#34;name&#34;</span>:<span style="color:#e6db74">&#34;com.mysql.cj.jdbc.MysqlXADataSource&#34;</span>,
+<span style="color:#f92672">&#34;allDeclaredConstructors&#34;</span>: <span style="color:#66d9ef">true</span>
+}
+]
+</code></pre></div><ol start="6">
 <li>When using Seata&rsquo;s BASE integration,
 users need to use a specific <code>io.seata:seata-all:1.8.0</code> version to avoid using the ByteBuddy Java API,
 and exclude the outdated Maven dependency of <code>org.antlr:antlr4-runtime:4.8</code> in <code>io.seata:seata-all:1.8.0</code>.
@@ -9496,7 +9520,7 @@ Possible configuration examples are as follows,</li>
       <span style="color:#f92672">&lt;/dependency&gt;</span>
     <span style="color:#f92672">&lt;/dependencies&gt;</span>
 <span style="color:#f92672">&lt;/project&gt;</span>
-</code></pre></div><ol start="6">
+</code></pre></div><ol start="7">
 <li>When using the ClickHouse dialect through ShardingSphere JDBC,
 users need to manually introduce the relevant optional modules and the ClickHouse JDBC driver with the classifier <code>http</code>.
 In principle, ShardingSphere&rsquo;s GraalVM Native Image integration does not want to use <code>com.clickhouse:clickhouse-jdbc</code> with classifier <code>all</code>,
@@ -9542,7 +9566,7 @@ curl -s <span style="color:#e6db74">&#34;https://get.sdkman.io&#34;</span> | bas
 source <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/.sdkman/bin/sdkman-init.sh&#34;</span>
 sdk install java 21.0.2-graalce
 sdk use java 21.0.2-graalce
-sudo apt-get install build-essential libz-dev zlib1g-dev -y
+sudo apt-get install build-essential zlib1g-dev -y
 
 git clone git@github.com:apache/shardingsphere.git
 cd ./shardingsphere/
@@ -14935,19 +14959,19 @@ cd ./shardingsphere/
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1719849759"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1719849759"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1719849759"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1719849759"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1719849759"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1719849759"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1720075040"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1720075040"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1720075040"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1720075040"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1720075040"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1720075040"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom-3.6.0.js?1719849759"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1719849759"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1719849759"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom-3.6.0.js?1720075040"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1720075040"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1720075040"></script>
     
         
-            <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1719849759"></script>
+            <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1720075040"></script>
         
         <script>
             mermaid.initialize({ startOnLoad: true });

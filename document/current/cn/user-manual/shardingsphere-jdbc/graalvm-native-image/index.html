@@ -12,22 +12,22 @@
     <title>GraalVM Native Image :: ShardingSphere</title>
 
     
-    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/fontawesome-all.min.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/atom-one-dark-reasonable.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/tabs.css?1719849764" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1719849764" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/nucleus.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/fontawesome-all.min.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hybrid.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/featherlight.min.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/perfect-scrollbar.min.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/auto-complete.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/atom-one-dark-reasonable.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/tabs.css?1720075045" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/hugo-theme.css?1720075045" rel="stylesheet">
     
-    <link href="https://shardingsphere.apache.org/document/current/css/theme-white.css?1719849764" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/document/current/css/theme-white.css?1720075045" rel="stylesheet">
     
     
 
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery-3.3.1.min.js?1719849764"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery-3.3.1.min.js?1720075045"></script>
     
     <script>
       var _hmt = _hmt || [];
@@ -310,14 +310,14 @@
     <span data-search-clear=""><i class="fas fa-times"></i></span>
 </div>
 
-<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/lunr.min.js?1719849764"></script>
-<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/auto-complete.js?1719849764"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/lunr.min.js?1720075045"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/auto-complete.js?1720075045"></script>
 <script type="text/javascript">
     
         var baseurl = "https:\/\/shardingsphere.apache.org\/document\/current\/\/cn";
     
 </script>
-<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/search.js?1719849764"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/document/current/js/search.js?1720075045"></script>
 
       
     </div>
@@ -9458,6 +9458,27 @@ Reachability Metadata。</p>
  com.microsoft.sqlserver.jdbc.SQLCollation.encodingFromSortId<span style="color:#f92672">(</span>SQLCollation.java:501<span style="color:#f92672">)</span>
  <span style="color:#f92672">[</span>...<span style="color:#f92672">]</span>
 </code></pre></div><ol start="5">
+<li>讨论在 ShardingSphere JDBC 的 GraalVM Native Image 下使用 XA 分布式事务的所需步骤，则需要引入额外的已知前提，
+<ul>
+<li><code>org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)</code> 会通过 <code>java.lang.Class#getDeclaredConstructors</code> 实例化各数据库驱动的 <code>javax.sql.XADataSource</code> 实现类。</li>
+<li>各数据库驱动的 <code>javax.sql.XADataSource</code> 实现类的全类名通过实现 <code>org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition</code> 的 SPI，来存入 ShardingSphere 的元数据。</li>
+</ul>
+</li>
+</ol>
+<p>在 GraalVM Native Image 内部，这实际上要求定义第三方依赖的 GraalVM Reachability Metadata，而 ShardingSphere 自身仅为 <code>com.h2database:h2</code> 提供对应的 GraalVM Reachability Metadata。
+<code>com.mysql:mysql-connector-j</code> 等其他数据库驱动的 GraalVM Reachability Metadata 应自行定义，
+或将对应 JSON 提交到 <a href="https://github.com/oracle/graalvm-reachability-metadata">https://github.com/oracle/graalvm-reachability-metadata</a> 一侧。</p>
+<p>以 <code>com.mysql:mysql-connector-j:9.0.0</code> 的 <code>com.mysql.cj.jdbc.MysqlXADataSource</code> 类为例，这是 MySQL JDBC Driver 的 <code>javax.sql.XADataSource</code> 的实现。
+用户需要在自有项目的 claapath 的 <code>/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/</code> 文件夹的 <code>reflect-config.json</code>文件内定义如下 JSON，
+以在 GraalVM Native Image 内部定义 <code>com.mysql.cj.jdbc.MysqlXADataSource</code> 的构造函数。</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-json" data-lang="json">[
+{
+  <span style="color:#f92672">&#34;condition&#34;</span>:{<span style="color:#f92672">&#34;typeReachable&#34;</span>:<span style="color:#e6db74">&#34;com.mysql.cj.jdbc.MysqlXADataSource&#34;</span>},
+  <span style="color:#f92672">&#34;name&#34;</span>:<span style="color:#e6db74">&#34;com.mysql.cj.jdbc.MysqlXADataSource&#34;</span>,
+  <span style="color:#f92672">&#34;allDeclaredConstructors&#34;</span>: <span style="color:#66d9ef">true</span>
+}
+]
+</code></pre></div><ol start="6">
 <li>当使用 Seata 的 BASE 集成时，用户需要使用特定的 <code>io.seata:seata-all:1.8.0</code> 版本以避开对 ByteBuddy Java API 的使用，
 并排除 <code>io.seata:seata-all:1.8.0</code> 中过时的 <code>org.antlr:antlr4-runtime:4.8</code> 的 Maven 依赖。可能的配置例子如下，</li>
 </ol>
@@ -9486,7 +9507,7 @@ Reachability Metadata。</p>
       <span style="color:#f92672">&lt;/dependency&gt;</span>
     <span style="color:#f92672">&lt;/dependencies&gt;</span>
 <span style="color:#f92672">&lt;/project&gt;</span>
-</code></pre></div><ol start="6">
+</code></pre></div><ol start="7">
 <li>当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
 用户需要手动引入相关的可选模块和 classifier 为 <code>http</code> 的 ClickHouse JDBC 驱动。
 原则上，ShardingSphere 的 GraalVM Native Image 集成不希望使用 classifier 为 <code>all</code> 的 <code>com.clickhouse:clickhouse-jdbc</code>，
@@ -9530,7 +9551,7 @@ curl -s <span style="color:#e6db74">&#34;https://get.sdkman.io&#34;</span> | bas
 source <span style="color:#e6db74">&#34;</span>$HOME<span style="color:#e6db74">/.sdkman/bin/sdkman-init.sh&#34;</span>
 sdk install java 22.0.1-graalce
 sdk use java 22.0.1-graalce
-sudo apt-get install build-essential libz-dev zlib1g-dev -y
+sudo apt-get install build-essential zlib1g-dev -y
 
 git clone git@github.com:apache/shardingsphere.git
 cd ./shardingsphere/
@@ -14922,19 +14943,19 @@ cd ./shardingsphere/
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1719849764"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1719849764"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1719849764"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1719849764"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1719849764"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1719849764"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/clipboard.min.js?1720075045"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.min.js?1720075045"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/perfect-scrollbar.jquery.min.js?1720075045"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/jquery.sticky.js?1720075045"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/featherlight.min.js?1720075045"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/highlight.pack.js?1720075045"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom-3.6.0.js?1719849764"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1719849764"></script>
-    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1719849764"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/modernizr.custom-3.6.0.js?1720075045"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/learn.js?1720075045"></script>
+    <script src="https://shardingsphere.apache.org/document/current/js/hugo-learn.js?1720075045"></script>
     
         
-            <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1719849764"></script>
+            <script src="https://shardingsphere.apache.org/document/current/mermaid/mermaid.js?1720075045"></script>
         
         <script>
             mermaid.initialize({ startOnLoad: true });

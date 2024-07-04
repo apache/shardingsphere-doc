@@ -1,116 +1,107 @@
-commit aa18c5d581db136475c79b292d4a1019d3dae9bc
-Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Thu Jul 4 14:33:47 2024 +0800
+commit b2013c87960338b82f6d019a6c6b84cfd6a7788e
+Author: Raigor <raigor.jiang@gmail.com>
+Date:   Thu Jul 4 16:11:15 2024 +0800
 
-    Add documentation for using XA distributed transactions in GraalVM Native Image (#31975)
+    Update doc for register storage unit (#31978)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-index 46339c7bd39..01e3523414c 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-@@ -234,7 +234,29 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
-  [...]
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
+index 0bd9c2abdba..85723ee7ef7 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
+@@ -64,12 +64,11 @@ value ::=
+ - `storageUnitName` 区分大小写；
+ - `storageUnitName` 在当前逻辑库中需要唯一；
+ - `storageUnitName` 命名只允许使用字母、数字以及 `_` ，且必须以字母开头；
+-- `poolProperty` 用于自定义连接池参数，`key` 必须和连接池参数名一致；
+-- `ifNotExists` 子句用于避免出现 `Duplicate storage unit` 的错误。
++- `PROPERTIES` 为可选参数，用于自定义连接池属性，`key` 必须和连接池参数名一致。
+ 
+ ### 示例
+ 
+-- 使用标准模式注册存储单元
++- 使用 HOST & PORT 方式注册存储单元
+ 
+ ```sql
+ REGISTER STORAGE UNIT ds_0 (
+@@ -81,10 +80,10 @@ REGISTER STORAGE UNIT ds_0 (
+ );
  ```
  
--5. 当使用 Seata 的 BASE 集成时，用户需要使用特定的 `io.seata:seata-all:1.8.0` 版本以避开对 ByteBuddy Java API 的使用，
-+5. 讨论在 ShardingSphere JDBC 的 GraalVM Native Image 下使用 XA 分布式事务的所需步骤，则需要引入额外的已知前提，
-+   - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` 会通过 `java.lang.Class#getDeclaredConstructors` 实例化各数据库驱动的 `javax.sql.XADataSource` 实现类。
-+   - 各数据库驱动的 `javax.sql.XADataSource` 实现类的全类名通过实现 `org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition` 的 SPI，来存入 ShardingSphere 的元数据。
-+
-+在 GraalVM Native Image 内部，这实际上要求定义第三方依赖的 GraalVM Reachability Metadata，而 ShardingSphere 自身仅为 `com.h2database:h2` 提供对应的 GraalVM Reachability Metadata。
-+`com.mysql:mysql-connector-j` 等其他数据库驱动的 GraalVM Reachability Metadata 应自行定义，
-+或将对应 JSON 提交到 https://github.com/oracle/graalvm-reachability-metadata 一侧。
-+
-+以 `com.mysql:mysql-connector-j:9.0.0` 的 `com.mysql.cj.jdbc.MysqlXADataSource` 类为例，这是 MySQL JDBC Driver 的 `javax.sql.XADataSource` 的实现。
-+用户需要在自有项目的 claapath 的 `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` 文件夹的 `reflect-config.json`文件内定义如下 JSON，
-+以在 GraalVM Native Image 内部定义 `com.mysql.cj.jdbc.MysqlXADataSource` 的构造函数。
-+
-+```json
-+[
-+{
-+  "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
-+  "name":"com.mysql.cj.jdbc.MysqlXADataSource",
-+  "allDeclaredConstructors": true
-+}
-+]
-+```
-+
-+6. 当使用 Seata 的 BASE 集成时，用户需要使用特定的 `io.seata:seata-all:1.8.0` 版本以避开对 ByteBuddy Java API 的使用，
- 并排除 `io.seata:seata-all:1.8.0` 中过时的 `org.antlr:antlr4-runtime:4.8` 的 Maven 依赖。可能的配置例子如下，
+-- 使用标准模式注册存储单元并设置连接池参数
++- 使用 HOST & PORT 方式注册存储单元并设置连接池属性
  
- ```xml
-@@ -265,7 +287,7 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
- </project>
+ ```sql
+-REGISTER STORAGE UNIT ds_0 (
++REGISTER STORAGE UNIT ds_1 (
+     HOST="127.0.0.1",
+     PORT=3306,
+     DB="db_1",
+@@ -94,11 +93,11 @@ REGISTER STORAGE UNIT ds_0 (
+ );
  ```
  
--6. 当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
-+7. 当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
- 用户需要手动引入相关的可选模块和 classifier 为 `http` 的 ClickHouse JDBC 驱动。
- 原则上，ShardingSphere 的 GraalVM Native Image 集成不希望使用 classifier 为 `all` 的 `com.clickhouse:clickhouse-jdbc`，
- 因为 Uber Jar 会导致采集重复的 GraalVM Reachability Metadata。
-@@ -318,7 +340,7 @@ curl -s "https://get.sdkman.io" | bash
- source "$HOME/.sdkman/bin/sdkman-init.sh"
- sdk install java 22.0.1-graalce
- sdk use java 22.0.1-graalce
--sudo apt-get install build-essential libz-dev zlib1g-dev -y
-+sudo apt-get install build-essential zlib1g-dev -y
+-- 使用 URL 模式注册存储单元并设置连接池参数
++- 使用 URL 方式注册存储单元并设置连接池属性
  
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-index 3579f37a5a3..35b038fd882 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-@@ -243,7 +243,33 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
-  [...]
+ ```sql
+-REGISTER STORAGE UNIT ds_0 (
+-    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false",
++REGISTER STORAGE UNIT ds_2 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+     USER="root",
+     PASSWORD="root",
+     PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
+index 1281c5e791c..369ac975566 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
+@@ -65,28 +65,27 @@ value ::=
+ - `storageUnitName` is case-sensitive;
+ - `storageUnitName` needs to be unique within the current database;
+ - `storageUnitName` name only allows letters, numbers and `_`, and must start with a letter;
+-- `poolProperty` is used to customize connection pool parameters, `key` must be the same as the connection pool
+-  parameter name;
+-- `ifNotExists` clause is used for avoid `Duplicate storage unit` error.
++- `PROPERTIES` is optional, used to customize connection pool properties, `key` must be the same as the connection pool
++  property name.
+ 
+ ### Example
+ 
+-- Register storage unit using standard mode
++- Register storage unit using HOST & PORT method
+ 
+ ```sql
+ REGISTER STORAGE UNIT ds_0 (
+     HOST="127.0.0.1",
+     PORT=3306,
+-    DB="db_1",
++    DB="db_0",
+     USER="root",
+     PASSWORD="root"
+ );
  ```
  
--5. When using Seata's BASE integration, 
-+5. To discuss the steps required to use XA distributed transactions under the GraalVM Native Image of ShardingSphere JDBC, 
-+additional known prerequisites need to be introduced,
-+   - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` will instantiate the `javax.sql.XADataSource` implementation class of each database driver through `java.lang.Class#getDeclaredConstructors`.
-+   - The full class name of the `javax.sql.XADataSource` implementation class of each database driver is stored in the metadata of ShardingSphere by implementing the SPI of `org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition`.
-+
-+In the GraalVM Native Image, this actually requires the definition of the GraalVM Reachability Metadata of the third-party dependencies,
-+while ShardingSphere itself only provides the corresponding GraalVM Reachability Metadata for `com.h2database:h2`.
-+
-+GraalVM Reachability Metadata of other database drivers such as `com.mysql:mysql-connector-j` should be defined by themselves,
-+or the corresponding JSON should be submitted to https://github.com/oracle/graalvm-reachability-metadata .
-+
-+Take the `com.mysql.cj.jdbc.MysqlXADataSource` class of `com.mysql:mysql-connector-j:9.0.0` as an example,
-+which is the implementation of `javax.sql.XADataSource` of MySQL JDBC Driver.
-+Users need to define the following JSON in the `reflect-config.json` file in the `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` folder of their own project's claapath,
-+to define the constructor of `com.mysql.cj.jdbc.MysqlXADataSource` inside the GraalVM Native Image.
-+
-+```json
-+[
-+{
-+"condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
-+"name":"com.mysql.cj.jdbc.MysqlXADataSource",
-+"allDeclaredConstructors": true
-+}
-+]
-+```
-+
-+6. When using Seata's BASE integration, 
- users need to use a specific `io.seata:seata-all:1.8.0` version to avoid using the ByteBuddy Java API,
- and exclude the outdated Maven dependency of `org.antlr:antlr4-runtime:4.8` in `io.seata:seata-all:1.8.0`.
- Possible configuration examples are as follows,
-@@ -276,7 +302,7 @@ Possible configuration examples are as follows,
- </project>
+-- Register storage unit and set connection pool parameters using standard mode
++- Register storage unit and set connection pool properties using HOST & PORT method
+ 
+ ```sql
+-REGISTER STORAGE UNIT ds_0 (
++REGISTER STORAGE UNIT ds_1 (
+     HOST="127.0.0.1",
+     PORT=3306,
+     DB="db_1",
+@@ -96,11 +95,11 @@ REGISTER STORAGE UNIT ds_0 (
+ );
  ```
  
--6. When using the ClickHouse dialect through ShardingSphere JDBC, 
-+7. When using the ClickHouse dialect through ShardingSphere JDBC, 
- users need to manually introduce the relevant optional modules and the ClickHouse JDBC driver with the classifier `http`.
- In principle, ShardingSphere's GraalVM Native Image integration does not want to use `com.clickhouse:clickhouse-jdbc` with classifier `all`, 
- because Uber Jar will cause the collection of duplicate GraalVM Reachability Metadata.
-@@ -330,7 +356,7 @@ curl -s "https://get.sdkman.io" | bash
- source "$HOME/.sdkman/bin/sdkman-init.sh"
- sdk install java 21.0.2-graalce
- sdk use java 21.0.2-graalce
--sudo apt-get install build-essential libz-dev zlib1g-dev -y
-+sudo apt-get install build-essential zlib1g-dev -y
+-- Register storage unit and set connection pool parameters using URL patterns
++- Register storage unit and set connection pool properties using URL method
  
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
+ ```sql
+-REGISTER STORAGE UNIT ds_0 (
+-    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false",
++REGISTER STORAGE UNIT ds_2 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+     USER="root",
+     PASSWORD="root",
+     PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")

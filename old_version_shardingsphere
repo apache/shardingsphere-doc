@@ -1,116 +1,120 @@
-commit aa18c5d581db136475c79b292d4a1019d3dae9bc
-Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Thu Jul 4 14:33:47 2024 +0800
+commit 012f22407f44c33ea8f40d2129ae210b4e77eb28
+Author: Raigor <raigor.jiang@gmail.com>
+Date:   Thu Jul 4 16:36:02 2024 +0800
 
-    Add documentation for using XA distributed transactions in GraalVM Native Image (#31975)
+    Update doc for alter storage unit (#31980)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-index 46339c7bd39..01e3523414c 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-@@ -234,7 +234,29 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
-  [...]
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
+index aac673d2575..efd493917c4 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
+@@ -56,18 +56,15 @@ value ::=
+ 
+ ### 补充说明
+ 
+-- 修改存储单元前请确认已经在 Proxy 中创建逻辑数据库，并执行 `use` 命令成功选择一个逻辑数据库；
+-- `ALTER STORAGE UNIT`不允许改变该存储单元关联的真实数据源；
++- 修改存储单元前请确认已经在 Proxy 中创建逻辑数据库，并执行 `use` 命令选择一个逻辑数据库；
++- `ALTER STORAGE UNIT`不允许改变该存储单元关联的真实数据源（通过 host、port 和 db 判断）；
+ - `ALTER STORAGE UNIT`会发生连接池的切换，这个操作可能对进行中的业务造成影响，请谨慎使用；
+-- 确认添加的存储单元是可以正常连接的， 否则将不能添加成功；
+-- `storageUnitName` 区分大小写；
+-- `storageUnitName` 在当前逻辑库中需要唯一；
+-- `storageUnitName` 命名只允许使用字母、数字以及 `_` ，且必须以字母开头；
+-- `poolProperty` 用于自定义连接池参数，`key` 必须和连接池参数名一致。
++- 请确认修改的存储单元是可以正常连接的， 否则将不能修改成功；
++- `PROPERTIES` 为可选参数，用于自定义连接池属性，`key` 必须和连接池参数名一致。
+ 
+ ### 示例
+ 
+-- 使用标准模式修改存储单元
++- 使用 HOST & PORT 方式修改存储单元
+ 
+ ```sql
+ ALTER STORAGE UNIT ds_0 (
+@@ -79,10 +76,10 @@ ALTER STORAGE UNIT ds_0 (
+ );
  ```
  
--5. 当使用 Seata 的 BASE 集成时，用户需要使用特定的 `io.seata:seata-all:1.8.0` 版本以避开对 ByteBuddy Java API 的使用，
-+5. 讨论在 ShardingSphere JDBC 的 GraalVM Native Image 下使用 XA 分布式事务的所需步骤，则需要引入额外的已知前提，
-+   - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` 会通过 `java.lang.Class#getDeclaredConstructors` 实例化各数据库驱动的 `javax.sql.XADataSource` 实现类。
-+   - 各数据库驱动的 `javax.sql.XADataSource` 实现类的全类名通过实现 `org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition` 的 SPI，来存入 ShardingSphere 的元数据。
-+
-+在 GraalVM Native Image 内部，这实际上要求定义第三方依赖的 GraalVM Reachability Metadata，而 ShardingSphere 自身仅为 `com.h2database:h2` 提供对应的 GraalVM Reachability Metadata。
-+`com.mysql:mysql-connector-j` 等其他数据库驱动的 GraalVM Reachability Metadata 应自行定义，
-+或将对应 JSON 提交到 https://github.com/oracle/graalvm-reachability-metadata 一侧。
-+
-+以 `com.mysql:mysql-connector-j:9.0.0` 的 `com.mysql.cj.jdbc.MysqlXADataSource` 类为例，这是 MySQL JDBC Driver 的 `javax.sql.XADataSource` 的实现。
-+用户需要在自有项目的 claapath 的 `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` 文件夹的 `reflect-config.json`文件内定义如下 JSON，
-+以在 GraalVM Native Image 内部定义 `com.mysql.cj.jdbc.MysqlXADataSource` 的构造函数。
-+
-+```json
-+[
-+{
-+  "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
-+  "name":"com.mysql.cj.jdbc.MysqlXADataSource",
-+  "allDeclaredConstructors": true
-+}
-+]
-+```
-+
-+6. 当使用 Seata 的 BASE 集成时，用户需要使用特定的 `io.seata:seata-all:1.8.0` 版本以避开对 ByteBuddy Java API 的使用，
- 并排除 `io.seata:seata-all:1.8.0` 中过时的 `org.antlr:antlr4-runtime:4.8` 的 Maven 依赖。可能的配置例子如下，
+-- 使用标准模式修改存储单元并设置连接池参数
++- 使用 HOST & PORT 方式修改存储单元并设置连接池属性
  
- ```xml
-@@ -265,7 +287,7 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
- </project>
+ ```sql
+-ALTER STORAGE UNIT ds_0 (
++ALTER STORAGE UNIT ds_1 (
+     HOST="127.0.0.1",
+     PORT=3306,
+     DB="db_1",
+@@ -92,11 +89,11 @@ ALTER STORAGE UNIT ds_0 (
+ );
  ```
  
--6. 当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
-+7. 当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
- 用户需要手动引入相关的可选模块和 classifier 为 `http` 的 ClickHouse JDBC 驱动。
- 原则上，ShardingSphere 的 GraalVM Native Image 集成不希望使用 classifier 为 `all` 的 `com.clickhouse:clickhouse-jdbc`，
- 因为 Uber Jar 会导致采集重复的 GraalVM Reachability Metadata。
-@@ -318,7 +340,7 @@ curl -s "https://get.sdkman.io" | bash
- source "$HOME/.sdkman/bin/sdkman-init.sh"
- sdk install java 22.0.1-graalce
- sdk use java 22.0.1-graalce
--sudo apt-get install build-essential libz-dev zlib1g-dev -y
-+sudo apt-get install build-essential zlib1g-dev -y
+-- 使用 URL 模式修改存储单元并设置连接池参数
++- 使用 URL 模式修改存储单元并设置连接池属性
  
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-index 3579f37a5a3..35b038fd882 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-@@ -243,7 +243,33 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
-  [...]
+ ```sql
+-ALTER STORAGE UNIT ds_0 (
+-    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false",
++ALTER STORAGE UNIT ds_2 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+     USER="root",
+     PASSWORD="root",
+     PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
+index 4f3c35f76c6..6c7aee224e4 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
+@@ -57,19 +57,17 @@ value ::=
+ ### Supplement
+ 
+ - Before altering the storage units, please confirm that a database exists in Proxy, and execute the `use` command to
+-  successfully select a database;
+-- `ALTER STORAGE UNIT` is not allowed to change the real data source associated with this storageUnit;
++  select a database;
++- `ALTER STORAGE UNIT` is not allowed to change the real data source associated with this storageUnit (determined by host, port and db);
+ - `ALTER STORAGE UNIT` will switch the connection pool. This operation may affect the ongoing business, please use it with
+   caution;
+-- `storageUnitName` is case-sensitive;
+-- `storageUnitName` needs to be unique within the current database;
+-- `storageUnitName` name only allows letters, numbers and `_`, and must start with a letter;
+-- `poolProperty` is used to customize connection pool parameters, `key` must be the same as the connection pool
+-  parameter name.
++- Please confirm that the storage unit to be altered can be connected successfully, otherwise the altering will fail;
++- `PROPERTIES` is optional, used to customize connection pool properties, `key` must be the same as the connection pool
++  property name.
+ 
+ ### Example
+ 
+-- Alter storage unit using standard mode
++- Alter storage unit using HOST & PORT method
+ 
+ ```sql
+ ALTER STORAGE UNIT ds_0 (
+@@ -81,10 +79,10 @@ ALTER STORAGE UNIT ds_0 (
+ );
  ```
  
--5. When using Seata's BASE integration, 
-+5. To discuss the steps required to use XA distributed transactions under the GraalVM Native Image of ShardingSphere JDBC, 
-+additional known prerequisites need to be introduced,
-+   - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` will instantiate the `javax.sql.XADataSource` implementation class of each database driver through `java.lang.Class#getDeclaredConstructors`.
-+   - The full class name of the `javax.sql.XADataSource` implementation class of each database driver is stored in the metadata of ShardingSphere by implementing the SPI of `org.apache.shardingsphere.transaction.xa.jta.datasource.properties.XADataSourceDefinition`.
-+
-+In the GraalVM Native Image, this actually requires the definition of the GraalVM Reachability Metadata of the third-party dependencies,
-+while ShardingSphere itself only provides the corresponding GraalVM Reachability Metadata for `com.h2database:h2`.
-+
-+GraalVM Reachability Metadata of other database drivers such as `com.mysql:mysql-connector-j` should be defined by themselves,
-+or the corresponding JSON should be submitted to https://github.com/oracle/graalvm-reachability-metadata .
-+
-+Take the `com.mysql.cj.jdbc.MysqlXADataSource` class of `com.mysql:mysql-connector-j:9.0.0` as an example,
-+which is the implementation of `javax.sql.XADataSource` of MySQL JDBC Driver.
-+Users need to define the following JSON in the `reflect-config.json` file in the `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` folder of their own project's claapath,
-+to define the constructor of `com.mysql.cj.jdbc.MysqlXADataSource` inside the GraalVM Native Image.
-+
-+```json
-+[
-+{
-+"condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
-+"name":"com.mysql.cj.jdbc.MysqlXADataSource",
-+"allDeclaredConstructors": true
-+}
-+]
-+```
-+
-+6. When using Seata's BASE integration, 
- users need to use a specific `io.seata:seata-all:1.8.0` version to avoid using the ByteBuddy Java API,
- and exclude the outdated Maven dependency of `org.antlr:antlr4-runtime:4.8` in `io.seata:seata-all:1.8.0`.
- Possible configuration examples are as follows,
-@@ -276,7 +302,7 @@ Possible configuration examples are as follows,
- </project>
+-- Alter storage unit and set connection pool parameters using standard mode
++- Alter storage unit and set connection pool properties using HOST & PORT method
+ 
+ ```sql
+-ALTER STORAGE UNIT ds_0 (
++ALTER STORAGE UNIT ds_1 (
+     HOST=127.0.0.1,
+     PORT=3306,
+     DB=db_1,
+@@ -94,11 +92,11 @@ ALTER STORAGE UNIT ds_0 (
+ );
  ```
  
--6. When using the ClickHouse dialect through ShardingSphere JDBC, 
-+7. When using the ClickHouse dialect through ShardingSphere JDBC, 
- users need to manually introduce the relevant optional modules and the ClickHouse JDBC driver with the classifier `http`.
- In principle, ShardingSphere's GraalVM Native Image integration does not want to use `com.clickhouse:clickhouse-jdbc` with classifier `all`, 
- because Uber Jar will cause the collection of duplicate GraalVM Reachability Metadata.
-@@ -330,7 +356,7 @@ curl -s "https://get.sdkman.io" | bash
- source "$HOME/.sdkman/bin/sdkman-init.sh"
- sdk install java 21.0.2-graalce
- sdk use java 21.0.2-graalce
--sudo apt-get install build-essential libz-dev zlib1g-dev -y
-+sudo apt-get install build-essential zlib1g-dev -y
+-- Alter storage unit and set connection pool parameters using URL patterns
++- Alter storage unit and set connection pool properties using URL method
  
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
+ ```sql
+-ALTER STORAGE UNIT ds_0 (
+-    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false",
++ALTER STORAGE UNIT ds_2 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+     USER=root,
+     PASSWORD=root,
+     PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")

@@ -1,0 +1,202 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+<title>ShardingSphereStatisticsRefreshEngine xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../../../../apidocs/org/apache/shardingsphere/mode/metadata/refresher/ShardingSphereStatisticsRefreshEngine.html">View Javadoc</a></div><pre>
+<a class="jxr_linenumber" name="L1" href="#L1">1</a>   <em class="jxr_comment">/*</em>
+<a class="jxr_linenumber" name="L2" href="#L2">2</a>   <em class="jxr_comment"> * Licensed to the Apache Software Foundation (ASF) under one or more</em>
+<a class="jxr_linenumber" name="L3" href="#L3">3</a>   <em class="jxr_comment"> * contributor license agreements.  See the NOTICE file distributed with</em>
+<a class="jxr_linenumber" name="L4" href="#L4">4</a>   <em class="jxr_comment"> * this work for additional information regarding copyright ownership.</em>
+<a class="jxr_linenumber" name="L5" href="#L5">5</a>   <em class="jxr_comment"> * The ASF licenses this file to You under the Apache License, Version 2.0</em>
+<a class="jxr_linenumber" name="L6" href="#L6">6</a>   <em class="jxr_comment"> * (the "License"); you may not use this file except in compliance with</em>
+<a class="jxr_linenumber" name="L7" href="#L7">7</a>   <em class="jxr_comment"> * the License.  You may obtain a copy of the License at</em>
+<a class="jxr_linenumber" name="L8" href="#L8">8</a>   <em class="jxr_comment"> *</em>
+<a class="jxr_linenumber" name="L9" href="#L9">9</a>   <em class="jxr_comment"> *     <a href="http://www.apache.org/licenses/LICENSE-2.0" target="alexandria_uri">http://www.apache.org/licenses/LICENSE-2.0</a></em>
+<a class="jxr_linenumber" name="L10" href="#L10">10</a>  <em class="jxr_comment"> *</em>
+<a class="jxr_linenumber" name="L11" href="#L11">11</a>  <em class="jxr_comment"> * Unless required by applicable law or agreed to in writing, software</em>
+<a class="jxr_linenumber" name="L12" href="#L12">12</a>  <em class="jxr_comment"> * distributed under the License is distributed on an "AS IS" BASIS,</em>
+<a class="jxr_linenumber" name="L13" href="#L13">13</a>  <em class="jxr_comment"> * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</em>
+<a class="jxr_linenumber" name="L14" href="#L14">14</a>  <em class="jxr_comment"> * See the License for the specific language governing permissions and</em>
+<a class="jxr_linenumber" name="L15" href="#L15">15</a>  <em class="jxr_comment"> * limitations under the License.</em>
+<a class="jxr_linenumber" name="L16" href="#L16">16</a>  <em class="jxr_comment"> */</em>
+<a class="jxr_linenumber" name="L17" href="#L17">17</a>  
+<a class="jxr_linenumber" name="L18" href="#L18">18</a>  <strong class="jxr_keyword">package</strong> org.apache.shardingsphere.mode.metadata.refresher;
+<a class="jxr_linenumber" name="L19" href="#L19">19</a>  
+<a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> lombok.RequiredArgsConstructor;
+<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> lombok.extern.slf4j.Slf4j;
+<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.config.props.temporary.TemporaryConfigurationPropertyKey;
+<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.executor.kernel.thread.ExecutorThreadFactoryBuilder;
+<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.lock.GlobalLockNames;
+<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
+<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereSchema;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereTable;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereDatabaseData;
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereRowData;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereSchemaData;
+<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereStatistics;
+<a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereTableData;
+<a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.collector.ShardingSphereStatisticsCollector;
+<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
+<a class="jxr_linenumber" name="L36" href="#L36">36</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.yaml.data.swapper.YamlShardingSphereRowDataSwapper;
+<a class="jxr_linenumber" name="L37" href="#L37">37</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.lock.GlobalLockContext;
+<a class="jxr_linenumber" name="L38" href="#L38">38</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.lock.GlobalLockDefinition;
+<a class="jxr_linenumber" name="L39" href="#L39">39</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.manager.ContextManager;
+<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.persist.pojo.AlteredShardingSphereSchemaData;
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>  
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <strong class="jxr_keyword">import</strong> java.util.ArrayList;
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>  <strong class="jxr_keyword">import</strong> java.util.Map;
+<a class="jxr_linenumber" name="L44" href="#L44">44</a>  <strong class="jxr_keyword">import</strong> java.util.Map.Entry;
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>  <strong class="jxr_keyword">import</strong> java.util.Optional;
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>  <strong class="jxr_keyword">import</strong> java.util.concurrent.ExecutorService;
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>  <strong class="jxr_keyword">import</strong> java.util.concurrent.Executors;
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>  <strong class="jxr_keyword">import</strong> java.util.function.Function;
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>  <strong class="jxr_keyword">import</strong> java.util.stream.Collectors;
+<a class="jxr_linenumber" name="L50" href="#L50">50</a>  
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>  <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>  <em class="jxr_javadoccomment"> * ShardingSphere statistics refresh engine.</em>
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>  <em class="jxr_javadoccomment"> */</em>
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>  @RequiredArgsConstructor
+<a class="jxr_linenumber" name="L55" href="#L55">55</a>  @Slf4j
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>  <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a name="ShardingSphereStatisticsRefreshEngine" href="../../../../../../org/apache/shardingsphere/mode/metadata/refresher/ShardingSphereStatisticsRefreshEngine.html#ShardingSphereStatisticsRefreshEngine">ShardingSphereStatisticsRefreshEngine</a> {
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>      
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> ExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadScheduledExecutor(ExecutorThreadFactoryBuilder.build(<span class="jxr_string">"statistics-collect-%d"</span>));
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>      
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="ContextManager" href="../../../../../../org/apache/shardingsphere/mode/manager/ContextManager.html#ContextManager">ContextManager</a> contextManager;
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>      
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="GlobalLockContext" href="../../../../../../org/apache/shardingsphere/mode/lock/GlobalLockContext.html#GlobalLockContext">GlobalLockContext</a> globalLockContext;
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>      
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>  <em class="jxr_javadoccomment">     * Async refresh.</em>
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> asyncRefresh() {
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>          EXECUTOR_SERVICE.execute(<strong class="jxr_keyword">this</strong>::refresh);
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>      }
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>      
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  <em class="jxr_javadoccomment">     * Refresh.</em>
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> refresh() {
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>          <strong class="jxr_keyword">try</strong> {
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>              <strong class="jxr_keyword">if</strong> (contextManager.getMetaDataContexts().getMetaData().getTemporaryProps().getValue(TemporaryConfigurationPropertyKey.PROXY_META_DATA_COLLECTOR_ENABLED)) {
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>                  collectAndRefresh();
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>              }
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>              <em class="jxr_comment">// CHECKSTYLE:OFF</em>
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>          } <strong class="jxr_keyword">catch</strong> (<strong class="jxr_keyword">final</strong> Exception ex) {
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>              <em class="jxr_comment">// CHECKSTYLE:ON</em>
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>              log.error(<span class="jxr_string">"Collect data error"</span>, ex);
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>          }
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>      }
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>      
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> collectAndRefresh() {
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>          <a name="GlobalLockDefinition" href="../../../../../../org/apache/shardingsphere/mode/lock/GlobalLockDefinition.html#GlobalLockDefinition">GlobalLockDefinition</a> lockDefinition = <strong class="jxr_keyword">new</strong> <a name="GlobalLockDefinition" href="../../../../../../org/apache/shardingsphere/mode/lock/GlobalLockDefinition.html#GlobalLockDefinition">GlobalLockDefinition</a>(GlobalLockNames.STATISTICS.getLockName());
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>          <strong class="jxr_keyword">if</strong> (globalLockContext.tryLock(lockDefinition, 5000L)) {
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>              <strong class="jxr_keyword">try</strong> {
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>                  <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics = contextManager.getMetaDataContexts().getStatistics();
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>                  <a name="ShardingSphereMetaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a> metaData = contextManager.getMetaDataContexts().getMetaData();
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>                  <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> changedStatistics = <strong class="jxr_keyword">new</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a>();
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>                  <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereDatabaseData&gt; entry : statistics.getDatabaseData().entrySet()) {
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>                      <strong class="jxr_keyword">if</strong> (metaData.containsDatabase(entry.getKey())) {
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>                          collectForDatabase(entry.getKey(), entry.getValue(), metaData.getDatabases(), changedStatistics);
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>                      }
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>                  }
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>                  compareUpdateAndSendEvent(statistics, changedStatistics, metaData.getDatabases());
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>              } <strong class="jxr_keyword">finally</strong> {
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>                 globalLockContext.unlock(lockDefinition);
+<a class="jxr_linenumber" name="L101" href="#L101">101</a>             }
+<a class="jxr_linenumber" name="L102" href="#L102">102</a>         }
+<a class="jxr_linenumber" name="L103" href="#L103">103</a>     }
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>     
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> collectForDatabase(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabaseData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a> databaseData,
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>                                     <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingSphereDatabase&gt; databases, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics) {
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereSchemaData&gt; entry : databaseData.getSchemaData().entrySet()) {
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>             <strong class="jxr_keyword">if</strong> (databases.get(databaseName.toLowerCase()).containsSchema(entry.getKey())) {
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>                 collectForSchema(databaseName, entry.getKey(), entry.getValue(), databases, statistics);
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>             }
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>         }
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>     }
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>     
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> collectForSchema(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> String schemaName, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereSchemaData.html#ShardingSphereSchemaData">ShardingSphereSchemaData</a> schemaData,
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>                                   <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingSphereDatabase&gt; databases, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics) {
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereTableData&gt; entry : schemaData.getTableData().entrySet()) {
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>             <strong class="jxr_keyword">if</strong> (databases.get(databaseName.toLowerCase()).getSchema(schemaName).containsTable(entry.getKey())) {
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>                 collectForTable(databaseName, schemaName, databases.get(databaseName).getSchema(schemaName).getTable(entry.getKey()), databases, statistics);
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>             }
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>         }
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>     }
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>     
+<a class="jxr_linenumber" name="L123" href="#L123">123</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> collectForTable(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> String schemaName, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereTable" href="../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/model/ShardingSphereTable.html#ShardingSphereTable">ShardingSphereTable</a> table,
+<a class="jxr_linenumber" name="L124" href="#L124">124</a>                                  <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingSphereDatabase&gt; databases, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics) {
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>         Optional&lt;ShardingSphereStatisticsCollector&gt; dataCollector = TypedSPILoader.findService(ShardingSphereStatisticsCollector.<strong class="jxr_keyword">class</strong>, table.getName());
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>         <strong class="jxr_keyword">if</strong> (!dataCollector.isPresent()) {
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>         }
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>         Optional&lt;ShardingSphereTableData&gt; tableData = Optional.empty();
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>         <strong class="jxr_keyword">try</strong> {
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>             tableData = dataCollector.get().collect(databaseName, table, databases, contextManager.getMetaDataContexts().getMetaData().getGlobalRuleMetaData());
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>             <em class="jxr_comment">// CHECKSTYLE:OFF</em>
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>         } <strong class="jxr_keyword">catch</strong> (<strong class="jxr_keyword">final</strong> Exception ex) {
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>             <em class="jxr_comment">// CHECKSTYLE:ON</em>
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>             log.error(String.format(<span class="jxr_string">"Collect %s.%s.%s data failed"</span>, databaseName, schemaName, table.getName()), ex);
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>         }
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>         tableData.ifPresent(optional -&gt; statistics.getDatabaseData().computeIfAbsent(databaseName.toLowerCase(), key -&gt; <strong class="jxr_keyword">new</strong> <a name="ShardingSphereDatabaseData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a>()).getSchemaData()
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>                 .computeIfAbsent(schemaName, key -&gt; <strong class="jxr_keyword">new</strong> <a name="ShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereSchemaData.html#ShardingSphereSchemaData">ShardingSphereSchemaData</a>()).getTableData().put(table.getName().toLowerCase(), optional));
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>     }
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>     
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> compareUpdateAndSendEvent(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> changedStatistics,
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>                                            <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingSphereDatabase&gt; databases) {
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>         changedStatistics.getDatabaseData().forEach(
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>                 (key, value) -&gt; compareUpdateAndSendEventForDatabase(key, statistics.getDatabaseData().get(key), value, statistics, databases.get(key.toLowerCase())));
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>     }
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>     
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> compareUpdateAndSendEventForDatabase(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabaseData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a> databaseData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabaseData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a> changedDatabaseData,
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>                                                       <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database) {
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>         changedDatabaseData.getSchemaData().forEach(
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>                 (key, value) -&gt; compareUpdateAndSendEventForSchema(databaseName, key, databaseData.getSchemaData().get(key), value, statistics, database.getSchema(key)));
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>     }
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>     
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> compareUpdateAndSendEventForSchema(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> String schemaName, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereSchemaData.html#ShardingSphereSchemaData">ShardingSphereSchemaData</a> schemaData,
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>                                                     <strong class="jxr_keyword">final</strong> <a name="ShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereSchemaData.html#ShardingSphereSchemaData">ShardingSphereSchemaData</a> changedSchemaData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereSchema" href="../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/model/ShardingSphereSchema.html#ShardingSphereSchema">ShardingSphereSchema</a> schema) {
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>         changedSchemaData.getTableData().forEach(
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>                 (key, value) -&gt; compareUpdateAndSendEventForTable(databaseName, schemaName, schemaData.getTableData().get(key), value, statistics, schema.getTable(key)));
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>     }
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>     
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> compareUpdateAndSendEventForTable(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> String schemaName, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereTableData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereTableData.html#ShardingSphereTableData">ShardingSphereTableData</a> tableData,
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>                                                    <strong class="jxr_keyword">final</strong> <a name="ShardingSphereTableData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereTableData.html#ShardingSphereTableData">ShardingSphereTableData</a> changedTableData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereTable" href="../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/model/ShardingSphereTable.html#ShardingSphereTable">ShardingSphereTable</a> table) {
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>         <strong class="jxr_keyword">if</strong> (tableData.equals(changedTableData)) {
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L163" href="#L163">163</a>         }
+<a class="jxr_linenumber" name="L164" href="#L164">164</a>         statistics.getDatabaseData().get(databaseName).getSchemaData().get(schemaName).getTableData().put(changedTableData.getName().toLowerCase(), changedTableData);
+<a class="jxr_linenumber" name="L165" href="#L165">165</a>         <a name="AlteredShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/mode/persist/pojo/AlteredShardingSphereSchemaData.html#AlteredShardingSphereSchemaData">AlteredShardingSphereSchemaData</a> schemaDataAlteredPOJO = getShardingSphereSchemaDataAlteredPOJO(databaseName, schemaName, tableData, changedTableData, table);
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>         contextManager.getPersistServiceFacade().persist(schemaDataAlteredPOJO);
+<a class="jxr_linenumber" name="L167" href="#L167">167</a>     }
+<a class="jxr_linenumber" name="L168" href="#L168">168</a>     
+<a class="jxr_linenumber" name="L169" href="#L169">169</a>     <strong class="jxr_keyword">private</strong> <a name="AlteredShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/mode/persist/pojo/AlteredShardingSphereSchemaData.html#AlteredShardingSphereSchemaData">AlteredShardingSphereSchemaData</a> getShardingSphereSchemaDataAlteredPOJO(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> String schemaName, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereTableData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereTableData.html#ShardingSphereTableData">ShardingSphereTableData</a> tableData,
+<a class="jxr_linenumber" name="L170" href="#L170">170</a>                                                                                    <strong class="jxr_keyword">final</strong> <a name="ShardingSphereTableData" href="../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereTableData.html#ShardingSphereTableData">ShardingSphereTableData</a> changedTableData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereTable" href="../../../../../../org/apache/shardingsphere/infra/metadata/database/schema/model/ShardingSphereTable.html#ShardingSphereTable">ShardingSphereTable</a> table) {
+<a class="jxr_linenumber" name="L171" href="#L171">171</a>         <a name="AlteredShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/mode/persist/pojo/AlteredShardingSphereSchemaData.html#AlteredShardingSphereSchemaData">AlteredShardingSphereSchemaData</a> result = <strong class="jxr_keyword">new</strong> <a name="AlteredShardingSphereSchemaData" href="../../../../../../org/apache/shardingsphere/mode/persist/pojo/AlteredShardingSphereSchemaData.html#AlteredShardingSphereSchemaData">AlteredShardingSphereSchemaData</a>(databaseName, schemaName, tableData.getName());
+<a class="jxr_linenumber" name="L172" href="#L172">172</a>         Map&lt;String, ShardingSphereRowData&gt; tableDataMap = tableData.getRows().stream().collect(Collectors.toMap(ShardingSphereRowData::getUniqueKey, Function.identity()));
+<a class="jxr_linenumber" name="L173" href="#L173">173</a>         Map&lt;String, ShardingSphereRowData&gt; changedTableDataMap = changedTableData.getRows().stream().collect(Collectors.toMap(ShardingSphereRowData::getUniqueKey, Function.identity()));
+<a class="jxr_linenumber" name="L174" href="#L174">174</a>         <a name="YamlShardingSphereRowDataSwapper" href="../../../../../../org/apache/shardingsphere/infra/yaml/data/swapper/YamlShardingSphereRowDataSwapper.html#YamlShardingSphereRowDataSwapper">YamlShardingSphereRowDataSwapper</a> swapper = <strong class="jxr_keyword">new</strong> <a name="YamlShardingSphereRowDataSwapper" href="../../../../../../org/apache/shardingsphere/infra/yaml/data/swapper/YamlShardingSphereRowDataSwapper.html#YamlShardingSphereRowDataSwapper">YamlShardingSphereRowDataSwapper</a>(<strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(table.getColumnValues()));
+<a class="jxr_linenumber" name="L175" href="#L175">175</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereRowData&gt; entry : changedTableDataMap.entrySet()) {
+<a class="jxr_linenumber" name="L176" href="#L176">176</a>             <strong class="jxr_keyword">if</strong> (!tableDataMap.containsKey(entry.getKey())) {
+<a class="jxr_linenumber" name="L177" href="#L177">177</a>                 result.getAddedRows().add(swapper.swapToYamlConfiguration(entry.getValue()));
+<a class="jxr_linenumber" name="L178" href="#L178">178</a>             } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (!tableDataMap.get(entry.getKey()).equals(entry.getValue())) {
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>                 result.getUpdatedRows().add(swapper.swapToYamlConfiguration(entry.getValue()));
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>             }
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>         }
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereRowData&gt; entry : tableDataMap.entrySet()) {
+<a class="jxr_linenumber" name="L183" href="#L183">183</a>             <strong class="jxr_keyword">if</strong> (!changedTableDataMap.containsKey(entry.getKey())) {
+<a class="jxr_linenumber" name="L184" href="#L184">184</a>                 result.getDeletedRows().add(swapper.swapToYamlConfiguration(entry.getValue()));
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>             }
+<a class="jxr_linenumber" name="L186" href="#L186">186</a>         }
+<a class="jxr_linenumber" name="L187" href="#L187">187</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L188" href="#L188">188</a>     }
+<a class="jxr_linenumber" name="L189" href="#L189">189</a> }
+</pre>
+<hr/>
+<div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>
+</body>
+</html>

@@ -6276,6 +6276,60 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L162">162</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.html#L166">166</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>public synchronized Map&lt;String, ShardingSphereDatabase&gt; createChangedDatabases(final String databaseName, final boolean internalLoadMetaData,
+                                                                                   final SwitchingResource switchingResource, final Collection&lt;RuleConfiguration&gt; ruleConfigs) throws SQLException {
+        ResourceMetaData effectiveResourceMetaData = getEffectiveResourceMetaData(metaDataContexts.get().getMetaData().getDatabase(databaseName), switchingResource);
+        Collection&lt;RuleConfiguration&gt; toBeCreatedRuleConfigs = null == ruleConfigs
+                ? metaDataContexts.get().getMetaData().getDatabase(databaseName).getRuleMetaData().getConfigurations()
+                : ruleConfigs;
+        DatabaseConfiguration toBeCreatedDatabaseConfig = getDatabaseConfiguration(effectiveResourceMetaData, switchingResource, toBeCreatedRuleConfigs);
+        ShardingSphereDatabase changedDatabase = createChangedDatabase(metaDataContexts.get().getMetaData().getDatabase(databaseName).getName(), internalLoadMetaData,
+                metaDataPersistService, toBeCreatedDatabaseConfig, metaDataContexts.get().getMetaData().getProps(), computeNodeInstanceContext);
+        Map&lt;String, ShardingSphereDatabase&gt; result = new LinkedHashMap&lt;&gt;(metaDataContexts.get().getMetaData().getDatabases());
+        result.put(databaseName.toLowerCase(), changedDatabase);
+        return result;
+    }
+    
+    private DatabaseConfiguration getDatabaseConfiguration(final ResourceMetaData resourceMetaData, final SwitchingResource switchingResource,
+                                                           final Collection&lt;RuleConfiguration&gt; toBeCreatedRuleConfigs) {
+        Map&lt;String, DataSourcePoolProperties&gt; propsMap = null == switchingResource
+                ? resourceMetaData.getStorageUnits().entrySet().stream()
+                        .collect(Collectors.toMap(Entry::getKey, entry -&gt; entry.getValue().getDataSourcePoolProperties(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::new))
+                : switchingResource.getMergedDataSourcePoolPropertiesMap();
+        return new DataSourceProvidedDatabaseConfiguration(getMergedStorageNodeDataSources(resourceMetaData, switchingResource), toBeCreatedRuleConfigs, propsMap);
+    }
+    
+    private Map&lt;StorageNode, DataSource&gt; getMergedStorageNodeDataSources(final ResourceMetaData currentResourceMetaData, final SwitchingResource switchingResource) {
+        Map&lt;StorageNode, DataSource&gt; result = currentResourceMetaData.getDataSources();
+        if (null != switchingResource &amp;&amp; !switchingResource.getNewDataSources().isEmpty()) {
+            result.putAll(switchingResource.getNewDataSources());
+        }
+        return result;
+    }
+    
+    private ShardingSphereDatabase createChangedDatabase(final String databaseName, final boolean internalLoadMetaData, final MetaDataPersistService persistService,
+                                                         final DatabaseConfiguration databaseConfig, final ConfigurationProperties props,
+                                                         final ComputeNodeInstanceContext computeNodeInstanceContext) throws SQLException {
+        return internalLoadMetaData
+                ? InternalMetaDataFactory.create(databaseName, persistService, databaseConfig, props, computeNodeInstanceContext)
+                : ExternalMetaDataFactory.create(databaseName, databaseConfig, props, computeNodeInstanceContext);
+    }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L332">332</a></td></tr>
@@ -8694,6 +8748,51 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.html#L138">138</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.html#L153">153</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>}
+    
+    private ResourceMetaData getEffectiveResourceMetaData(final ShardingSphereDatabase database, final SwitchingResource resource) {
+        Map&lt;StorageNode, DataSource&gt; storageNodes = getStorageNodes(database.getResourceMetaData().getDataSources(), resource);
+        Map&lt;String, StorageUnit&gt; storageUnits = getStorageUnits(database.getResourceMetaData().getStorageUnits(), resource);
+        return new ResourceMetaData(storageNodes, storageUnits);
+    }
+    
+    private Map&lt;StorageNode, DataSource&gt; getStorageNodes(final Map&lt;StorageNode, DataSource&gt; currentStorageNodes, final SwitchingResource resource) {
+        Map&lt;StorageNode, DataSource&gt; result = new LinkedHashMap&lt;&gt;(currentStorageNodes.size(), 1F);
+        for (Entry&lt;StorageNode, DataSource&gt; entry : currentStorageNodes.entrySet()) {
+            if (null == resource || !resource.getStaleDataSources().containsKey(entry.getKey())) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
+    }
+    
+    private Map&lt;String, StorageUnit&gt; getStorageUnits(final Map&lt;String, StorageUnit&gt; currentStorageUnits, final SwitchingResource resource) {
+        Map&lt;String, StorageUnit&gt; result = new LinkedHashMap&lt;&gt;(currentStorageUnits.size(), 1F);
+        for (Entry&lt;String, StorageUnit&gt; entry : currentStorageUnits.entrySet()) {
+            if (null == resource || !resource.getStaleStorageUnitNames().contains(entry.getKey())) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+        }
+        return result;
+    }
+    
+    private synchronized Map&lt;String, ShardingSphereDatabase&gt; createChangedDatabases(final String databaseName, final boolean internalLoadMetaData,</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDALStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDALStatementVisitor.html#L517">517</a></td></tr>
@@ -8788,12 +8887,16 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L176">176</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L107">107</a></td></tr>
 <tr class="a">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.html#L140">140</a></td></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.java</td>
 <td>shardingsphere-mode-core</td>
 <td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.html#L155">155</a></td></tr>
-<tr class="b">
+<tr class="a">
 <td colspan="3" align="left">
 <div class="source">
 <pre>public ResourceMetaData getEffectiveResourceMetaData(final ShardingSphereDatabase database, final SwitchingResource resource) {
@@ -9395,9 +9498,9 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L242">242</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.html#L177">177</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.java</td>
 <td>shardingsphere-mode-core</td>
@@ -9573,6 +9676,49 @@
     @SuppressWarnings(&quot;unchecked&quot;)
     @Override
     public ASTNode visitAlterTable(final AlterTableContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L173">173</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.html#L178">178</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return result;
+    }
+    
+    private DatabaseConfiguration getDatabaseConfiguration(final ResourceMetaData resourceMetaData, final SwitchingResource switchingResource,
+                                                           final Collection&lt;RuleConfiguration&gt; toBeCreatedRuleConfigs) {
+        Map&lt;String, DataSourcePoolProperties&gt; propsMap = null == switchingResource
+                ? resourceMetaData.getStorageUnits().entrySet().stream()
+                        .collect(Collectors.toMap(Entry::getKey, entry -&gt; entry.getValue().getDataSourcePoolProperties(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::new))
+                : switchingResource.getMergedDataSourcePoolPropertiesMap();
+        return new DataSourceProvidedDatabaseConfiguration(getMergedStorageNodeDataSources(resourceMetaData, switchingResource), toBeCreatedRuleConfigs, propsMap);
+    }
+    
+    private Map&lt;StorageNode, DataSource&gt; getMergedStorageNodeDataSources(final ResourceMetaData currentResourceMetaData, final SwitchingResource switchingResource) {
+        Map&lt;StorageNode, DataSource&gt; result = currentResourceMetaData.getDataSources();
+        if (null != switchingResource &amp;&amp; !switchingResource.getNewDataSources().isEmpty()) {
+            result.putAll(switchingResource.getNewDataSources());
+        }
+        return result;
+    }
+    
+    private ShardingSphereDatabase createChangedDatabase(final String databaseName, final boolean internalLoadMetaData, final MetaDataPersistService persistService,
+                                                         final DatabaseConfiguration databaseConfig, final ConfigurationProperties props,
+                                                         final ComputeNodeInstanceContext computeNodeInstanceContext) throws SQLException {
+        return internalLoadMetaData
+                ? InternalMetaDataFactory.create(databaseName, persistService, databaseConfig, props, computeNodeInstanceContext)
+                : ExternalMetaDataFactory.create(databaseName, databaseConfig, props, computeNodeInstanceContext);
+    }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -10710,6 +10856,39 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.html#L164">164</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.java</td>
+<td>shardingsphere-mode-core</td>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.html#L139">139</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>}
+    
+    private synchronized Map&lt;String, ShardingSphereDatabase&gt; createChangedDatabases(final String databaseName, final boolean internalLoadMetaData,
+                                                                                    final SwitchingResource switchingResource, final Collection&lt;RuleConfiguration&gt; ruleConfigs) throws SQLException {
+        ResourceMetaData effectiveResourceMetaData = getEffectiveResourceMetaData(metaDataContexts.get().getMetaData().getDatabase(databaseName), switchingResource);
+        Collection&lt;RuleConfiguration&gt; toBeCreatedRuleConfigs = null == ruleConfigs
+                ? metaDataContexts.get().getMetaData().getDatabase(databaseName).getRuleMetaData().getConfigurations()
+                : ruleConfigs;
+        DatabaseConfiguration toBeCreatedDatabaseConfig = getDatabaseConfiguration(effectiveResourceMetaData, switchingResource, toBeCreatedRuleConfigs);
+        ShardingSphereDatabase changedDatabase = createChangedDatabase(metaDataContexts.get().getMetaData().getDatabase(databaseName).getName(), internalLoadMetaData,
+                metaDataPersistService, toBeCreatedDatabaseConfig, metaDataContexts.get().getMetaData().getProps(), computeNodeInstanceContext);
+        Map&lt;String, ShardingSphereDatabase&gt; result = new LinkedHashMap&lt;&gt;(metaDataContexts.get().getMetaData().getDatabases());
+        result.put(databaseName.toLowerCase(), changedDatabase);
+        return result;
+    }
+    
+    private DatabaseConfiguration getDatabaseConfiguration(final ResourceMetaData resourceMetaData, final SwitchingResource switchingResource,</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sqlfederation/optimizer/converter/statement/merge/MergeStatementConverter.java</td>
 <td>shardingsphere-sql-federation-optimizer</td>
 <td><a href="./xref/org/apache/shardingsphere/sqlfederation/optimizer/converter/statement/merge/MergeStatementConverter.html#L54">54</a></td></tr>
@@ -10747,7 +10926,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L231">231</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L162">162</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.java</td>
 <td>shardingsphere-mode-core</td>
@@ -12135,13 +12314,13 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L91">91</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.html#L81">81</a></td></tr>
 <tr class="a">
-<td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
+<td align="left">org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L116">116</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/DatabaseRuleConfigurationManager.html#L106">106</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -15996,7 +16175,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.java</td>
 <td>shardingsphere-mode-core</td>
-<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L212">212</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/mode/metadata/manager/ConfigurationManager.html#L143">143</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/mode/metadata/manager/StorageUnitManager.java</td>
 <td>shardingsphere-mode-core</td>

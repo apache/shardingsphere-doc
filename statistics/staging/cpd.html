@@ -1948,7 +1948,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L320">320</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L328">328</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -2675,171 +2675,6 @@
     
     @Override
     public ASTNode visitInsert(final InsertContext ctx) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L511">511</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L505">505</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>DorisRenameTableStatement result = new DorisRenameTableStatement();
-        for (int i = 0, len = ctx.tableName().size(); i &lt; len; i += 2) {
-            TableNameContext tableName = ctx.tableName(i);
-            TableNameContext renameTableName = ctx.tableName(i + 1);
-            result.getRenameTables().add(createRenameTableDefinitionSegment(tableName, renameTableName));
-        }
-        return result;
-    }
-    
-    private RenameTableDefinitionSegment createRenameTableDefinitionSegment(final TableNameContext tableName, final TableNameContext renameTableName) {
-        RenameTableDefinitionSegment result = new RenameTableDefinitionSegment(tableName.start.getStartIndex(), renameTableName.stop.getStopIndex());
-        result.setTable((SimpleTableSegment) visit(tableName));
-        result.setRenameTable((SimpleTableSegment) visit(renameTableName));
-        return result;
-    }
-    
-    private ModifyColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ModifyColumnContext ctx) {
-        ColumnSegment column = new ColumnSegment(ctx.columnInternalRef.start.getStartIndex(), ctx.columnInternalRef.stop.getStopIndex(), (IdentifierValue) visit(ctx.columnInternalRef));
-        ModifyColumnDefinitionSegment result = new ModifyColumnDefinitionSegment(
-                ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), generateColumnDefinitionSegment(column, ctx.fieldDefinition()));
-        if (null != ctx.place()) {
-            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
-        }
-        return result;
-    }
-    
-    private ChangeColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ChangeColumnContext ctx) {
-        ChangeColumnDefinitionSegment result = new ChangeColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (ColumnDefinitionSegment) visit(ctx.columnDefinition()));
-        result.setPreviousColumn(new ColumnSegment(ctx.columnInternalRef.getStart().getStartIndex(), ctx.columnInternalRef.getStop().getStopIndex(),
-                new IdentifierValue(ctx.columnInternalRef.getText())));
-        if (null != ctx.place()) {
-            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitAddColumn(final AddColumnContext ctx) {
-        Collection&lt;ColumnDefinitionSegment&gt; columnDefinitions = new LinkedList&lt;&gt;();
-        if (null != ctx.columnDefinition()) {
-            columnDefinitions.add((ColumnDefinitionSegment) visit(ctx.columnDefinition()));
-        }
-        if (null != ctx.tableElementList()) {
-            for (TableElementContext each : ctx.tableElementList().tableElement()) {
-                if (null != each.columnDefinition()) {
-                    columnDefinitions.add((ColumnDefinitionSegment) visit(each.columnDefinition()));
-                }
-            }
-        }
-        AddColumnDefinitionSegment result = new AddColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnDefinitions);
-        if (null != ctx.place()) {
-            Preconditions.checkState(1 == columnDefinitions.size());
-            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitRenameColumn(final RenameColumnContext ctx) {
-        ColumnSegment oldColumnSegment = (ColumnSegment) visit(ctx.oldColumn());
-        ColumnSegment newColumnSegment = (ColumnSegment) visit(ctx.newColumn());
-        return new RenameColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), oldColumnSegment, newColumnSegment);
-    }
-    
-    @Override
-    public ASTNode visitColumnDefinition(final ColumnDefinitionContext ctx) {
-        ColumnSegment column = new ColumnSegment(ctx.column_name.start.getStartIndex(), ctx.column_name.stop.getStopIndex(), (IdentifierValue) visit(ctx.column_name));
-        DataTypeSegment dataTypeSegment = (DataTypeSegment) visit(ctx.fieldDefinition().dataType());
-        boolean isPrimaryKey = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.KEY() &amp;&amp; null == each.UNIQUE());
-        boolean isAutoIncrement = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.AUTO_INCREMENT());
-        // TODO parse not null
-        ColumnDefinitionSegment result = new ColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), column, dataTypeSegment, isPrimaryKey, false);
-        result.getReferencedTables().addAll(getReferencedTables(ctx));
-        result.setAutoIncrement(isAutoIncrement);
-        return result;
-    }
-    
-    private Collection&lt;SimpleTableSegment&gt; getReferencedTables(final ColumnDefinitionContext ctx) {
-        Collection&lt;SimpleTableSegment&gt; result = new LinkedList&lt;&gt;();
-        if (null != ctx.referenceDefinition()) {
-            result.add((SimpleTableSegment) visit(ctx.referenceDefinition()));
-        }
-        return result;
-    }
-    
-    @SuppressWarnings({&quot;unchecked&quot;, &quot;rawtypes&quot;})
-    @Override
-    public ASTNode visitTableConstraintDef(final TableConstraintDefContext ctx) {
-        ConstraintDefinitionSegment result = new ConstraintDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
-        if (null != ctx.constraintClause() &amp;&amp; null != ctx.constraintClause().constraintName()) {
-            result.setConstraintName((ConstraintSegment) visit(ctx.constraintClause().constraintName()));
-        }
-        if (null != ctx.KEY() &amp;&amp; null != ctx.PRIMARY()) {
-            result.setPrimaryKey(true);
-            result.getPrimaryKeyColumns().addAll(((CollectionValue) visit(ctx.keyListWithExpression())).getValue());
-            return result;
-        }
-        if (null != ctx.FOREIGN()) {
-            result.setReferencedTable((SimpleTableSegment) visit(ctx.referenceDefinition()));
-            return result;
-        }
-        if (null != ctx.UNIQUE()) {
-            result.setUniqueKey(true);
-            result.getIndexColumns().addAll(((CollectionValue) visit(ctx.keyListWithExpression())).getValue());
-            if (null != ctx.indexName()) {
-                result.setIndexName((IndexSegment) visit(ctx.indexName()));
-            }
-            return result;
-        }
-        if (null != ctx.checkConstraint()) {
-            return result;
-        }
-        result.getIndexColumns().addAll(((CollectionValue) visit(ctx.keyListWithExpression())).getValue());
-        if (null != ctx.indexName()) {
-            result.setIndexName((IndexSegment) visit(ctx.indexName()));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitKeyListWithExpression(final KeyListWithExpressionContext ctx) {
-        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (KeyPartWithExpressionContext each : ctx.keyPartWithExpression()) {
-            if (null != each.keyPart()) {
-                result.getValue().add((ColumnSegment) visit(each.keyPart().columnName()));
-            }
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitReferenceDefinition(final ReferenceDefinitionContext ctx) {
-        return visit(ctx.tableName());
-    }
-    
-    @Override
-    public ASTNode visitPlace(final PlaceContext ctx) {
-        ColumnSegment columnName = null;
-        if (null != ctx.columnName()) {
-            columnName = (ColumnSegment) visit(ctx.columnName());
-        }
-        return null == ctx.columnName()
-                ? new ColumnFirstPositionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnName)
-                : new ColumnAfterPositionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnName);
-    }
-    
-    @SuppressWarnings(&quot;unchecked&quot;)
-    @Override
-    public ASTNode visitDropTable(final DropTableContext ctx) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -4794,6 +4629,96 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L511">511</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L513">513</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>DorisRenameTableStatement result = new DorisRenameTableStatement();
+        for (int i = 0, len = ctx.tableName().size(); i &lt; len; i += 2) {
+            TableNameContext tableName = ctx.tableName(i);
+            TableNameContext renameTableName = ctx.tableName(i + 1);
+            result.getRenameTables().add(createRenameTableDefinitionSegment(tableName, renameTableName));
+        }
+        return result;
+    }
+    
+    private RenameTableDefinitionSegment createRenameTableDefinitionSegment(final TableNameContext tableName, final TableNameContext renameTableName) {
+        RenameTableDefinitionSegment result = new RenameTableDefinitionSegment(tableName.start.getStartIndex(), renameTableName.stop.getStopIndex());
+        result.setTable((SimpleTableSegment) visit(tableName));
+        result.setRenameTable((SimpleTableSegment) visit(renameTableName));
+        return result;
+    }
+    
+    private ModifyColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ModifyColumnContext ctx) {
+        ColumnSegment column = new ColumnSegment(ctx.columnInternalRef.start.getStartIndex(), ctx.columnInternalRef.stop.getStopIndex(), (IdentifierValue) visit(ctx.columnInternalRef));
+        ModifyColumnDefinitionSegment result = new ModifyColumnDefinitionSegment(
+                ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), generateColumnDefinitionSegment(column, ctx.fieldDefinition()));
+        if (null != ctx.place()) {
+            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
+        }
+        return result;
+    }
+    
+    private ChangeColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ChangeColumnContext ctx) {
+        ChangeColumnDefinitionSegment result = new ChangeColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (ColumnDefinitionSegment) visit(ctx.columnDefinition()));
+        result.setPreviousColumn(new ColumnSegment(ctx.columnInternalRef.getStart().getStartIndex(), ctx.columnInternalRef.getStop().getStopIndex(),
+                new IdentifierValue(ctx.columnInternalRef.getText())));
+        if (null != ctx.place()) {
+            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitAddColumn(final AddColumnContext ctx) {
+        Collection&lt;ColumnDefinitionSegment&gt; columnDefinitions = new LinkedList&lt;&gt;();
+        if (null != ctx.columnDefinition()) {
+            columnDefinitions.add((ColumnDefinitionSegment) visit(ctx.columnDefinition()));
+        }
+        if (null != ctx.tableElementList()) {
+            for (TableElementContext each : ctx.tableElementList().tableElement()) {
+                if (null != each.columnDefinition()) {
+                    columnDefinitions.add((ColumnDefinitionSegment) visit(each.columnDefinition()));
+                }
+            }
+        }
+        AddColumnDefinitionSegment result = new AddColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnDefinitions);
+        if (null != ctx.place()) {
+            Preconditions.checkState(1 == columnDefinitions.size());
+            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitRenameColumn(final RenameColumnContext ctx) {
+        ColumnSegment oldColumnSegment = (ColumnSegment) visit(ctx.oldColumn());
+        ColumnSegment newColumnSegment = (ColumnSegment) visit(ctx.newColumn());
+        return new RenameColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), oldColumnSegment, newColumnSegment);
+    }
+    
+    @Override
+    public ASTNode visitColumnDefinition(final ColumnDefinitionContext ctx) {
+        ColumnSegment column = new ColumnSegment(ctx.column_name.start.getStartIndex(), ctx.column_name.stop.getStopIndex(), (IdentifierValue) visit(ctx.column_name));
+        DataTypeSegment dataTypeSegment = (DataTypeSegment) visit(ctx.fieldDefinition().dataType());
+        boolean isPrimaryKey = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.KEY() &amp;&amp; null == each.UNIQUE());
+        boolean isAutoIncrement = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.AUTO_INCREMENT());
+        // TODO parse not null
+        ColumnDefinitionSegment result = new ColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), column, dataTypeSegment, isPrimaryKey, false);
+        result.getReferencedTables().addAll(getReferencedTables(ctx));
+        result.setAutoIncrement(isAutoIncrement);</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/type/OpenGaussDDLStatementVisitor.html#L1063">1063</a></td></tr>
@@ -4990,6 +4915,98 @@
     
     @Override
     public ASTNode visitSetTarget(final SetTargetContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L584">584</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L591">591</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>result.setAutoIncrement(isAutoIncrement);
+        return result;
+    }
+    
+    private Collection&lt;SimpleTableSegment&gt; getReferencedTables(final ColumnDefinitionContext ctx) {
+        Collection&lt;SimpleTableSegment&gt; result = new LinkedList&lt;&gt;();
+        if (null != ctx.referenceDefinition()) {
+            result.add((SimpleTableSegment) visit(ctx.referenceDefinition()));
+        }
+        return result;
+    }
+    
+    @SuppressWarnings({&quot;unchecked&quot;, &quot;rawtypes&quot;})
+    @Override
+    public ASTNode visitTableConstraintDef(final TableConstraintDefContext ctx) {
+        ConstraintDefinitionSegment result = new ConstraintDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
+        if (null != ctx.constraintClause() &amp;&amp; null != ctx.constraintClause().constraintName()) {
+            result.setConstraintName((ConstraintSegment) visit(ctx.constraintClause().constraintName()));
+        }
+        if (null != ctx.KEY() &amp;&amp; null != ctx.PRIMARY()) {
+            result.setPrimaryKey(true);
+            result.getPrimaryKeyColumns().addAll(((CollectionValue) visit(ctx.keyListWithExpression())).getValue());
+            return result;
+        }
+        if (null != ctx.FOREIGN()) {
+            result.setReferencedTable((SimpleTableSegment) visit(ctx.referenceDefinition()));
+            return result;
+        }
+        if (null != ctx.UNIQUE()) {
+            result.setUniqueKey(true);
+            result.getIndexColumns().addAll(((CollectionValue) visit(ctx.keyListWithExpression())).getValue());
+            if (null != ctx.indexName()) {
+                result.setIndexName((IndexSegment) visit(ctx.indexName()));
+            }
+            return result;
+        }
+        if (null != ctx.checkConstraint()) {
+            return result;
+        }
+        result.getIndexColumns().addAll(((CollectionValue) visit(ctx.keyListWithExpression())).getValue());
+        if (null != ctx.indexName()) {
+            result.setIndexName((IndexSegment) visit(ctx.indexName()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitKeyListWithExpression(final KeyListWithExpressionContext ctx) {
+        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (KeyPartWithExpressionContext each : ctx.keyPartWithExpression()) {
+            if (null != each.keyPart()) {
+                result.getValue().add((ColumnSegment) visit(each.keyPart().columnName()));
+            }
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitReferenceDefinition(final ReferenceDefinitionContext ctx) {
+        return visit(ctx.tableName());
+    }
+    
+    @Override
+    public ASTNode visitPlace(final PlaceContext ctx) {
+        ColumnSegment columnName = null;
+        if (null != ctx.columnName()) {
+            columnName = (ColumnSegment) visit(ctx.columnName());
+        }
+        return null == ctx.columnName()
+                ? new ColumnFirstPositionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnName)
+                : new ColumnAfterPositionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnName);
+    }
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    @Override
+    public ASTNode visitDropTable(final DropTableContext ctx) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -5299,7 +5316,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L824">824</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L837">837</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -6351,7 +6368,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L750">750</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L763">763</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -7158,7 +7175,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L687">687</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L700">700</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -8459,63 +8476,6 @@
                 () -&gt; new ProtocolViolationException(&quot;password&quot;, Character.toString(messageType)));
         PostgreSQLPasswordMessagePacket passwordMessagePacket = new PostgreSQLPasswordMessagePacket(payload);
         login(rule, passwordMessagePacket.getDigest());</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L274">274</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L269">269</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>result.setSelectStatement((SelectStatement) visit(ctx.duplicateAsQueryExpression().select()));
-        }
-        // DORIS ADDED END
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitCreateTableOptions(final CreateTableOptionsContext ctx) {
-        CreateTableOptionSegment result = new CreateTableOptionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
-        for (CreateTableOptionContext each : ctx.createTableOption()) {
-            if (null != each.engineRef()) {
-                result.setEngine((EngineSegment) visit(each.engineRef()));
-            } else if (null != each.COMMENT()) {
-                result.setCommentSegment(new CommentSegment(each.string_().getText(), each.string_().getStart().getStartIndex(), each.string_().getStop().getStopIndex()));
-            }
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitCreateDefinitionClause(final CreateDefinitionClauseContext ctx) {
-        CollectionValue&lt;CreateDefinitionSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (TableElementContext each : ctx.tableElementList().tableElement()) {
-            if (null != each.columnDefinition()) {
-                result.getValue().add((ColumnDefinitionSegment) visit(each.columnDefinition()));
-            }
-            if (null != each.tableConstraintDef()) {
-                result.getValue().add((ConstraintDefinitionSegment) visit(each.tableConstraintDef()));
-            }
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitCreateLikeClause(final CreateLikeClauseContext ctx) {
-        return visit(ctx.tableName());
-    }
-    
-    @SuppressWarnings(&quot;unchecked&quot;)
-    @Override
-    public ASTNode visitAlterTable(final AlterTableContext ctx) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -9977,7 +9937,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L669">669</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L682">682</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -12123,7 +12083,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L253">253</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L255">255</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -13695,6 +13655,50 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L287">287</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L289">289</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>result.setCommentSegment(new CommentSegment(each.string_().getText(), each.string_().getStart().getStartIndex(), each.string_().getStop().getStopIndex()));
+            }
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitCreateDefinitionClause(final CreateDefinitionClauseContext ctx) {
+        CollectionValue&lt;CreateDefinitionSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (TableElementContext each : ctx.tableElementList().tableElement()) {
+            if (null != each.columnDefinition()) {
+                result.getValue().add((ColumnDefinitionSegment) visit(each.columnDefinition()));
+            }
+            if (null != each.tableConstraintDef()) {
+                result.getValue().add((ConstraintDefinitionSegment) visit(each.tableConstraintDef()));
+            }
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitCreateLikeClause(final CreateLikeClauseContext ctx) {
+        return visit(ctx.tableName());
+    }
+    
+    @SuppressWarnings(&quot;unchecked&quot;)
+    @Override
+    public ASTNode visitAlterTable(final AlterTableContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/encrypt/rule/column/item/AssistedQueryColumnItem.java</td>
 <td>shardingsphere-encrypt-core</td>
 <td><a href="./xref/org/apache/shardingsphere/encrypt/rule/column/item/AssistedQueryColumnItem.html#L33">33</a></td></tr>
@@ -14533,6 +14537,37 @@
         }
         return result;
     }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L274">274</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L271">271</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>result.setSelectStatement((SelectStatement) visit(ctx.duplicateAsQueryExpression().select()));
+        }
+        // DORIS ADDED END
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitCreateTableOptions(final CreateTableOptionsContext ctx) {
+        CreateTableOptionSegment result = new CreateTableOptionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex());
+        for (CreateTableOptionContext each : ctx.createTableOption()) {
+            if (null != each.engineRef()) {
+                result.setEngine((EngineSegment) visit(each.engineRef()));
+            } else if (null != each.COMMENT()) {
+                result.setCommentSegment(new CommentSegment(each.string_().getText(), each.string_().getStart().getStartIndex(), each.string_().getStop().getStopIndex()));
+            }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -15974,7 +16009,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L723">723</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L736">736</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -18756,7 +18791,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L309">309</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L317">317</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -19738,7 +19773,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L253">253</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L255">255</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/oracle/visitor/statement/type/OracleDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-oracle</td>
@@ -20424,7 +20459,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L1000">1000</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L1013">1013</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">

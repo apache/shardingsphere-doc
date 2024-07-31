@@ -4381,6 +4381,96 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L511">511</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L513">513</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>DorisRenameTableStatement result = new DorisRenameTableStatement();
+        for (int i = 0, len = ctx.tableName().size(); i &lt; len; i += 2) {
+            TableNameContext tableName = ctx.tableName(i);
+            TableNameContext renameTableName = ctx.tableName(i + 1);
+            result.getRenameTables().add(createRenameTableDefinitionSegment(tableName, renameTableName));
+        }
+        return result;
+    }
+    
+    private RenameTableDefinitionSegment createRenameTableDefinitionSegment(final TableNameContext tableName, final TableNameContext renameTableName) {
+        RenameTableDefinitionSegment result = new RenameTableDefinitionSegment(tableName.start.getStartIndex(), renameTableName.stop.getStopIndex());
+        result.setTable((SimpleTableSegment) visit(tableName));
+        result.setRenameTable((SimpleTableSegment) visit(renameTableName));
+        return result;
+    }
+    
+    private ModifyColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ModifyColumnContext ctx) {
+        ColumnSegment column = new ColumnSegment(ctx.columnInternalRef.start.getStartIndex(), ctx.columnInternalRef.stop.getStopIndex(), (IdentifierValue) visit(ctx.columnInternalRef));
+        ModifyColumnDefinitionSegment result = new ModifyColumnDefinitionSegment(
+                ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), generateColumnDefinitionSegment(column, ctx.fieldDefinition()));
+        if (null != ctx.place()) {
+            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
+        }
+        return result;
+    }
+    
+    private ChangeColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ChangeColumnContext ctx) {
+        ChangeColumnDefinitionSegment result = new ChangeColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (ColumnDefinitionSegment) visit(ctx.columnDefinition()));
+        result.setPreviousColumn(new ColumnSegment(ctx.columnInternalRef.getStart().getStartIndex(), ctx.columnInternalRef.getStop().getStopIndex(),
+                new IdentifierValue(ctx.columnInternalRef.getText())));
+        if (null != ctx.place()) {
+            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitAddColumn(final AddColumnContext ctx) {
+        Collection&lt;ColumnDefinitionSegment&gt; columnDefinitions = new LinkedList&lt;&gt;();
+        if (null != ctx.columnDefinition()) {
+            columnDefinitions.add((ColumnDefinitionSegment) visit(ctx.columnDefinition()));
+        }
+        if (null != ctx.tableElementList()) {
+            for (TableElementContext each : ctx.tableElementList().tableElement()) {
+                if (null != each.columnDefinition()) {
+                    columnDefinitions.add((ColumnDefinitionSegment) visit(each.columnDefinition()));
+                }
+            }
+        }
+        AddColumnDefinitionSegment result = new AddColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnDefinitions);
+        if (null != ctx.place()) {
+            Preconditions.checkState(1 == columnDefinitions.size());
+            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitRenameColumn(final RenameColumnContext ctx) {
+        ColumnSegment oldColumnSegment = (ColumnSegment) visit(ctx.oldColumn());
+        ColumnSegment newColumnSegment = (ColumnSegment) visit(ctx.newColumn());
+        return new RenameColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), oldColumnSegment, newColumnSegment);
+    }
+    
+    @Override
+    public ASTNode visitColumnDefinition(final ColumnDefinitionContext ctx) {
+        ColumnSegment column = new ColumnSegment(ctx.column_name.start.getStartIndex(), ctx.column_name.stop.getStopIndex(), (IdentifierValue) visit(ctx.column_name));
+        DataTypeSegment dataTypeSegment = (DataTypeSegment) visit(ctx.fieldDefinition().dataType());
+        boolean isPrimaryKey = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.KEY() &amp;&amp; null == each.UNIQUE());
+        boolean isAutoIncrement = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.AUTO_INCREMENT());
+        boolean isNotNull = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.NOT() &amp;&amp; null != each.NULL());
+        ColumnDefinitionSegment result = new ColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), column, dataTypeSegment, isPrimaryKey, isNotNull);
+        result.getReferencedTables().addAll(getReferencedTables(ctx));
+        result.setAutoIncrement(isAutoIncrement);</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L350">350</a></td></tr>
@@ -4599,96 +4689,6 @@
             String rightText = &quot;&quot;;
             if (null != ctx.NOT()) {
                 rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L511">511</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L513">513</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>DorisRenameTableStatement result = new DorisRenameTableStatement();
-        for (int i = 0, len = ctx.tableName().size(); i &lt; len; i += 2) {
-            TableNameContext tableName = ctx.tableName(i);
-            TableNameContext renameTableName = ctx.tableName(i + 1);
-            result.getRenameTables().add(createRenameTableDefinitionSegment(tableName, renameTableName));
-        }
-        return result;
-    }
-    
-    private RenameTableDefinitionSegment createRenameTableDefinitionSegment(final TableNameContext tableName, final TableNameContext renameTableName) {
-        RenameTableDefinitionSegment result = new RenameTableDefinitionSegment(tableName.start.getStartIndex(), renameTableName.stop.getStopIndex());
-        result.setTable((SimpleTableSegment) visit(tableName));
-        result.setRenameTable((SimpleTableSegment) visit(renameTableName));
-        return result;
-    }
-    
-    private ModifyColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ModifyColumnContext ctx) {
-        ColumnSegment column = new ColumnSegment(ctx.columnInternalRef.start.getStartIndex(), ctx.columnInternalRef.stop.getStopIndex(), (IdentifierValue) visit(ctx.columnInternalRef));
-        ModifyColumnDefinitionSegment result = new ModifyColumnDefinitionSegment(
-                ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), generateColumnDefinitionSegment(column, ctx.fieldDefinition()));
-        if (null != ctx.place()) {
-            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
-        }
-        return result;
-    }
-    
-    private ChangeColumnDefinitionSegment generateModifyColumnDefinitionSegment(final ChangeColumnContext ctx) {
-        ChangeColumnDefinitionSegment result = new ChangeColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (ColumnDefinitionSegment) visit(ctx.columnDefinition()));
-        result.setPreviousColumn(new ColumnSegment(ctx.columnInternalRef.getStart().getStartIndex(), ctx.columnInternalRef.getStop().getStopIndex(),
-                new IdentifierValue(ctx.columnInternalRef.getText())));
-        if (null != ctx.place()) {
-            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitAddColumn(final AddColumnContext ctx) {
-        Collection&lt;ColumnDefinitionSegment&gt; columnDefinitions = new LinkedList&lt;&gt;();
-        if (null != ctx.columnDefinition()) {
-            columnDefinitions.add((ColumnDefinitionSegment) visit(ctx.columnDefinition()));
-        }
-        if (null != ctx.tableElementList()) {
-            for (TableElementContext each : ctx.tableElementList().tableElement()) {
-                if (null != each.columnDefinition()) {
-                    columnDefinitions.add((ColumnDefinitionSegment) visit(each.columnDefinition()));
-                }
-            }
-        }
-        AddColumnDefinitionSegment result = new AddColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), columnDefinitions);
-        if (null != ctx.place()) {
-            Preconditions.checkState(1 == columnDefinitions.size());
-            result.setColumnPosition((ColumnPositionSegment) visit(ctx.place()));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitRenameColumn(final RenameColumnContext ctx) {
-        ColumnSegment oldColumnSegment = (ColumnSegment) visit(ctx.oldColumn());
-        ColumnSegment newColumnSegment = (ColumnSegment) visit(ctx.newColumn());
-        return new RenameColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), oldColumnSegment, newColumnSegment);
-    }
-    
-    @Override
-    public ASTNode visitColumnDefinition(final ColumnDefinitionContext ctx) {
-        ColumnSegment column = new ColumnSegment(ctx.column_name.start.getStartIndex(), ctx.column_name.stop.getStopIndex(), (IdentifierValue) visit(ctx.column_name));
-        DataTypeSegment dataTypeSegment = (DataTypeSegment) visit(ctx.fieldDefinition().dataType());
-        boolean isPrimaryKey = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.KEY() &amp;&amp; null == each.UNIQUE());
-        boolean isAutoIncrement = ctx.fieldDefinition().columnAttribute().stream().anyMatch(each -&gt; null != each.AUTO_INCREMENT());
-        // TODO parse not null
-        ColumnDefinitionSegment result = new ColumnDefinitionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), column, dataTypeSegment, isPrimaryKey, false);
-        result.getReferencedTables().addAll(getReferencedTables(ctx));
-        result.setAutoIncrement(isAutoIncrement);</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

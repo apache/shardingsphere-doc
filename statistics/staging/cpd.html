@@ -3521,128 +3521,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-opengauss</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1280">1280</a></td></tr>
-<tr class="a">
-<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1238">1238</a></td></tr>
-<tr class="b">
-<td colspan="3" align="left">
-<div class="source">
-<pre>return JoinType.INNER.name();
-    }
-    
-    private JoinTableSegment visitJoinQual(final JoinQualContext ctx, final JoinTableSegment joinTableSource) {
-        if (null != ctx.aExpr()) {
-            ExpressionSegment condition = (ExpressionSegment) visit(ctx.aExpr());
-            joinTableSource.setCondition(condition);
-        }
-        if (null != ctx.USING()) {
-            joinTableSource.setUsing(generateUsingColumn(ctx.nameList()));
-        }
-        return joinTableSource;
-    }
-    
-    private List&lt;ColumnSegment&gt; generateUsingColumn(final NameListContext ctx) {
-        List&lt;ColumnSegment&gt; result = new ArrayList&lt;&gt;();
-        if (null != ctx.nameList()) {
-            result.addAll(generateUsingColumn(ctx.nameList()));
-        }
-        if (null != ctx.name()) {
-            result.add(new ColumnSegment(ctx.name().start.getStartIndex(), ctx.name().stop.getStopIndex(), new IdentifierValue(ctx.name().getText())));
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitAliasClause(final AliasClauseContext ctx) {
-        StringBuilder aliasName = new StringBuilder(ctx.colId().getText());
-        if (null != ctx.nameList()) {
-            aliasName.append(ctx.LP_().getText());
-            aliasName.append(ctx.nameList().getText());
-            aliasName.append(ctx.RP_().getText());
-        }
-        return new AliasSegment(ctx.colId().start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(aliasName.toString()));
-    }
-    
-    private OwnerSegment createTableOwner(final IndirectionContext ctx) {
-        AttrNameContext attrName = ctx.indirectionEl().attrName();
-        return new OwnerSegment(attrName.start.getStartIndex(), attrName.stop.getStopIndex(), new IdentifierValue(attrName.getText()));
-    }
-    
-    @Override
-    public ASTNode visitWhereClause(final WhereClauseContext ctx) {
-        ExpressionSegment expr = (ExpressionSegment) visit(ctx.aExpr());
-        return new WhereSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), expr);
-    }
-    
-    @Override
-    public ASTNode visitSelectLimit(final SelectLimitContext ctx) {
-        if (null != ctx.limitClause() &amp;&amp; null != ctx.offsetClause()) {
-            return createLimitSegmentWhenLimitAndOffset(ctx);
-        }
-        return createLimitSegmentWhenRowCountOrOffsetAbsent(ctx);
-    }
-    
-    @Override
-    public ASTNode visitSelectLimitValue(final SelectLimitValueContext ctx) {
-        if (null != ctx.ALL()) {
-            return null;
-        }
-        ASTNode astNode = visit(ctx.cExpr());
-        if (astNode instanceof ParameterMarkerExpressionSegment) {
-            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
-        }
-        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
-    }
-    
-    @Override
-    public ASTNode visitSelectOffsetValue(final SelectOffsetValueContext ctx) {
-        ASTNode astNode = visit(ctx.cExpr());
-        if (astNode instanceof ParameterMarkerExpressionSegment) {
-            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
-        }
-        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
-    }
-    
-    @Override
-    public ASTNode visitSelectFetchValue(final SelectFetchValueContext ctx) {
-        ASTNode astNode = visit(ctx.cExpr());
-        if (astNode instanceof ParameterMarkerExpressionSegment) {
-            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
-        }
-        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
-    }
-    
-    private LimitSegment createLimitSegmentWhenLimitAndOffset(final SelectLimitContext ctx) {
-        ParseTree astNode0 = ctx.getChild(0);
-        LimitValueSegment rowCount = null;
-        LimitValueSegment offset = null;
-        if (astNode0 instanceof LimitClauseContext) {
-            rowCount = null == ctx.limitClause().selectLimitValue() ? null : (LimitValueSegment) visit(ctx.limitClause().selectLimitValue());
-        } else {
-            offset = (LimitValueSegment) visit(ctx.offsetClause().selectOffsetValue());
-        }
-        ParseTree astNode1 = ctx.getChild(1);
-        if (astNode1 instanceof LimitClauseContext) {
-            rowCount = null == ctx.limitClause().selectLimitValue() ? null : (LimitValueSegment) visit(ctx.limitClause().selectLimitValue());
-        } else {
-            offset = (LimitValueSegment) visit(ctx.offsetClause().selectOffsetValue());
-        }
-        return new LimitSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), offset, rowCount);
-    }
-    
-    private LimitSegment createLimitSegmentWhenRowCountOrOffsetAbsent(final SelectLimitContext ctx) {
-        if (null != ctx.limitClause()) {
-            if (null != ctx.limitClause().selectOffsetValue()) {</pre></div></td></tr></table>
-<table border="0" class="bodyTable">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L608">608</a></td></tr>
@@ -4983,6 +4861,87 @@
     @SuppressWarnings(&quot;unchecked&quot;)
     @Override
     public ASTNode visitDropTable(final DropTableContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1280">1280</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1238">1238</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return JoinType.INNER.name();
+    }
+    
+    private JoinTableSegment visitJoinQual(final JoinQualContext ctx, final JoinTableSegment joinTableSource) {
+        if (null != ctx.aExpr()) {
+            ExpressionSegment condition = (ExpressionSegment) visit(ctx.aExpr());
+            joinTableSource.setCondition(condition);
+        }
+        if (null != ctx.USING()) {
+            joinTableSource.setUsing(generateUsingColumn(ctx.nameList()));
+        }
+        return joinTableSource;
+    }
+    
+    private List&lt;ColumnSegment&gt; generateUsingColumn(final NameListContext ctx) {
+        List&lt;ColumnSegment&gt; result = new ArrayList&lt;&gt;();
+        if (null != ctx.nameList()) {
+            result.addAll(generateUsingColumn(ctx.nameList()));
+        }
+        if (null != ctx.name()) {
+            result.add(new ColumnSegment(ctx.name().start.getStartIndex(), ctx.name().stop.getStopIndex(), new IdentifierValue(ctx.name().getText())));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitAliasClause(final AliasClauseContext ctx) {
+        StringBuilder aliasName = new StringBuilder(ctx.colId().getText());
+        if (null != ctx.nameList()) {
+            aliasName.append(ctx.LP_().getText());
+            aliasName.append(ctx.nameList().getText());
+            aliasName.append(ctx.RP_().getText());
+        }
+        return new AliasSegment(ctx.colId().start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(aliasName.toString()));
+    }
+    
+    private OwnerSegment createTableOwner(final IndirectionContext ctx) {
+        AttrNameContext attrName = ctx.indirectionEl().attrName();
+        return new OwnerSegment(attrName.start.getStartIndex(), attrName.stop.getStopIndex(), new IdentifierValue(attrName.getText()));
+    }
+    
+    @Override
+    public ASTNode visitWhereClause(final WhereClauseContext ctx) {
+        ExpressionSegment expr = (ExpressionSegment) visit(ctx.aExpr());
+        return new WhereSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), expr);
+    }
+    
+    @Override
+    public ASTNode visitSelectLimit(final SelectLimitContext ctx) {
+        if (null != ctx.limitClause() &amp;&amp; null != ctx.offsetClause()) {
+            return createLimitSegmentWhenLimitAndOffset(ctx);
+        }
+        return createLimitSegmentWhenRowCountOrOffsetAbsent(ctx);
+    }
+    
+    @Override
+    public ASTNode visitSelectLimitValue(final SelectLimitValueContext ctx) {
+        if (null != ctx.ALL()) {
+            return null;
+        }
+        ASTNode astNode = visit(ctx.cExpr());
+        if (astNode instanceof ParameterMarkerExpressionSegment) {
+            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
+        }
+        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -8565,7 +8524,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1356">1356</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1359">1359</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -9541,6 +9500,46 @@
             return visit(ctx.simpleSelect());
         }
         if (null != ctx.selectClauseN() &amp;&amp; !ctx.selectClauseN().isEmpty()) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1362">1362</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1323">1323</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
+    }
+    
+    private LimitSegment createLimitSegmentWhenLimitAndOffset(final SelectLimitContext ctx) {
+        ParseTree astNode0 = ctx.getChild(0);
+        LimitValueSegment rowCount = null;
+        LimitValueSegment offset = null;
+        if (astNode0 instanceof LimitClauseContext) {
+            rowCount = null == ctx.limitClause().selectLimitValue() ? null : (LimitValueSegment) visit(ctx.limitClause().selectLimitValue());
+        } else {
+            offset = (LimitValueSegment) visit(ctx.offsetClause().selectOffsetValue());
+        }
+        ParseTree astNode1 = ctx.getChild(1);
+        if (astNode1 instanceof LimitClauseContext) {
+            rowCount = null == ctx.limitClause().selectLimitValue() ? null : (LimitValueSegment) visit(ctx.limitClause().selectLimitValue());
+        } else {
+            offset = (LimitValueSegment) visit(ctx.offsetClause().selectOffsetValue());
+        }
+        return new LimitSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), offset, rowCount);
+    }
+    
+    private LimitSegment createLimitSegmentWhenRowCountOrOffsetAbsent(final SelectLimitContext ctx) {
+        if (null != ctx.limitClause()) {
+            if (null != ctx.limitClause().selectOffsetValue()) {</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -12013,7 +12012,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-postgresql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1343">1343</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1346">1346</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -17300,6 +17299,32 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1298">1298</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1308">1308</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>ASTNode astNode = visit(ctx.cExpr());
+        if (astNode instanceof ParameterMarkerExpressionSegment) {
+            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
+        }
+        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
+                (null == ((LiteralExpressionSegment) astNode).getLiterals()) ? null : Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
+    }
+    
+    @Override
+    public ASTNode visitSelectOffsetValue(final SelectOffsetValueContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/agent/plugin/metrics/core/exporter/impl/jdbc/JDBCMetaDataInfoExporter.java</td>
 <td>shardingsphere-agent-metrics-core</td>
 <td><a href="./xref/org/apache/shardingsphere/agent/plugin/metrics/core/exporter/impl/jdbc/JDBCMetaDataInfoExporter.html#L41">41</a></td></tr>
@@ -17533,6 +17558,30 @@
     
     @Override
     public final ASTNode visitColumnName(final ColumnNameContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1307">1307</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1317">1317</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>public ASTNode visitSelectOffsetValue(final SelectOffsetValueContext ctx) {
+        ASTNode astNode = visit(ctx.cExpr());
+        if (astNode instanceof ParameterMarkerExpressionSegment) {
+            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
+        }
+        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
+                (null == ((LiteralExpressionSegment) astNode).getLiterals()) ? null : Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
+    }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -18492,6 +18541,29 @@
     
     @Override
     public ASTNode visitCreateType(final CreateTypeContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1298">1298</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1318">1318</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>ASTNode astNode = visit(ctx.cExpr());
+        if (astNode instanceof ParameterMarkerExpressionSegment) {
+            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
+        }
+        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(),
+                (null == ((LiteralExpressionSegment) astNode).getLiterals()) ? null : Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
+    }</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -19460,6 +19532,58 @@
         if (null != ctx.INTERSECT()) {
             return isDistinct ? CombineType.INTERSECT : CombineType.INTERSECT_ALL;
         }</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1344">1344</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1303">1303</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
+    }
+    
+    @Override
+    public ASTNode visitSelectOffsetValue(final SelectOffsetValueContext ctx) {
+        ASTNode astNode = visit(ctx.cExpr());
+        if (astNode instanceof ParameterMarkerExpressionSegment) {
+            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
+        }
+        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-opengauss</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L1353">1353</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-postgresql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/postgresql/visitor/statement/PostgreSQLStatementVisitor.html#L1313">1313</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));
+    }
+    
+    @Override
+    public ASTNode visitSelectFetchValue(final SelectFetchValueContext ctx) {
+        ASTNode astNode = visit(ctx.cExpr());
+        if (astNode instanceof ParameterMarkerExpressionSegment) {
+            return new ParameterMarkerLimitValueSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ((ParameterMarkerExpressionSegment) astNode).getParameterMarkerIndex());
+        }
+        return new NumberLiteralLimitValueSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), Long.parseLong(((LiteralExpressionSegment) astNode).getLiterals().toString()));</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>

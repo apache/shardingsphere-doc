@@ -81,260 +81,15 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L857">857</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L1102">1102</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L857">857</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1103">1103</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
-<pre>DorisSelectStatement result = new DorisSelectStatement();
-        result.setProjections(new ProjectionsSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
-        result.getProjections().getProjections().add(new ShorthandProjectionSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
-        result.setFrom(new SimpleTableSegment(new TableNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(ctx.tableName().getText()))));
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitHavingClause(final HavingClauseContext ctx) {
-        ExpressionSegment expr = (ExpressionSegment) visit(ctx.expr());
-        return new HavingSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), expr);
-    }
-    
-    @Override
-    public final ASTNode visitIntervalExpression(final IntervalExpressionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.INTERVAL().getSymbol().getStartIndex(), ctx.INTERVAL().getSymbol().getStopIndex(), ctx.INTERVAL().getText(), ctx.INTERVAL().getText());
-        result.getParameters().add((ExpressionSegment) visit(ctx.intervalValue().expr()));
-        result.getParameters().add(new LiteralExpressionSegment(ctx.intervalValue().intervalUnit().getStart().getStartIndex(), ctx.intervalValue().intervalUnit().getStop().getStopIndex(),
-                ctx.intervalValue().intervalUnit().getText()));
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitFunctionCall(final FunctionCallContext ctx) {
-        if (null != ctx.aggregationFunction()) {
-            return visit(ctx.aggregationFunction());
-        }
-        if (null != ctx.specialFunction()) {
-            return visit(ctx.specialFunction());
-        }
-        if (null != ctx.regularFunction()) {
-            return visit(ctx.regularFunction());
-        }
-        if (null != ctx.jsonFunction()) {
-            return visit(ctx.jsonFunction());
-        }
-        if (null != ctx.udfFunction()) {
-            return visit(ctx.udfFunction());
-        }
-        throw new IllegalStateException(&quot;FunctionCallContext must have aggregationFunction, regularFunction, specialFunction, jsonFunction or udfFunction.&quot;);
-    }
-    
-    @Override
-    public ASTNode visitUdfFunction(final UdfFunctionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx), getOriginalText(ctx));
-        if (null != ctx.expr()) {
-            for (ExprContext each : ctx.expr()) {
-                result.getParameters().add((ExpressionSegment) visit(each));
-            }
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitAggregationFunction(final AggregationFunctionContext ctx) {
-        String aggregationType = ctx.aggregationFunctionName().getText();
-        return AggregationType.isAggregationType(aggregationType)
-                ? createAggregationSegment(ctx, aggregationType)
-                : new ExpressionProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx));
-    }
-    
-    @Override
-    public final ASTNode visitJsonFunction(final JsonFunctionContext ctx) {
-        JsonFunctionNameContext functionNameContext = ctx.jsonFunctionName();
-        String functionName;
-        FunctionSegment result;
-        if (null != functionNameContext) {
-            functionName = functionNameContext.getText();
-            result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
-            for (ExprContext each : ctx.expr()) {
-                result.getParameters().add((ExpressionSegment) visit(each));
-            }
-        } else if (null != ctx.JSON_SEPARATOR()) {
-            result = createJsonSeparatorFunction(ctx.JSON_SEPARATOR().getText(), ctx);
-        } else if (null != ctx.JSON_UNQUOTED_SEPARATOR()) {
-            result = createJsonSeparatorFunction(ctx.JSON_UNQUOTED_SEPARATOR().getText(), ctx);
-        } else {
-            result = (FunctionSegment) visitJsonTableFunction(ctx.jsonTableFunction());
-        }
-        return result;
-    }
-    
-    private FunctionSegment createJsonSeparatorFunction(final String functionName, final JsonFunctionContext ctx) {
-        FunctionSegment result;
-        result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
-        result.getParameters().add((ExpressionSegment) visit(ctx.columnRef()));
-        result.getParameters().add(new LiteralExpressionSegment(ctx.path().getStart().getStartIndex(), ctx.path().getStop().getStopIndex(), ctx.path().getText()));
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitJsonTableFunction(final JsonTableFunctionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.JSON_TABLE().getText(), getOriginalText(ctx));
-        result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
-        result.getParameters().add(new LiteralExpressionSegment(ctx.path().getStart().getStartIndex(), ctx.path().getStop().getStopIndex(), getOriginalText(ctx.path())));
-        result.getParameters().add(new LiteralExpressionSegment(ctx.jsonTableColumns().getStart().getStartIndex(), ctx.jsonTableColumns().getStop().getStopIndex(),
-                getOriginalText(ctx.jsonTableColumns())));
-        return result;
-    }
-    
-    private ASTNode createAggregationSegment(final AggregationFunctionContext ctx, final String aggregationType) {
-        AggregationType type = AggregationType.valueOf(aggregationType.toUpperCase());
-        if (null != ctx.distinct()) {
-            AggregationDistinctProjectionSegment result =
-                    new AggregationDistinctProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), type, getOriginalText(ctx), getDistinctExpression(ctx));
-            result.getParameters().addAll(getExpressions(ctx.expr()));
-            return result;
-        }
-        AggregationProjectionSegment result = new AggregationProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), type, getOriginalText(ctx));
-        result.getParameters().addAll(getExpressions(ctx.expr()));
-        return result;
-    }
-    
-    protected Collection&lt;ExpressionSegment&gt; getExpressions(final List&lt;ExprContext&gt; exprList) {
-        if (null == exprList) {
-            return Collections.emptyList();
-        }
-        Collection&lt;ExpressionSegment&gt; result = new ArrayList&lt;&gt;(exprList.size());
-        for (ExprContext each : exprList) {
-            result.add((ExpressionSegment) visit(each));
-        }
-        return result;
-    }
-    
-    private String getDistinctExpression(final AggregationFunctionContext ctx) {
-        StringBuilder result = new StringBuilder();
-        for (int i = 3; i &lt; ctx.getChildCount() - 1; i++) {
-            result.append(ctx.getChild(i).getText());
-        }
-        return result.toString();
-    }
-    
-    @Override
-    public final ASTNode visitSpecialFunction(final SpecialFunctionContext ctx) {
-        if (null != ctx.groupConcatFunction()) {
-            return visit(ctx.groupConcatFunction());
-        }
-        if (null != ctx.windowFunction()) {
-            return visit(ctx.windowFunction());
-        }
-        if (null != ctx.castFunction()) {
-            return visit(ctx.castFunction());
-        }
-        if (null != ctx.convertFunction()) {
-            return visit(ctx.convertFunction());
-        }
-        if (null != ctx.positionFunction()) {
-            return visit(ctx.positionFunction());
-        }
-        if (null != ctx.substringFunction()) {
-            return visit(ctx.substringFunction());
-        }
-        if (null != ctx.extractFunction()) {
-            return visit(ctx.extractFunction());
-        }
-        if (null != ctx.charFunction()) {
-            return visit(ctx.charFunction());
-        }
-        if (null != ctx.trimFunction()) {
-            return visit(ctx.trimFunction());
-        }
-        if (null != ctx.weightStringFunction()) {
-            return visit(ctx.weightStringFunction());
-        }
-        if (null != ctx.valuesFunction()) {
-            return visit(ctx.valuesFunction());
-        }
-        if (null != ctx.currentUserFunction()) {
-            return visit(ctx.currentUserFunction());
-        }
-        if (null != ctx.timeStampDiffFunction()) {
-            return visit(ctx.timeStampDiffFunction());
-        }
-        return new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx), getOriginalText(ctx));
-    }
-    
-    @Override
-    public final ASTNode visitGroupConcatFunction(final GroupConcatFunctionContext ctx) {
-        calculateParameterCount(ctx.expr());
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.GROUP_CONCAT().getText(), getOriginalText(ctx));
-        for (ExprContext each : ctx.expr()) {
-            result.getParameters().add((ExpressionSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitCastFunction(final CastFunctionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.CAST().getText(), getOriginalText(ctx));
-        for (ExprContext each : ctx.expr()) {
-            ASTNode expr = visit(each);
-            result.getParameters().add((ExpressionSegment) expr);
-        }
-        if (null != ctx.castType()) {
-            result.getParameters().add((DataTypeSegment) visit(ctx.castType()));
-        }
-        if (null != ctx.DATETIME()) {
-            DataTypeSegment dataType = new DataTypeSegment();
-            dataType.setDataTypeName(ctx.DATETIME().getText());
-            dataType.setStartIndex(ctx.DATETIME().getSymbol().getStartIndex());
-            dataType.setStopIndex(ctx.DATETIME().getSymbol().getStopIndex());
-            if (null != ctx.typeDatetimePrecision()) {
-                dataType.setDataLength((DataTypeLengthSegment) visit(ctx.typeDatetimePrecision()));
-            }
-            result.getParameters().add(dataType);
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitCastType(final CastTypeContext ctx) {
-        DataTypeSegment result = new DataTypeSegment();
-        result.setDataTypeName(ctx.castTypeName.getText());
-        result.setStartIndex(ctx.start.getStartIndex());
-        result.setStopIndex(ctx.stop.getStopIndex());
-        if (null != ctx.fieldLength()) {
-            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.fieldLength());
-            result.setDataLength(dataTypeLengthSegment);
-        }
-        if (null != ctx.precision()) {
-            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.precision());
-            result.setDataLength(dataTypeLengthSegment);
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitConvertFunction(final ConvertFunctionContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.CONVERT().getText(), getOriginalText(ctx));
-        result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitPositionFunction(final PositionFunctionContext ctx) {
-        calculateParameterCount(ctx.expr());
-        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.POSITION().getText(), getOriginalText(ctx));
-        result.getParameters().add((ExpressionSegment) visit(ctx.expr(0)));
-        result.getParameters().add((ExpressionSegment) visit(ctx.expr(1)));
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitSubstringFunction(final SubstringFunctionContext ctx) {
-        FunctionSegment result = new FunctionSegment(
-                ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), null == ctx.SUBSTR() ? ctx.SUBSTRING().getText() : ctx.SUBSTR().getText(), getOriginalText(ctx));
+<pre>ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), null == ctx.SUBSTR() ? ctx.SUBSTRING().getText() : ctx.SUBSTR().getText(), getOriginalText(ctx));
         result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
         for (TerminalNode each : ctx.NUMBER_()) {
             result.getParameters().add(new LiteralExpressionSegment(each.getSymbol().getStartIndex(), each.getSymbol().getStopIndex(), new NumberLiteralValue(each.getText()).getValue()));
@@ -1179,6 +934,268 @@
     
     @Override
     public ASTNode visitRevokeFrom(final RevokeFromContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/doris/visitor/statement/DorisStatementVisitor.html#L857">857</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L857">857</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>DorisSelectStatement result = new DorisSelectStatement();
+        result.setProjections(new ProjectionsSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
+        result.getProjections().getProjections().add(new ShorthandProjectionSegment(ctx.start.getStartIndex(), ctx.start.getStartIndex()));
+        result.setFrom(new SimpleTableSegment(new TableNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), new IdentifierValue(ctx.tableName().getText()))));
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitHavingClause(final HavingClauseContext ctx) {
+        ExpressionSegment expr = (ExpressionSegment) visit(ctx.expr());
+        return new HavingSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), expr);
+    }
+    
+    @Override
+    public final ASTNode visitIntervalExpression(final IntervalExpressionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.INTERVAL().getSymbol().getStartIndex(), ctx.INTERVAL().getSymbol().getStopIndex(), ctx.INTERVAL().getText(), ctx.INTERVAL().getText());
+        result.getParameters().add((ExpressionSegment) visit(ctx.intervalValue().expr()));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.intervalValue().intervalUnit().getStart().getStartIndex(), ctx.intervalValue().intervalUnit().getStop().getStopIndex(),
+                ctx.intervalValue().intervalUnit().getText()));
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitFunctionCall(final FunctionCallContext ctx) {
+        if (null != ctx.aggregationFunction()) {
+            return visit(ctx.aggregationFunction());
+        }
+        if (null != ctx.specialFunction()) {
+            return visit(ctx.specialFunction());
+        }
+        if (null != ctx.regularFunction()) {
+            return visit(ctx.regularFunction());
+        }
+        if (null != ctx.jsonFunction()) {
+            return visit(ctx.jsonFunction());
+        }
+        if (null != ctx.udfFunction()) {
+            return visit(ctx.udfFunction());
+        }
+        throw new IllegalStateException(&quot;FunctionCallContext must have aggregationFunction, regularFunction, specialFunction, jsonFunction or udfFunction.&quot;);
+    }
+    
+    @Override
+    public ASTNode visitUdfFunction(final UdfFunctionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx), getOriginalText(ctx));
+        if (null != ctx.expr()) {
+            for (ExprContext each : ctx.expr()) {
+                result.getParameters().add((ExpressionSegment) visit(each));
+            }
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitAggregationFunction(final AggregationFunctionContext ctx) {
+        String aggregationType = ctx.aggregationFunctionName().getText();
+        return AggregationType.isAggregationType(aggregationType)
+                ? createAggregationSegment(ctx, aggregationType)
+                : new ExpressionProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx));
+    }
+    
+    @Override
+    public final ASTNode visitJsonFunction(final JsonFunctionContext ctx) {
+        JsonFunctionNameContext functionNameContext = ctx.jsonFunctionName();
+        String functionName;
+        FunctionSegment result;
+        if (null != functionNameContext) {
+            functionName = functionNameContext.getText();
+            result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
+            for (ExprContext each : ctx.expr()) {
+                result.getParameters().add((ExpressionSegment) visit(each));
+            }
+        } else if (null != ctx.JSON_SEPARATOR()) {
+            result = createJsonSeparatorFunction(ctx.JSON_SEPARATOR().getText(), ctx);
+        } else if (null != ctx.JSON_UNQUOTED_SEPARATOR()) {
+            result = createJsonSeparatorFunction(ctx.JSON_UNQUOTED_SEPARATOR().getText(), ctx);
+        } else {
+            result = (FunctionSegment) visitJsonTableFunction(ctx.jsonTableFunction());
+        }
+        return result;
+    }
+    
+    private FunctionSegment createJsonSeparatorFunction(final String functionName, final JsonFunctionContext ctx) {
+        FunctionSegment result;
+        result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), functionName, getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.columnRef()));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.path().getStart().getStartIndex(), ctx.path().getStop().getStopIndex(), ctx.path().getText()));
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitJsonTableFunction(final JsonTableFunctionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.JSON_TABLE().getText(), getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.path().getStart().getStartIndex(), ctx.path().getStop().getStopIndex(), getOriginalText(ctx.path())));
+        result.getParameters().add(new LiteralExpressionSegment(ctx.jsonTableColumns().getStart().getStartIndex(), ctx.jsonTableColumns().getStop().getStopIndex(),
+                getOriginalText(ctx.jsonTableColumns())));
+        return result;
+    }
+    
+    private ASTNode createAggregationSegment(final AggregationFunctionContext ctx, final String aggregationType) {
+        AggregationType type = AggregationType.valueOf(aggregationType.toUpperCase());
+        if (null != ctx.distinct()) {
+            AggregationDistinctProjectionSegment result =
+                    new AggregationDistinctProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), type, getOriginalText(ctx), getDistinctExpression(ctx));
+            result.getParameters().addAll(getExpressions(ctx.expr()));
+            return result;
+        }
+        AggregationProjectionSegment result = new AggregationProjectionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), type, getOriginalText(ctx));
+        result.getParameters().addAll(getExpressions(ctx.expr()));
+        return result;
+    }
+    
+    protected Collection&lt;ExpressionSegment&gt; getExpressions(final List&lt;ExprContext&gt; exprList) {
+        if (null == exprList) {
+            return Collections.emptyList();
+        }
+        Collection&lt;ExpressionSegment&gt; result = new ArrayList&lt;&gt;(exprList.size());
+        for (ExprContext each : exprList) {
+            result.add((ExpressionSegment) visit(each));
+        }
+        return result;
+    }
+    
+    private String getDistinctExpression(final AggregationFunctionContext ctx) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 3; i &lt; ctx.getChildCount() - 1; i++) {
+            result.append(ctx.getChild(i).getText());
+        }
+        return result.toString();
+    }
+    
+    @Override
+    public final ASTNode visitSpecialFunction(final SpecialFunctionContext ctx) {
+        if (null != ctx.groupConcatFunction()) {
+            return visit(ctx.groupConcatFunction());
+        }
+        if (null != ctx.windowFunction()) {
+            return visit(ctx.windowFunction());
+        }
+        if (null != ctx.castFunction()) {
+            return visit(ctx.castFunction());
+        }
+        if (null != ctx.convertFunction()) {
+            return visit(ctx.convertFunction());
+        }
+        if (null != ctx.positionFunction()) {
+            return visit(ctx.positionFunction());
+        }
+        if (null != ctx.substringFunction()) {
+            return visit(ctx.substringFunction());
+        }
+        if (null != ctx.extractFunction()) {
+            return visit(ctx.extractFunction());
+        }
+        if (null != ctx.charFunction()) {
+            return visit(ctx.charFunction());
+        }
+        if (null != ctx.trimFunction()) {
+            return visit(ctx.trimFunction());
+        }
+        if (null != ctx.weightStringFunction()) {
+            return visit(ctx.weightStringFunction());
+        }
+        if (null != ctx.valuesFunction()) {
+            return visit(ctx.valuesFunction());
+        }
+        if (null != ctx.currentUserFunction()) {
+            return visit(ctx.currentUserFunction());
+        }
+        if (null != ctx.timeStampDiffFunction()) {
+            return visit(ctx.timeStampDiffFunction());
+        }
+        return new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), getOriginalText(ctx), getOriginalText(ctx));
+    }
+    
+    @Override
+    public final ASTNode visitGroupConcatFunction(final GroupConcatFunctionContext ctx) {
+        calculateParameterCount(ctx.expr());
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.GROUP_CONCAT().getText(), getOriginalText(ctx));
+        for (ExprContext each : ctx.expr()) {
+            result.getParameters().add((ExpressionSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitCastFunction(final CastFunctionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.CAST().getText(), getOriginalText(ctx));
+        for (ExprContext each : ctx.expr()) {
+            ASTNode expr = visit(each);
+            result.getParameters().add((ExpressionSegment) expr);
+        }
+        if (null != ctx.castType()) {
+            result.getParameters().add((DataTypeSegment) visit(ctx.castType()));
+        }
+        if (null != ctx.DATETIME()) {
+            DataTypeSegment dataType = new DataTypeSegment();
+            dataType.setDataTypeName(ctx.DATETIME().getText());
+            dataType.setStartIndex(ctx.DATETIME().getSymbol().getStartIndex());
+            dataType.setStopIndex(ctx.DATETIME().getSymbol().getStopIndex());
+            if (null != ctx.typeDatetimePrecision()) {
+                dataType.setDataLength((DataTypeLengthSegment) visit(ctx.typeDatetimePrecision()));
+            }
+            result.getParameters().add(dataType);
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitCastType(final CastTypeContext ctx) {
+        DataTypeSegment result = new DataTypeSegment();
+        result.setDataTypeName(ctx.castTypeName.getText());
+        result.setStartIndex(ctx.start.getStartIndex());
+        result.setStopIndex(ctx.stop.getStopIndex());
+        if (null != ctx.fieldLength()) {
+            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.fieldLength());
+            result.setDataLength(dataTypeLengthSegment);
+        }
+        if (null != ctx.precision()) {
+            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.precision());
+            result.setDataLength(dataTypeLengthSegment);
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitConvertFunction(final ConvertFunctionContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.CONVERT().getText(), getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitPositionFunction(final PositionFunctionContext ctx) {
+        calculateParameterCount(ctx.expr());
+        FunctionSegment result = new FunctionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), ctx.POSITION().getText(), getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.expr(0)));
+        result.getParameters().add((ExpressionSegment) visit(ctx.expr(1)));
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitSubstringFunction(final SubstringFunctionContext ctx) {
+        FunctionSegment result = new FunctionSegment(
+                ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), null == ctx.SUBSTR() ? ctx.SUBSTRING().getText() : ctx.SUBSTR().getText(), getOriginalText(ctx));</pre></div></td></tr></table>
 <table border="0" class="bodyTable">
 <tr class="a">
 <th>File</th>
@@ -2815,7 +2832,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1637">1637</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1638">1638</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -5166,7 +5183,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1516">1516</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1517">1517</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -5415,7 +5432,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1909">1909</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1910">1910</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -6243,7 +6260,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1690">1690</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1691">1691</a></td></tr>
 <tr class="a">
 <td colspan="3" align="left">
 <div class="source">
@@ -6967,7 +6984,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1637">1637</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1638">1638</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -7044,7 +7061,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1301">1301</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1302">1302</a></td></tr>
 <tr class="a">
 <td colspan="3" align="left">
 <div class="source">
@@ -7257,7 +7274,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1789">1789</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1790">1790</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -7327,7 +7344,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1789">1789</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1790">1790</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -7635,7 +7652,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1581">1581</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1582">1582</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -7868,7 +7885,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1422">1422</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -8018,7 +8035,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1131">1131</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1132">1132</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -8171,7 +8188,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1867">1867</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1868">1868</a></td></tr>
 <tr class="a">
 <td colspan="3" align="left">
 <div class="source">
@@ -8229,7 +8246,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1182">1182</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1183">1183</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -8868,7 +8885,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1872">1872</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1873">1873</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -9420,7 +9437,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1492">1492</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1493">1493</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -9555,7 +9572,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1806">1806</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1807">1807</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -9778,7 +9795,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1356">1356</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1357">1357</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -9884,7 +9901,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1258">1258</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1259">1259</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -10797,7 +10814,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1527">1527</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1528">1528</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sql92</td>
@@ -10915,11 +10932,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1420">1420</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1491">1491</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1492">1492</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -11345,7 +11362,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1730">1730</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1731">1731</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -11587,7 +11604,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1399">1399</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1400">1400</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -11618,7 +11635,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1492">1492</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1493">1493</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -11649,7 +11666,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1471">1471</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1472">1472</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -11684,7 +11701,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1422">1422</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -12252,15 +12269,15 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1420">1420</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1470">1470</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1471">1471</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1491">1491</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1492">1492</a></td></tr>
 <tr class="a">
 <td colspan="3" align="left">
 <div class="source">
@@ -12595,7 +12612,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1666">1666</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1667">1667</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sql92</td>
@@ -12681,7 +12698,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1847">1847</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1848">1848</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -12804,7 +12821,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1966">1966</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1967">1967</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -13272,15 +13289,15 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1422">1422</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1471">1471</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1472">1472</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1492">1492</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1493">1493</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -13319,11 +13336,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1422">1422</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1492">1492</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1493">1493</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -13358,7 +13375,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1471">1471</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1472">1472</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -13682,14 +13699,10 @@
 <td>shardingsphere-parser-sql-hive</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.html#L625">625</a></td></tr>
 <tr class="b">
-<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1100">1100</a></td></tr>
-<tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.html#L621">621</a></td></tr>
-<tr class="b">
+<tr class="a">
 <td colspan="3" align="left">
 <div class="source">
 <pre>public final ASTNode visitSubstringFunction(final SubstringFunctionContext ctx) {
@@ -13736,19 +13749,19 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1400">1400</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1401">1401</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1421">1421</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1422">1422</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1471">1471</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1472">1472</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1492">1492</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1493">1493</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -14784,7 +14797,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1861">1861</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1862">1862</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sqlserver</td>
@@ -17038,11 +17051,11 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1955">1955</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1956">1956</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1971">1971</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1972">1972</a></td></tr>
 <tr class="b">
 <td colspan="3" align="left">
 <div class="source">
@@ -17704,7 +17717,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1594">1594</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1595">1595</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sqlserver</td>
@@ -18136,7 +18149,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1428">1428</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1429">1429</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/sql92/visitor/statement/type/SQL92DMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sql92</td>
@@ -18734,6 +18747,58 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/hive/visitor/statement/type/HiveDMLStatementVisitor.html#L627">627</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1103">1103</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), null == ctx.SUBSTR() ? ctx.SUBSTRING().getText() : ctx.SUBSTR().getText(), getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
+        for (TerminalNode each : ctx.NUMBER_()) {
+            result.getParameters().add(new LiteralExpressionSegment(each.getSymbol().getStartIndex(), each.getSymbol().getStopIndex(), new NumberLiteralValue(each.getText()).getValue()));
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitExtractFunction(final ExtractFunctionContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1103">1103</a></td></tr>
+<tr class="a">
+<td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.html#L623">623</a></td></tr>
+<tr class="b">
+<td colspan="3" align="left">
+<div class="source">
+<pre>ctx.getStop().getStopIndex(), null == ctx.SUBSTR() ? null == ctx.SUBSTRING() ? ctx.MID().getText() : ctx.SUBSTRING().getText() : ctx.SUBSTR().getText(), getOriginalText(ctx));
+        result.getParameters().add((ExpressionSegment) visit(ctx.expr()));
+        for (TerminalNode each : ctx.NUMBER_()) {
+            result.getParameters().add(new LiteralExpressionSegment(each.getSymbol().getStartIndex(), each.getSymbol().getStopIndex(), new NumberLiteralValue(each.getText()).getValue()));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitExtractFunction(final ExtractFunctionContext ctx) {</pre></div></td></tr></table>
+<table border="0" class="bodyTable">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-opengauss</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/opengauss/visitor/statement/OpenGaussStatementVisitor.html#L668">668</a></td></tr>
@@ -19086,7 +19151,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1849">1849</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1850">1850</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-sqlserver</td>
@@ -19622,11 +19687,11 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1955">1955</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1956">1956</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1971">1971</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1972">1972</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -20125,7 +20190,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1160">1160</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1161">1161</a></td></tr>
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>
@@ -20496,7 +20561,7 @@
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1238">1238</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1239">1239</a></td></tr>
 <tr class="a">
 <td colspan="3" align="left">
 <div class="source">
@@ -20664,7 +20729,7 @@
 <tr class="a">
 <td align="left">org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1303">1303</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/mysql/visitor/statement/MySQLStatementVisitor.html#L1304">1304</a></td></tr>
 <tr class="b">
 <td align="left">org/apache/shardingsphere/sql/parser/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-presto</td>

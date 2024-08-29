@@ -116,60 +116,59 @@
 <a class="jxr_linenumber" name="L108" href="#L108">108</a>     
 <a class="jxr_linenumber" name="L109" href="#L109">109</a>     @SneakyThrows(InterruptedException.<strong class="jxr_keyword">class</strong>)
 <a class="jxr_linenumber" name="L110" href="#L110">110</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> dump() <strong class="jxr_keyword">throws</strong> SQLException {
-<a class="jxr_linenumber" name="L111" href="#L111">111</a>         <em class="jxr_comment">// TODO use unified PgConnection</em>
-<a class="jxr_linenumber" name="L112" href="#L112">112</a>         <strong class="jxr_keyword">try</strong> (
-<a class="jxr_linenumber" name="L113" href="#L113">113</a>                 Connection connection = logicalReplication.createConnection((<a name="StandardPipelineDataSourceConfiguration" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/api/type/StandardPipelineDataSourceConfiguration.html#StandardPipelineDataSourceConfiguration">StandardPipelineDataSourceConfiguration</a>) dumperContext.getCommonContext().getDataSourceConfig());
-<a class="jxr_linenumber" name="L114" href="#L114">114</a>                 PGReplicationStream stream = logicalReplication.createReplicationStream(
-<a class="jxr_linenumber" name="L115" href="#L115">115</a>                         connection, PostgreSQLSlotNameGenerator.getUniqueSlotName(connection, dumperContext.getJobId()), walPosition.get().getLogSequenceNumber())) {
-<a class="jxr_linenumber" name="L116" href="#L116">116</a>             <a name="PostgreSQLTimestampUtils" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/PostgreSQLTimestampUtils.html#PostgreSQLTimestampUtils">PostgreSQLTimestampUtils</a> utils = <strong class="jxr_keyword">new</strong> <a name="PostgreSQLTimestampUtils" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/PostgreSQLTimestampUtils.html#PostgreSQLTimestampUtils">PostgreSQLTimestampUtils</a>(connection.unwrap(PgConnection.<strong class="jxr_keyword">class</strong>).getTimestampUtils());
-<a class="jxr_linenumber" name="L117" href="#L117">117</a>             <a name="DecodingPlugin" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/DecodingPlugin.html#DecodingPlugin">DecodingPlugin</a> decodingPlugin = <strong class="jxr_keyword">new</strong> <a name="TestDecodingPlugin" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/TestDecodingPlugin.html#TestDecodingPlugin">TestDecodingPlugin</a>(utils);
-<a class="jxr_linenumber" name="L118" href="#L118">118</a>             <strong class="jxr_keyword">while</strong> (isRunning()) {
-<a class="jxr_linenumber" name="L119" href="#L119">119</a>                 ByteBuffer message = stream.readPending();
-<a class="jxr_linenumber" name="L120" href="#L120">120</a>                 <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == message) {
-<a class="jxr_linenumber" name="L121" href="#L121">121</a>                     Thread.sleep(10L);
-<a class="jxr_linenumber" name="L122" href="#L122">122</a>                     <strong class="jxr_keyword">continue</strong>;
-<a class="jxr_linenumber" name="L123" href="#L123">123</a>                 }
-<a class="jxr_linenumber" name="L124" href="#L124">124</a>                 <a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> event = decodingPlugin.decode(message, <strong class="jxr_keyword">new</strong> <a name="PostgreSQLLogSequenceNumber" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/PostgreSQLLogSequenceNumber.html#PostgreSQLLogSequenceNumber">PostgreSQLLogSequenceNumber</a>(stream.getLastReceiveLSN()));
-<a class="jxr_linenumber" name="L125" href="#L125">125</a>                 <strong class="jxr_keyword">if</strong> (decodeWithTX) {
-<a class="jxr_linenumber" name="L126" href="#L126">126</a>                     processEventWithTX(event);
-<a class="jxr_linenumber" name="L127" href="#L127">127</a>                 } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L128" href="#L128">128</a>                     processEventIgnoreTX(event);
-<a class="jxr_linenumber" name="L129" href="#L129">129</a>                 }
-<a class="jxr_linenumber" name="L130" href="#L130">130</a>                 walPosition.set(<strong class="jxr_keyword">new</strong> <a name="WALPosition" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/WALPosition.html#WALPosition">WALPosition</a>(event.getLogSequenceNumber()));
-<a class="jxr_linenumber" name="L131" href="#L131">131</a>             }
-<a class="jxr_linenumber" name="L132" href="#L132">132</a>         }
-<a class="jxr_linenumber" name="L133" href="#L133">133</a>     }
-<a class="jxr_linenumber" name="L134" href="#L134">134</a>     
-<a class="jxr_linenumber" name="L135" href="#L135">135</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> processEventWithTX(<strong class="jxr_keyword">final</strong> <a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> event) {
-<a class="jxr_linenumber" name="L136" href="#L136">136</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="BeginTXEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/BeginTXEvent.html#BeginTXEvent">BeginTXEvent</a>) {
-<a class="jxr_linenumber" name="L137" href="#L137">137</a>             rowEvents = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;();
-<a class="jxr_linenumber" name="L138" href="#L138">138</a>             <strong class="jxr_keyword">return</strong>;
-<a class="jxr_linenumber" name="L139" href="#L139">139</a>         }
-<a class="jxr_linenumber" name="L140" href="#L140">140</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="AbstractRowEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractRowEvent.html#AbstractRowEvent">AbstractRowEvent</a>) {
-<a class="jxr_linenumber" name="L141" href="#L141">141</a>             rowEvents.add((<a name="AbstractRowEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractRowEvent.html#AbstractRowEvent">AbstractRowEvent</a>) event);
-<a class="jxr_linenumber" name="L142" href="#L142">142</a>             <strong class="jxr_keyword">return</strong>;
-<a class="jxr_linenumber" name="L143" href="#L143">143</a>         }
-<a class="jxr_linenumber" name="L144" href="#L144">144</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="CommitTXEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/CommitTXEvent.html#CommitTXEvent">CommitTXEvent</a>) {
-<a class="jxr_linenumber" name="L145" href="#L145">145</a>             List&lt;Record&gt; records = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
-<a class="jxr_linenumber" name="L146" href="#L146">146</a>             <strong class="jxr_keyword">for</strong> (<a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> each : rowEvents) {
-<a class="jxr_linenumber" name="L147" href="#L147">147</a>                 records.add(walEventConverter.convert(each));
-<a class="jxr_linenumber" name="L148" href="#L148">148</a>             }
-<a class="jxr_linenumber" name="L149" href="#L149">149</a>             records.add(walEventConverter.convert(event));
-<a class="jxr_linenumber" name="L150" href="#L150">150</a>             channel.push(records);
-<a class="jxr_linenumber" name="L151" href="#L151">151</a>         }
-<a class="jxr_linenumber" name="L152" href="#L152">152</a>     }
-<a class="jxr_linenumber" name="L153" href="#L153">153</a>     
-<a class="jxr_linenumber" name="L154" href="#L154">154</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> processEventIgnoreTX(<strong class="jxr_keyword">final</strong> <a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> event) {
-<a class="jxr_linenumber" name="L155" href="#L155">155</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="BeginTXEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/BeginTXEvent.html#BeginTXEvent">BeginTXEvent</a>) {
-<a class="jxr_linenumber" name="L156" href="#L156">156</a>             <strong class="jxr_keyword">return</strong>;
-<a class="jxr_linenumber" name="L157" href="#L157">157</a>         }
-<a class="jxr_linenumber" name="L158" href="#L158">158</a>         channel.push(Collections.singletonList(walEventConverter.convert(event)));
-<a class="jxr_linenumber" name="L159" href="#L159">159</a>     }
-<a class="jxr_linenumber" name="L160" href="#L160">160</a>     
-<a class="jxr_linenumber" name="L161" href="#L161">161</a>     @Override
-<a class="jxr_linenumber" name="L162" href="#L162">162</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> doStop() {
-<a class="jxr_linenumber" name="L163" href="#L163">163</a>     }
-<a class="jxr_linenumber" name="L164" href="#L164">164</a> }
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>         <strong class="jxr_keyword">try</strong> (
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>                 Connection connection = logicalReplication.createConnection((<a name="StandardPipelineDataSourceConfiguration" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/api/type/StandardPipelineDataSourceConfiguration.html#StandardPipelineDataSourceConfiguration">StandardPipelineDataSourceConfiguration</a>) dumperContext.getCommonContext().getDataSourceConfig());
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>                 PGReplicationStream stream = logicalReplication.createReplicationStream(
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>                         connection, PostgreSQLSlotNameGenerator.getUniqueSlotName(connection, dumperContext.getJobId()), walPosition.get().getLogSequenceNumber())) {
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>             <a name="PostgreSQLTimestampUtils" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/PostgreSQLTimestampUtils.html#PostgreSQLTimestampUtils">PostgreSQLTimestampUtils</a> utils = <strong class="jxr_keyword">new</strong> <a name="PostgreSQLTimestampUtils" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/PostgreSQLTimestampUtils.html#PostgreSQLTimestampUtils">PostgreSQLTimestampUtils</a>(connection.unwrap(PgConnection.<strong class="jxr_keyword">class</strong>).getTimestampUtils());
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>             <a name="DecodingPlugin" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/DecodingPlugin.html#DecodingPlugin">DecodingPlugin</a> decodingPlugin = <strong class="jxr_keyword">new</strong> <a name="TestDecodingPlugin" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/TestDecodingPlugin.html#TestDecodingPlugin">TestDecodingPlugin</a>(utils);
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>             <strong class="jxr_keyword">while</strong> (isRunning()) {
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>                 ByteBuffer message = stream.readPending();
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>                 <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == message) {
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>                     Thread.sleep(10L);
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>                     <strong class="jxr_keyword">continue</strong>;
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>                 }
+<a class="jxr_linenumber" name="L123" href="#L123">123</a>                 <a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> event = decodingPlugin.decode(message, <strong class="jxr_keyword">new</strong> <a name="PostgreSQLLogSequenceNumber" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/decode/PostgreSQLLogSequenceNumber.html#PostgreSQLLogSequenceNumber">PostgreSQLLogSequenceNumber</a>(stream.getLastReceiveLSN()));
+<a class="jxr_linenumber" name="L124" href="#L124">124</a>                 <strong class="jxr_keyword">if</strong> (decodeWithTX) {
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>                     processEventWithTX(event);
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>                 } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>                     processEventIgnoreTX(event);
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>                 }
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>                 walPosition.set(<strong class="jxr_keyword">new</strong> <a name="WALPosition" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/WALPosition.html#WALPosition">WALPosition</a>(event.getLogSequenceNumber()));
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>             }
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>         }
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>     }
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>     
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> processEventWithTX(<strong class="jxr_keyword">final</strong> <a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> event) {
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="BeginTXEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/BeginTXEvent.html#BeginTXEvent">BeginTXEvent</a>) {
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>             rowEvents = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;();
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>         }
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="AbstractRowEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractRowEvent.html#AbstractRowEvent">AbstractRowEvent</a>) {
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>             rowEvents.add((<a name="AbstractRowEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractRowEvent.html#AbstractRowEvent">AbstractRowEvent</a>) event);
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>         }
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="CommitTXEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/CommitTXEvent.html#CommitTXEvent">CommitTXEvent</a>) {
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>             List&lt;Record&gt; records = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>             <strong class="jxr_keyword">for</strong> (<a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> each : rowEvents) {
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>                 records.add(walEventConverter.convert(each));
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>             }
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>             records.add(walEventConverter.convert(event));
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>             channel.push(records);
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>         }
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>     }
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>     
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> processEventIgnoreTX(<strong class="jxr_keyword">final</strong> <a name="AbstractWALEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/AbstractWALEvent.html#AbstractWALEvent">AbstractWALEvent</a> event) {
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>         <strong class="jxr_keyword">if</strong> (event instanceof <a name="BeginTXEvent" href="../../../../../../../../../org/apache/shardingsphere/data/pipeline/postgresql/ingest/incremental/wal/event/BeginTXEvent.html#BeginTXEvent">BeginTXEvent</a>) {
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>         }
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>         channel.push(Collections.singletonList(walEventConverter.convert(event)));
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>     }
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>     
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>     @Override
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>     <strong class="jxr_keyword">protected</strong> <strong class="jxr_keyword">void</strong> doStop() {
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>     }
+<a class="jxr_linenumber" name="L163" href="#L163">163</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

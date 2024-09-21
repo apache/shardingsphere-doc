@@ -1,100 +1,226 @@
-commit 9fd17d1df26bb805e70767a1f3406997bfe3067f
+commit 68e435929187a4688145cd1a77439db4b366064f
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Wed Sep 18 12:04:31 2024 +0800
+Date:   Sat Sep 21 13:16:29 2024 +0800
 
-    Provides nightly builds on ghcr.io for ShardingSphere Agent (#32827)
+    Supports building ShardingSphere Agent's Docker Image locally (#32945)
 
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
-index fd716593ec0..96cc268049b 100644
+index 96cc268049b..4a122526227 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
-@@ -110,6 +110,41 @@ java -javaagent:/agent/shardingsphere-agent-${latest.release.version}.jar -jar t
+@@ -110,25 +110,54 @@ java -javaagent:/agent/shardingsphere-agent-${latest.release.version}.jar -jar t
  + 3 访问启动的服务
  + 4 查看对应的插件是否生效
  
-+### 夜间构建
+-### 夜间构建
++### Docker
+ 
+-ShardingSphere Agent 在 https://github.com/orgs/apache/packages?repo_name=shardingsphere 存在夜间构建的 Docker Image。
+-可通过类似如下的 `Dockerfile` 来为类似 `example.jar` 的 JAR 使用此 Docker Image 中的 ShardingSphere Agent。
+-假设 `example.jar` 是一个即将使用 ShardingSphere Agent 的 Spring Boot 的 Uber JAR，
+-且 `custom-agent.yaml` 包含 ShardingSphere Agent 的配置。
++####  本地构建
 +
-+ShardingSphere Agent 在 https://github.com/orgs/apache/packages?repo_name=shardingsphere 存在夜间构建的 Docker Image。
-+可通过类似如下的 `Dockerfile` 来为类似 `example.jar` 的 JAR 使用此 Docker Image 中的 ShardingSphere Agent。
-+假设 `example.jar` 是一个即将使用 ShardingSphere Agent 的 Spring Boot 的 Uber JAR，
-+且 `custom-agent.yaml` 包含 ShardingSphere Agent 的配置。
++ShardingSphere Agent 存在可用的 `Dockerfile` 用于方便分发。可执行如下命令以构建 Docker Image，
 +
-+```dockerfile
-+FROM ghcr.io/apache/shardingsphere-agent:latest
-+COPY ./example.jar /example.jar
-+COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml
-+ENTRYPOINT java \
-+    -javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar
-+    -jar \
-+    /example.jar
++```shell
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -am -pl distribution/agent -Prelease,docker -T1C -DskipTests clean package
 +```
 +
-+`custom-agent.yaml` 的内容可能如下，
-+`http://localhost:4318` 指向本地部署的 `otel/opentelemetry-collector-contrib:0.108.0` 的 Docker Container。
-+
-+```yaml
-+plugins:
-+  tracing:
-+    OpenTelemetry:
-+      props:
-+        otel.service.name: "example"
-+        otel.exporter.otlp.traces.endpoint: "http://localhost:4318"
++此后若在自定义 `Dockerfile` 中添加以下语句，这会将 ShardingSphere Agent 的目录复制到 `/shardingsphere-agent/` 。
+ 
+ ```dockerfile
+-FROM ghcr.io/apache/shardingsphere-agent:latest
+-COPY ./example.jar /example.jar
+-COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml
+-ENTRYPOINT java \
+-    -javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar
+-    -jar \
+-    /example.jar
++COPY --from=apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
 +```
 +
-+或者在 `Dockerfile` 中添加以下语句，这会将 Agent 的目录复制到 `/shardingsphere-agent/` 。
++#### 夜间构建
++
++ShardingSphere Agent 在 https://github.com/apache/shardingsphere/pkgs/container/shardingsphere-agent 存在夜间构建的 Docker Image。
++
++若在自定义 `Dockerfile` 中添加以下语句，这会将 ShardingSphere Agent 的目录复制到 `/shardingsphere-agent/` 。
 +
 +```dockerfile
 +COPY --from=ghcr.io/apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
 +```
 +
- ## Metrics
++#### 通过 Dockerfile 使用
++
++引入一个典型场景，
++
++1. 假设通过如下的 Bash 命令部署了 Jaeger All in One 的 Docker Container,
++
++```shell
++docker network create example-net
++docker run --rm -d \
++  --name jaeger \
++  -e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
++  -p 16686:16686 \
++  -p 4317:4317 \
++  -p 4318:4318 \
++  -p 9411:9411 \
++  --network example-net \
++  jaegertracing/all-in-one:1.60.0
+ ```
  
- | 指标名称                                 | 指标类型    | 指标描述                                                                                       |
+-`custom-agent.yaml` 的内容可能如下，
+-`http://localhost:4318` 指向本地部署的 `otel/opentelemetry-collector-contrib:0.108.0` 的 Docker Container。
++2. 假设 `./custom-agent.yaml` 包含 ShardingSphere Agent 的配置，内容可能如下，
+ 
+ ```yaml
+ plugins:
+@@ -136,13 +165,33 @@ plugins:
+     OpenTelemetry:
+       props:
+         otel.service.name: "example"
+-        otel.exporter.otlp.traces.endpoint: "http://localhost:4318"
++        otel.exporter.otlp.traces.endpoint: "http://jaeger:4318"
+ ```
+ 
+-或者在 `Dockerfile` 中添加以下语句，这会将 Agent 的目录复制到 `/shardingsphere-agent/` 。
++3. 假设`./target/example.jar` 是一个即将使用 ShardingSphere Agent 的 Spring Boot 的 Uber JAR，
++可通过类似如下的 `Dockerfile` 来为类似 `example.jar` 的 JAR 使用夜间构建的 Docker Image 中的 ShardingSphere Agent。
+ 
+ ```dockerfile
+-COPY --from=ghcr.io/apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
++FROM ghcr.io/apache/shardingsphere-agent:latest
++COPY ./target/example.jar /app.jar
++COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml
++ENTRYPOINT ["java","-javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar","-jar","/app.jar"]
++```
++
++如果是通过本地构建 `apache/shardingsphere-agent:latest` 的 Docker Image，`Dockerfile` 可能如下，
++
++```dockerfile
++FROM apache/shardingsphere-agent:latest
++COPY ./target/example.jar /app.jar
++COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml
++ENTRYPOINT ["java","-javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar","-jar","/app.jar"]
++```
++
++4. 享受它，
++
++```shell
++docker build -t example/gs-spring-boot-docker:latest .
++docker run --network example-net example/gs-spring-boot-docker:latest
+ ```
+ 
+ ## Metrics
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
-index 270e66421b2..06959469c2b 100644
+index 06959469c2b..0e7b2d3e4d4 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
-@@ -112,6 +112,43 @@ java -javaagent:/agent/shardingsphere-agent-${latest.release.version}.jar -jar t
+@@ -112,27 +112,54 @@ java -javaagent:/agent/shardingsphere-agent-${latest.release.version}.jar -jar t
  + 3 Access to started service
  + 4 Check whether the corresponding plug-in is effective
  
-+### Nightly Builds
-+
-+A nightly built Docker Image of ShardingSphere Agent exists at https://github.com/orgs/apache/packages?repo_name=shardingsphere .
-+
-+You can use ShardingSphere Agent in this Docker Image for a JAR like `example.jar` by using a `Dockerfile` like the following.
-+
-+Assume `example.jar` is an Uber JAR of Spring Boot that will use ShardingSphere Agent,
-+and `custom-agent.yaml` contains the configuration of ShardingSphere Agent.
-+
-+```dockerfile
-+FROM ghcr.io/apache/shardingsphere-agent:latest
-+COPY ./example.jar /example.jar
-+COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml
-+ENTRYPOINT java \
-+    -javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar
-+    -jar \
-+    /example.jar
+-### Nightly Builds
++### Docker
+ 
+-A nightly built Docker Image of ShardingSphere Agent exists at https://github.com/orgs/apache/packages?repo_name=shardingsphere .
++#### Local Build
+ 
+-You can use ShardingSphere Agent in this Docker Image for a JAR like `example.jar` by using a `Dockerfile` like the following.
++ShardingSphere Agent has a `Dockerfile` available for easy distribution. You can execute the following command to build a Docker Image,
+ 
+-Assume `example.jar` is an Uber JAR of Spring Boot that will use ShardingSphere Agent,
+-and `custom-agent.yaml` contains the configuration of ShardingSphere Agent.
++```shell
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -am -pl distribution/agent -Prelease,docker -T1C -DskipTests clean package
 +```
 +
-+The content of `custom-agent.yaml` may be as follows,
-+`http://localhost:4318` points to the locally deployed `otel/opentelemetry-collector-contrib:0.108.0` Docker Container.
++If you add the following statement in your custom `Dockerfile`, it will copy the ShardingSphere Agent directory to `/shardingsphere-agent/`.
+ 
+ ```dockerfile
+-FROM ghcr.io/apache/shardingsphere-agent:latest
+-COPY ./example.jar /example.jar
+-COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml
+-ENTRYPOINT java \
+-    -javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar
+-    -jar \
+-    /example.jar
++COPY --from=apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
+ ```
+ 
+-The content of `custom-agent.yaml` may be as follows,
+-`http://localhost:4318` points to the locally deployed `otel/opentelemetry-collector-contrib:0.108.0` Docker Container.
++#### Nightly Build
 +
-+```yaml
-+plugins:
-+  tracing:
-+    OpenTelemetry:
-+      props:
-+        otel.service.name: "example"
-+        otel.exporter.otlp.traces.endpoint: "http://localhost:4318"
-+```
++ShardingSphere Agent has a nightly built Docker Image at https://github.com/apache/shardingsphere/pkgs/container/shardingsphere-agent .
 +
-+Or add the following statement in `Dockerfile`, which will copy the Agent directory to `/shardingsphere-agent/`.
++If you add the following statement in your custom `Dockerfile`, it will copy the ShardingSphere Agent directory to `/shardingsphere-agent/`.
 +
 +```dockerfile
 +COPY --from=ghcr.io/apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
 +```
 +
- ## Metrics
++#### Using Dockerfile
++
++Introduce a typical scenario,
++
++1. Assume that the Jaeger All in One Docker Container is deployed through the following Bash command,
++
++```shell
++docker network create example-net
++docker run --rm -d \
++  --name jaeger \
++  -e COLLECTOR_ZIPKIN_HOST_PORT=:9411 \
++  -p 16686:16686 \
++  -p 4317:4317 \
++  -p 4318:4318 \
++  -p 9411:9411 \
++  --network example-net \
++  jaegertracing/all-in-one:1.60.0
++```
++
++2. Assume `./custom-agent.yaml` contains the configuration of ShardingSphere Agent, and the content may be as follows,
  
- | Name                                  | Type      | Description                                                                                            |
+ ```yaml
+ plugins:
+@@ -140,13 +167,33 @@ plugins:
+     OpenTelemetry:
+       props:
+         otel.service.name: "example"
+-        otel.exporter.otlp.traces.endpoint: "http://localhost:4318"
++        otel.exporter.otlp.traces.endpoint: "http://jaeger:4318"
++```
++
++3. Assuming `./target/example.jar` is an Uber JAR of Spring Boot that will use ShardingSphere Agent, 
++you can use the ShardingSphere Agent in the nightly built Docker Image for a JAR like `example.jar` through a `Dockerfile` like the following.
++
++```dockerfile 
++FROM ghcr.io/apache/shardingsphere-agent:latest 
++COPY ./target/example.jar /app.jar 
++COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml 
++ENTRYPOINT ["java","-javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar","-jar","/app.jar "] 
+ ```
+ 
+-Or add the following statement in `Dockerfile`, which will copy the Agent directory to `/shardingsphere-agent/`.
++If you build the Docker Image of `apache/shardingsphere-agent:latest` locally, the `Dockerfile` may be as follows,
+ 
+ ```dockerfile
+-COPY --from=ghcr.io/apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
++FROM apache/shardingsphere-agent:latest
++COPY ./target/example.jar /app.jar
++COPY ./custom-agent.yaml /usr/agent/conf/agent.yaml
++ENTRYPOINT ["java","-javaagent:/usr/agent/shardingsphere-agent-5.5.1-SNAPSHOT.jar","-jar","/app.jar"]
++```
++
++4. Enjoy it, 
++
++```shell 
++docker build -t example/gs-spring-boot-docker:latest . 
++docker run --network example-net example/gs-spring-boot-docker:latest 
+ ```
+ 
+ ## Metrics

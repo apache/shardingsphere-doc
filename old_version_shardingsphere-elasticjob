@@ -1,46 +1,264 @@
-commit 756de29e677ce897c6e965715f6a2f3be3ebffea
-Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon Aug 12 14:27:39 2024 +0800
+commit 2e781144d8f7b8c4a81778ec59fdc9de3d6b3a6c
+Author: linghengqian <linghengqian@outlook.com>
+Date:   Sun Sep 29 17:45:23 2024 +0800
 
-    Block `elasticjob-test-native` module from compiling on JDK 8 to JDK16 (#2427)
+    Adds documentation for connecting to Zookeeper Server with SASL enabled
 
-diff --git a/docs/content/user-manual/configuration/graalvm-native-image.cn.md b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
-index 79ca6f43b..560c0f212 100644
---- a/docs/content/user-manual/configuration/graalvm-native-image.cn.md
-+++ b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
-@@ -256,7 +256,7 @@ sudo apt-get install build-essential zlib1g-dev -y
- 
- git clone git@github.com:apache/shardingsphere-elasticjob.git
- cd ./shardingsphere-elasticjob/
--./mvnw -PnativeTestInElasticJob -T1C -e -Dspring-boot-dependencies.version=3.3.2 clean test
-+./mvnw -PnativeTestInElasticJob -T1C -e clean test
- ```
- 
- 当贡献者发现缺少与 ElasticJob 无关的第三方库的 GraalVM Reachability Metadata 时，应当在
-@@ -285,5 +285,5 @@ ElasticJob 定义了 `generateMetadata` 的 Maven Profile 用于在 GraalVM JIT
- ```bash
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
--./mvnw -PgenerateMetadata -DskipNativeTests -e -T1C -Dspring-boot-dependencies.version=3.3.2 clean test native:metadata-copy
-+./mvnw -PgenerateMetadata -DskipNativeTests -e -T1C clean test native:metadata-copy
- ```
-diff --git a/docs/content/user-manual/configuration/graalvm-native-image.en.md b/docs/content/user-manual/configuration/graalvm-native-image.en.md
-index fb86d608e..4353929cb 100644
---- a/docs/content/user-manual/configuration/graalvm-native-image.en.md
-+++ b/docs/content/user-manual/configuration/graalvm-native-image.en.md
-@@ -259,7 +259,7 @@ sudo apt-get install build-essential zlib1g-dev -y
- 
- git clone git@github.com:apache/shardingsphere-elasticjob.git
- cd ./shardingsphere-elasticjob/
--./mvnw -PnativeTestInElasticJob -T1C -e -Dspring-boot-dependencies.version=3.3.2 clean test
-+./mvnw -PnativeTestInElasticJob -T1C -e clean test
- ```
- 
- When contributors find that GraalVM Reachability Metadata for third-party libraries not related to ElasticJob is missing, 
-@@ -289,5 +289,5 @@ contributors should place it in the classpath of the shardingsphere-test-native
- ```bash
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
--./mvnw -PgenerateMetadata -DskipNativeTests -e -T1C -Dspring-boot-dependencies.version=3.3.2 clean test native:metadata-copy
-+./mvnw -PgenerateMetadata -DskipNativeTests -e -T1C clean test native:metadata-copy
- ```
+diff --git a/docs/content/user-manual/configuration/external-integration/_index.cn.md b/docs/content/user-manual/configuration/external-integration/_index.cn.md
+new file mode 100644
+index 000000000..673a92a59
+--- /dev/null
++++ b/docs/content/user-manual/configuration/external-integration/_index.cn.md
+@@ -0,0 +1,9 @@
+++++
++title = "外部集成"
++weight = 4
++chapter = true
+++++
++
++## 简介
++
++ElasticJob 存在部分已知的外部集成，这些集成与 ElasticJob 的 API 基本无关。
+diff --git a/docs/content/user-manual/configuration/external-integration/_index.en.md b/docs/content/user-manual/configuration/external-integration/_index.en.md
+new file mode 100644
+index 000000000..4e9b24c8a
+--- /dev/null
++++ b/docs/content/user-manual/configuration/external-integration/_index.en.md
+@@ -0,0 +1,9 @@
+++++
++title = "External Integration"
++weight = 4
++chapter = true
+++++
++
++## Introduction
++
++ElasticJob has some known external integrations that are largely unrelated to ElasticJob's API.
+diff --git a/docs/content/user-manual/configuration/external-integration/sasl.cn.md b/docs/content/user-manual/configuration/external-integration/sasl.cn.md
+new file mode 100644
+index 000000000..74929efe4
+--- /dev/null
++++ b/docs/content/user-manual/configuration/external-integration/sasl.cn.md
+@@ -0,0 +1,103 @@
+++++
++title = "连接至开启 SASL 鉴权的 Zookeeper Server"
++weight = 2
+++++
++
++## 使用方式
++
++ElasticJob 的 `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` 能正常连接至开启 SASL 鉴权的 Zookeeper Server。
++SASL 机制允许在客户端和服务器之间实现安全通信，而 ZooKeeper 支持 Kerberos 或 DIGEST-MD5 作为身份验证方案。
++下文讨论常见情景。
++
++### DIGEST-MD5
++
++假设通过 Docker Engine 部署单个 Zookeeper Server 实例，对应的 `docker-compose.yml` 内容如下，
++
++```yaml
++services:
++  zookeeper-test:
++    image: zookeeper:3.9.2
++    volumes:
++      - ./jaas-server-test.conf:/jaas-test.conf
++    environment:
++      JVMFLAGS: "-Djava.security.auth.login.config=/jaas-test.conf"
++      ZOO_CFG_EXTRA: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
++    ports:
++      - "2181:2181"
++```
++
++假设存在文件为 `./jaas-server-test.conf`，内容如下，
++
++```
++Server {
++    org.apache.zookeeper.server.auth.DigestLoginModule required
++    user_bob="bobsecret";
++};
++```
++
++假设存在独立的 Spring Boot 应用，只需要在 Spring Boot 的启动类配置 SASL 的鉴权信息。逻辑类似如下，
++
++```java
++import javax.security.auth.login.AppConfigurationEntry;
++import javax.security.auth.login.Configuration;
++import java.util.HashMap;
++import java.util.Map;
++
++public class ExampleUtils {
++    public void initSasl() {
++        Configuration configuration = new Configuration() {
++            @Override
++            public AppConfigurationEntry[] getAppConfigurationEntry(final String name) {
++                Map<String, String> options = new HashMap<>();
++                options.put("username", "bob");
++                options.put("password", "bobsecret");
++                AppConfigurationEntry entry = new AppConfigurationEntry(
++                        "org.apache.zookeeper.server.auth.DigestLoginModule",
++                        AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
++                        options);
++                AppConfigurationEntry[] array = new AppConfigurationEntry[1];
++                array[0] = entry;
++                return array;
++            }
++        };
++        Configuration.setConfiguration(configuration);
++    }
++}
++```
++
++此时可正常初始化 ElasticJob 的 `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter`。逻辑类似如下，
++
++```java
++import org.apache.shardingsphere.elasticjob.reg.base.CoordinatorRegistryCenter;
++import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperConfiguration;
++import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter;
++
++public class ExampleUtils {
++    public CoordinatorRegistryCenter initElasticJob() {
++        ZookeeperConfiguration zookeeperConfiguration = new ZookeeperConfiguration("127.0.0.1:2181", "test-namespace");
++        CoordinatorRegistryCenter regCenter = new ZookeeperRegistryCenter(zookeeperConfiguration);
++        regCenter.init();
++        return regCenter;
++    }
++}
++```
++
++对于单个 JVM 进程，同一时间只能存在单个 SASL 鉴权信息，因为 Zookeeper Client 通过 JAAS 机制读取 SASL 鉴权信息。
++若当前 Spring Boot 应用需切换到使用不同 SASL 鉴权信息的 Zookeeper Server，则需要注销已有的 SASL 鉴权信息。逻辑类似如下，
++
++```java
++import javax.security.auth.login.Configuration;
++
++public class ExampleUtils {
++    public void exitSasl() {
++        Configuration.setConfiguration(null);
++    }
++}
++```
++
++### Kerberos
++
++要使 ElasticJob 的 `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` 连接至开启 Kerberos 鉴权的 Zookeeper Server，
++流程类似于 DIGEST-MD5。以 https://cwiki.apache.org/confluence/display/ZOOKEEPER/Client-Server+mutual+authentication 为准。
++
++部分地区可能不被允许使用 MIT Kerberos 的源代码或二进制产物，可参考 MIT Kerberos 的分发站点 https://web.mit.edu/kerberos/dist/index.html 。
+diff --git a/docs/content/user-manual/configuration/external-integration/sasl.en.md b/docs/content/user-manual/configuration/external-integration/sasl.en.md
+new file mode 100644
+index 000000000..f77ad37b4
+--- /dev/null
++++ b/docs/content/user-manual/configuration/external-integration/sasl.en.md
+@@ -0,0 +1,113 @@
+++++
++title = "Connect to Zookeeper Server with SASL authentication enabled"
++weight = 2
+++++
++
++## Usage
++
++ElasticJob's `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` can connect to Zookeeper Server with SASL authentication enabled.
++The SASL mechanism allows secure communication between the client and the server, 
++and ZooKeeper supports Kerberos or DIGEST-MD5 as authentication schemes.
++Common scenarios are discussed below.
++
++### DIGEST-MD5
++
++Assuming that a single Zookeeper Server instance is deployed through Docker Engine, 
++the corresponding `docker-compose.yml` content is as follows,
++
++```yaml
++services:
++  zookeeper-test:
++    image: zookeeper:3.9.2
++    volumes:
++      - ./jaas-server-test.conf:/jaas-test.conf
++    environment:
++      JVMFLAGS: "-Djava.security.auth.login.config=/jaas-test.conf"
++      ZOO_CFG_EXTRA: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
++    ports:
++      - "2181:2181"
++```
++
++Assume that there is a file called `./jaas-server-test.conf` with the following content:
++
++```
++Server {
++    org.apache.zookeeper.server.auth.DigestLoginModule required
++    user_bob="bobsecret";
++};
++```
++
++Assuming there is an independent Spring Boot application, 
++users only need to configure SASL authentication information in the Spring Boot startup class. 
++The logic is similar to the following:
++
++```java
++import javax.security.auth.login.AppConfigurationEntry;
++import javax.security.auth.login.Configuration;
++import java.util.HashMap;
++import java.util.Map;
++
++public class ExampleUtils {
++    public void initSasl() {
++        Configuration configuration = new Configuration() {
++            @Override
++            public AppConfigurationEntry[] getAppConfigurationEntry(final String name) {
++                Map<String, String> options = new HashMap<>();
++                options.put("username", "bob");
++                options.put("password", "bobsecret");
++                AppConfigurationEntry entry = new AppConfigurationEntry(
++                        "org.apache.zookeeper.server.auth.DigestLoginModule",
++                        AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
++                        options);
++                AppConfigurationEntry[] array = new AppConfigurationEntry[1];
++                array[0] = entry;
++                return array;
++            }
++        };
++        Configuration.setConfiguration(configuration);
++    }
++}
++```
++
++At this time, the `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` of ElasticJob can be initialized normally. 
++The logic is similar to the following:
++
++```java
++import org.apache.shardingsphere.elasticjob.reg.base.CoordinatorRegistryCenter;
++import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperConfiguration;
++import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter;
++
++public class ExampleUtils {
++    public CoordinatorRegistryCenter initElasticJob() {
++        ZookeeperConfiguration zookeeperConfiguration = new ZookeeperConfiguration("127.0.0.1:2181", "test-namespace");
++        CoordinatorRegistryCenter regCenter = new ZookeeperRegistryCenter(zookeeperConfiguration);
++        regCenter.init();
++        return regCenter;
++    }
++}
++```
++
++For a single JVM process, only one SASL authentication information can exist at the same time, 
++because Zookeeper Client reads SASL authentication information through the JAAS mechanism.
++If the current Spring Boot application needs to switch to a Zookeeper Server that uses different SASL authentication information, 
++the existing SASL authentication information needs to be deregistered. 
++The logic is similar to the following,
++
++```java
++import javax.security.auth.login.Configuration;
++
++public class ExampleUtils {
++    public void exitSasl() {
++        Configuration.setConfiguration(null);
++    }
++}
++```
++
++### Kerberos
++
++To connect ElasticJob's `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` to Zookeeper Server with Kerberos authentication enabled,
++the process is similar to DIGEST-MD5. 
++Refer to https://cwiki.apache.org/confluence/display/ZOOKEEPER/Client-Server+mutual+authentication .
++
++Some regions may not allow the use of MIT Kerberos source code or binary products. 
++Please refer to the MIT Kerberos distribution site https://web.mit.edu/kerberos/dist/index.html .

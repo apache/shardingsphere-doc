@@ -1,264 +1,268 @@
-commit 2e781144d8f7b8c4a81778ec59fdc9de3d6b3a6c
+commit f51d3c92a1964a67f62c696c757c07f175757ee2
 Author: linghengqian <linghengqian@outlook.com>
-Date:   Sun Sep 29 17:45:23 2024 +0800
+Date:   Mon Sep 30 11:19:55 2024 +0800
 
-    Adds documentation for connecting to Zookeeper Server with SASL enabled
+    Fixes incorrect environment variable definition in SASL integration doc
 
-diff --git a/docs/content/user-manual/configuration/external-integration/_index.cn.md b/docs/content/user-manual/configuration/external-integration/_index.cn.md
-new file mode 100644
-index 000000000..673a92a59
---- /dev/null
-+++ b/docs/content/user-manual/configuration/external-integration/_index.cn.md
-@@ -0,0 +1,9 @@
-++++
-+title = "外部集成"
-+weight = 4
-+chapter = true
-++++
-+
-+## 简介
-+
-+ElasticJob 存在部分已知的外部集成，这些集成与 ElasticJob 的 API 基本无关。
-diff --git a/docs/content/user-manual/configuration/external-integration/_index.en.md b/docs/content/user-manual/configuration/external-integration/_index.en.md
-new file mode 100644
-index 000000000..4e9b24c8a
---- /dev/null
-+++ b/docs/content/user-manual/configuration/external-integration/_index.en.md
-@@ -0,0 +1,9 @@
-++++
-+title = "External Integration"
-+weight = 4
-+chapter = true
-++++
-+
-+## Introduction
-+
-+ElasticJob has some known external integrations that are largely unrelated to ElasticJob's API.
 diff --git a/docs/content/user-manual/configuration/external-integration/sasl.cn.md b/docs/content/user-manual/configuration/external-integration/sasl.cn.md
-new file mode 100644
-index 000000000..74929efe4
---- /dev/null
+index 74929efe4..5be5529de 100644
+--- a/docs/content/user-manual/configuration/external-integration/sasl.cn.md
 +++ b/docs/content/user-manual/configuration/external-integration/sasl.cn.md
-@@ -0,0 +1,103 @@
-++++
-+title = "连接至开启 SASL 鉴权的 Zookeeper Server"
-+weight = 2
-++++
-+
-+## 使用方式
-+
-+ElasticJob 的 `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` 能正常连接至开启 SASL 鉴权的 Zookeeper Server。
-+SASL 机制允许在客户端和服务器之间实现安全通信，而 ZooKeeper 支持 Kerberos 或 DIGEST-MD5 作为身份验证方案。
-+下文讨论常见情景。
-+
-+### DIGEST-MD5
-+
-+假设通过 Docker Engine 部署单个 Zookeeper Server 实例，对应的 `docker-compose.yml` 内容如下，
-+
-+```yaml
-+services:
-+  zookeeper-test:
-+    image: zookeeper:3.9.2
-+    volumes:
-+      - ./jaas-server-test.conf:/jaas-test.conf
-+    environment:
-+      JVMFLAGS: "-Djava.security.auth.login.config=/jaas-test.conf"
-+      ZOO_CFG_EXTRA: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
-+    ports:
-+      - "2181:2181"
-+```
-+
-+假设存在文件为 `./jaas-server-test.conf`，内容如下，
-+
-+```
-+Server {
-+    org.apache.zookeeper.server.auth.DigestLoginModule required
-+    user_bob="bobsecret";
-+};
-+```
-+
-+假设存在独立的 Spring Boot 应用，只需要在 Spring Boot 的启动类配置 SASL 的鉴权信息。逻辑类似如下，
-+
-+```java
-+import javax.security.auth.login.AppConfigurationEntry;
-+import javax.security.auth.login.Configuration;
-+import java.util.HashMap;
-+import java.util.Map;
-+
-+public class ExampleUtils {
-+    public void initSasl() {
-+        Configuration configuration = new Configuration() {
-+            @Override
-+            public AppConfigurationEntry[] getAppConfigurationEntry(final String name) {
-+                Map<String, String> options = new HashMap<>();
-+                options.put("username", "bob");
-+                options.put("password", "bobsecret");
-+                AppConfigurationEntry entry = new AppConfigurationEntry(
-+                        "org.apache.zookeeper.server.auth.DigestLoginModule",
-+                        AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
-+                        options);
-+                AppConfigurationEntry[] array = new AppConfigurationEntry[1];
-+                array[0] = entry;
-+                return array;
-+            }
-+        };
-+        Configuration.setConfiguration(configuration);
-+    }
-+}
-+```
-+
-+此时可正常初始化 ElasticJob 的 `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter`。逻辑类似如下，
-+
-+```java
-+import org.apache.shardingsphere.elasticjob.reg.base.CoordinatorRegistryCenter;
-+import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperConfiguration;
-+import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter;
-+
-+public class ExampleUtils {
-+    public CoordinatorRegistryCenter initElasticJob() {
-+        ZookeeperConfiguration zookeeperConfiguration = new ZookeeperConfiguration("127.0.0.1:2181", "test-namespace");
-+        CoordinatorRegistryCenter regCenter = new ZookeeperRegistryCenter(zookeeperConfiguration);
-+        regCenter.init();
-+        return regCenter;
-+    }
-+}
-+```
-+
-+对于单个 JVM 进程，同一时间只能存在单个 SASL 鉴权信息，因为 Zookeeper Client 通过 JAAS 机制读取 SASL 鉴权信息。
-+若当前 Spring Boot 应用需切换到使用不同 SASL 鉴权信息的 Zookeeper Server，则需要注销已有的 SASL 鉴权信息。逻辑类似如下，
-+
-+```java
-+import javax.security.auth.login.Configuration;
-+
-+public class ExampleUtils {
-+    public void exitSasl() {
-+        Configuration.setConfiguration(null);
-+    }
-+}
-+```
-+
-+### Kerberos
-+
-+要使 ElasticJob 的 `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` 连接至开启 Kerberos 鉴权的 Zookeeper Server，
-+流程类似于 DIGEST-MD5。以 https://cwiki.apache.org/confluence/display/ZOOKEEPER/Client-Server+mutual+authentication 为准。
-+
-+部分地区可能不被允许使用 MIT Kerberos 的源代码或二进制产物，可参考 MIT Kerberos 的分发站点 https://web.mit.edu/kerberos/dist/index.html 。
+@@ -21,7 +21,7 @@ services:
+       - ./jaas-server-test.conf:/jaas-test.conf
+     environment:
+       JVMFLAGS: "-Djava.security.auth.login.config=/jaas-test.conf"
+-      ZOO_CFG_EXTRA: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
++      ZOO_CFG_EXTRA: "authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
+     ports:
+       - "2181:2181"
+ ```
+@@ -100,4 +100,4 @@ public class ExampleUtils {
+ 要使 ElasticJob 的 `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` 连接至开启 Kerberos 鉴权的 Zookeeper Server，
+ 流程类似于 DIGEST-MD5。以 https://cwiki.apache.org/confluence/display/ZOOKEEPER/Client-Server+mutual+authentication 为准。
+ 
+-部分地区可能不被允许使用 MIT Kerberos 的源代码或二进制产物，可参考 MIT Kerberos 的分发站点 https://web.mit.edu/kerberos/dist/index.html 。
++Kerberos KDC 不存在可用的 Docker Image，用户可能需要手动启动 Kerberos KDC。
 diff --git a/docs/content/user-manual/configuration/external-integration/sasl.en.md b/docs/content/user-manual/configuration/external-integration/sasl.en.md
-new file mode 100644
-index 000000000..f77ad37b4
---- /dev/null
+index f77ad37b4..288d39d14 100644
+--- a/docs/content/user-manual/configuration/external-integration/sasl.en.md
 +++ b/docs/content/user-manual/configuration/external-integration/sasl.en.md
-@@ -0,0 +1,113 @@
-++++
-+title = "Connect to Zookeeper Server with SASL authentication enabled"
-+weight = 2
-++++
+@@ -23,7 +23,7 @@ services:
+       - ./jaas-server-test.conf:/jaas-test.conf
+     environment:
+       JVMFLAGS: "-Djava.security.auth.login.config=/jaas-test.conf"
+-      ZOO_CFG_EXTRA: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
++      ZOO_CFG_EXTRA: "authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
+     ports:
+       - "2181:2181"
+ ```
+@@ -109,5 +109,4 @@ To connect ElasticJob's `org.apache.shardingsphere.elasticjob.reg.zookeeper.Zook
+ the process is similar to DIGEST-MD5. 
+ Refer to https://cwiki.apache.org/confluence/display/ZOOKEEPER/Client-Server+mutual+authentication .
+ 
+-Some regions may not allow the use of MIT Kerberos source code or binary products. 
+-Please refer to the MIT Kerberos distribution site https://web.mit.edu/kerberos/dist/index.html .
++There is no available Docker Image for Kerberos KDC. Users may need to start Kerberos KDC manually.
+diff --git a/docs/content/user-manual/configuration/graalvm-native-image.cn.md b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
+index 560c0f212..b008090b5 100644
+--- a/docs/content/user-manual/configuration/graalvm-native-image.cn.md
++++ b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
+@@ -34,7 +34,6 @@ ElasticJob 不为已停止维护的 GraalVM CE 版本设置 CI。
+             <groupId>org.apache.shardingsphere.elasticjob</groupId>
+             <artifactId>elasticjob-bootstrap</artifactId>
+             <version>${elasticjob.version}</version>
+-            <scope>test</scope>
+         </dependency>
+     </dependencies>
+     
+@@ -43,7 +42,7 @@ ElasticJob 不为已停止维护的 GraalVM CE 版本设置 CI。
+             <plugin>
+                 <groupId>org.graalvm.buildtools</groupId>
+                 <artifactId>native-maven-plugin</artifactId>
+-                <version>0.10.2</version>
++                <version>0.10.3</version>
+                 <extensions>true</extensions>
+                 <executions>
+                     <execution>
+@@ -76,12 +75,12 @@ ElasticJob 不为已停止维护的 GraalVM CE 版本设置 CI。
+ 
+ ```groovy
+ plugins {
+-   id 'org.graalvm.buildtools.native' version '0.10.2'
++   id 'org.graalvm.buildtools.native' version '0.10.3'
+ }
+ 
+ dependencies {
+    implementation 'org.apache.shardingsphere.elasticjob:elasticjob-bootstrap:${elasticjob.version}'
+-   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.2', classifier: 'repository', ext: 'zip')
++   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.3', classifier: 'repository', ext: 'zip')
+ }
+ 
+ graalvmNative {
+@@ -105,18 +104,16 @@ graalvmNative {
+             <groupId>org.apache.shardingsphere.elasticjob</groupId>
+             <artifactId>elasticjob-spring-boot-starter</artifactId>
+             <version>${elasticjob.version}</version>
+-            <scope>test</scope>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+-            <artifactId>spring-boot-starter-jdbc</artifactId>
+-            <version>3.3.2</version>
+-            <scope>test</scope>
++            <artifactId>spring-boot-starter-web</artifactId>
++            <version>3.3.4</version>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+-            <artifactId>spring-boot-starter-web</artifactId>
+-            <version>3.3.2</version>
++            <artifactId>spring-boot-starter-test</artifactId>
++            <version>3.3.4</version>
+             <scope>test</scope>
+         </dependency>
+     </dependencies>
+@@ -126,7 +123,7 @@ graalvmNative {
+             <plugin>
+                 <groupId>org.graalvm.buildtools</groupId>
+                 <artifactId>native-maven-plugin</artifactId>
+-                <version>0.10.2</version>
++                <version>0.10.3</version>
+                 <extensions>true</extensions>
+                 <executions>
+                     <execution>
+@@ -148,7 +145,7 @@ graalvmNative {
+             <plugin>
+                 <groupId>org.springframework.boot</groupId>
+                 <artifactId>spring-boot-maven-plugin</artifactId>
+-                <version>3.3.2</version>
++                <version>3.3.4</version>
+                 <executions>
+                     <execution>
+                         <id>process-test-aot</id>
+@@ -172,16 +169,17 @@ graalvmNative {
+ 
+ ```groovy
+ plugins {
+-   id 'org.springframework.boot' version '3.3.2'
+-   id 'io.spring.dependency-management' version '1.1.6'
+-   id 'org.graalvm.buildtools.native' version '0.10.2'
++    id 'org.springframework.boot' version '3.3.4'
++    id 'io.spring.dependency-management' version '1.1.6'
++    id 'org.graalvm.buildtools.native' version '0.10.3'
+ }
+ 
+ dependencies {
+-   implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+-   implementation 'org.springframework.boot:spring-boot-starter-web'
+-   implementation 'org.apache.shardingsphere.elasticjob:elasticjob-spring-boot-starter:${elasticjob.version}'
+-   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.2', classifier: 'repository', ext: 'zip')
++    implementation 'org.springframework.boot:spring-boot-starter-web'
++    testImplementation 'org.springframework.boot:spring-boot-starter-test'
++    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
++    implementation 'org.apache.shardingsphere.elasticjob:elasticjob-spring-boot-starter:${elasticjob.version}'
++    implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.3', classifier: 'repository', ext: 'zip')
+ }
+ 
+ graalvmNative {
+@@ -191,7 +189,6 @@ graalvmNative {
+ }
+ ```
+ 
+-
+ ## 对于 sbt 等不被 GraalVM Native Build Tools 支持的构建工具
+ 
+ 此类需求需要在 https://github.com/graalvm/native-build-tools 打开额外的 issue 并提供对应构建工具的 Plugin 实现。
+diff --git a/docs/content/user-manual/configuration/graalvm-native-image.en.md b/docs/content/user-manual/configuration/graalvm-native-image.en.md
+index 4353929cb..a6bc4e828 100644
+--- a/docs/content/user-manual/configuration/graalvm-native-image.en.md
++++ b/docs/content/user-manual/configuration/graalvm-native-image.en.md
+@@ -36,7 +36,6 @@ refer to the documentation of GraalVM Native Build Tools.
+             <groupId>org.apache.shardingsphere.elasticjob</groupId>
+             <artifactId>elasticjob-bootstrap</artifactId>
+             <version>${elasticjob.version}</version>
+-            <scope>test</scope>
+         </dependency>
+     </dependencies>
+     
+@@ -45,7 +44,7 @@ refer to the documentation of GraalVM Native Build Tools.
+             <plugin>
+                 <groupId>org.graalvm.buildtools</groupId>
+                 <artifactId>native-maven-plugin</artifactId>
+-                <version>0.10.2</version>
++                <version>0.10.3</version>
+                 <extensions>true</extensions>
+                 <executions>
+                     <execution>
+@@ -78,12 +77,12 @@ Refer to https://github.com/graalvm/native-build-tools/issues/572.
+ 
+ ```groovy
+ plugins {
+-   id 'org.graalvm.buildtools.native' version '0.10.2'
++   id 'org.graalvm.buildtools.native' version '0.10.3'
+ }
+ 
+ dependencies {
+    implementation 'org.apache.shardingsphere.elasticjob:elasticjob-bootstrap:${elasticjob.version}'
+-   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.2', classifier: 'repository', ext: 'zip')
++   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.3', classifier: 'repository', ext: 'zip')
+ }
+ 
+ graalvmNative {
+@@ -108,28 +107,26 @@ To configure additional Maven Profiles for the project, refer to the documentati
+             <groupId>org.apache.shardingsphere.elasticjob</groupId>
+             <artifactId>elasticjob-spring-boot-starter</artifactId>
+             <version>${elasticjob.version}</version>
+-            <scope>test</scope>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+-            <artifactId>spring-boot-starter-jdbc</artifactId>
+-            <version>3.3.2</version>
+-            <scope>test</scope>
++            <artifactId>spring-boot-starter-web</artifactId>
++            <version>3.3.4</version>
+         </dependency>
+         <dependency>
+             <groupId>org.springframework.boot</groupId>
+-            <artifactId>spring-boot-starter-web</artifactId>
+-            <version>3.3.2</version>
++            <artifactId>spring-boot-starter-test</artifactId>
++            <version>3.3.4</version>
+             <scope>test</scope>
+         </dependency>
+     </dependencies>
+-    
 +
-+## Usage
-+
-+ElasticJob's `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` can connect to Zookeeper Server with SASL authentication enabled.
-+The SASL mechanism allows secure communication between the client and the server, 
-+and ZooKeeper supports Kerberos or DIGEST-MD5 as authentication schemes.
-+Common scenarios are discussed below.
-+
-+### DIGEST-MD5
-+
-+Assuming that a single Zookeeper Server instance is deployed through Docker Engine, 
-+the corresponding `docker-compose.yml` content is as follows,
-+
-+```yaml
-+services:
-+  zookeeper-test:
-+    image: zookeeper:3.9.2
-+    volumes:
-+      - ./jaas-server-test.conf:/jaas-test.conf
-+    environment:
-+      JVMFLAGS: "-Djava.security.auth.login.config=/jaas-test.conf"
-+      ZOO_CFG_EXTRA: "org.apache.zookeeper.server.auth.SASLAuthenticationProvider sessionRequireClientSASLAuth=true"
-+    ports:
-+      - "2181:2181"
-+```
-+
-+Assume that there is a file called `./jaas-server-test.conf` with the following content:
-+
-+```
-+Server {
-+    org.apache.zookeeper.server.auth.DigestLoginModule required
-+    user_bob="bobsecret";
-+};
-+```
-+
-+Assuming there is an independent Spring Boot application, 
-+users only need to configure SASL authentication information in the Spring Boot startup class. 
-+The logic is similar to the following:
-+
-+```java
-+import javax.security.auth.login.AppConfigurationEntry;
-+import javax.security.auth.login.Configuration;
-+import java.util.HashMap;
-+import java.util.Map;
-+
-+public class ExampleUtils {
-+    public void initSasl() {
-+        Configuration configuration = new Configuration() {
-+            @Override
-+            public AppConfigurationEntry[] getAppConfigurationEntry(final String name) {
-+                Map<String, String> options = new HashMap<>();
-+                options.put("username", "bob");
-+                options.put("password", "bobsecret");
-+                AppConfigurationEntry entry = new AppConfigurationEntry(
-+                        "org.apache.zookeeper.server.auth.DigestLoginModule",
-+                        AppConfigurationEntry.LoginModuleControlFlag.REQUIRED,
-+                        options);
-+                AppConfigurationEntry[] array = new AppConfigurationEntry[1];
-+                array[0] = entry;
-+                return array;
-+            }
-+        };
-+        Configuration.setConfiguration(configuration);
+     <build>
+         <plugins>
+             <plugin>
+                 <groupId>org.graalvm.buildtools</groupId>
+                 <artifactId>native-maven-plugin</artifactId>
+-                <version>0.10.2</version>
++                <version>0.10.3</version>
+                 <extensions>true</extensions>
+                 <executions>
+                     <execution>
+@@ -151,7 +148,7 @@ To configure additional Maven Profiles for the project, refer to the documentati
+             <plugin>
+                 <groupId>org.springframework.boot</groupId>
+                 <artifactId>spring-boot-maven-plugin</artifactId>
+-                <version>3.3.2</version>
++                <version>3.3.4</version>
+                 <executions>
+                     <execution>
+                         <id>process-test-aot</id>
+@@ -175,22 +172,23 @@ Refer to https://github.com/graalvm/native-build-tools/issues/572 .
+ 
+ ```groovy
+ plugins {
+-   id 'org.springframework.boot' version '3.3.2'
+-   id 'io.spring.dependency-management' version '1.1.6'
+-   id 'org.graalvm.buildtools.native' version '0.10.2'
++    id 'org.springframework.boot' version '3.3.4'
++    id 'io.spring.dependency-management' version '1.1.6'
++    id 'org.graalvm.buildtools.native' version '0.10.3'
+ }
+ 
+ dependencies {
+-   implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+-   implementation 'org.springframework.boot:spring-boot-starter-web'
+-   implementation 'org.apache.shardingsphere.elasticjob:elasticjob-spring-boot-starter:${elasticjob.version}'
+-   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.2', classifier: 'repository', ext: 'zip')
++    implementation 'org.springframework.boot:spring-boot-starter-web'
++    testImplementation 'org.springframework.boot:spring-boot-starter-test'
++    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
++    implementation 'org.apache.shardingsphere.elasticjob:elasticjob-spring-boot-starter:${elasticjob.version}'
++    implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.3', classifier: 'repository', ext: 'zip')
+ }
+ 
+ graalvmNative {
+-   metadataRepository {
++    metadataRepository {
+         enabled.set(false)
+-   }
 +    }
-+}
-+```
-+
-+At this time, the `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` of ElasticJob can be initialized normally. 
-+The logic is similar to the following:
-+
-+```java
-+import org.apache.shardingsphere.elasticjob.reg.base.CoordinatorRegistryCenter;
-+import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperConfiguration;
-+import org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter;
-+
-+public class ExampleUtils {
-+    public CoordinatorRegistryCenter initElasticJob() {
-+        ZookeeperConfiguration zookeeperConfiguration = new ZookeeperConfiguration("127.0.0.1:2181", "test-namespace");
-+        CoordinatorRegistryCenter regCenter = new ZookeeperRegistryCenter(zookeeperConfiguration);
-+        regCenter.init();
-+        return regCenter;
-+    }
-+}
-+```
-+
-+For a single JVM process, only one SASL authentication information can exist at the same time, 
-+because Zookeeper Client reads SASL authentication information through the JAAS mechanism.
-+If the current Spring Boot application needs to switch to a Zookeeper Server that uses different SASL authentication information, 
-+the existing SASL authentication information needs to be deregistered. 
-+The logic is similar to the following,
-+
-+```java
-+import javax.security.auth.login.Configuration;
-+
-+public class ExampleUtils {
-+    public void exitSasl() {
-+        Configuration.setConfiguration(null);
-+    }
-+}
-+```
-+
-+### Kerberos
-+
-+To connect ElasticJob's `org.apache.shardingsphere.elasticjob.reg.zookeeper.ZookeeperRegistryCenter` to Zookeeper Server with Kerberos authentication enabled,
-+the process is similar to DIGEST-MD5. 
-+Refer to https://cwiki.apache.org/confluence/display/ZOOKEEPER/Client-Server+mutual+authentication .
-+
-+Some regions may not allow the use of MIT Kerberos source code or binary products. 
-+Please refer to the MIT Kerberos distribution site https://web.mit.edu/kerberos/dist/index.html .
+ }
+ ```
+ 

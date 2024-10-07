@@ -63,477 +63,493 @@
 <a class="jxr_linenumber" name="L55" href="#L55">55</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.distsql.segment.table.AutoTableRuleSegment;
 <a class="jxr_linenumber" name="L56" href="#L56">56</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.distsql.segment.table.TableRuleSegment;
 <a class="jxr_linenumber" name="L57" href="#L57">57</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.exception.algorithm.ShardingAlgorithmClassImplementationException;
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.exception.metadata.ShardingTableRuleNotFoundException;
-<a class="jxr_linenumber" name="L59" href="#L59">59</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.exception.strategy.InvalidShardingStrategyConfigurationException;
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.rule.BindingTableCheckedConfiguration;
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.rule.ShardingTable;
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.spi.ShardingAlgorithm;
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.spi.ShardingAuditAlgorithm;
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>  
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>  <strong class="jxr_keyword">import</strong> java.util.Collections;
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>  <strong class="jxr_keyword">import</strong> java.util.HashMap;
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>  <strong class="jxr_keyword">import</strong> java.util.HashSet;
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>  <strong class="jxr_keyword">import</strong> java.util.Iterator;
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedHashMap;
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedHashSet;
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedList;
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>  <strong class="jxr_keyword">import</strong> java.util.Map;
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>  <strong class="jxr_keyword">import</strong> java.util.Map.Entry;
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>  <strong class="jxr_keyword">import</strong> java.util.Objects;
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>  <strong class="jxr_keyword">import</strong> java.util.Optional;
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>  <strong class="jxr_keyword">import</strong> java.util.Set;
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>  <strong class="jxr_keyword">import</strong> java.util.function.Function;
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>  <strong class="jxr_keyword">import</strong> java.util.stream.Collectors;
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>  
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>  <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>  <em class="jxr_javadoccomment"> * Sharding table rule checker.</em>
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>  <em class="jxr_javadoccomment"> */</em>
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>  @NoArgsConstructor(access = AccessLevel.PRIVATE)
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>  <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a name="ShardingTableRuleStatementChecker" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#ShardingTableRuleStatementChecker">ShardingTableRuleStatementChecker</a> {
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>      
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String DELIMITER = <span class="jxr_string">"."</span>;
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>      
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>  <em class="jxr_javadoccomment">     * Check create sharding table rule statement.</em>
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L92" href="#L92">92</a>  <em class="jxr_javadoccomment">     * @param database database</em>
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>  <em class="jxr_javadoccomment">     * @param rules rules</em>
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>  <em class="jxr_javadoccomment">     * @param ifNotExists if not exists</em>
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>  <em class="jxr_javadoccomment">     * @param currentRuleConfig current rule configuration</em>
-<a class="jxr_linenumber" name="L96" href="#L96">96</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L97" href="#L97">97</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkCreation(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> ifNotExists,
-<a class="jxr_linenumber" name="L98" href="#L98">98</a>                                       <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
-<a class="jxr_linenumber" name="L99" href="#L99">99</a>          check(database, rules, ifNotExists, currentRuleConfig, <strong class="jxr_keyword">true</strong>);
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>     }
-<a class="jxr_linenumber" name="L101" href="#L101">101</a>     
-<a class="jxr_linenumber" name="L102" href="#L102">102</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L103" href="#L103">103</a> <em class="jxr_javadoccomment">     * Check alter sharding table rule statement.</em>
-<a class="jxr_linenumber" name="L104" href="#L104">104</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L105" href="#L105">105</a> <em class="jxr_javadoccomment">     * @param database database</em>
-<a class="jxr_linenumber" name="L106" href="#L106">106</a> <em class="jxr_javadoccomment">     * @param rules rules</em>
-<a class="jxr_linenumber" name="L107" href="#L107">107</a> <em class="jxr_javadoccomment">     * @param currentRuleConfig current rule configuration</em>
-<a class="jxr_linenumber" name="L108" href="#L108">108</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L109" href="#L109">109</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAlteration(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
-<a class="jxr_linenumber" name="L110" href="#L110">110</a>         check(database, rules, false, currentRuleConfig, false);
-<a class="jxr_linenumber" name="L111" href="#L111">111</a>     }
-<a class="jxr_linenumber" name="L112" href="#L112">112</a>     
-<a class="jxr_linenumber" name="L113" href="#L113">113</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L114" href="#L114">114</a> <em class="jxr_javadoccomment">     * Judge whether binding table groups are valid.</em>
-<a class="jxr_linenumber" name="L115" href="#L115">115</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L116" href="#L116">116</a> <em class="jxr_javadoccomment">     * @param bindingTableGroups binding table groups</em>
-<a class="jxr_linenumber" name="L117" href="#L117">117</a> <em class="jxr_javadoccomment">     * @param currentRuleConfig current rule configuration</em>
-<a class="jxr_linenumber" name="L118" href="#L118">118</a> <em class="jxr_javadoccomment">     * @return binding table groups are valid or not</em>
-<a class="jxr_linenumber" name="L119" href="#L119">119</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L120" href="#L120">120</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidBindingTableGroups(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingTableReferenceRuleConfiguration&gt; bindingTableGroups, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
-<a class="jxr_linenumber" name="L121" href="#L121">121</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeCheckedRuleConfig = createToBeCheckedShardingRuleConfiguration(currentRuleConfig);
-<a class="jxr_linenumber" name="L122" href="#L122">122</a>         toBeCheckedRuleConfig.setBindingTableGroups(bindingTableGroups);
-<a class="jxr_linenumber" name="L123" href="#L123">123</a>         Collection&lt;String&gt; dataSourceNames = getRequiredDataSources(toBeCheckedRuleConfig);
-<a class="jxr_linenumber" name="L124" href="#L124">124</a>         dataSourceNames.addAll(getRequiredDataSources(currentRuleConfig));
-<a class="jxr_linenumber" name="L125" href="#L125">125</a>         <strong class="jxr_keyword">return</strong> check(toBeCheckedRuleConfig, dataSourceNames);
-<a class="jxr_linenumber" name="L126" href="#L126">126</a>     }
-<a class="jxr_linenumber" name="L127" href="#L127">127</a>     
-<a class="jxr_linenumber" name="L128" href="#L128">128</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> createToBeCheckedShardingRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
-<a class="jxr_linenumber" name="L129" href="#L129">129</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> result = <strong class="jxr_keyword">new</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a>();
-<a class="jxr_linenumber" name="L130" href="#L130">130</a>         result.setTables(<strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;(currentRuleConfig.getTables()));
-<a class="jxr_linenumber" name="L131" href="#L131">131</a>         result.setAutoTables(<strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;(currentRuleConfig.getAutoTables()));
-<a class="jxr_linenumber" name="L132" href="#L132">132</a>         result.setBindingTableGroups(<strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;(currentRuleConfig.getBindingTableGroups()));
-<a class="jxr_linenumber" name="L133" href="#L133">133</a>         result.setDefaultTableShardingStrategy(currentRuleConfig.getDefaultTableShardingStrategy());
-<a class="jxr_linenumber" name="L134" href="#L134">134</a>         result.setDefaultDatabaseShardingStrategy(currentRuleConfig.getDefaultDatabaseShardingStrategy());
-<a class="jxr_linenumber" name="L135" href="#L135">135</a>         result.setDefaultKeyGenerateStrategy(currentRuleConfig.getDefaultKeyGenerateStrategy());
-<a class="jxr_linenumber" name="L136" href="#L136">136</a>         result.setDefaultShardingColumn(currentRuleConfig.getDefaultShardingColumn());
-<a class="jxr_linenumber" name="L137" href="#L137">137</a>         result.setShardingAlgorithms(<strong class="jxr_keyword">new</strong> LinkedHashMap&lt;&gt;(currentRuleConfig.getShardingAlgorithms()));
-<a class="jxr_linenumber" name="L138" href="#L138">138</a>         result.setKeyGenerators(<strong class="jxr_keyword">new</strong> LinkedHashMap&lt;&gt;(currentRuleConfig.getKeyGenerators()));
-<a class="jxr_linenumber" name="L139" href="#L139">139</a>         result.setAuditors(<strong class="jxr_keyword">new</strong> LinkedHashMap&lt;&gt;(currentRuleConfig.getAuditors()));
-<a class="jxr_linenumber" name="L140" href="#L140">140</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L141" href="#L141">141</a>     }
-<a class="jxr_linenumber" name="L142" href="#L142">142</a>     
-<a class="jxr_linenumber" name="L143" href="#L143">143</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> check(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> ifNotExists, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig,
-<a class="jxr_linenumber" name="L144" href="#L144">144</a>                               <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> isCreated) {
-<a class="jxr_linenumber" name="L145" href="#L145">145</a>         String databaseName = database.getName();
-<a class="jxr_linenumber" name="L146" href="#L146">146</a>         checkTables(databaseName, rules, currentRuleConfig, isCreated, ifNotExists);
-<a class="jxr_linenumber" name="L147" href="#L147">147</a>         checkDataSources(databaseName, rules, database);
-<a class="jxr_linenumber" name="L148" href="#L148">148</a>         checkKeyGenerators(rules);
-<a class="jxr_linenumber" name="L149" href="#L149">149</a>         checkAuditors(rules);
-<a class="jxr_linenumber" name="L150" href="#L150">150</a>         checkAutoTableRule(rules.stream().filter(AutoTableRuleSegment.<strong class="jxr_keyword">class</strong>::isInstance).map(AutoTableRuleSegment.<strong class="jxr_keyword">class</strong>::<strong class="jxr_keyword">cast</strong>).collect(Collectors.toList()));
-<a class="jxr_linenumber" name="L151" href="#L151">151</a>         checkTableRule(rules.stream().filter(TableRuleSegment.<strong class="jxr_keyword">class</strong>::isInstance).map(TableRuleSegment.<strong class="jxr_keyword">class</strong>::<strong class="jxr_keyword">cast</strong>).collect(Collectors.toList()));
-<a class="jxr_linenumber" name="L152" href="#L152">152</a>         <strong class="jxr_keyword">if</strong> (!isCreated) {
-<a class="jxr_linenumber" name="L153" href="#L153">153</a>             checkBindingTableRules(rules, currentRuleConfig);
-<a class="jxr_linenumber" name="L154" href="#L154">154</a>         }
-<a class="jxr_linenumber" name="L155" href="#L155">155</a>     }
-<a class="jxr_linenumber" name="L156" href="#L156">156</a>     
-<a class="jxr_linenumber" name="L157" href="#L157">157</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> check(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> checkedConfig, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
-<a class="jxr_linenumber" name="L158" href="#L158">158</a>         Collection&lt;String&gt; allDataSourceNames = getDataSourceNames(checkedConfig.getTables(), checkedConfig.getAutoTables(), dataSourceNames);
-<a class="jxr_linenumber" name="L159" href="#L159">159</a>         Map&lt;String, ShardingAlgorithm&gt; shardingAlgorithms = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;(checkedConfig.getShardingAlgorithms().size(), 1F);
-<a class="jxr_linenumber" name="L160" href="#L160">160</a>         Map&lt;String, ShardingTable&gt; shardingTables = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;();
-<a class="jxr_linenumber" name="L161" href="#L161">161</a>         checkedConfig.getShardingAlgorithms().forEach((key, value) -&gt; shardingAlgorithms.put(key, TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, value.getType(), value.getProps())));
-<a class="jxr_linenumber" name="L162" href="#L162">162</a>         shardingTables.putAll(createShardingTables(checkedConfig.getTables(), checkedConfig.getDefaultKeyGenerateStrategy(), allDataSourceNames));
-<a class="jxr_linenumber" name="L163" href="#L163">163</a>         shardingTables.putAll(createShardingAutoTables(checkedConfig.getAutoTables(), shardingAlgorithms, checkedConfig.getDefaultKeyGenerateStrategy(), allDataSourceNames));
-<a class="jxr_linenumber" name="L164" href="#L164">164</a>         <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> defaultDatabaseShardingStrategyConfig = <strong class="jxr_keyword">null</strong> == checkedConfig.getDefaultDatabaseShardingStrategy()
-<a class="jxr_linenumber" name="L165" href="#L165">165</a>                 ? <strong class="jxr_keyword">new</strong> <a name="NoneShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/NoneShardingStrategyConfiguration.html#NoneShardingStrategyConfiguration">NoneShardingStrategyConfiguration</a>()
-<a class="jxr_linenumber" name="L166" href="#L166">166</a>                 : checkedConfig.getDefaultDatabaseShardingStrategy();
-<a class="jxr_linenumber" name="L167" href="#L167">167</a>         <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> defaultTableShardingStrategyConfig = <strong class="jxr_keyword">null</strong> == checkedConfig.getDefaultTableShardingStrategy()
-<a class="jxr_linenumber" name="L168" href="#L168">168</a>                 ? <strong class="jxr_keyword">new</strong> <a name="NoneShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/NoneShardingStrategyConfiguration.html#NoneShardingStrategyConfiguration">NoneShardingStrategyConfiguration</a>()
-<a class="jxr_linenumber" name="L169" href="#L169">169</a>                 : checkedConfig.getDefaultTableShardingStrategy();
-<a class="jxr_linenumber" name="L170" href="#L170">170</a>         <strong class="jxr_keyword">return</strong> isValidBindingTableConfiguration(shardingTables, <strong class="jxr_keyword">new</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a>(allDataSourceNames, shardingAlgorithms, checkedConfig.getBindingTableGroups(),
-<a class="jxr_linenumber" name="L171" href="#L171">171</a>                 defaultDatabaseShardingStrategyConfig, defaultTableShardingStrategyConfig, checkedConfig.getDefaultShardingColumn()));
-<a class="jxr_linenumber" name="L172" href="#L172">172</a>     }
-<a class="jxr_linenumber" name="L173" href="#L173">173</a>     
-<a class="jxr_linenumber" name="L174" href="#L174">174</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDataSourceNames(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingTableRuleConfiguration&gt; tableRuleConfigs,
-<a class="jxr_linenumber" name="L175" href="#L175">175</a>                                                          <strong class="jxr_keyword">final</strong> Collection&lt;ShardingAutoTableRuleConfiguration&gt; autoTableRuleConfigs, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
-<a class="jxr_linenumber" name="L176" href="#L176">176</a>         <strong class="jxr_keyword">if</strong> (tableRuleConfigs.isEmpty() &amp;&amp; autoTableRuleConfigs.isEmpty()) {
-<a class="jxr_linenumber" name="L177" href="#L177">177</a>             <strong class="jxr_keyword">return</strong> dataSourceNames;
-<a class="jxr_linenumber" name="L178" href="#L178">178</a>         }
-<a class="jxr_linenumber" name="L179" href="#L179">179</a>         <strong class="jxr_keyword">if</strong> (tableRuleConfigs.stream().map(ShardingTableRuleConfiguration::getActualDataNodes).anyMatch(each -&gt; <strong class="jxr_keyword">null</strong> == each || each.isEmpty())) {
-<a class="jxr_linenumber" name="L180" href="#L180">180</a>             <strong class="jxr_keyword">return</strong> dataSourceNames;
-<a class="jxr_linenumber" name="L181" href="#L181">181</a>         }
-<a class="jxr_linenumber" name="L182" href="#L182">182</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
-<a class="jxr_linenumber" name="L183" href="#L183">183</a>         tableRuleConfigs.forEach(each -&gt; result.addAll(getDataSourceNames(each)));
-<a class="jxr_linenumber" name="L184" href="#L184">184</a>         autoTableRuleConfigs.forEach(each -&gt; result.addAll(InlineExpressionParserFactory.newInstance(each.getActualDataSources()).splitAndEvaluate()));
-<a class="jxr_linenumber" name="L185" href="#L185">185</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L186" href="#L186">186</a>     }
-<a class="jxr_linenumber" name="L187" href="#L187">187</a>     
-<a class="jxr_linenumber" name="L188" href="#L188">188</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDataSourceNames(<strong class="jxr_keyword">final</strong> <a name="ShardingTableRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/rule/ShardingTableRuleConfiguration.html#ShardingTableRuleConfiguration">ShardingTableRuleConfiguration</a> shardingTableRuleConfig) {
-<a class="jxr_linenumber" name="L189" href="#L189">189</a>         <strong class="jxr_keyword">return</strong> InlineExpressionParserFactory.newInstance(shardingTableRuleConfig.getActualDataNodes())
-<a class="jxr_linenumber" name="L190" href="#L190">190</a>                 .splitAndEvaluate().stream().map(each -&gt; <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getDataSourceName()).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L191" href="#L191">191</a>     }
-<a class="jxr_linenumber" name="L192" href="#L192">192</a>     
-<a class="jxr_linenumber" name="L193" href="#L193">193</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDataSourceNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; actualDataNodes) {
-<a class="jxr_linenumber" name="L194" href="#L194">194</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;(actualDataNodes.size(), 1F);
-<a class="jxr_linenumber" name="L195" href="#L195">195</a>         <strong class="jxr_keyword">for</strong> (String each : actualDataNodes) {
-<a class="jxr_linenumber" name="L196" href="#L196">196</a>             result.add(isValidDataNode(each) ? <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getDataSourceName() : each);
-<a class="jxr_linenumber" name="L197" href="#L197">197</a>         }
-<a class="jxr_linenumber" name="L198" href="#L198">198</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L199" href="#L199">199</a>     }
-<a class="jxr_linenumber" name="L200" href="#L200">200</a>     
-<a class="jxr_linenumber" name="L201" href="#L201">201</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidDataNode(<strong class="jxr_keyword">final</strong> String dataNodeStr) {
-<a class="jxr_linenumber" name="L202" href="#L202">202</a>         <strong class="jxr_keyword">return</strong> dataNodeStr.contains(DELIMITER) &amp;&amp; 2 == Splitter.on(DELIMITER).omitEmptyStrings().splitToList(dataNodeStr).size();
-<a class="jxr_linenumber" name="L203" href="#L203">203</a>     }
-<a class="jxr_linenumber" name="L204" href="#L204">204</a>     
-<a class="jxr_linenumber" name="L205" href="#L205">205</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Map&lt;String, ShardingTable&gt; createShardingTables(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingTableRuleConfiguration&gt; tableRuleConfigs,
-<a class="jxr_linenumber" name="L206" href="#L206">206</a>                                                                    <strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig,
-<a class="jxr_linenumber" name="L207" href="#L207">207</a>                                                                    <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
-<a class="jxr_linenumber" name="L208" href="#L208">208</a>         <strong class="jxr_keyword">return</strong> tableRuleConfigs.stream().map(each -&gt; <strong class="jxr_keyword">new</strong> ShardingTable(each, dataSourceNames, getDefaultGenerateKeyColumn(defaultKeyGenerateStrategyConfig)))
-<a class="jxr_linenumber" name="L209" href="#L209">209</a>                 .collect(Collectors.toMap(each -&gt; each.getLogicTable().toLowerCase(), Function.identity(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::<strong class="jxr_keyword">new</strong>));
-<a class="jxr_linenumber" name="L210" href="#L210">210</a>     }
-<a class="jxr_linenumber" name="L211" href="#L211">211</a>     
-<a class="jxr_linenumber" name="L212" href="#L212">212</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> String getDefaultGenerateKeyColumn(<strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig) {
-<a class="jxr_linenumber" name="L213" href="#L213">213</a>         <strong class="jxr_keyword">return</strong> Optional.ofNullable(defaultKeyGenerateStrategyConfig).map(KeyGenerateStrategyConfiguration::getColumn).orElse(<strong class="jxr_keyword">null</strong>);
-<a class="jxr_linenumber" name="L214" href="#L214">214</a>     }
-<a class="jxr_linenumber" name="L215" href="#L215">215</a>     
-<a class="jxr_linenumber" name="L216" href="#L216">216</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Map&lt;String, ShardingTable&gt; createShardingAutoTables(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingAutoTableRuleConfiguration&gt; autoTableRuleConfigs,
-<a class="jxr_linenumber" name="L217" href="#L217">217</a>                                                                        <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingAlgorithm&gt; shardingAlgorithms,
-<a class="jxr_linenumber" name="L218" href="#L218">218</a>                                                                        <strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
-<a class="jxr_linenumber" name="L219" href="#L219">219</a>         <strong class="jxr_keyword">return</strong> autoTableRuleConfigs.stream().map(each -&gt; createShardingAutoTable(defaultKeyGenerateStrategyConfig, each, shardingAlgorithms, dataSourceNames))
-<a class="jxr_linenumber" name="L220" href="#L220">220</a>                 .collect(Collectors.toMap(each -&gt; each.getLogicTable().toLowerCase(), Function.identity(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::<strong class="jxr_keyword">new</strong>));
-<a class="jxr_linenumber" name="L221" href="#L221">221</a>     }
-<a class="jxr_linenumber" name="L222" href="#L222">222</a>     
-<a class="jxr_linenumber" name="L223" href="#L223">223</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> ShardingTable createShardingAutoTable(<strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig, <strong class="jxr_keyword">final</strong> <a name="ShardingAutoTableRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/rule/ShardingAutoTableRuleConfiguration.html#ShardingAutoTableRuleConfiguration">ShardingAutoTableRuleConfiguration</a> autoTableRuleConfig,
-<a class="jxr_linenumber" name="L224" href="#L224">224</a>                                                          <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingAlgorithm&gt; shardingAlgorithms, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
-<a class="jxr_linenumber" name="L225" href="#L225">225</a>         <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = shardingAlgorithms.get(autoTableRuleConfig.getShardingStrategy().getShardingAlgorithmName());
-<a class="jxr_linenumber" name="L226" href="#L226">226</a>         ShardingSpherePreconditions.checkState(shardingAlgorithm instanceof ShardingAutoTableAlgorithm,
-<a class="jxr_linenumber" name="L227" href="#L227">227</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="ShardingAlgorithmClassImplementationException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/algorithm/ShardingAlgorithmClassImplementationException.html#ShardingAlgorithmClassImplementationException">ShardingAlgorithmClassImplementationException</a>(autoTableRuleConfig.getShardingStrategy().getShardingAlgorithmName(), ShardingAutoTableAlgorithm.<strong class="jxr_keyword">class</strong>));
-<a class="jxr_linenumber" name="L228" href="#L228">228</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> ShardingTable(autoTableRuleConfig, dataSourceNames, (<a name="ShardingAutoTableAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/api/sharding/ShardingAutoTableAlgorithm.html#ShardingAutoTableAlgorithm">ShardingAutoTableAlgorithm</a>) shardingAlgorithm, getDefaultGenerateKeyColumn(defaultKeyGenerateStrategyConfig));
-<a class="jxr_linenumber" name="L229" href="#L229">229</a>     }
-<a class="jxr_linenumber" name="L230" href="#L230">230</a>     
-<a class="jxr_linenumber" name="L231" href="#L231">231</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidBindingTableConfiguration(<strong class="jxr_keyword">final</strong> Map&lt;String, ShardingTable&gt; shardingTables, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
-<a class="jxr_linenumber" name="L232" href="#L232">232</a>         <strong class="jxr_keyword">for</strong> (<a name="ShardingTableReferenceRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/rule/ShardingTableReferenceRuleConfiguration.html#ShardingTableReferenceRuleConfiguration">ShardingTableReferenceRuleConfiguration</a> each : checkedConfig.getBindingTableGroups()) {
-<a class="jxr_linenumber" name="L233" href="#L233">233</a>             Collection&lt;String&gt; bindingTables = Splitter.on(<span class="jxr_string">","</span>).trimResults().splitToList(each.getReference().toLowerCase());
-<a class="jxr_linenumber" name="L234" href="#L234">234</a>             <strong class="jxr_keyword">if</strong> (bindingTables.size() &lt;= 1) {
-<a class="jxr_linenumber" name="L235" href="#L235">235</a>                 <strong class="jxr_keyword">return</strong> false;
-<a class="jxr_linenumber" name="L236" href="#L236">236</a>             }
-<a class="jxr_linenumber" name="L237" href="#L237">237</a>             Iterator&lt;String&gt; iterator = bindingTables.iterator();
-<a class="jxr_linenumber" name="L238" href="#L238">238</a>             ShardingTable sampleShardingTable = getShardingTable(iterator.next(), shardingTables);
-<a class="jxr_linenumber" name="L239" href="#L239">239</a>             <strong class="jxr_keyword">while</strong> (iterator.hasNext()) {
-<a class="jxr_linenumber" name="L240" href="#L240">240</a>                 ShardingTable shardingTable = getShardingTable(iterator.next(), shardingTables);
-<a class="jxr_linenumber" name="L241" href="#L241">241</a>                 <strong class="jxr_keyword">if</strong> (!isValidActualDataSourceName(sampleShardingTable, shardingTable) || !isValidActualTableName(sampleShardingTable, shardingTable)) {
-<a class="jxr_linenumber" name="L242" href="#L242">242</a>                     <strong class="jxr_keyword">return</strong> false;
-<a class="jxr_linenumber" name="L243" href="#L243">243</a>                 }
-<a class="jxr_linenumber" name="L244" href="#L244">244</a>                 <strong class="jxr_keyword">if</strong> (isInvalidShardingAlgorithm(sampleShardingTable, shardingTable, <strong class="jxr_keyword">true</strong>, checkedConfig) || isInvalidShardingAlgorithm(sampleShardingTable, shardingTable, false, checkedConfig)) {
-<a class="jxr_linenumber" name="L245" href="#L245">245</a>                     <strong class="jxr_keyword">return</strong> false;
-<a class="jxr_linenumber" name="L246" href="#L246">246</a>                 }
-<a class="jxr_linenumber" name="L247" href="#L247">247</a>             }
-<a class="jxr_linenumber" name="L248" href="#L248">248</a>         }
-<a class="jxr_linenumber" name="L249" href="#L249">249</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
-<a class="jxr_linenumber" name="L250" href="#L250">250</a>     }
-<a class="jxr_linenumber" name="L251" href="#L251">251</a>     
-<a class="jxr_linenumber" name="L252" href="#L252">252</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> ShardingTable getShardingTable(<strong class="jxr_keyword">final</strong> String logicTableName, <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingTable&gt; shardingTables) {
-<a class="jxr_linenumber" name="L253" href="#L253">253</a>         ShardingTable result = shardingTables.get(logicTableName);
-<a class="jxr_linenumber" name="L254" href="#L254">254</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != result) {
-<a class="jxr_linenumber" name="L255" href="#L255">255</a>             <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L256" href="#L256">256</a>         }
-<a class="jxr_linenumber" name="L257" href="#L257">257</a>         <strong class="jxr_keyword">throw</strong> <strong class="jxr_keyword">new</strong> <a name="ShardingTableRuleNotFoundException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/metadata/ShardingTableRuleNotFoundException.html#ShardingTableRuleNotFoundException">ShardingTableRuleNotFoundException</a>(Collections.singleton(logicTableName));
-<a class="jxr_linenumber" name="L258" href="#L258">258</a>     }
-<a class="jxr_linenumber" name="L259" href="#L259">259</a>     
-<a class="jxr_linenumber" name="L260" href="#L260">260</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidActualDataSourceName(<strong class="jxr_keyword">final</strong> ShardingTable sampleShardingTable, <strong class="jxr_keyword">final</strong> ShardingTable shardingTable) {
-<a class="jxr_linenumber" name="L261" href="#L261">261</a>         <strong class="jxr_keyword">return</strong> sampleShardingTable.getActualDataSourceNames().equals(shardingTable.getActualDataSourceNames());
-<a class="jxr_linenumber" name="L262" href="#L262">262</a>     }
-<a class="jxr_linenumber" name="L263" href="#L263">263</a>     
-<a class="jxr_linenumber" name="L264" href="#L264">264</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidActualTableName(<strong class="jxr_keyword">final</strong> ShardingTable sampleShardingTable, <strong class="jxr_keyword">final</strong> ShardingTable shardingTable) {
-<a class="jxr_linenumber" name="L265" href="#L265">265</a>         <strong class="jxr_keyword">for</strong> (String each : sampleShardingTable.getActualDataSourceNames()) {
-<a class="jxr_linenumber" name="L266" href="#L266">266</a>             Collection&lt;String&gt; sampleActualTableNames =
-<a class="jxr_linenumber" name="L267" href="#L267">267</a>                     sampleShardingTable.getActualTableNames(each).stream().map(actualTableName -&gt; actualTableName.replace(sampleShardingTable.getTableDataNode().getPrefix(), <span class="jxr_string">""</span>))
-<a class="jxr_linenumber" name="L268" href="#L268">268</a>                             .collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L269" href="#L269">269</a>             Collection&lt;String&gt; actualTableNames =
-<a class="jxr_linenumber" name="L270" href="#L270">270</a>                     shardingTable.getActualTableNames(each).stream().map(optional -&gt; optional.replace(shardingTable.getTableDataNode().getPrefix(), <span class="jxr_string">""</span>)).collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L271" href="#L271">271</a>             <strong class="jxr_keyword">if</strong> (!sampleActualTableNames.equals(actualTableNames)) {
-<a class="jxr_linenumber" name="L272" href="#L272">272</a>                 <strong class="jxr_keyword">return</strong> false;
-<a class="jxr_linenumber" name="L273" href="#L273">273</a>             }
-<a class="jxr_linenumber" name="L274" href="#L274">274</a>         }
-<a class="jxr_linenumber" name="L275" href="#L275">275</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
-<a class="jxr_linenumber" name="L276" href="#L276">276</a>     }
-<a class="jxr_linenumber" name="L277" href="#L277">277</a>     
-<a class="jxr_linenumber" name="L278" href="#L278">278</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isInvalidShardingAlgorithm(<strong class="jxr_keyword">final</strong> ShardingTable sampleShardingTable, <strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> databaseAlgorithm,
-<a class="jxr_linenumber" name="L279" href="#L279">279</a>                                                       <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
-<a class="jxr_linenumber" name="L280" href="#L280">280</a>         <strong class="jxr_keyword">return</strong> !getAlgorithmExpression(sampleShardingTable, databaseAlgorithm, checkedConfig).equals(getAlgorithmExpression(shardingTable, databaseAlgorithm, checkedConfig));
-<a class="jxr_linenumber" name="L281" href="#L281">281</a>     }
-<a class="jxr_linenumber" name="L282" href="#L282">282</a>     
-<a class="jxr_linenumber" name="L283" href="#L283">283</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Optional&lt;String&gt; getAlgorithmExpression(<strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> databaseAlgorithm, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
-<a class="jxr_linenumber" name="L284" href="#L284">284</a>         <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> shardingStrategyConfig = databaseAlgorithm
-<a class="jxr_linenumber" name="L285" href="#L285">285</a>                 ? getDatabaseShardingStrategyConfiguration(shardingTable, checkedConfig)
-<a class="jxr_linenumber" name="L286" href="#L286">286</a>                 : getTableShardingStrategyConfiguration(shardingTable, checkedConfig);
-<a class="jxr_linenumber" name="L287" href="#L287">287</a>         <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = checkedConfig.getShardingAlgorithms().get(shardingStrategyConfig.getShardingAlgorithmName());
-<a class="jxr_linenumber" name="L288" href="#L288">288</a>         String dataNodePrefix = databaseAlgorithm ? shardingTable.getDataSourceDataNode().getPrefix() : shardingTable.getTableDataNode().getPrefix();
-<a class="jxr_linenumber" name="L289" href="#L289">289</a>         String shardingColumn = getShardingColumn(shardingStrategyConfig, checkedConfig.getDefaultShardingColumn());
-<a class="jxr_linenumber" name="L290" href="#L290">290</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingAlgorithm ? Optional.empty() : shardingAlgorithm.getAlgorithmStructure(dataNodePrefix, shardingColumn);
-<a class="jxr_linenumber" name="L291" href="#L291">291</a>     }
-<a class="jxr_linenumber" name="L292" href="#L292">292</a>     
-<a class="jxr_linenumber" name="L293" href="#L293">293</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> getDatabaseShardingStrategyConfiguration(<strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
-<a class="jxr_linenumber" name="L294" href="#L294">294</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingTable.getDatabaseShardingStrategyConfig() ? checkedConfig.getDefaultDatabaseShardingStrategyConfig() : shardingTable.getDatabaseShardingStrategyConfig();
-<a class="jxr_linenumber" name="L295" href="#L295">295</a>     }
-<a class="jxr_linenumber" name="L296" href="#L296">296</a>     
-<a class="jxr_linenumber" name="L297" href="#L297">297</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> getTableShardingStrategyConfiguration(<strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
-<a class="jxr_linenumber" name="L298" href="#L298">298</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingTable.getTableShardingStrategyConfig() ? checkedConfig.getDefaultTableShardingStrategyConfig() : shardingTable.getTableShardingStrategyConfig();
-<a class="jxr_linenumber" name="L299" href="#L299">299</a>     }
-<a class="jxr_linenumber" name="L300" href="#L300">300</a>     
-<a class="jxr_linenumber" name="L301" href="#L301">301</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> String getShardingColumn(<strong class="jxr_keyword">final</strong> <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> shardingStrategyConfig, <strong class="jxr_keyword">final</strong> String defaultShardingColumn) {
-<a class="jxr_linenumber" name="L302" href="#L302">302</a>         String shardingColumn = defaultShardingColumn;
-<a class="jxr_linenumber" name="L303" href="#L303">303</a>         <strong class="jxr_keyword">if</strong> (shardingStrategyConfig instanceof <a name="ComplexShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ComplexShardingStrategyConfiguration.html#ComplexShardingStrategyConfiguration">ComplexShardingStrategyConfiguration</a>) {
-<a class="jxr_linenumber" name="L304" href="#L304">304</a>             shardingColumn = ((<a name="ComplexShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ComplexShardingStrategyConfiguration.html#ComplexShardingStrategyConfiguration">ComplexShardingStrategyConfiguration</a>) shardingStrategyConfig).getShardingColumns();
-<a class="jxr_linenumber" name="L305" href="#L305">305</a>         }
-<a class="jxr_linenumber" name="L306" href="#L306">306</a>         <strong class="jxr_keyword">if</strong> (shardingStrategyConfig instanceof <a name="StandardShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/StandardShardingStrategyConfiguration.html#StandardShardingStrategyConfiguration">StandardShardingStrategyConfiguration</a>) {
-<a class="jxr_linenumber" name="L307" href="#L307">307</a>             shardingColumn = ((<a name="StandardShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/StandardShardingStrategyConfiguration.html#StandardShardingStrategyConfiguration">StandardShardingStrategyConfiguration</a>) shardingStrategyConfig).getShardingColumn();
-<a class="jxr_linenumber" name="L308" href="#L308">308</a>         }
-<a class="jxr_linenumber" name="L309" href="#L309">309</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingColumn ? <span class="jxr_string">""</span> : shardingColumn;
-<a class="jxr_linenumber" name="L310" href="#L310">310</a>     }
-<a class="jxr_linenumber" name="L311" href="#L311">311</a>     
-<a class="jxr_linenumber" name="L312" href="#L312">312</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDataSources(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database) {
-<a class="jxr_linenumber" name="L313" href="#L313">313</a>         Collection&lt;String&gt; requiredDataSource = getRequiredDataSources(rules);
-<a class="jxr_linenumber" name="L314" href="#L314">314</a>         Collection&lt;String&gt; notExistedDataSources = database.getResourceMetaData().getNotExistedDataSources(requiredDataSource);
-<a class="jxr_linenumber" name="L315" href="#L315">315</a>         Collection&lt;String&gt; logicDataSources = getLogicDataSources(database);
-<a class="jxr_linenumber" name="L316" href="#L316">316</a>         notExistedDataSources.removeIf(logicDataSources::contains);
-<a class="jxr_linenumber" name="L317" href="#L317">317</a>         ShardingSpherePreconditions.checkMustEmpty(notExistedDataSources, () -&gt; <strong class="jxr_keyword">new</strong> <a name="MissingRequiredStorageUnitsException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/resource/storageunit/MissingRequiredStorageUnitsException.html#MissingRequiredStorageUnitsException">MissingRequiredStorageUnitsException</a>(databaseName, notExistedDataSources));
-<a class="jxr_linenumber" name="L318" href="#L318">318</a>     }
-<a class="jxr_linenumber" name="L319" href="#L319">319</a>     
-<a class="jxr_linenumber" name="L320" href="#L320">320</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getRequiredDataSources(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> config) {
-<a class="jxr_linenumber" name="L321" href="#L321">321</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
-<a class="jxr_linenumber" name="L322" href="#L322">322</a>         result.addAll(config.getAutoTables().stream().map(ShardingAutoTableRuleConfiguration::getActualDataSources)
-<a class="jxr_linenumber" name="L323" href="#L323">323</a>                 .map(each -&gt; Splitter.on(<span class="jxr_string">","</span>).trimResults().splitToList(each)).flatMap(Collection::stream).collect(Collectors.toSet()));
-<a class="jxr_linenumber" name="L324" href="#L324">324</a>         result.addAll(config.getTables().stream().map(each -&gt; InlineExpressionParserFactory.newInstance(each.getActualDataNodes()).splitAndEvaluate())
-<a class="jxr_linenumber" name="L325" href="#L325">325</a>                 .flatMap(Collection::stream).distinct().map(each -&gt; <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getDataSourceName()).collect(Collectors.toSet()));
-<a class="jxr_linenumber" name="L326" href="#L326">326</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L327" href="#L327">327</a>     }
-<a class="jxr_linenumber" name="L328" href="#L328">328</a>     
-<a class="jxr_linenumber" name="L329" href="#L329">329</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> &lt;T <strong class="jxr_keyword">extends</strong> AbstractTableRuleSegment&gt; Collection&lt;String&gt; getRequiredDataSources(<strong class="jxr_keyword">final</strong> Collection&lt;T&gt; rules) {
-<a class="jxr_linenumber" name="L330" href="#L330">330</a>         <strong class="jxr_keyword">return</strong> rules.stream().map(AbstractTableRuleSegment::getDataSourceNodes).flatMap(Collection::stream)
-<a class="jxr_linenumber" name="L331" href="#L331">331</a>                 .map(ShardingTableRuleStatementChecker::parseDateSource).map(ShardingTableRuleStatementChecker::getDataSourceNames).flatMap(Collection::stream).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L332" href="#L332">332</a>     }
-<a class="jxr_linenumber" name="L333" href="#L333">333</a>     
-<a class="jxr_linenumber" name="L334" href="#L334">334</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; parseDateSource(<strong class="jxr_keyword">final</strong> String dateSource) {
-<a class="jxr_linenumber" name="L335" href="#L335">335</a>         <strong class="jxr_keyword">return</strong> InlineExpressionParserFactory.newInstance(dateSource).splitAndEvaluate();
-<a class="jxr_linenumber" name="L336" href="#L336">336</a>     }
-<a class="jxr_linenumber" name="L337" href="#L337">337</a>     
-<a class="jxr_linenumber" name="L338" href="#L338">338</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getLogicDataSources(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database) {
-<a class="jxr_linenumber" name="L339" href="#L339">339</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
-<a class="jxr_linenumber" name="L340" href="#L340">340</a>         <strong class="jxr_keyword">for</strong> (<a name="DataSourceMapperRuleAttribute" href="../../../../../../../org/apache/shardingsphere/infra/rule/attribute/datasource/DataSourceMapperRuleAttribute.html#DataSourceMapperRuleAttribute">DataSourceMapperRuleAttribute</a> each : database.getRuleMetaData().getAttributes(DataSourceMapperRuleAttribute.<strong class="jxr_keyword">class</strong>)) {
-<a class="jxr_linenumber" name="L341" href="#L341">341</a>             result.addAll(each.getDataSourceMapper().keySet());
-<a class="jxr_linenumber" name="L342" href="#L342">342</a>         }
-<a class="jxr_linenumber" name="L343" href="#L343">343</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L344" href="#L344">344</a>     }
-<a class="jxr_linenumber" name="L345" href="#L345">345</a>     
-<a class="jxr_linenumber" name="L346" href="#L346">346</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTables(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> isCreate,
-<a class="jxr_linenumber" name="L347" href="#L347">347</a>                                     <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> ifNotExists) {
-<a class="jxr_linenumber" name="L348" href="#L348">348</a>         Collection&lt;String&gt; requiredTables = rules.stream().map(AbstractTableRuleSegment::getLogicTable).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L349" href="#L349">349</a>         Collection&lt;String&gt; duplicatedRuleNames = getDuplicatedRuleNames(requiredTables);
-<a class="jxr_linenumber" name="L350" href="#L350">350</a>         ShardingSpherePreconditions.checkMustEmpty(duplicatedRuleNames, () -&gt; <strong class="jxr_keyword">new</strong> <a name="DuplicateRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/DuplicateRuleException.html#DuplicateRuleException">DuplicateRuleException</a>(<span class="jxr_string">"sharding"</span>, databaseName, duplicatedRuleNames));
-<a class="jxr_linenumber" name="L351" href="#L351">351</a>         Collection&lt;String&gt; currentShardingTables = <strong class="jxr_keyword">null</strong> == currentRuleConfig ? Collections.emptyList() : getCurrentShardingTables(currentRuleConfig);
-<a class="jxr_linenumber" name="L352" href="#L352">352</a>         <strong class="jxr_keyword">if</strong> (isCreate) {
-<a class="jxr_linenumber" name="L353" href="#L353">353</a>             <strong class="jxr_keyword">if</strong> (!ifNotExists) {
-<a class="jxr_linenumber" name="L354" href="#L354">354</a>                 duplicatedRuleNames.addAll(getDuplicatedRuleNames(requiredTables, currentShardingTables));
-<a class="jxr_linenumber" name="L355" href="#L355">355</a>                 ShardingSpherePreconditions.checkMustEmpty(duplicatedRuleNames, () -&gt; <strong class="jxr_keyword">new</strong> <a name="DuplicateRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/DuplicateRuleException.html#DuplicateRuleException">DuplicateRuleException</a>(<span class="jxr_string">"sharding"</span>, databaseName, duplicatedRuleNames));
-<a class="jxr_linenumber" name="L356" href="#L356">356</a>             }
-<a class="jxr_linenumber" name="L357" href="#L357">357</a>         } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L358" href="#L358">358</a>             Collection&lt;String&gt; notExistedRules = getNotExistedRules(requiredTables, currentShardingTables);
-<a class="jxr_linenumber" name="L359" href="#L359">359</a>             ShardingSpherePreconditions.checkMustEmpty(notExistedRules, () -&gt; <strong class="jxr_keyword">new</strong> <a name="MissingRequiredRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/MissingRequiredRuleException.html#MissingRequiredRuleException">MissingRequiredRuleException</a>(<span class="jxr_string">"sharding"</span>, databaseName, notExistedRules));
-<a class="jxr_linenumber" name="L360" href="#L360">360</a>         }
-<a class="jxr_linenumber" name="L361" href="#L361">361</a>     }
-<a class="jxr_linenumber" name="L362" href="#L362">362</a>     
-<a class="jxr_linenumber" name="L363" href="#L363">363</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDuplicatedRuleNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; collection) {
-<a class="jxr_linenumber" name="L364" href="#L364">364</a>         Collection&lt;String&gt; duplicatedNames = collection.stream().collect(Collectors.groupingBy(String::toLowerCase, Collectors.counting())).entrySet().stream()
-<a class="jxr_linenumber" name="L365" href="#L365">365</a>                 .filter(each -&gt; each.getValue() &gt; 1L).map(Entry::getKey).collect(Collectors.toCollection(CaseInsensitiveSet::<strong class="jxr_keyword">new</strong>));
-<a class="jxr_linenumber" name="L366" href="#L366">366</a>         <strong class="jxr_keyword">return</strong> collection.stream().filter(duplicatedNames::contains).collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L367" href="#L367">367</a>     }
-<a class="jxr_linenumber" name="L368" href="#L368">368</a>     
-<a class="jxr_linenumber" name="L369" href="#L369">369</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDuplicatedRuleNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; requiredRuleNames, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; currentRuleNames) {
-<a class="jxr_linenumber" name="L370" href="#L370">370</a>         <strong class="jxr_keyword">return</strong> requiredRuleNames.stream().filter(currentRuleNames::contains).collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L371" href="#L371">371</a>     }
-<a class="jxr_linenumber" name="L372" href="#L372">372</a>     
-<a class="jxr_linenumber" name="L373" href="#L373">373</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Set&lt;String&gt; getNotExistedRules(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; requiredRuleNames, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; currentRuleNames) {
-<a class="jxr_linenumber" name="L374" href="#L374">374</a>         <strong class="jxr_keyword">return</strong> requiredRuleNames.stream().filter(each -&gt; !currentRuleNames.contains(each)).collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L375" href="#L375">375</a>     }
-<a class="jxr_linenumber" name="L376" href="#L376">376</a>     
-<a class="jxr_linenumber" name="L377" href="#L377">377</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getCurrentShardingTables(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
-<a class="jxr_linenumber" name="L378" href="#L378">378</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> CaseInsensitiveSet&lt;&gt;();
-<a class="jxr_linenumber" name="L379" href="#L379">379</a>         result.addAll(currentRuleConfig.getTables().stream().map(ShardingTableRuleConfiguration::getLogicTable).collect(Collectors.toSet()));
-<a class="jxr_linenumber" name="L380" href="#L380">380</a>         result.addAll(currentRuleConfig.getAutoTables().stream().map(ShardingAutoTableRuleConfiguration::getLogicTable).collect(Collectors.toSet()));
-<a class="jxr_linenumber" name="L381" href="#L381">381</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L382" href="#L382">382</a>     }
-<a class="jxr_linenumber" name="L383" href="#L383">383</a>     
-<a class="jxr_linenumber" name="L384" href="#L384">384</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkKeyGenerators(<strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules) {
-<a class="jxr_linenumber" name="L385" href="#L385">385</a>         rules.stream().map(AbstractTableRuleSegment::getKeyGenerateStrategySegment).filter(Objects::nonNull)
-<a class="jxr_linenumber" name="L386" href="#L386">386</a>                 .map(KeyGenerateStrategySegment::getKeyGenerateAlgorithmSegment)
-<a class="jxr_linenumber" name="L387" href="#L387">387</a>                 .forEach(each -&gt; TypedSPILoader.checkService(KeyGenerateAlgorithm.<strong class="jxr_keyword">class</strong>, each.getName(), each.getProps()));
-<a class="jxr_linenumber" name="L388" href="#L388">388</a>     }
-<a class="jxr_linenumber" name="L389" href="#L389">389</a>     
-<a class="jxr_linenumber" name="L390" href="#L390">390</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAuditors(<strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules) {
-<a class="jxr_linenumber" name="L391" href="#L391">391</a>         Collection&lt;AuditStrategySegment&gt; auditStrategySegments = rules.stream().map(AbstractTableRuleSegment::getAuditStrategySegment).filter(Objects::nonNull).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L392" href="#L392">392</a>         Collection&lt;AlgorithmSegment&gt; requiredAuditors = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
-<a class="jxr_linenumber" name="L393" href="#L393">393</a>         <strong class="jxr_keyword">for</strong> (<a name="AuditStrategySegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/strategy/AuditStrategySegment.html#AuditStrategySegment">AuditStrategySegment</a> each : auditStrategySegments) {
-<a class="jxr_linenumber" name="L394" href="#L394">394</a>             requiredAuditors.addAll(each.getAuditorSegments().stream().map(ShardingAuditorSegment::getAlgorithmSegment).collect(Collectors.toList()));
-<a class="jxr_linenumber" name="L395" href="#L395">395</a>         }
-<a class="jxr_linenumber" name="L396" href="#L396">396</a>         requiredAuditors.forEach(each -&gt; TypedSPILoader.checkService(ShardingAuditAlgorithm.<strong class="jxr_keyword">class</strong>, each.getName(), each.getProps()));
-<a class="jxr_linenumber" name="L397" href="#L397">397</a>     }
-<a class="jxr_linenumber" name="L398" href="#L398">398</a>     
-<a class="jxr_linenumber" name="L399" href="#L399">399</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAutoTableRule(<strong class="jxr_keyword">final</strong> Collection&lt;AutoTableRuleSegment&gt; autoTableRules) {
-<a class="jxr_linenumber" name="L400" href="#L400">400</a>         checkAutoTableShardingAlgorithms(autoTableRules);
-<a class="jxr_linenumber" name="L401" href="#L401">401</a>     }
-<a class="jxr_linenumber" name="L402" href="#L402">402</a>     
-<a class="jxr_linenumber" name="L403" href="#L403">403</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAutoTableShardingAlgorithms(<strong class="jxr_keyword">final</strong> Collection&lt;AutoTableRuleSegment&gt; autoTableRules) {
-<a class="jxr_linenumber" name="L404" href="#L404">404</a>         autoTableRules.forEach(each -&gt; {
-<a class="jxr_linenumber" name="L405" href="#L405">405</a>             <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, each.getShardingAlgorithmSegment().getName(), each.getShardingAlgorithmSegment().getProps());
-<a class="jxr_linenumber" name="L406" href="#L406">406</a>             ShardingSpherePreconditions.checkState(shardingAlgorithm instanceof ShardingAutoTableAlgorithm,
-<a class="jxr_linenumber" name="L407" href="#L407">407</a>                     () -&gt; <strong class="jxr_keyword">new</strong> <a name="AlgorithmInitializationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/AlgorithmInitializationException.html#AlgorithmInitializationException">AlgorithmInitializationException</a>(shardingAlgorithm, <span class="jxr_string">"Auto sharding algorithm is required for table '%s'"</span>, each.getLogicTable()));
-<a class="jxr_linenumber" name="L408" href="#L408">408</a>         });
-<a class="jxr_linenumber" name="L409" href="#L409">409</a>     }
-<a class="jxr_linenumber" name="L410" href="#L410">410</a>     
-<a class="jxr_linenumber" name="L411" href="#L411">411</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTableRule(<strong class="jxr_keyword">final</strong> Collection&lt;TableRuleSegment&gt; tableRules) {
-<a class="jxr_linenumber" name="L412" href="#L412">412</a>         checkStrategy(tableRules);
-<a class="jxr_linenumber" name="L413" href="#L413">413</a>     }
-<a class="jxr_linenumber" name="L414" href="#L414">414</a>     
-<a class="jxr_linenumber" name="L415" href="#L415">415</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkStrategy(<strong class="jxr_keyword">final</strong> Collection&lt;TableRuleSegment&gt; rules) {
-<a class="jxr_linenumber" name="L416" href="#L416">416</a>         <strong class="jxr_keyword">for</strong> (<a name="TableRuleSegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/table/TableRuleSegment.html#TableRuleSegment">TableRuleSegment</a> each : rules) {
-<a class="jxr_linenumber" name="L417" href="#L417">417</a>             Optional&lt;ShardingStrategySegment&gt; databaseStrategySegment = Optional.ofNullable(each.getDatabaseStrategySegment());
-<a class="jxr_linenumber" name="L418" href="#L418">418</a>             <strong class="jxr_keyword">if</strong> (databaseStrategySegment.isPresent()) {
-<a class="jxr_linenumber" name="L419" href="#L419">419</a>                 <strong class="jxr_keyword">if</strong> (<span class="jxr_string">"none"</span>.equalsIgnoreCase(databaseStrategySegment.get().getType())) {
-<a class="jxr_linenumber" name="L420" href="#L420">420</a>                     Collection&lt;String&gt; requiredDataSources = getRequiredDataSources(rules);
-<a class="jxr_linenumber" name="L421" href="#L421">421</a>                     ShardingSpherePreconditions.checkState(1 == requiredDataSources.size(),
-<a class="jxr_linenumber" name="L422" href="#L422">422</a>                             () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidShardingStrategyConfigurationException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/strategy/InvalidShardingStrategyConfigurationException.html#InvalidShardingStrategyConfigurationException">InvalidShardingStrategyConfigurationException</a>(<span class="jxr_string">"database"</span>, databaseStrategySegment.get().getType()));
-<a class="jxr_linenumber" name="L423" href="#L423">423</a>                 } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L424" href="#L424">424</a>                     <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> databaseShardingAlgorithm = databaseStrategySegment.get().getShardingAlgorithm();
-<a class="jxr_linenumber" name="L425" href="#L425">425</a>                     checkDatabaseShardingAlgorithm(each, databaseShardingAlgorithm);
-<a class="jxr_linenumber" name="L426" href="#L426">426</a>                 }
-<a class="jxr_linenumber" name="L427" href="#L427">427</a>             }
-<a class="jxr_linenumber" name="L428" href="#L428">428</a>             Optional&lt;ShardingStrategySegment&gt; tableStrategySegment = Optional.ofNullable(each.getTableStrategySegment());
-<a class="jxr_linenumber" name="L429" href="#L429">429</a>             <strong class="jxr_keyword">if</strong> (tableStrategySegment.isPresent()) {
-<a class="jxr_linenumber" name="L430" href="#L430">430</a>                 <strong class="jxr_keyword">if</strong> (<span class="jxr_string">"none"</span>.equalsIgnoreCase(tableStrategySegment.get().getType())) {
-<a class="jxr_linenumber" name="L431" href="#L431">431</a>                     Collection&lt;String&gt; requiredTables = getRequiredTables(rules);
-<a class="jxr_linenumber" name="L432" href="#L432">432</a>                     ShardingSpherePreconditions.checkState(1 == requiredTables.size(),
-<a class="jxr_linenumber" name="L433" href="#L433">433</a>                             () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidShardingStrategyConfigurationException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/strategy/InvalidShardingStrategyConfigurationException.html#InvalidShardingStrategyConfigurationException">InvalidShardingStrategyConfigurationException</a>(<span class="jxr_string">"table"</span>, tableStrategySegment.get().getType()));
-<a class="jxr_linenumber" name="L434" href="#L434">434</a>                 } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L435" href="#L435">435</a>                     <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> tableShardingAlgorithm = tableStrategySegment.get().getShardingAlgorithm();
-<a class="jxr_linenumber" name="L436" href="#L436">436</a>                     checkTableShardingAlgorithm(each, tableShardingAlgorithm);
-<a class="jxr_linenumber" name="L437" href="#L437">437</a>                 }
-<a class="jxr_linenumber" name="L438" href="#L438">438</a>             }
-<a class="jxr_linenumber" name="L439" href="#L439">439</a>         }
-<a class="jxr_linenumber" name="L440" href="#L440">440</a>     }
-<a class="jxr_linenumber" name="L441" href="#L441">441</a>     
-<a class="jxr_linenumber" name="L442" href="#L442">442</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDatabaseShardingAlgorithm(<strong class="jxr_keyword">final</strong> <a name="TableRuleSegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/table/TableRuleSegment.html#TableRuleSegment">TableRuleSegment</a> each, <strong class="jxr_keyword">final</strong> <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> databaseShardingAlgorithm) {
-<a class="jxr_linenumber" name="L443" href="#L443">443</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != databaseShardingAlgorithm) {
-<a class="jxr_linenumber" name="L444" href="#L444">444</a>             <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, databaseShardingAlgorithm.getName(), databaseShardingAlgorithm.getProps());
-<a class="jxr_linenumber" name="L445" href="#L445">445</a>             ShardingSpherePreconditions.checkState(!(shardingAlgorithm instanceof <a name="ShardingAutoTableAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/api/sharding/ShardingAutoTableAlgorithm.html#ShardingAutoTableAlgorithm">ShardingAutoTableAlgorithm</a>),
-<a class="jxr_linenumber" name="L446" href="#L446">446</a>                     () -&gt; <strong class="jxr_keyword">new</strong> <a name="AlgorithmInitializationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/AlgorithmInitializationException.html#AlgorithmInitializationException">AlgorithmInitializationException</a>(shardingAlgorithm, <span class="jxr_string">"Auto sharding algorithm can not be used to create a table in table '%s'"</span>, each.getLogicTable()));
-<a class="jxr_linenumber" name="L447" href="#L447">447</a>         }
-<a class="jxr_linenumber" name="L448" href="#L448">448</a>         ShardingSpherePreconditions.checkState(isValidStrategy(each.getDatabaseStrategySegment()),
-<a class="jxr_linenumber" name="L449" href="#L449">449</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidAlgorithmConfigurationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/InvalidAlgorithmConfigurationException.html#InvalidAlgorithmConfigurationException">InvalidAlgorithmConfigurationException</a>(<span class="jxr_string">"sharding"</span>, <strong class="jxr_keyword">null</strong> == databaseShardingAlgorithm ? <strong class="jxr_keyword">null</strong> : databaseShardingAlgorithm.getName()));
-<a class="jxr_linenumber" name="L450" href="#L450">450</a>     }
-<a class="jxr_linenumber" name="L451" href="#L451">451</a>     
-<a class="jxr_linenumber" name="L452" href="#L452">452</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTableShardingAlgorithm(<strong class="jxr_keyword">final</strong> <a name="TableRuleSegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/table/TableRuleSegment.html#TableRuleSegment">TableRuleSegment</a> each, <strong class="jxr_keyword">final</strong> <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> tableShardingAlgorithm) {
-<a class="jxr_linenumber" name="L453" href="#L453">453</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != tableShardingAlgorithm) {
-<a class="jxr_linenumber" name="L454" href="#L454">454</a>             <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, tableShardingAlgorithm.getName(), tableShardingAlgorithm.getProps());
-<a class="jxr_linenumber" name="L455" href="#L455">455</a>             ShardingSpherePreconditions.checkState(!(shardingAlgorithm instanceof <a name="ShardingAutoTableAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/api/sharding/ShardingAutoTableAlgorithm.html#ShardingAutoTableAlgorithm">ShardingAutoTableAlgorithm</a>),
-<a class="jxr_linenumber" name="L456" href="#L456">456</a>                     () -&gt; <strong class="jxr_keyword">new</strong> <a name="AlgorithmInitializationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/AlgorithmInitializationException.html#AlgorithmInitializationException">AlgorithmInitializationException</a>(shardingAlgorithm, <span class="jxr_string">"Auto sharding algorithm can not be used to create a table in table '%s'"</span>, each.getLogicTable()));
-<a class="jxr_linenumber" name="L457" href="#L457">457</a>         }
-<a class="jxr_linenumber" name="L458" href="#L458">458</a>         ShardingSpherePreconditions.checkState(isValidStrategy(each.getTableStrategySegment()),
-<a class="jxr_linenumber" name="L459" href="#L459">459</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidAlgorithmConfigurationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/InvalidAlgorithmConfigurationException.html#InvalidAlgorithmConfigurationException">InvalidAlgorithmConfigurationException</a>(<span class="jxr_string">"sharding"</span>, <strong class="jxr_keyword">null</strong> == tableShardingAlgorithm ? <strong class="jxr_keyword">null</strong> : tableShardingAlgorithm.getName()));
-<a class="jxr_linenumber" name="L460" href="#L460">460</a>     }
-<a class="jxr_linenumber" name="L461" href="#L461">461</a>     
-<a class="jxr_linenumber" name="L462" href="#L462">462</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidStrategy(<strong class="jxr_keyword">final</strong> <a name="ShardingStrategySegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/strategy/ShardingStrategySegment.html#ShardingStrategySegment">ShardingStrategySegment</a> shardingStrategySegment) {
-<a class="jxr_linenumber" name="L463" href="#L463">463</a>         <strong class="jxr_keyword">return</strong> ShardingStrategyType.getValueOf(shardingStrategySegment.getType()).isValid(shardingStrategySegment.getShardingColumn()) &amp;&amp; <strong class="jxr_keyword">null</strong> != shardingStrategySegment.getShardingAlgorithm();
-<a class="jxr_linenumber" name="L464" href="#L464">464</a>     }
-<a class="jxr_linenumber" name="L465" href="#L465">465</a>     
-<a class="jxr_linenumber" name="L466" href="#L466">466</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getRequiredTables(<strong class="jxr_keyword">final</strong> Collection&lt;TableRuleSegment&gt; rules) {
-<a class="jxr_linenumber" name="L467" href="#L467">467</a>         <strong class="jxr_keyword">return</strong> rules.stream().map(TableRuleSegment::getDataSourceNodes).flatMap(Collection::stream)
-<a class="jxr_linenumber" name="L468" href="#L468">468</a>                 .map(ShardingTableRuleStatementChecker::parseDateSource).map(ShardingTableRuleStatementChecker::getTableNames).flatMap(Collection::stream).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L469" href="#L469">469</a>     }
-<a class="jxr_linenumber" name="L470" href="#L470">470</a>     
-<a class="jxr_linenumber" name="L471" href="#L471">471</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getTableNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; actualDataNodes) {
-<a class="jxr_linenumber" name="L472" href="#L472">472</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> HashSet&lt;&gt;(actualDataNodes.size(), 1F);
-<a class="jxr_linenumber" name="L473" href="#L473">473</a>         <strong class="jxr_keyword">for</strong> (String each : actualDataNodes) {
-<a class="jxr_linenumber" name="L474" href="#L474">474</a>             result.add(isValidDataNode(each) ? <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getTableName() : each);
-<a class="jxr_linenumber" name="L475" href="#L475">475</a>         }
-<a class="jxr_linenumber" name="L476" href="#L476">476</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L477" href="#L477">477</a>     }
-<a class="jxr_linenumber" name="L478" href="#L478">478</a>     
-<a class="jxr_linenumber" name="L479" href="#L479">479</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkBindingTableRules(<strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
-<a class="jxr_linenumber" name="L480" href="#L480">480</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == currentRuleConfig || currentRuleConfig.getBindingTableGroups().isEmpty()) {
-<a class="jxr_linenumber" name="L481" href="#L481">481</a>             <strong class="jxr_keyword">return</strong>;
-<a class="jxr_linenumber" name="L482" href="#L482">482</a>         }
-<a class="jxr_linenumber" name="L483" href="#L483">483</a>         Collection&lt;String&gt; bindingTables = getCurrentBindingTables(currentRuleConfig);
-<a class="jxr_linenumber" name="L484" href="#L484">484</a>         <strong class="jxr_keyword">if</strong> (bindingTables.size() &lt;= 1) {
-<a class="jxr_linenumber" name="L485" href="#L485">485</a>             <strong class="jxr_keyword">return</strong>;
-<a class="jxr_linenumber" name="L486" href="#L486">486</a>         }
-<a class="jxr_linenumber" name="L487" href="#L487">487</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig = ShardingTableRuleStatementConverter.convert(rules);
-<a class="jxr_linenumber" name="L488" href="#L488">488</a>         Collection&lt;String&gt; toBeAlteredLogicTableNames = getAlteredLogicalTableNames(toBeAlteredRuleConfig);
-<a class="jxr_linenumber" name="L489" href="#L489">489</a>         Collection&lt;String&gt; toBeAlteredBindingTableNames = toBeAlteredLogicTableNames.stream().filter(bindingTables::contains).collect(Collectors.toSet());
-<a class="jxr_linenumber" name="L490" href="#L490">490</a>         <strong class="jxr_keyword">if</strong> (toBeAlteredBindingTableNames.isEmpty()) {
-<a class="jxr_linenumber" name="L491" href="#L491">491</a>             <strong class="jxr_keyword">return</strong>;
-<a class="jxr_linenumber" name="L492" href="#L492">492</a>         }
-<a class="jxr_linenumber" name="L493" href="#L493">493</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeCheckedRuleConfig = createToBeCheckedShardingRuleConfiguration(currentRuleConfig);
-<a class="jxr_linenumber" name="L494" href="#L494">494</a>         removeRuleConfiguration(toBeCheckedRuleConfig, toBeAlteredRuleConfig);
-<a class="jxr_linenumber" name="L495" href="#L495">495</a>         addRuleConfiguration(toBeCheckedRuleConfig, toBeAlteredRuleConfig);
-<a class="jxr_linenumber" name="L496" href="#L496">496</a>         Collection&lt;String&gt; dataSourceNames = getRequiredDataSources(toBeCheckedRuleConfig);
-<a class="jxr_linenumber" name="L497" href="#L497">497</a>         dataSourceNames.addAll(getRequiredDataSources(toBeAlteredRuleConfig));
-<a class="jxr_linenumber" name="L498" href="#L498">498</a>         ShardingSpherePreconditions.checkState(check(toBeCheckedRuleConfig, dataSourceNames),
-<a class="jxr_linenumber" name="L499" href="#L499">499</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidRuleConfigurationException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/InvalidRuleConfigurationException.html#InvalidRuleConfigurationException">InvalidRuleConfigurationException</a>(<span class="jxr_string">"sharding table"</span>, toBeAlteredLogicTableNames, Collections.singleton(<span class="jxr_string">"invalid binding table configuration."</span>)));
-<a class="jxr_linenumber" name="L500" href="#L500">500</a>     }
-<a class="jxr_linenumber" name="L501" href="#L501">501</a>     
-<a class="jxr_linenumber" name="L502" href="#L502">502</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getCurrentBindingTables(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
-<a class="jxr_linenumber" name="L503" href="#L503">503</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
-<a class="jxr_linenumber" name="L504" href="#L504">504</a>         currentRuleConfig.getBindingTableGroups().forEach(each -&gt; result.addAll(Splitter.on(<span class="jxr_string">","</span>).trimResults().splitToList(each.getReference())));
-<a class="jxr_linenumber" name="L505" href="#L505">505</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L506" href="#L506">506</a>     }
-<a class="jxr_linenumber" name="L507" href="#L507">507</a>     
-<a class="jxr_linenumber" name="L508" href="#L508">508</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> removeRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig) {
-<a class="jxr_linenumber" name="L509" href="#L509">509</a>         Collection&lt;String&gt; toBeAlteredLogicTableNames = getAlteredLogicalTableNames(toBeAlteredRuleConfig);
-<a class="jxr_linenumber" name="L510" href="#L510">510</a>         toBeAlteredLogicTableNames.forEach(each -&gt; {
-<a class="jxr_linenumber" name="L511" href="#L511">511</a>             currentRuleConfig.getTables().removeIf(table -&gt; table.getLogicTable().equalsIgnoreCase(each));
-<a class="jxr_linenumber" name="L512" href="#L512">512</a>             currentRuleConfig.getAutoTables().removeIf(table -&gt; table.getLogicTable().equalsIgnoreCase(each));
-<a class="jxr_linenumber" name="L513" href="#L513">513</a>         });
-<a class="jxr_linenumber" name="L514" href="#L514">514</a>     }
-<a class="jxr_linenumber" name="L515" href="#L515">515</a>     
-<a class="jxr_linenumber" name="L516" href="#L516">516</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> addRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig) {
-<a class="jxr_linenumber" name="L517" href="#L517">517</a>         currentRuleConfig.getTables().addAll(toBeAlteredRuleConfig.getTables());
-<a class="jxr_linenumber" name="L518" href="#L518">518</a>         currentRuleConfig.getAutoTables().addAll(toBeAlteredRuleConfig.getAutoTables());
-<a class="jxr_linenumber" name="L519" href="#L519">519</a>         currentRuleConfig.getShardingAlgorithms().putAll(toBeAlteredRuleConfig.getShardingAlgorithms());
-<a class="jxr_linenumber" name="L520" href="#L520">520</a>         currentRuleConfig.getKeyGenerators().putAll(toBeAlteredRuleConfig.getKeyGenerators());
-<a class="jxr_linenumber" name="L521" href="#L521">521</a>     }
-<a class="jxr_linenumber" name="L522" href="#L522">522</a>     
-<a class="jxr_linenumber" name="L523" href="#L523">523</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getAlteredLogicalTableNames(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig) {
-<a class="jxr_linenumber" name="L524" href="#L524">524</a>         Collection&lt;String&gt; result = toBeAlteredRuleConfig.getTables().stream().map(ShardingTableRuleConfiguration::getLogicTable).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L525" href="#L525">525</a>         result.addAll(toBeAlteredRuleConfig.getAutoTables().stream().map(ShardingAutoTableRuleConfiguration::getLogicTable).collect(Collectors.toList()));
-<a class="jxr_linenumber" name="L526" href="#L526">526</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L527" href="#L527">527</a>     }
-<a class="jxr_linenumber" name="L528" href="#L528">528</a> }
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.exception.metadata.DuplicateShardingActualDataNodeException;
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.exception.metadata.ShardingTableRuleNotFoundException;
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.exception.strategy.InvalidShardingStrategyConfigurationException;
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.rule.BindingTableCheckedConfiguration;
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.rule.ShardingTable;
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.spi.ShardingAlgorithm;
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sharding.spi.ShardingAuditAlgorithm;
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>  
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>  <strong class="jxr_keyword">import</strong> java.util.Collections;
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>  <strong class="jxr_keyword">import</strong> java.util.HashMap;
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>  <strong class="jxr_keyword">import</strong> java.util.HashSet;
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>  <strong class="jxr_keyword">import</strong> java.util.Iterator;
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedHashMap;
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedHashSet;
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedList;
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>  <strong class="jxr_keyword">import</strong> java.util.Map;
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>  <strong class="jxr_keyword">import</strong> java.util.Map.Entry;
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>  <strong class="jxr_keyword">import</strong> java.util.Objects;
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>  <strong class="jxr_keyword">import</strong> java.util.Optional;
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>  <strong class="jxr_keyword">import</strong> java.util.Set;
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>  <strong class="jxr_keyword">import</strong> java.util.function.Function;
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>  <strong class="jxr_keyword">import</strong> java.util.stream.Collectors;
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>  
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>  <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>  <em class="jxr_javadoccomment"> * Sharding table rule checker.</em>
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>  <em class="jxr_javadoccomment"> */</em>
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>  @NoArgsConstructor(access = AccessLevel.PRIVATE)
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>  <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a name="ShardingTableRuleStatementChecker" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/handler/checker/ShardingTableRuleStatementChecker.html#ShardingTableRuleStatementChecker">ShardingTableRuleStatementChecker</a> {
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>      
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String DELIMITER = <span class="jxr_string">"."</span>;
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>      
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>  <em class="jxr_javadoccomment">     * Check create sharding table rule statement.</em>
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>  <em class="jxr_javadoccomment">     * @param database database</em>
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>  <em class="jxr_javadoccomment">     * @param rules rules</em>
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>  <em class="jxr_javadoccomment">     * @param ifNotExists if not exists</em>
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>  <em class="jxr_javadoccomment">     * @param currentRuleConfig current rule configuration</em>
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkCreation(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> ifNotExists,
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>                                       <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>         check(database, rules, ifNotExists, currentRuleConfig, <strong class="jxr_keyword">true</strong>);
+<a class="jxr_linenumber" name="L101" href="#L101">101</a>     }
+<a class="jxr_linenumber" name="L102" href="#L102">102</a>     
+<a class="jxr_linenumber" name="L103" href="#L103">103</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L104" href="#L104">104</a> <em class="jxr_javadoccomment">     * Check alter sharding table rule statement.</em>
+<a class="jxr_linenumber" name="L105" href="#L105">105</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L106" href="#L106">106</a> <em class="jxr_javadoccomment">     * @param database database</em>
+<a class="jxr_linenumber" name="L107" href="#L107">107</a> <em class="jxr_javadoccomment">     * @param rules rules</em>
+<a class="jxr_linenumber" name="L108" href="#L108">108</a> <em class="jxr_javadoccomment">     * @param currentRuleConfig current rule configuration</em>
+<a class="jxr_linenumber" name="L109" href="#L109">109</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAlteration(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>         check(database, rules, false, currentRuleConfig, false);
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>     }
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>     
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L115" href="#L115">115</a> <em class="jxr_javadoccomment">     * Judge whether binding table groups are valid.</em>
+<a class="jxr_linenumber" name="L116" href="#L116">116</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L117" href="#L117">117</a> <em class="jxr_javadoccomment">     * @param bindingTableGroups binding table groups</em>
+<a class="jxr_linenumber" name="L118" href="#L118">118</a> <em class="jxr_javadoccomment">     * @param currentRuleConfig current rule configuration</em>
+<a class="jxr_linenumber" name="L119" href="#L119">119</a> <em class="jxr_javadoccomment">     * @return binding table groups are valid or not</em>
+<a class="jxr_linenumber" name="L120" href="#L120">120</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidBindingTableGroups(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingTableReferenceRuleConfiguration&gt; bindingTableGroups, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeCheckedRuleConfig = createToBeCheckedShardingRuleConfiguration(currentRuleConfig);
+<a class="jxr_linenumber" name="L123" href="#L123">123</a>         toBeCheckedRuleConfig.setBindingTableGroups(bindingTableGroups);
+<a class="jxr_linenumber" name="L124" href="#L124">124</a>         Collection&lt;String&gt; dataSourceNames = getRequiredDataSources(toBeCheckedRuleConfig);
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>         dataSourceNames.addAll(getRequiredDataSources(currentRuleConfig));
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>         <strong class="jxr_keyword">return</strong> check(toBeCheckedRuleConfig, dataSourceNames);
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>     }
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>     
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> createToBeCheckedShardingRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> result = <strong class="jxr_keyword">new</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a>();
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>         result.setTables(<strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;(currentRuleConfig.getTables()));
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>         result.setAutoTables(<strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;(currentRuleConfig.getAutoTables()));
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>         result.setBindingTableGroups(<strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;(currentRuleConfig.getBindingTableGroups()));
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>         result.setDefaultTableShardingStrategy(currentRuleConfig.getDefaultTableShardingStrategy());
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>         result.setDefaultDatabaseShardingStrategy(currentRuleConfig.getDefaultDatabaseShardingStrategy());
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>         result.setDefaultKeyGenerateStrategy(currentRuleConfig.getDefaultKeyGenerateStrategy());
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>         result.setDefaultShardingColumn(currentRuleConfig.getDefaultShardingColumn());
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>         result.setShardingAlgorithms(<strong class="jxr_keyword">new</strong> LinkedHashMap&lt;&gt;(currentRuleConfig.getShardingAlgorithms()));
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>         result.setKeyGenerators(<strong class="jxr_keyword">new</strong> LinkedHashMap&lt;&gt;(currentRuleConfig.getKeyGenerators()));
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>         result.setAuditors(<strong class="jxr_keyword">new</strong> LinkedHashMap&lt;&gt;(currentRuleConfig.getAuditors()));
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>     }
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>     
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> check(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> ifNotExists, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig,
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>                               <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> isCreated) {
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>         String databaseName = database.getName();
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>         checkTables(databaseName, rules, currentRuleConfig, isCreated, ifNotExists);
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>         checkDataSources(databaseName, rules, database);
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>         checkKeyGenerators(rules);
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>         checkAuditors(rules);
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>         checkAutoTableRule(rules.stream().filter(AutoTableRuleSegment.<strong class="jxr_keyword">class</strong>::isInstance).map(AutoTableRuleSegment.<strong class="jxr_keyword">class</strong>::<strong class="jxr_keyword">cast</strong>).collect(Collectors.toList()));
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>         checkTableRule(rules.stream().filter(TableRuleSegment.<strong class="jxr_keyword">class</strong>::isInstance).map(TableRuleSegment.<strong class="jxr_keyword">class</strong>::<strong class="jxr_keyword">cast</strong>).collect(Collectors.toList()));
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>         <strong class="jxr_keyword">if</strong> (!isCreated) {
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>             checkBindingTableRules(rules, currentRuleConfig);
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>         }
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>     }
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>     
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> check(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> checkedConfig, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>         Collection&lt;String&gt; allDataSourceNames = getDataSourceNames(checkedConfig.getTables(), checkedConfig.getAutoTables(), dataSourceNames);
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>         Map&lt;String, ShardingAlgorithm&gt; shardingAlgorithms = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;(checkedConfig.getShardingAlgorithms().size(), 1F);
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>         Map&lt;String, ShardingTable&gt; shardingTables = <strong class="jxr_keyword">new</strong> HashMap&lt;&gt;();
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>         checkedConfig.getShardingAlgorithms().forEach((key, value) -&gt; shardingAlgorithms.put(key, TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, value.getType(), value.getProps())));
+<a class="jxr_linenumber" name="L163" href="#L163">163</a>         shardingTables.putAll(createShardingTables(checkedConfig.getTables(), checkedConfig.getDefaultKeyGenerateStrategy(), allDataSourceNames));
+<a class="jxr_linenumber" name="L164" href="#L164">164</a>         shardingTables.putAll(createShardingAutoTables(checkedConfig.getAutoTables(), shardingAlgorithms, checkedConfig.getDefaultKeyGenerateStrategy(), allDataSourceNames));
+<a class="jxr_linenumber" name="L165" href="#L165">165</a>         <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> defaultDatabaseShardingStrategyConfig = <strong class="jxr_keyword">null</strong> == checkedConfig.getDefaultDatabaseShardingStrategy()
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>                 ? <strong class="jxr_keyword">new</strong> <a name="NoneShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/NoneShardingStrategyConfiguration.html#NoneShardingStrategyConfiguration">NoneShardingStrategyConfiguration</a>()
+<a class="jxr_linenumber" name="L167" href="#L167">167</a>                 : checkedConfig.getDefaultDatabaseShardingStrategy();
+<a class="jxr_linenumber" name="L168" href="#L168">168</a>         <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> defaultTableShardingStrategyConfig = <strong class="jxr_keyword">null</strong> == checkedConfig.getDefaultTableShardingStrategy()
+<a class="jxr_linenumber" name="L169" href="#L169">169</a>                 ? <strong class="jxr_keyword">new</strong> <a name="NoneShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/NoneShardingStrategyConfiguration.html#NoneShardingStrategyConfiguration">NoneShardingStrategyConfiguration</a>()
+<a class="jxr_linenumber" name="L170" href="#L170">170</a>                 : checkedConfig.getDefaultTableShardingStrategy();
+<a class="jxr_linenumber" name="L171" href="#L171">171</a>         <strong class="jxr_keyword">return</strong> isValidBindingTableConfiguration(shardingTables, <strong class="jxr_keyword">new</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a>(allDataSourceNames, shardingAlgorithms, checkedConfig.getBindingTableGroups(),
+<a class="jxr_linenumber" name="L172" href="#L172">172</a>                 defaultDatabaseShardingStrategyConfig, defaultTableShardingStrategyConfig, checkedConfig.getDefaultShardingColumn()));
+<a class="jxr_linenumber" name="L173" href="#L173">173</a>     }
+<a class="jxr_linenumber" name="L174" href="#L174">174</a>     
+<a class="jxr_linenumber" name="L175" href="#L175">175</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDataSourceNames(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingTableRuleConfiguration&gt; tableRuleConfigs,
+<a class="jxr_linenumber" name="L176" href="#L176">176</a>                                                          <strong class="jxr_keyword">final</strong> Collection&lt;ShardingAutoTableRuleConfiguration&gt; autoTableRuleConfigs, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
+<a class="jxr_linenumber" name="L177" href="#L177">177</a>         <strong class="jxr_keyword">if</strong> (tableRuleConfigs.isEmpty() &amp;&amp; autoTableRuleConfigs.isEmpty()) {
+<a class="jxr_linenumber" name="L178" href="#L178">178</a>             <strong class="jxr_keyword">return</strong> dataSourceNames;
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>         }
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>         <strong class="jxr_keyword">if</strong> (tableRuleConfigs.stream().map(ShardingTableRuleConfiguration::getActualDataNodes).anyMatch(each -&gt; <strong class="jxr_keyword">null</strong> == each || each.isEmpty())) {
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>             <strong class="jxr_keyword">return</strong> dataSourceNames;
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>         }
+<a class="jxr_linenumber" name="L183" href="#L183">183</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
+<a class="jxr_linenumber" name="L184" href="#L184">184</a>         tableRuleConfigs.forEach(each -&gt; result.addAll(getDataSourceNames(each)));
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>         autoTableRuleConfigs.forEach(each -&gt; result.addAll(InlineExpressionParserFactory.newInstance(each.getActualDataSources()).splitAndEvaluate()));
+<a class="jxr_linenumber" name="L186" href="#L186">186</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L187" href="#L187">187</a>     }
+<a class="jxr_linenumber" name="L188" href="#L188">188</a>     
+<a class="jxr_linenumber" name="L189" href="#L189">189</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDataSourceNames(<strong class="jxr_keyword">final</strong> <a name="ShardingTableRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/rule/ShardingTableRuleConfiguration.html#ShardingTableRuleConfiguration">ShardingTableRuleConfiguration</a> shardingTableRuleConfig) {
+<a class="jxr_linenumber" name="L190" href="#L190">190</a>         <strong class="jxr_keyword">return</strong> InlineExpressionParserFactory.newInstance(shardingTableRuleConfig.getActualDataNodes())
+<a class="jxr_linenumber" name="L191" href="#L191">191</a>                 .splitAndEvaluate().stream().map(each -&gt; <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getDataSourceName()).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L192" href="#L192">192</a>     }
+<a class="jxr_linenumber" name="L193" href="#L193">193</a>     
+<a class="jxr_linenumber" name="L194" href="#L194">194</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDataSourceNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; actualDataNodes) {
+<a class="jxr_linenumber" name="L195" href="#L195">195</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;(actualDataNodes.size(), 1F);
+<a class="jxr_linenumber" name="L196" href="#L196">196</a>         <strong class="jxr_keyword">for</strong> (String each : actualDataNodes) {
+<a class="jxr_linenumber" name="L197" href="#L197">197</a>             result.add(isValidDataNode(each) ? <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getDataSourceName() : each);
+<a class="jxr_linenumber" name="L198" href="#L198">198</a>         }
+<a class="jxr_linenumber" name="L199" href="#L199">199</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L200" href="#L200">200</a>     }
+<a class="jxr_linenumber" name="L201" href="#L201">201</a>     
+<a class="jxr_linenumber" name="L202" href="#L202">202</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidDataNode(<strong class="jxr_keyword">final</strong> String dataNodeStr) {
+<a class="jxr_linenumber" name="L203" href="#L203">203</a>         <strong class="jxr_keyword">return</strong> dataNodeStr.contains(DELIMITER) &amp;&amp; 2 == Splitter.on(DELIMITER).omitEmptyStrings().splitToList(dataNodeStr).size();
+<a class="jxr_linenumber" name="L204" href="#L204">204</a>     }
+<a class="jxr_linenumber" name="L205" href="#L205">205</a>     
+<a class="jxr_linenumber" name="L206" href="#L206">206</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Map&lt;String, ShardingTable&gt; createShardingTables(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingTableRuleConfiguration&gt; tableRuleConfigs,
+<a class="jxr_linenumber" name="L207" href="#L207">207</a>                                                                    <strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig,
+<a class="jxr_linenumber" name="L208" href="#L208">208</a>                                                                    <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
+<a class="jxr_linenumber" name="L209" href="#L209">209</a>         <strong class="jxr_keyword">return</strong> tableRuleConfigs.stream().map(each -&gt; <strong class="jxr_keyword">new</strong> ShardingTable(each, dataSourceNames, getDefaultGenerateKeyColumn(defaultKeyGenerateStrategyConfig)))
+<a class="jxr_linenumber" name="L210" href="#L210">210</a>                 .collect(Collectors.toMap(each -&gt; each.getLogicTable().toLowerCase(), Function.identity(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::<strong class="jxr_keyword">new</strong>));
+<a class="jxr_linenumber" name="L211" href="#L211">211</a>     }
+<a class="jxr_linenumber" name="L212" href="#L212">212</a>     
+<a class="jxr_linenumber" name="L213" href="#L213">213</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> String getDefaultGenerateKeyColumn(<strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig) {
+<a class="jxr_linenumber" name="L214" href="#L214">214</a>         <strong class="jxr_keyword">return</strong> Optional.ofNullable(defaultKeyGenerateStrategyConfig).map(KeyGenerateStrategyConfiguration::getColumn).orElse(<strong class="jxr_keyword">null</strong>);
+<a class="jxr_linenumber" name="L215" href="#L215">215</a>     }
+<a class="jxr_linenumber" name="L216" href="#L216">216</a>     
+<a class="jxr_linenumber" name="L217" href="#L217">217</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Map&lt;String, ShardingTable&gt; createShardingAutoTables(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingAutoTableRuleConfiguration&gt; autoTableRuleConfigs,
+<a class="jxr_linenumber" name="L218" href="#L218">218</a>                                                                        <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingAlgorithm&gt; shardingAlgorithms,
+<a class="jxr_linenumber" name="L219" href="#L219">219</a>                                                                        <strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
+<a class="jxr_linenumber" name="L220" href="#L220">220</a>         <strong class="jxr_keyword">return</strong> autoTableRuleConfigs.stream().map(each -&gt; createShardingAutoTable(defaultKeyGenerateStrategyConfig, each, shardingAlgorithms, dataSourceNames))
+<a class="jxr_linenumber" name="L221" href="#L221">221</a>                 .collect(Collectors.toMap(each -&gt; each.getLogicTable().toLowerCase(), Function.identity(), (oldValue, currentValue) -&gt; oldValue, LinkedHashMap::<strong class="jxr_keyword">new</strong>));
+<a class="jxr_linenumber" name="L222" href="#L222">222</a>     }
+<a class="jxr_linenumber" name="L223" href="#L223">223</a>     
+<a class="jxr_linenumber" name="L224" href="#L224">224</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> ShardingTable createShardingAutoTable(<strong class="jxr_keyword">final</strong> <a name="KeyGenerateStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/keygen/KeyGenerateStrategyConfiguration.html#KeyGenerateStrategyConfiguration">KeyGenerateStrategyConfiguration</a> defaultKeyGenerateStrategyConfig, <strong class="jxr_keyword">final</strong> <a name="ShardingAutoTableRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/rule/ShardingAutoTableRuleConfiguration.html#ShardingAutoTableRuleConfiguration">ShardingAutoTableRuleConfiguration</a> autoTableRuleConfig,
+<a class="jxr_linenumber" name="L225" href="#L225">225</a>                                                          <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingAlgorithm&gt; shardingAlgorithms, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; dataSourceNames) {
+<a class="jxr_linenumber" name="L226" href="#L226">226</a>         <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = shardingAlgorithms.get(autoTableRuleConfig.getShardingStrategy().getShardingAlgorithmName());
+<a class="jxr_linenumber" name="L227" href="#L227">227</a>         ShardingSpherePreconditions.checkState(shardingAlgorithm instanceof ShardingAutoTableAlgorithm,
+<a class="jxr_linenumber" name="L228" href="#L228">228</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="ShardingAlgorithmClassImplementationException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/algorithm/ShardingAlgorithmClassImplementationException.html#ShardingAlgorithmClassImplementationException">ShardingAlgorithmClassImplementationException</a>(autoTableRuleConfig.getShardingStrategy().getShardingAlgorithmName(), ShardingAutoTableAlgorithm.<strong class="jxr_keyword">class</strong>));
+<a class="jxr_linenumber" name="L229" href="#L229">229</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> ShardingTable(autoTableRuleConfig, dataSourceNames, (<a name="ShardingAutoTableAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/api/sharding/ShardingAutoTableAlgorithm.html#ShardingAutoTableAlgorithm">ShardingAutoTableAlgorithm</a>) shardingAlgorithm, getDefaultGenerateKeyColumn(defaultKeyGenerateStrategyConfig));
+<a class="jxr_linenumber" name="L230" href="#L230">230</a>     }
+<a class="jxr_linenumber" name="L231" href="#L231">231</a>     
+<a class="jxr_linenumber" name="L232" href="#L232">232</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidBindingTableConfiguration(<strong class="jxr_keyword">final</strong> Map&lt;String, ShardingTable&gt; shardingTables, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
+<a class="jxr_linenumber" name="L233" href="#L233">233</a>         <strong class="jxr_keyword">for</strong> (<a name="ShardingTableReferenceRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/rule/ShardingTableReferenceRuleConfiguration.html#ShardingTableReferenceRuleConfiguration">ShardingTableReferenceRuleConfiguration</a> each : checkedConfig.getBindingTableGroups()) {
+<a class="jxr_linenumber" name="L234" href="#L234">234</a>             Collection&lt;String&gt; bindingTables = Splitter.on(<span class="jxr_string">","</span>).trimResults().splitToList(each.getReference().toLowerCase());
+<a class="jxr_linenumber" name="L235" href="#L235">235</a>             <strong class="jxr_keyword">if</strong> (bindingTables.size() &lt;= 1) {
+<a class="jxr_linenumber" name="L236" href="#L236">236</a>                 <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L237" href="#L237">237</a>             }
+<a class="jxr_linenumber" name="L238" href="#L238">238</a>             Iterator&lt;String&gt; iterator = bindingTables.iterator();
+<a class="jxr_linenumber" name="L239" href="#L239">239</a>             ShardingTable sampleShardingTable = getShardingTable(iterator.next(), shardingTables);
+<a class="jxr_linenumber" name="L240" href="#L240">240</a>             <strong class="jxr_keyword">while</strong> (iterator.hasNext()) {
+<a class="jxr_linenumber" name="L241" href="#L241">241</a>                 ShardingTable shardingTable = getShardingTable(iterator.next(), shardingTables);
+<a class="jxr_linenumber" name="L242" href="#L242">242</a>                 <strong class="jxr_keyword">if</strong> (!isValidActualDataSourceName(sampleShardingTable, shardingTable) || !isValidActualTableName(sampleShardingTable, shardingTable)) {
+<a class="jxr_linenumber" name="L243" href="#L243">243</a>                     <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L244" href="#L244">244</a>                 }
+<a class="jxr_linenumber" name="L245" href="#L245">245</a>                 <strong class="jxr_keyword">if</strong> (isInvalidShardingAlgorithm(sampleShardingTable, shardingTable, <strong class="jxr_keyword">true</strong>, checkedConfig) || isInvalidShardingAlgorithm(sampleShardingTable, shardingTable, false, checkedConfig)) {
+<a class="jxr_linenumber" name="L246" href="#L246">246</a>                     <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L247" href="#L247">247</a>                 }
+<a class="jxr_linenumber" name="L248" href="#L248">248</a>             }
+<a class="jxr_linenumber" name="L249" href="#L249">249</a>         }
+<a class="jxr_linenumber" name="L250" href="#L250">250</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
+<a class="jxr_linenumber" name="L251" href="#L251">251</a>     }
+<a class="jxr_linenumber" name="L252" href="#L252">252</a>     
+<a class="jxr_linenumber" name="L253" href="#L253">253</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> ShardingTable getShardingTable(<strong class="jxr_keyword">final</strong> String logicTableName, <strong class="jxr_keyword">final</strong> Map&lt;String, ShardingTable&gt; shardingTables) {
+<a class="jxr_linenumber" name="L254" href="#L254">254</a>         ShardingTable result = shardingTables.get(logicTableName);
+<a class="jxr_linenumber" name="L255" href="#L255">255</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != result) {
+<a class="jxr_linenumber" name="L256" href="#L256">256</a>             <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L257" href="#L257">257</a>         }
+<a class="jxr_linenumber" name="L258" href="#L258">258</a>         <strong class="jxr_keyword">throw</strong> <strong class="jxr_keyword">new</strong> <a name="ShardingTableRuleNotFoundException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/metadata/ShardingTableRuleNotFoundException.html#ShardingTableRuleNotFoundException">ShardingTableRuleNotFoundException</a>(Collections.singleton(logicTableName));
+<a class="jxr_linenumber" name="L259" href="#L259">259</a>     }
+<a class="jxr_linenumber" name="L260" href="#L260">260</a>     
+<a class="jxr_linenumber" name="L261" href="#L261">261</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidActualDataSourceName(<strong class="jxr_keyword">final</strong> ShardingTable sampleShardingTable, <strong class="jxr_keyword">final</strong> ShardingTable shardingTable) {
+<a class="jxr_linenumber" name="L262" href="#L262">262</a>         <strong class="jxr_keyword">return</strong> sampleShardingTable.getActualDataSourceNames().equals(shardingTable.getActualDataSourceNames());
+<a class="jxr_linenumber" name="L263" href="#L263">263</a>     }
+<a class="jxr_linenumber" name="L264" href="#L264">264</a>     
+<a class="jxr_linenumber" name="L265" href="#L265">265</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidActualTableName(<strong class="jxr_keyword">final</strong> ShardingTable sampleShardingTable, <strong class="jxr_keyword">final</strong> ShardingTable shardingTable) {
+<a class="jxr_linenumber" name="L266" href="#L266">266</a>         <strong class="jxr_keyword">for</strong> (String each : sampleShardingTable.getActualDataSourceNames()) {
+<a class="jxr_linenumber" name="L267" href="#L267">267</a>             Collection&lt;String&gt; sampleActualTableNames =
+<a class="jxr_linenumber" name="L268" href="#L268">268</a>                     sampleShardingTable.getActualTableNames(each).stream().map(actualTableName -&gt; actualTableName.replace(sampleShardingTable.getTableDataNode().getPrefix(), <span class="jxr_string">""</span>))
+<a class="jxr_linenumber" name="L269" href="#L269">269</a>                             .collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L270" href="#L270">270</a>             Collection&lt;String&gt; actualTableNames =
+<a class="jxr_linenumber" name="L271" href="#L271">271</a>                     shardingTable.getActualTableNames(each).stream().map(optional -&gt; optional.replace(shardingTable.getTableDataNode().getPrefix(), <span class="jxr_string">""</span>)).collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L272" href="#L272">272</a>             <strong class="jxr_keyword">if</strong> (!sampleActualTableNames.equals(actualTableNames)) {
+<a class="jxr_linenumber" name="L273" href="#L273">273</a>                 <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L274" href="#L274">274</a>             }
+<a class="jxr_linenumber" name="L275" href="#L275">275</a>         }
+<a class="jxr_linenumber" name="L276" href="#L276">276</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
+<a class="jxr_linenumber" name="L277" href="#L277">277</a>     }
+<a class="jxr_linenumber" name="L278" href="#L278">278</a>     
+<a class="jxr_linenumber" name="L279" href="#L279">279</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isInvalidShardingAlgorithm(<strong class="jxr_keyword">final</strong> ShardingTable sampleShardingTable, <strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> databaseAlgorithm,
+<a class="jxr_linenumber" name="L280" href="#L280">280</a>                                                       <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
+<a class="jxr_linenumber" name="L281" href="#L281">281</a>         <strong class="jxr_keyword">return</strong> !getAlgorithmExpression(sampleShardingTable, databaseAlgorithm, checkedConfig).equals(getAlgorithmExpression(shardingTable, databaseAlgorithm, checkedConfig));
+<a class="jxr_linenumber" name="L282" href="#L282">282</a>     }
+<a class="jxr_linenumber" name="L283" href="#L283">283</a>     
+<a class="jxr_linenumber" name="L284" href="#L284">284</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Optional&lt;String&gt; getAlgorithmExpression(<strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> databaseAlgorithm, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
+<a class="jxr_linenumber" name="L285" href="#L285">285</a>         <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> shardingStrategyConfig = databaseAlgorithm
+<a class="jxr_linenumber" name="L286" href="#L286">286</a>                 ? getDatabaseShardingStrategyConfiguration(shardingTable, checkedConfig)
+<a class="jxr_linenumber" name="L287" href="#L287">287</a>                 : getTableShardingStrategyConfiguration(shardingTable, checkedConfig);
+<a class="jxr_linenumber" name="L288" href="#L288">288</a>         <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = checkedConfig.getShardingAlgorithms().get(shardingStrategyConfig.getShardingAlgorithmName());
+<a class="jxr_linenumber" name="L289" href="#L289">289</a>         String dataNodePrefix = databaseAlgorithm ? shardingTable.getDataSourceDataNode().getPrefix() : shardingTable.getTableDataNode().getPrefix();
+<a class="jxr_linenumber" name="L290" href="#L290">290</a>         String shardingColumn = getShardingColumn(shardingStrategyConfig, checkedConfig.getDefaultShardingColumn());
+<a class="jxr_linenumber" name="L291" href="#L291">291</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingAlgorithm ? Optional.empty() : shardingAlgorithm.getAlgorithmStructure(dataNodePrefix, shardingColumn);
+<a class="jxr_linenumber" name="L292" href="#L292">292</a>     }
+<a class="jxr_linenumber" name="L293" href="#L293">293</a>     
+<a class="jxr_linenumber" name="L294" href="#L294">294</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> getDatabaseShardingStrategyConfiguration(<strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
+<a class="jxr_linenumber" name="L295" href="#L295">295</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingTable.getDatabaseShardingStrategyConfig() ? checkedConfig.getDefaultDatabaseShardingStrategyConfig() : shardingTable.getDatabaseShardingStrategyConfig();
+<a class="jxr_linenumber" name="L296" href="#L296">296</a>     }
+<a class="jxr_linenumber" name="L297" href="#L297">297</a>     
+<a class="jxr_linenumber" name="L298" href="#L298">298</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> getTableShardingStrategyConfiguration(<strong class="jxr_keyword">final</strong> ShardingTable shardingTable, <strong class="jxr_keyword">final</strong> <a name="BindingTableCheckedConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/rule/BindingTableCheckedConfiguration.html#BindingTableCheckedConfiguration">BindingTableCheckedConfiguration</a> checkedConfig) {
+<a class="jxr_linenumber" name="L299" href="#L299">299</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingTable.getTableShardingStrategyConfig() ? checkedConfig.getDefaultTableShardingStrategyConfig() : shardingTable.getTableShardingStrategyConfig();
+<a class="jxr_linenumber" name="L300" href="#L300">300</a>     }
+<a class="jxr_linenumber" name="L301" href="#L301">301</a>     
+<a class="jxr_linenumber" name="L302" href="#L302">302</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> String getShardingColumn(<strong class="jxr_keyword">final</strong> <a name="ShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ShardingStrategyConfiguration.html#ShardingStrategyConfiguration">ShardingStrategyConfiguration</a> shardingStrategyConfig, <strong class="jxr_keyword">final</strong> String defaultShardingColumn) {
+<a class="jxr_linenumber" name="L303" href="#L303">303</a>         String shardingColumn = defaultShardingColumn;
+<a class="jxr_linenumber" name="L304" href="#L304">304</a>         <strong class="jxr_keyword">if</strong> (shardingStrategyConfig instanceof <a name="ComplexShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ComplexShardingStrategyConfiguration.html#ComplexShardingStrategyConfiguration">ComplexShardingStrategyConfiguration</a>) {
+<a class="jxr_linenumber" name="L305" href="#L305">305</a>             shardingColumn = ((<a name="ComplexShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/ComplexShardingStrategyConfiguration.html#ComplexShardingStrategyConfiguration">ComplexShardingStrategyConfiguration</a>) shardingStrategyConfig).getShardingColumns();
+<a class="jxr_linenumber" name="L306" href="#L306">306</a>         }
+<a class="jxr_linenumber" name="L307" href="#L307">307</a>         <strong class="jxr_keyword">if</strong> (shardingStrategyConfig instanceof <a name="StandardShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/StandardShardingStrategyConfiguration.html#StandardShardingStrategyConfiguration">StandardShardingStrategyConfiguration</a>) {
+<a class="jxr_linenumber" name="L308" href="#L308">308</a>             shardingColumn = ((<a name="StandardShardingStrategyConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/strategy/sharding/StandardShardingStrategyConfiguration.html#StandardShardingStrategyConfiguration">StandardShardingStrategyConfiguration</a>) shardingStrategyConfig).getShardingColumn();
+<a class="jxr_linenumber" name="L309" href="#L309">309</a>         }
+<a class="jxr_linenumber" name="L310" href="#L310">310</a>         <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">null</strong> == shardingColumn ? <span class="jxr_string">""</span> : shardingColumn;
+<a class="jxr_linenumber" name="L311" href="#L311">311</a>     }
+<a class="jxr_linenumber" name="L312" href="#L312">312</a>     
+<a class="jxr_linenumber" name="L313" href="#L313">313</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDataSources(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database) {
+<a class="jxr_linenumber" name="L314" href="#L314">314</a>         Collection&lt;String&gt; requiredDataSource = getRequiredDataSources(rules);
+<a class="jxr_linenumber" name="L315" href="#L315">315</a>         Collection&lt;String&gt; notExistedDataSources = database.getResourceMetaData().getNotExistedDataSources(requiredDataSource);
+<a class="jxr_linenumber" name="L316" href="#L316">316</a>         Collection&lt;String&gt; logicDataSources = getLogicDataSources(database);
+<a class="jxr_linenumber" name="L317" href="#L317">317</a>         notExistedDataSources.removeIf(logicDataSources::contains);
+<a class="jxr_linenumber" name="L318" href="#L318">318</a>         ShardingSpherePreconditions.checkMustEmpty(notExistedDataSources, () -&gt; <strong class="jxr_keyword">new</strong> <a name="MissingRequiredStorageUnitsException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/resource/storageunit/MissingRequiredStorageUnitsException.html#MissingRequiredStorageUnitsException">MissingRequiredStorageUnitsException</a>(databaseName, notExistedDataSources));
+<a class="jxr_linenumber" name="L319" href="#L319">319</a>     }
+<a class="jxr_linenumber" name="L320" href="#L320">320</a>     
+<a class="jxr_linenumber" name="L321" href="#L321">321</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getRequiredDataSources(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> config) {
+<a class="jxr_linenumber" name="L322" href="#L322">322</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
+<a class="jxr_linenumber" name="L323" href="#L323">323</a>         result.addAll(config.getAutoTables().stream().map(ShardingAutoTableRuleConfiguration::getActualDataSources)
+<a class="jxr_linenumber" name="L324" href="#L324">324</a>                 .map(each -&gt; Splitter.on(<span class="jxr_string">","</span>).trimResults().splitToList(each)).flatMap(Collection::stream).collect(Collectors.toSet()));
+<a class="jxr_linenumber" name="L325" href="#L325">325</a>         result.addAll(config.getTables().stream().map(each -&gt; InlineExpressionParserFactory.newInstance(each.getActualDataNodes()).splitAndEvaluate())
+<a class="jxr_linenumber" name="L326" href="#L326">326</a>                 .flatMap(Collection::stream).distinct().map(each -&gt; <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getDataSourceName()).collect(Collectors.toSet()));
+<a class="jxr_linenumber" name="L327" href="#L327">327</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L328" href="#L328">328</a>     }
+<a class="jxr_linenumber" name="L329" href="#L329">329</a>     
+<a class="jxr_linenumber" name="L330" href="#L330">330</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> &lt;T <strong class="jxr_keyword">extends</strong> AbstractTableRuleSegment&gt; Collection&lt;String&gt; getRequiredDataSources(<strong class="jxr_keyword">final</strong> Collection&lt;T&gt; rules) {
+<a class="jxr_linenumber" name="L331" href="#L331">331</a>         <strong class="jxr_keyword">return</strong> rules.stream().map(AbstractTableRuleSegment::getDataSourceNodes).flatMap(Collection::stream)
+<a class="jxr_linenumber" name="L332" href="#L332">332</a>                 .map(ShardingTableRuleStatementChecker::parseDateSource).map(ShardingTableRuleStatementChecker::getDataSourceNames).flatMap(Collection::stream).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L333" href="#L333">333</a>     }
+<a class="jxr_linenumber" name="L334" href="#L334">334</a>     
+<a class="jxr_linenumber" name="L335" href="#L335">335</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; parseDateSource(<strong class="jxr_keyword">final</strong> String dateSource) {
+<a class="jxr_linenumber" name="L336" href="#L336">336</a>         <strong class="jxr_keyword">return</strong> InlineExpressionParserFactory.newInstance(dateSource).splitAndEvaluate();
+<a class="jxr_linenumber" name="L337" href="#L337">337</a>     }
+<a class="jxr_linenumber" name="L338" href="#L338">338</a>     
+<a class="jxr_linenumber" name="L339" href="#L339">339</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getLogicDataSources(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database) {
+<a class="jxr_linenumber" name="L340" href="#L340">340</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
+<a class="jxr_linenumber" name="L341" href="#L341">341</a>         <strong class="jxr_keyword">for</strong> (<a name="DataSourceMapperRuleAttribute" href="../../../../../../../org/apache/shardingsphere/infra/rule/attribute/datasource/DataSourceMapperRuleAttribute.html#DataSourceMapperRuleAttribute">DataSourceMapperRuleAttribute</a> each : database.getRuleMetaData().getAttributes(DataSourceMapperRuleAttribute.<strong class="jxr_keyword">class</strong>)) {
+<a class="jxr_linenumber" name="L342" href="#L342">342</a>             result.addAll(each.getDataSourceMapper().keySet());
+<a class="jxr_linenumber" name="L343" href="#L343">343</a>         }
+<a class="jxr_linenumber" name="L344" href="#L344">344</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L345" href="#L345">345</a>     }
+<a class="jxr_linenumber" name="L346" href="#L346">346</a>     
+<a class="jxr_linenumber" name="L347" href="#L347">347</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTables(<strong class="jxr_keyword">final</strong> String databaseName, <strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> isCreate,
+<a class="jxr_linenumber" name="L348" href="#L348">348</a>                                     <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">boolean</strong> ifNotExists) {
+<a class="jxr_linenumber" name="L349" href="#L349">349</a>         Collection&lt;String&gt; requiredTables = rules.stream().map(AbstractTableRuleSegment::getLogicTable).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L350" href="#L350">350</a>         Collection&lt;String&gt; duplicatedRuleNames = getDuplicatedRuleNames(requiredTables);
+<a class="jxr_linenumber" name="L351" href="#L351">351</a>         ShardingSpherePreconditions.checkMustEmpty(duplicatedRuleNames, () -&gt; <strong class="jxr_keyword">new</strong> <a name="DuplicateRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/DuplicateRuleException.html#DuplicateRuleException">DuplicateRuleException</a>(<span class="jxr_string">"sharding"</span>, databaseName, duplicatedRuleNames));
+<a class="jxr_linenumber" name="L352" href="#L352">352</a>         Collection&lt;String&gt; currentShardingTables = <strong class="jxr_keyword">null</strong> == currentRuleConfig ? Collections.emptyList() : getCurrentShardingTables(currentRuleConfig);
+<a class="jxr_linenumber" name="L353" href="#L353">353</a>         <strong class="jxr_keyword">if</strong> (isCreate) {
+<a class="jxr_linenumber" name="L354" href="#L354">354</a>             <strong class="jxr_keyword">if</strong> (!ifNotExists) {
+<a class="jxr_linenumber" name="L355" href="#L355">355</a>                 duplicatedRuleNames.addAll(getDuplicatedRuleNames(requiredTables, currentShardingTables));
+<a class="jxr_linenumber" name="L356" href="#L356">356</a>                 ShardingSpherePreconditions.checkMustEmpty(duplicatedRuleNames, () -&gt; <strong class="jxr_keyword">new</strong> <a name="DuplicateRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/DuplicateRuleException.html#DuplicateRuleException">DuplicateRuleException</a>(<span class="jxr_string">"sharding"</span>, databaseName, duplicatedRuleNames));
+<a class="jxr_linenumber" name="L357" href="#L357">357</a>             }
+<a class="jxr_linenumber" name="L358" href="#L358">358</a>         } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L359" href="#L359">359</a>             Collection&lt;String&gt; notExistedRules = getNotExistedRules(requiredTables, currentShardingTables);
+<a class="jxr_linenumber" name="L360" href="#L360">360</a>             ShardingSpherePreconditions.checkMustEmpty(notExistedRules, () -&gt; <strong class="jxr_keyword">new</strong> <a name="MissingRequiredRuleException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/MissingRequiredRuleException.html#MissingRequiredRuleException">MissingRequiredRuleException</a>(<span class="jxr_string">"sharding"</span>, databaseName, notExistedRules));
+<a class="jxr_linenumber" name="L361" href="#L361">361</a>         }
+<a class="jxr_linenumber" name="L362" href="#L362">362</a>     }
+<a class="jxr_linenumber" name="L363" href="#L363">363</a>     
+<a class="jxr_linenumber" name="L364" href="#L364">364</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDuplicatedRuleNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; collection) {
+<a class="jxr_linenumber" name="L365" href="#L365">365</a>         Collection&lt;String&gt; duplicatedNames = collection.stream().collect(Collectors.groupingBy(String::toLowerCase, Collectors.counting())).entrySet().stream()
+<a class="jxr_linenumber" name="L366" href="#L366">366</a>                 .filter(each -&gt; each.getValue() &gt; 1L).map(Entry::getKey).collect(Collectors.toCollection(CaseInsensitiveSet::<strong class="jxr_keyword">new</strong>));
+<a class="jxr_linenumber" name="L367" href="#L367">367</a>         <strong class="jxr_keyword">return</strong> collection.stream().filter(duplicatedNames::contains).collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L368" href="#L368">368</a>     }
+<a class="jxr_linenumber" name="L369" href="#L369">369</a>     
+<a class="jxr_linenumber" name="L370" href="#L370">370</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getDuplicatedRuleNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; requiredRuleNames, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; currentRuleNames) {
+<a class="jxr_linenumber" name="L371" href="#L371">371</a>         <strong class="jxr_keyword">return</strong> requiredRuleNames.stream().filter(currentRuleNames::contains).collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L372" href="#L372">372</a>     }
+<a class="jxr_linenumber" name="L373" href="#L373">373</a>     
+<a class="jxr_linenumber" name="L374" href="#L374">374</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Set&lt;String&gt; getNotExistedRules(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; requiredRuleNames, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; currentRuleNames) {
+<a class="jxr_linenumber" name="L375" href="#L375">375</a>         <strong class="jxr_keyword">return</strong> requiredRuleNames.stream().filter(each -&gt; !currentRuleNames.contains(each)).collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L376" href="#L376">376</a>     }
+<a class="jxr_linenumber" name="L377" href="#L377">377</a>     
+<a class="jxr_linenumber" name="L378" href="#L378">378</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getCurrentShardingTables(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L379" href="#L379">379</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> CaseInsensitiveSet&lt;&gt;();
+<a class="jxr_linenumber" name="L380" href="#L380">380</a>         result.addAll(currentRuleConfig.getTables().stream().map(ShardingTableRuleConfiguration::getLogicTable).collect(Collectors.toSet()));
+<a class="jxr_linenumber" name="L381" href="#L381">381</a>         result.addAll(currentRuleConfig.getAutoTables().stream().map(ShardingAutoTableRuleConfiguration::getLogicTable).collect(Collectors.toSet()));
+<a class="jxr_linenumber" name="L382" href="#L382">382</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L383" href="#L383">383</a>     }
+<a class="jxr_linenumber" name="L384" href="#L384">384</a>     
+<a class="jxr_linenumber" name="L385" href="#L385">385</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkKeyGenerators(<strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules) {
+<a class="jxr_linenumber" name="L386" href="#L386">386</a>         rules.stream().map(AbstractTableRuleSegment::getKeyGenerateStrategySegment).filter(Objects::nonNull)
+<a class="jxr_linenumber" name="L387" href="#L387">387</a>                 .map(KeyGenerateStrategySegment::getKeyGenerateAlgorithmSegment)
+<a class="jxr_linenumber" name="L388" href="#L388">388</a>                 .forEach(each -&gt; TypedSPILoader.checkService(KeyGenerateAlgorithm.<strong class="jxr_keyword">class</strong>, each.getName(), each.getProps()));
+<a class="jxr_linenumber" name="L389" href="#L389">389</a>     }
+<a class="jxr_linenumber" name="L390" href="#L390">390</a>     
+<a class="jxr_linenumber" name="L391" href="#L391">391</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAuditors(<strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules) {
+<a class="jxr_linenumber" name="L392" href="#L392">392</a>         Collection&lt;AuditStrategySegment&gt; auditStrategySegments = rules.stream().map(AbstractTableRuleSegment::getAuditStrategySegment).filter(Objects::nonNull).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L393" href="#L393">393</a>         Collection&lt;AlgorithmSegment&gt; requiredAuditors = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
+<a class="jxr_linenumber" name="L394" href="#L394">394</a>         <strong class="jxr_keyword">for</strong> (<a name="AuditStrategySegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/strategy/AuditStrategySegment.html#AuditStrategySegment">AuditStrategySegment</a> each : auditStrategySegments) {
+<a class="jxr_linenumber" name="L395" href="#L395">395</a>             requiredAuditors.addAll(each.getAuditorSegments().stream().map(ShardingAuditorSegment::getAlgorithmSegment).collect(Collectors.toList()));
+<a class="jxr_linenumber" name="L396" href="#L396">396</a>         }
+<a class="jxr_linenumber" name="L397" href="#L397">397</a>         requiredAuditors.forEach(each -&gt; TypedSPILoader.checkService(ShardingAuditAlgorithm.<strong class="jxr_keyword">class</strong>, each.getName(), each.getProps()));
+<a class="jxr_linenumber" name="L398" href="#L398">398</a>     }
+<a class="jxr_linenumber" name="L399" href="#L399">399</a>     
+<a class="jxr_linenumber" name="L400" href="#L400">400</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAutoTableRule(<strong class="jxr_keyword">final</strong> Collection&lt;AutoTableRuleSegment&gt; autoTableRules) {
+<a class="jxr_linenumber" name="L401" href="#L401">401</a>         checkAutoTableShardingAlgorithms(autoTableRules);
+<a class="jxr_linenumber" name="L402" href="#L402">402</a>     }
+<a class="jxr_linenumber" name="L403" href="#L403">403</a>     
+<a class="jxr_linenumber" name="L404" href="#L404">404</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkAutoTableShardingAlgorithms(<strong class="jxr_keyword">final</strong> Collection&lt;AutoTableRuleSegment&gt; autoTableRules) {
+<a class="jxr_linenumber" name="L405" href="#L405">405</a>         autoTableRules.forEach(each -&gt; {
+<a class="jxr_linenumber" name="L406" href="#L406">406</a>             <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, each.getShardingAlgorithmSegment().getName(), each.getShardingAlgorithmSegment().getProps());
+<a class="jxr_linenumber" name="L407" href="#L407">407</a>             ShardingSpherePreconditions.checkState(shardingAlgorithm instanceof ShardingAutoTableAlgorithm,
+<a class="jxr_linenumber" name="L408" href="#L408">408</a>                     () -&gt; <strong class="jxr_keyword">new</strong> <a name="AlgorithmInitializationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/AlgorithmInitializationException.html#AlgorithmInitializationException">AlgorithmInitializationException</a>(shardingAlgorithm, <span class="jxr_string">"Auto sharding algorithm is required for table '%s'"</span>, each.getLogicTable()));
+<a class="jxr_linenumber" name="L409" href="#L409">409</a>         });
+<a class="jxr_linenumber" name="L410" href="#L410">410</a>     }
+<a class="jxr_linenumber" name="L411" href="#L411">411</a>     
+<a class="jxr_linenumber" name="L412" href="#L412">412</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTableRule(<strong class="jxr_keyword">final</strong> Collection&lt;TableRuleSegment&gt; tableRules) {
+<a class="jxr_linenumber" name="L413" href="#L413">413</a>         checkStrategy(tableRules);
+<a class="jxr_linenumber" name="L414" href="#L414">414</a>     }
+<a class="jxr_linenumber" name="L415" href="#L415">415</a>     
+<a class="jxr_linenumber" name="L416" href="#L416">416</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkStrategy(<strong class="jxr_keyword">final</strong> Collection&lt;TableRuleSegment&gt; rules) {
+<a class="jxr_linenumber" name="L417" href="#L417">417</a>         <strong class="jxr_keyword">for</strong> (<a name="TableRuleSegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/table/TableRuleSegment.html#TableRuleSegment">TableRuleSegment</a> each : rules) {
+<a class="jxr_linenumber" name="L418" href="#L418">418</a>             Optional&lt;ShardingStrategySegment&gt; databaseStrategySegment = Optional.ofNullable(each.getDatabaseStrategySegment());
+<a class="jxr_linenumber" name="L419" href="#L419">419</a>             <strong class="jxr_keyword">if</strong> (databaseStrategySegment.isPresent()) {
+<a class="jxr_linenumber" name="L420" href="#L420">420</a>                 <strong class="jxr_keyword">if</strong> (<span class="jxr_string">"none"</span>.equalsIgnoreCase(databaseStrategySegment.get().getType())) {
+<a class="jxr_linenumber" name="L421" href="#L421">421</a>                     Collection&lt;String&gt; requiredDataSources = getRequiredDataSources(rules);
+<a class="jxr_linenumber" name="L422" href="#L422">422</a>                     ShardingSpherePreconditions.checkState(1 == requiredDataSources.size(),
+<a class="jxr_linenumber" name="L423" href="#L423">423</a>                             () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidShardingStrategyConfigurationException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/strategy/InvalidShardingStrategyConfigurationException.html#InvalidShardingStrategyConfigurationException">InvalidShardingStrategyConfigurationException</a>(<span class="jxr_string">"database"</span>, databaseStrategySegment.get().getType()));
+<a class="jxr_linenumber" name="L424" href="#L424">424</a>                 } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L425" href="#L425">425</a>                     <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> databaseShardingAlgorithm = databaseStrategySegment.get().getShardingAlgorithm();
+<a class="jxr_linenumber" name="L426" href="#L426">426</a>                     checkDatabaseShardingAlgorithm(each, databaseShardingAlgorithm);
+<a class="jxr_linenumber" name="L427" href="#L427">427</a>                 }
+<a class="jxr_linenumber" name="L428" href="#L428">428</a>             }
+<a class="jxr_linenumber" name="L429" href="#L429">429</a>             Optional&lt;ShardingStrategySegment&gt; tableStrategySegment = Optional.ofNullable(each.getTableStrategySegment());
+<a class="jxr_linenumber" name="L430" href="#L430">430</a>             <strong class="jxr_keyword">if</strong> (tableStrategySegment.isPresent()) {
+<a class="jxr_linenumber" name="L431" href="#L431">431</a>                 <strong class="jxr_keyword">if</strong> (<span class="jxr_string">"none"</span>.equalsIgnoreCase(tableStrategySegment.get().getType())) {
+<a class="jxr_linenumber" name="L432" href="#L432">432</a>                     Collection&lt;String&gt; requiredTables = getRequiredTables(rules);
+<a class="jxr_linenumber" name="L433" href="#L433">433</a>                     ShardingSpherePreconditions.checkState(1 == requiredTables.size(),
+<a class="jxr_linenumber" name="L434" href="#L434">434</a>                             () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidShardingStrategyConfigurationException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/strategy/InvalidShardingStrategyConfigurationException.html#InvalidShardingStrategyConfigurationException">InvalidShardingStrategyConfigurationException</a>(<span class="jxr_string">"table"</span>, tableStrategySegment.get().getType()));
+<a class="jxr_linenumber" name="L435" href="#L435">435</a>                 } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L436" href="#L436">436</a>                     <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> tableShardingAlgorithm = tableStrategySegment.get().getShardingAlgorithm();
+<a class="jxr_linenumber" name="L437" href="#L437">437</a>                     checkTableShardingAlgorithm(each, tableShardingAlgorithm);
+<a class="jxr_linenumber" name="L438" href="#L438">438</a>                 }
+<a class="jxr_linenumber" name="L439" href="#L439">439</a>             }
+<a class="jxr_linenumber" name="L440" href="#L440">440</a>         }
+<a class="jxr_linenumber" name="L441" href="#L441">441</a>     }
+<a class="jxr_linenumber" name="L442" href="#L442">442</a>     
+<a class="jxr_linenumber" name="L443" href="#L443">443</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkDatabaseShardingAlgorithm(<strong class="jxr_keyword">final</strong> <a name="TableRuleSegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/table/TableRuleSegment.html#TableRuleSegment">TableRuleSegment</a> each, <strong class="jxr_keyword">final</strong> <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> databaseShardingAlgorithm) {
+<a class="jxr_linenumber" name="L444" href="#L444">444</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != databaseShardingAlgorithm) {
+<a class="jxr_linenumber" name="L445" href="#L445">445</a>             <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, databaseShardingAlgorithm.getName(), databaseShardingAlgorithm.getProps());
+<a class="jxr_linenumber" name="L446" href="#L446">446</a>             ShardingSpherePreconditions.checkState(!(shardingAlgorithm instanceof <a name="ShardingAutoTableAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/api/sharding/ShardingAutoTableAlgorithm.html#ShardingAutoTableAlgorithm">ShardingAutoTableAlgorithm</a>),
+<a class="jxr_linenumber" name="L447" href="#L447">447</a>                     () -&gt; <strong class="jxr_keyword">new</strong> <a name="AlgorithmInitializationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/AlgorithmInitializationException.html#AlgorithmInitializationException">AlgorithmInitializationException</a>(shardingAlgorithm, <span class="jxr_string">"Auto sharding algorithm can not be used to create a table in table '%s'"</span>, each.getLogicTable()));
+<a class="jxr_linenumber" name="L448" href="#L448">448</a>         }
+<a class="jxr_linenumber" name="L449" href="#L449">449</a>         ShardingSpherePreconditions.checkState(isValidStrategy(each.getDatabaseStrategySegment()),
+<a class="jxr_linenumber" name="L450" href="#L450">450</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidAlgorithmConfigurationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/InvalidAlgorithmConfigurationException.html#InvalidAlgorithmConfigurationException">InvalidAlgorithmConfigurationException</a>(<span class="jxr_string">"sharding"</span>, <strong class="jxr_keyword">null</strong> == databaseShardingAlgorithm ? <strong class="jxr_keyword">null</strong> : databaseShardingAlgorithm.getName()));
+<a class="jxr_linenumber" name="L451" href="#L451">451</a>     }
+<a class="jxr_linenumber" name="L452" href="#L452">452</a>     
+<a class="jxr_linenumber" name="L453" href="#L453">453</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTableShardingAlgorithm(<strong class="jxr_keyword">final</strong> <a name="TableRuleSegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/table/TableRuleSegment.html#TableRuleSegment">TableRuleSegment</a> each, <strong class="jxr_keyword">final</strong> <a name="AlgorithmSegment" href="../../../../../../../org/apache/shardingsphere/distsql/segment/AlgorithmSegment.html#AlgorithmSegment">AlgorithmSegment</a> tableShardingAlgorithm) {
+<a class="jxr_linenumber" name="L454" href="#L454">454</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != tableShardingAlgorithm) {
+<a class="jxr_linenumber" name="L455" href="#L455">455</a>             <a name="ShardingAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/spi/ShardingAlgorithm.html#ShardingAlgorithm">ShardingAlgorithm</a> shardingAlgorithm = TypedSPILoader.getService(ShardingAlgorithm.<strong class="jxr_keyword">class</strong>, tableShardingAlgorithm.getName(), tableShardingAlgorithm.getProps());
+<a class="jxr_linenumber" name="L456" href="#L456">456</a>             ShardingSpherePreconditions.checkState(!(shardingAlgorithm instanceof <a name="ShardingAutoTableAlgorithm" href="../../../../../../../org/apache/shardingsphere/sharding/api/sharding/ShardingAutoTableAlgorithm.html#ShardingAutoTableAlgorithm">ShardingAutoTableAlgorithm</a>),
+<a class="jxr_linenumber" name="L457" href="#L457">457</a>                     () -&gt; <strong class="jxr_keyword">new</strong> <a name="AlgorithmInitializationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/AlgorithmInitializationException.html#AlgorithmInitializationException">AlgorithmInitializationException</a>(shardingAlgorithm, <span class="jxr_string">"Auto sharding algorithm can not be used to create a table in table '%s'"</span>, each.getLogicTable()));
+<a class="jxr_linenumber" name="L458" href="#L458">458</a>         }
+<a class="jxr_linenumber" name="L459" href="#L459">459</a>         ShardingSpherePreconditions.checkState(isValidStrategy(each.getTableStrategySegment()),
+<a class="jxr_linenumber" name="L460" href="#L460">460</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidAlgorithmConfigurationException" href="../../../../../../../org/apache/shardingsphere/infra/algorithm/core/exception/InvalidAlgorithmConfigurationException.html#InvalidAlgorithmConfigurationException">InvalidAlgorithmConfigurationException</a>(<span class="jxr_string">"sharding"</span>, <strong class="jxr_keyword">null</strong> == tableShardingAlgorithm ? <strong class="jxr_keyword">null</strong> : tableShardingAlgorithm.getName()));
+<a class="jxr_linenumber" name="L461" href="#L461">461</a>     }
+<a class="jxr_linenumber" name="L462" href="#L462">462</a>     
+<a class="jxr_linenumber" name="L463" href="#L463">463</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isValidStrategy(<strong class="jxr_keyword">final</strong> <a name="ShardingStrategySegment" href="../../../../../../../org/apache/shardingsphere/sharding/distsql/segment/strategy/ShardingStrategySegment.html#ShardingStrategySegment">ShardingStrategySegment</a> shardingStrategySegment) {
+<a class="jxr_linenumber" name="L464" href="#L464">464</a>         <strong class="jxr_keyword">return</strong> ShardingStrategyType.getValueOf(shardingStrategySegment.getType()).isValid(shardingStrategySegment.getShardingColumn()) &amp;&amp; <strong class="jxr_keyword">null</strong> != shardingStrategySegment.getShardingAlgorithm();
+<a class="jxr_linenumber" name="L465" href="#L465">465</a>     }
+<a class="jxr_linenumber" name="L466" href="#L466">466</a>     
+<a class="jxr_linenumber" name="L467" href="#L467">467</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getRequiredTables(<strong class="jxr_keyword">final</strong> Collection&lt;TableRuleSegment&gt; rules) {
+<a class="jxr_linenumber" name="L468" href="#L468">468</a>         <strong class="jxr_keyword">return</strong> rules.stream().map(TableRuleSegment::getDataSourceNodes).flatMap(Collection::stream)
+<a class="jxr_linenumber" name="L469" href="#L469">469</a>                 .map(ShardingTableRuleStatementChecker::parseDateSource).map(ShardingTableRuleStatementChecker::getTableNames).flatMap(Collection::stream).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L470" href="#L470">470</a>     }
+<a class="jxr_linenumber" name="L471" href="#L471">471</a>     
+<a class="jxr_linenumber" name="L472" href="#L472">472</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getTableNames(<strong class="jxr_keyword">final</strong> Collection&lt;String&gt; actualDataNodes) {
+<a class="jxr_linenumber" name="L473" href="#L473">473</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> HashSet&lt;&gt;(actualDataNodes.size(), 1F);
+<a class="jxr_linenumber" name="L474" href="#L474">474</a>         <strong class="jxr_keyword">for</strong> (String each : actualDataNodes) {
+<a class="jxr_linenumber" name="L475" href="#L475">475</a>             result.add(isValidDataNode(each) ? <strong class="jxr_keyword">new</strong> <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a>(each).getTableName() : each);
+<a class="jxr_linenumber" name="L476" href="#L476">476</a>         }
+<a class="jxr_linenumber" name="L477" href="#L477">477</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L478" href="#L478">478</a>     }
+<a class="jxr_linenumber" name="L479" href="#L479">479</a>     
+<a class="jxr_linenumber" name="L480" href="#L480">480</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkBindingTableRules(<strong class="jxr_keyword">final</strong> Collection&lt;AbstractTableRuleSegment&gt; rules, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L481" href="#L481">481</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == currentRuleConfig || currentRuleConfig.getBindingTableGroups().isEmpty()) {
+<a class="jxr_linenumber" name="L482" href="#L482">482</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L483" href="#L483">483</a>         }
+<a class="jxr_linenumber" name="L484" href="#L484">484</a>         Collection&lt;String&gt; bindingTables = getCurrentBindingTables(currentRuleConfig);
+<a class="jxr_linenumber" name="L485" href="#L485">485</a>         <strong class="jxr_keyword">if</strong> (bindingTables.size() &lt;= 1) {
+<a class="jxr_linenumber" name="L486" href="#L486">486</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L487" href="#L487">487</a>         }
+<a class="jxr_linenumber" name="L488" href="#L488">488</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig = ShardingTableRuleStatementConverter.convert(rules);
+<a class="jxr_linenumber" name="L489" href="#L489">489</a>         Collection&lt;String&gt; toBeAlteredLogicTableNames = getAlteredLogicalTableNames(toBeAlteredRuleConfig);
+<a class="jxr_linenumber" name="L490" href="#L490">490</a>         Collection&lt;String&gt; toBeAlteredBindingTableNames = toBeAlteredLogicTableNames.stream().filter(bindingTables::contains).collect(Collectors.toSet());
+<a class="jxr_linenumber" name="L491" href="#L491">491</a>         <strong class="jxr_keyword">if</strong> (toBeAlteredBindingTableNames.isEmpty()) {
+<a class="jxr_linenumber" name="L492" href="#L492">492</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L493" href="#L493">493</a>         }
+<a class="jxr_linenumber" name="L494" href="#L494">494</a>         <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeCheckedRuleConfig = createToBeCheckedShardingRuleConfiguration(currentRuleConfig);
+<a class="jxr_linenumber" name="L495" href="#L495">495</a>         removeRuleConfiguration(toBeCheckedRuleConfig, toBeAlteredRuleConfig);
+<a class="jxr_linenumber" name="L496" href="#L496">496</a>         addRuleConfiguration(toBeCheckedRuleConfig, toBeAlteredRuleConfig);
+<a class="jxr_linenumber" name="L497" href="#L497">497</a>         Collection&lt;String&gt; dataSourceNames = getRequiredDataSources(toBeCheckedRuleConfig);
+<a class="jxr_linenumber" name="L498" href="#L498">498</a>         dataSourceNames.addAll(getRequiredDataSources(toBeAlteredRuleConfig));
+<a class="jxr_linenumber" name="L499" href="#L499">499</a>         ShardingSpherePreconditions.checkState(check(toBeCheckedRuleConfig, dataSourceNames),
+<a class="jxr_linenumber" name="L500" href="#L500">500</a>                 () -&gt; <strong class="jxr_keyword">new</strong> <a name="InvalidRuleConfigurationException" href="../../../../../../../org/apache/shardingsphere/infra/exception/kernel/metadata/rule/InvalidRuleConfigurationException.html#InvalidRuleConfigurationException">InvalidRuleConfigurationException</a>(<span class="jxr_string">"sharding table"</span>, toBeAlteredLogicTableNames, Collections.singleton(<span class="jxr_string">"invalid binding table configuration."</span>)));
+<a class="jxr_linenumber" name="L501" href="#L501">501</a>     }
+<a class="jxr_linenumber" name="L502" href="#L502">502</a>     
+<a class="jxr_linenumber" name="L503" href="#L503">503</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getCurrentBindingTables(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig) {
+<a class="jxr_linenumber" name="L504" href="#L504">504</a>         Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
+<a class="jxr_linenumber" name="L505" href="#L505">505</a>         currentRuleConfig.getBindingTableGroups().forEach(each -&gt; result.addAll(Splitter.on(<span class="jxr_string">","</span>).trimResults().splitToList(each.getReference())));
+<a class="jxr_linenumber" name="L506" href="#L506">506</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L507" href="#L507">507</a>     }
+<a class="jxr_linenumber" name="L508" href="#L508">508</a>     
+<a class="jxr_linenumber" name="L509" href="#L509">509</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> removeRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig) {
+<a class="jxr_linenumber" name="L510" href="#L510">510</a>         Collection&lt;String&gt; toBeAlteredLogicTableNames = getAlteredLogicalTableNames(toBeAlteredRuleConfig);
+<a class="jxr_linenumber" name="L511" href="#L511">511</a>         toBeAlteredLogicTableNames.forEach(each -&gt; {
+<a class="jxr_linenumber" name="L512" href="#L512">512</a>             currentRuleConfig.getTables().removeIf(table -&gt; table.getLogicTable().equalsIgnoreCase(each));
+<a class="jxr_linenumber" name="L513" href="#L513">513</a>             currentRuleConfig.getAutoTables().removeIf(table -&gt; table.getLogicTable().equalsIgnoreCase(each));
+<a class="jxr_linenumber" name="L514" href="#L514">514</a>         });
+<a class="jxr_linenumber" name="L515" href="#L515">515</a>     }
+<a class="jxr_linenumber" name="L516" href="#L516">516</a>     
+<a class="jxr_linenumber" name="L517" href="#L517">517</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> addRuleConfiguration(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> currentRuleConfig, <strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig) {
+<a class="jxr_linenumber" name="L518" href="#L518">518</a>         currentRuleConfig.getTables().addAll(toBeAlteredRuleConfig.getTables());
+<a class="jxr_linenumber" name="L519" href="#L519">519</a>         currentRuleConfig.getAutoTables().addAll(toBeAlteredRuleConfig.getAutoTables());
+<a class="jxr_linenumber" name="L520" href="#L520">520</a>         currentRuleConfig.getShardingAlgorithms().putAll(toBeAlteredRuleConfig.getShardingAlgorithms());
+<a class="jxr_linenumber" name="L521" href="#L521">521</a>         currentRuleConfig.getKeyGenerators().putAll(toBeAlteredRuleConfig.getKeyGenerators());
+<a class="jxr_linenumber" name="L522" href="#L522">522</a>     }
+<a class="jxr_linenumber" name="L523" href="#L523">523</a>     
+<a class="jxr_linenumber" name="L524" href="#L524">524</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Collection&lt;String&gt; getAlteredLogicalTableNames(<strong class="jxr_keyword">final</strong> <a name="ShardingRuleConfiguration" href="../../../../../../../org/apache/shardingsphere/sharding/api/config/ShardingRuleConfiguration.html#ShardingRuleConfiguration">ShardingRuleConfiguration</a> toBeAlteredRuleConfig) {
+<a class="jxr_linenumber" name="L525" href="#L525">525</a>         Collection&lt;String&gt; result = toBeAlteredRuleConfig.getTables().stream().map(ShardingTableRuleConfiguration::getLogicTable).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L526" href="#L526">526</a>         result.addAll(toBeAlteredRuleConfig.getAutoTables().stream().map(ShardingAutoTableRuleConfiguration::getLogicTable).collect(Collectors.toList()));
+<a class="jxr_linenumber" name="L527" href="#L527">527</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L528" href="#L528">528</a>     }
+<a class="jxr_linenumber" name="L529" href="#L529">529</a>     
+<a class="jxr_linenumber" name="L530" href="#L530">530</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L531" href="#L531">531</a> <em class="jxr_javadoccomment">     * Check to be added data nodes.</em>
+<a class="jxr_linenumber" name="L532" href="#L532">532</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L533" href="#L533">533</a> <em class="jxr_javadoccomment">     * @param toBeAddedDataNodes to be added data nodes</em>
+<a class="jxr_linenumber" name="L534" href="#L534">534</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L535" href="#L535">535</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkToBeAddedDataNodes(<strong class="jxr_keyword">final</strong> Map&lt;String, Collection&lt;DataNode&gt;&gt; toBeAddedDataNodes) {
+<a class="jxr_linenumber" name="L536" href="#L536">536</a>         Collection&lt;DataNode&gt; uniqueActualDataNodes = <strong class="jxr_keyword">new</strong> HashSet&lt;&gt;(toBeAddedDataNodes.size(), 1F);
+<a class="jxr_linenumber" name="L537" href="#L537">537</a>         toBeAddedDataNodes.forEach((key, value) -&gt; {
+<a class="jxr_linenumber" name="L538" href="#L538">538</a>             <a name="DataNode" href="../../../../../../../org/apache/shardingsphere/infra/datanode/DataNode.html#DataNode">DataNode</a> sampleActualDataNode = value.iterator().next();
+<a class="jxr_linenumber" name="L539" href="#L539">539</a>             ShardingSpherePreconditions.checkNotContains(uniqueActualDataNodes, sampleActualDataNode,
+<a class="jxr_linenumber" name="L540" href="#L540">540</a>                     () -&gt; <strong class="jxr_keyword">new</strong> <a name="DuplicateShardingActualDataNodeException" href="../../../../../../../org/apache/shardingsphere/sharding/exception/metadata/DuplicateShardingActualDataNodeException.html#DuplicateShardingActualDataNodeException">DuplicateShardingActualDataNodeException</a>(key, sampleActualDataNode.getDataSourceName(), sampleActualDataNode.getTableName()));
+<a class="jxr_linenumber" name="L541" href="#L541">541</a>             uniqueActualDataNodes.add(sampleActualDataNode);
+<a class="jxr_linenumber" name="L542" href="#L542">542</a>         });
+<a class="jxr_linenumber" name="L543" href="#L543">543</a>     }
+<a class="jxr_linenumber" name="L544" href="#L544">544</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

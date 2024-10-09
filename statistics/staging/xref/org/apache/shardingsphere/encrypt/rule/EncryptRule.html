@@ -76,124 +76,128 @@
 <a class="jxr_linenumber" name="L68" href="#L68">68</a>              each.getColumns().forEach(<strong class="jxr_keyword">this</strong>::checkEncryptorType);
 <a class="jxr_linenumber" name="L69" href="#L69">69</a>              tables.put(each.getName(), <strong class="jxr_keyword">new</strong> <a name="EncryptTable" href="../../../../../org/apache/shardingsphere/encrypt/rule/table/EncryptTable.html#EncryptTable">EncryptTable</a>(each, encryptors));
 <a class="jxr_linenumber" name="L70" href="#L70">70</a>          }
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>          attributes.set(<strong class="jxr_keyword">new</strong> <a name="RuleAttributes" href="../../../../../org/apache/shardingsphere/infra/rule/attribute/RuleAttributes.html#RuleAttributes">RuleAttributes</a>(<strong class="jxr_keyword">new</strong> <a name="EncryptTableMapperRuleAttribute" href="../../../../../org/apache/shardingsphere/encrypt/rule/attribute/EncryptTableMapperRuleAttribute.html#EncryptTableMapperRuleAttribute">EncryptTableMapperRuleAttribute</a>(tables.keySet())));
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>          attributes.set(buildRuleAttributes());
 <a class="jxr_linenumber" name="L72" href="#L72">72</a>      }
 <a class="jxr_linenumber" name="L73" href="#L73">73</a>      
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>      <strong class="jxr_keyword">private</strong> Map&lt;String, EncryptAlgorithm&gt; createEncryptors(<strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> ruleConfig) {
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>          Map&lt;String, EncryptAlgorithm&gt; result = <strong class="jxr_keyword">new</strong> CaseInsensitiveMap&lt;&gt;(Collections.emptyMap(), <strong class="jxr_keyword">new</strong> ConcurrentHashMap&lt;&gt;(ruleConfig.getEncryptors().size(), 1F));
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>          <strong class="jxr_keyword">for</strong> (Entry&lt;String, AlgorithmConfiguration&gt; entry : ruleConfig.getEncryptors().entrySet()) {
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>              result.put(entry.getKey(), TypedSPILoader.getService(EncryptAlgorithm.<strong class="jxr_keyword">class</strong>, entry.getValue().getType(), entry.getValue().getProps()));
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>          }
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>          <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>      }
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>      
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>      <em class="jxr_comment">// TODO How to process changed encryptors and tables if check failed? It should check before rule change</em>
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> checkEncryptorType(<strong class="jxr_keyword">final</strong> <a name="EncryptColumnRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/rule/EncryptColumnRuleConfiguration.html#EncryptColumnRuleConfiguration">EncryptColumnRuleConfiguration</a> columnRuleConfig) {
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>          ShardingSpherePreconditions.checkState(encryptors.containsKey(columnRuleConfig.getCipher().getEncryptorName())
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>                  &amp;&amp; encryptors.get(columnRuleConfig.getCipher().getEncryptorName()).getMetaData().isSupportDecrypt(),
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>                  () -&gt; <strong class="jxr_keyword">new</strong> <a name="MismatchedEncryptAlgorithmTypeException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/MismatchedEncryptAlgorithmTypeException.html#MismatchedEncryptAlgorithmTypeException">MismatchedEncryptAlgorithmTypeException</a>(databaseName, <span class="jxr_string">"Cipher"</span>, columnRuleConfig.getCipher().getEncryptorName(), <span class="jxr_string">"decrypt"</span>));
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>          columnRuleConfig.getAssistedQuery().ifPresent(optional -&gt; ShardingSpherePreconditions.checkState(encryptors.containsKey(optional.getEncryptorName())
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>                  &amp;&amp; encryptors.get(optional.getEncryptorName()).getMetaData().isSupportEquivalentFilter(),
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>                  () -&gt; <strong class="jxr_keyword">new</strong> <a name="MismatchedEncryptAlgorithmTypeException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/MismatchedEncryptAlgorithmTypeException.html#MismatchedEncryptAlgorithmTypeException">MismatchedEncryptAlgorithmTypeException</a>(databaseName, <span class="jxr_string">"Assisted query"</span>, columnRuleConfig.getCipher().getEncryptorName(), <span class="jxr_string">"equivalent filter"</span>)));
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>          columnRuleConfig.getLikeQuery().ifPresent(optional -&gt; ShardingSpherePreconditions.checkState(encryptors.containsKey(optional.getEncryptorName())
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>                  &amp;&amp; encryptors.get(optional.getEncryptorName()).getMetaData().isSupportLike(),
-<a class="jxr_linenumber" name="L92" href="#L92">92</a>                  () -&gt; <strong class="jxr_keyword">new</strong> <a name="MismatchedEncryptAlgorithmTypeException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/MismatchedEncryptAlgorithmTypeException.html#MismatchedEncryptAlgorithmTypeException">MismatchedEncryptAlgorithmTypeException</a>(databaseName, <span class="jxr_string">"Like query"</span>, columnRuleConfig.getCipher().getEncryptorName(), <span class="jxr_string">"like"</span>)));
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>      }
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>      
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L96" href="#L96">96</a>  <em class="jxr_javadoccomment">     * Get all table names.</em>
-<a class="jxr_linenumber" name="L97" href="#L97">97</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L98" href="#L98">98</a>  <em class="jxr_javadoccomment">     * @return all table names</em>
-<a class="jxr_linenumber" name="L99" href="#L99">99</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>     <strong class="jxr_keyword">public</strong> Collection&lt;String&gt; getAllTableNames() {
-<a class="jxr_linenumber" name="L101" href="#L101">101</a>         <strong class="jxr_keyword">return</strong> tables.keySet();
-<a class="jxr_linenumber" name="L102" href="#L102">102</a>     }
-<a class="jxr_linenumber" name="L103" href="#L103">103</a>     
-<a class="jxr_linenumber" name="L104" href="#L104">104</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L105" href="#L105">105</a> <em class="jxr_javadoccomment">     * Find encrypt table.</em>
-<a class="jxr_linenumber" name="L106" href="#L106">106</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L107" href="#L107">107</a> <em class="jxr_javadoccomment">     * @param tableName table name</em>
-<a class="jxr_linenumber" name="L108" href="#L108">108</a> <em class="jxr_javadoccomment">     * @return encrypt table</em>
-<a class="jxr_linenumber" name="L109" href="#L109">109</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L110" href="#L110">110</a>     @HighFrequencyInvocation
-<a class="jxr_linenumber" name="L111" href="#L111">111</a>     <strong class="jxr_keyword">public</strong> Optional&lt;EncryptTable&gt; findEncryptTable(<strong class="jxr_keyword">final</strong> String tableName) {
-<a class="jxr_linenumber" name="L112" href="#L112">112</a>         <strong class="jxr_keyword">return</strong> Optional.ofNullable(tables.get(tableName));
-<a class="jxr_linenumber" name="L113" href="#L113">113</a>     }
-<a class="jxr_linenumber" name="L114" href="#L114">114</a>     
-<a class="jxr_linenumber" name="L115" href="#L115">115</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L116" href="#L116">116</a> <em class="jxr_javadoccomment">     * Get encrypt table.</em>
-<a class="jxr_linenumber" name="L117" href="#L117">117</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L118" href="#L118">118</a> <em class="jxr_javadoccomment">     * @param tableName table name</em>
-<a class="jxr_linenumber" name="L119" href="#L119">119</a> <em class="jxr_javadoccomment">     * @return encrypt table</em>
-<a class="jxr_linenumber" name="L120" href="#L120">120</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L121" href="#L121">121</a>     @HighFrequencyInvocation
-<a class="jxr_linenumber" name="L122" href="#L122">122</a>     <strong class="jxr_keyword">public</strong> <a name="EncryptTable" href="../../../../../org/apache/shardingsphere/encrypt/rule/table/EncryptTable.html#EncryptTable">EncryptTable</a> getEncryptTable(<strong class="jxr_keyword">final</strong> String tableName) {
-<a class="jxr_linenumber" name="L123" href="#L123">123</a>         <strong class="jxr_keyword">return</strong> findEncryptTable(tableName).orElseThrow(() -&gt; <strong class="jxr_keyword">new</strong> <a name="EncryptTableNotFoundException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/EncryptTableNotFoundException.html#EncryptTableNotFoundException">EncryptTableNotFoundException</a>(tableName));
-<a class="jxr_linenumber" name="L124" href="#L124">124</a>     }
-<a class="jxr_linenumber" name="L125" href="#L125">125</a>     
-<a class="jxr_linenumber" name="L126" href="#L126">126</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L127" href="#L127">127</a> <em class="jxr_javadoccomment">     * Find query encryptor.</em>
-<a class="jxr_linenumber" name="L128" href="#L128">128</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L129" href="#L129">129</a> <em class="jxr_javadoccomment">     * @param tableName table name</em>
-<a class="jxr_linenumber" name="L130" href="#L130">130</a> <em class="jxr_javadoccomment">     * @param columnName column name</em>
-<a class="jxr_linenumber" name="L131" href="#L131">131</a> <em class="jxr_javadoccomment">     * @return query encryptor</em>
-<a class="jxr_linenumber" name="L132" href="#L132">132</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L133" href="#L133">133</a>     @HighFrequencyInvocation
-<a class="jxr_linenumber" name="L134" href="#L134">134</a>     <strong class="jxr_keyword">public</strong> Optional&lt;EncryptAlgorithm&gt; findQueryEncryptor(<strong class="jxr_keyword">final</strong> String tableName, <strong class="jxr_keyword">final</strong> String columnName) {
-<a class="jxr_linenumber" name="L135" href="#L135">135</a>         <strong class="jxr_keyword">return</strong> findEncryptTable(tableName).flatMap(optional -&gt; optional.findQueryEncryptor(columnName));
-<a class="jxr_linenumber" name="L136" href="#L136">136</a>     }
-<a class="jxr_linenumber" name="L137" href="#L137">137</a>     
-<a class="jxr_linenumber" name="L138" href="#L138">138</a>     @Override
-<a class="jxr_linenumber" name="L139" href="#L139">139</a>     <strong class="jxr_keyword">public</strong> <a name="RuleAttributes" href="../../../../../org/apache/shardingsphere/infra/rule/attribute/RuleAttributes.html#RuleAttributes">RuleAttributes</a> getAttributes() {
-<a class="jxr_linenumber" name="L140" href="#L140">140</a>         <strong class="jxr_keyword">return</strong> attributes.get();
-<a class="jxr_linenumber" name="L141" href="#L141">141</a>     }
-<a class="jxr_linenumber" name="L142" href="#L142">142</a>     
-<a class="jxr_linenumber" name="L143" href="#L143">143</a>     @Override
-<a class="jxr_linenumber" name="L144" href="#L144">144</a>     <strong class="jxr_keyword">public</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> getConfiguration() {
-<a class="jxr_linenumber" name="L145" href="#L145">145</a>         <strong class="jxr_keyword">return</strong> ruleConfig.get();
-<a class="jxr_linenumber" name="L146" href="#L146">146</a>     }
-<a class="jxr_linenumber" name="L147" href="#L147">147</a>     
-<a class="jxr_linenumber" name="L148" href="#L148">148</a>     @Override
-<a class="jxr_linenumber" name="L149" href="#L149">149</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> updateConfiguration(<strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
-<a class="jxr_linenumber" name="L150" href="#L150">150</a>         ruleConfig.set(toBeUpdatedRuleConfig);
-<a class="jxr_linenumber" name="L151" href="#L151">151</a>     }
-<a class="jxr_linenumber" name="L152" href="#L152">152</a>     
-<a class="jxr_linenumber" name="L153" href="#L153">153</a>     @Override
-<a class="jxr_linenumber" name="L154" href="#L154">154</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">boolean</strong> partialUpdate(<strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
-<a class="jxr_linenumber" name="L155" href="#L155">155</a>         Collection&lt;String&gt; toBeUpdatedTablesNames = toBeUpdatedRuleConfig.getTables().stream().map(EncryptTableRuleConfiguration::getName).collect(Collectors.toCollection(CaseInsensitiveSet::<strong class="jxr_keyword">new</strong>));
-<a class="jxr_linenumber" name="L156" href="#L156">156</a>         Collection&lt;String&gt; toBeAddedTableNames = toBeUpdatedTablesNames.stream().filter(each -&gt; !tables.containsKey(each)).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L157" href="#L157">157</a>         <strong class="jxr_keyword">if</strong> (!toBeAddedTableNames.isEmpty()) {
-<a class="jxr_linenumber" name="L158" href="#L158">158</a>             toBeAddedTableNames.forEach(each -&gt; addTableRule(each, toBeUpdatedRuleConfig));
-<a class="jxr_linenumber" name="L159" href="#L159">159</a>             attributes.set(<strong class="jxr_keyword">new</strong> <a name="RuleAttributes" href="../../../../../org/apache/shardingsphere/infra/rule/attribute/RuleAttributes.html#RuleAttributes">RuleAttributes</a>(<strong class="jxr_keyword">new</strong> <a name="EncryptTableMapperRuleAttribute" href="../../../../../org/apache/shardingsphere/encrypt/rule/attribute/EncryptTableMapperRuleAttribute.html#EncryptTableMapperRuleAttribute">EncryptTableMapperRuleAttribute</a>(tables.keySet())));
-<a class="jxr_linenumber" name="L160" href="#L160">160</a>             <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
-<a class="jxr_linenumber" name="L161" href="#L161">161</a>         }
-<a class="jxr_linenumber" name="L162" href="#L162">162</a>         Collection&lt;String&gt; toBeRemovedTableNames = tables.keySet().stream().filter(each -&gt; !toBeUpdatedTablesNames.contains(each)).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L163" href="#L163">163</a>         <strong class="jxr_keyword">if</strong> (!toBeRemovedTableNames.isEmpty()) {
-<a class="jxr_linenumber" name="L164" href="#L164">164</a>             toBeRemovedTableNames.forEach(tables::remove);
-<a class="jxr_linenumber" name="L165" href="#L165">165</a>             attributes.set(<strong class="jxr_keyword">new</strong> <a name="RuleAttributes" href="../../../../../org/apache/shardingsphere/infra/rule/attribute/RuleAttributes.html#RuleAttributes">RuleAttributes</a>(<strong class="jxr_keyword">new</strong> <a name="EncryptTableMapperRuleAttribute" href="../../../../../org/apache/shardingsphere/encrypt/rule/attribute/EncryptTableMapperRuleAttribute.html#EncryptTableMapperRuleAttribute">EncryptTableMapperRuleAttribute</a>(tables.keySet())));
-<a class="jxr_linenumber" name="L166" href="#L166">166</a>             <em class="jxr_comment">// TODO check and remove unused INLINE encryptors</em>
-<a class="jxr_linenumber" name="L167" href="#L167">167</a>             <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
-<a class="jxr_linenumber" name="L168" href="#L168">168</a>         }
-<a class="jxr_linenumber" name="L169" href="#L169">169</a>         <em class="jxr_comment">// TODO Process update table</em>
-<a class="jxr_linenumber" name="L170" href="#L170">170</a>         <em class="jxr_comment">// TODO Process CRUD encryptors</em>
-<a class="jxr_linenumber" name="L171" href="#L171">171</a>         <strong class="jxr_keyword">return</strong> false;
-<a class="jxr_linenumber" name="L172" href="#L172">172</a>     }
-<a class="jxr_linenumber" name="L173" href="#L173">173</a>     
-<a class="jxr_linenumber" name="L174" href="#L174">174</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> addTableRule(<strong class="jxr_keyword">final</strong> String tableName, <strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
-<a class="jxr_linenumber" name="L175" href="#L175">175</a>         <a name="EncryptTableRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/rule/EncryptTableRuleConfiguration.html#EncryptTableRuleConfiguration">EncryptTableRuleConfiguration</a> tableRuleConfig = getTableRuleConfiguration(tableName, toBeUpdatedRuleConfig);
-<a class="jxr_linenumber" name="L176" href="#L176">176</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, AlgorithmConfiguration&gt; entry : toBeUpdatedRuleConfig.getEncryptors().entrySet()) {
-<a class="jxr_linenumber" name="L177" href="#L177">177</a>             encryptors.computeIfAbsent(entry.getKey(), key -&gt; TypedSPILoader.getService(EncryptAlgorithm.<strong class="jxr_keyword">class</strong>, entry.getValue().getType(), entry.getValue().getProps()));
-<a class="jxr_linenumber" name="L178" href="#L178">178</a>         }
-<a class="jxr_linenumber" name="L179" href="#L179">179</a>         tableRuleConfig.getColumns().forEach(<strong class="jxr_keyword">this</strong>::checkEncryptorType);
-<a class="jxr_linenumber" name="L180" href="#L180">180</a>         tables.put(tableName, <strong class="jxr_keyword">new</strong> <a name="EncryptTable" href="../../../../../org/apache/shardingsphere/encrypt/rule/table/EncryptTable.html#EncryptTable">EncryptTable</a>(tableRuleConfig, encryptors));
-<a class="jxr_linenumber" name="L181" href="#L181">181</a>     }
-<a class="jxr_linenumber" name="L182" href="#L182">182</a>     
-<a class="jxr_linenumber" name="L183" href="#L183">183</a>     <strong class="jxr_keyword">private</strong> <a name="EncryptTableRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/rule/EncryptTableRuleConfiguration.html#EncryptTableRuleConfiguration">EncryptTableRuleConfiguration</a> getTableRuleConfiguration(<strong class="jxr_keyword">final</strong> String tableName, <strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
-<a class="jxr_linenumber" name="L184" href="#L184">184</a>         Optional&lt;EncryptTableRuleConfiguration&gt; result = toBeUpdatedRuleConfig.getTables().stream().filter(table -&gt; table.getName().equals(tableName)).findFirst();
-<a class="jxr_linenumber" name="L185" href="#L185">185</a>         Preconditions.checkState(result.isPresent());
-<a class="jxr_linenumber" name="L186" href="#L186">186</a>         <strong class="jxr_keyword">return</strong> result.get();
-<a class="jxr_linenumber" name="L187" href="#L187">187</a>     }
-<a class="jxr_linenumber" name="L188" href="#L188">188</a> }
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>      <strong class="jxr_keyword">private</strong> <a name="RuleAttributes" href="../../../../../org/apache/shardingsphere/infra/rule/attribute/RuleAttributes.html#RuleAttributes">RuleAttributes</a> buildRuleAttributes() {
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>          <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="RuleAttributes" href="../../../../../org/apache/shardingsphere/infra/rule/attribute/RuleAttributes.html#RuleAttributes">RuleAttributes</a>(<strong class="jxr_keyword">new</strong> <a name="EncryptTableMapperRuleAttribute" href="../../../../../org/apache/shardingsphere/encrypt/rule/attribute/EncryptTableMapperRuleAttribute.html#EncryptTableMapperRuleAttribute">EncryptTableMapperRuleAttribute</a>(tables.keySet()));
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>      }
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>      
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>      <strong class="jxr_keyword">private</strong> Map&lt;String, EncryptAlgorithm&gt; createEncryptors(<strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> ruleConfig) {
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>          Map&lt;String, EncryptAlgorithm&gt; result = <strong class="jxr_keyword">new</strong> CaseInsensitiveMap&lt;&gt;(Collections.emptyMap(), <strong class="jxr_keyword">new</strong> ConcurrentHashMap&lt;&gt;(ruleConfig.getEncryptors().size(), 1F));
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>          <strong class="jxr_keyword">for</strong> (Entry&lt;String, AlgorithmConfiguration&gt; entry : ruleConfig.getEncryptors().entrySet()) {
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>              result.put(entry.getKey(), TypedSPILoader.getService(EncryptAlgorithm.<strong class="jxr_keyword">class</strong>, entry.getValue().getType(), entry.getValue().getProps()));
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>          }
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>          <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>      }
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>      
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>      <em class="jxr_comment">// TODO How to process changed encryptors and tables if check failed? It should check before rule change</em>
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> checkEncryptorType(<strong class="jxr_keyword">final</strong> <a name="EncryptColumnRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/rule/EncryptColumnRuleConfiguration.html#EncryptColumnRuleConfiguration">EncryptColumnRuleConfiguration</a> columnRuleConfig) {
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>          ShardingSpherePreconditions.checkState(encryptors.containsKey(columnRuleConfig.getCipher().getEncryptorName())
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>                  &amp;&amp; encryptors.get(columnRuleConfig.getCipher().getEncryptorName()).getMetaData().isSupportDecrypt(),
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>                  () -&gt; <strong class="jxr_keyword">new</strong> <a name="MismatchedEncryptAlgorithmTypeException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/MismatchedEncryptAlgorithmTypeException.html#MismatchedEncryptAlgorithmTypeException">MismatchedEncryptAlgorithmTypeException</a>(databaseName, <span class="jxr_string">"Cipher"</span>, columnRuleConfig.getCipher().getEncryptorName(), <span class="jxr_string">"decrypt"</span>));
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>          columnRuleConfig.getAssistedQuery().ifPresent(optional -&gt; ShardingSpherePreconditions.checkState(encryptors.containsKey(optional.getEncryptorName())
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>                  &amp;&amp; encryptors.get(optional.getEncryptorName()).getMetaData().isSupportEquivalentFilter(),
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>                  () -&gt; <strong class="jxr_keyword">new</strong> <a name="MismatchedEncryptAlgorithmTypeException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/MismatchedEncryptAlgorithmTypeException.html#MismatchedEncryptAlgorithmTypeException">MismatchedEncryptAlgorithmTypeException</a>(databaseName, <span class="jxr_string">"Assisted query"</span>, columnRuleConfig.getCipher().getEncryptorName(), <span class="jxr_string">"equivalent filter"</span>)));
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>          columnRuleConfig.getLikeQuery().ifPresent(optional -&gt; ShardingSpherePreconditions.checkState(encryptors.containsKey(optional.getEncryptorName())
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>                  &amp;&amp; encryptors.get(optional.getEncryptorName()).getMetaData().isSupportLike(),
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>                  () -&gt; <strong class="jxr_keyword">new</strong> <a name="MismatchedEncryptAlgorithmTypeException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/MismatchedEncryptAlgorithmTypeException.html#MismatchedEncryptAlgorithmTypeException">MismatchedEncryptAlgorithmTypeException</a>(databaseName, <span class="jxr_string">"Like query"</span>, columnRuleConfig.getCipher().getEncryptorName(), <span class="jxr_string">"like"</span>)));
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>      }
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>      
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L100" href="#L100">100</a> <em class="jxr_javadoccomment">     * Get all table names.</em>
+<a class="jxr_linenumber" name="L101" href="#L101">101</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L102" href="#L102">102</a> <em class="jxr_javadoccomment">     * @return all table names</em>
+<a class="jxr_linenumber" name="L103" href="#L103">103</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>     <strong class="jxr_keyword">public</strong> Collection&lt;String&gt; getAllTableNames() {
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>         <strong class="jxr_keyword">return</strong> tables.keySet();
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>     }
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>     
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L109" href="#L109">109</a> <em class="jxr_javadoccomment">     * Find encrypt table.</em>
+<a class="jxr_linenumber" name="L110" href="#L110">110</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L111" href="#L111">111</a> <em class="jxr_javadoccomment">     * @param tableName table name</em>
+<a class="jxr_linenumber" name="L112" href="#L112">112</a> <em class="jxr_javadoccomment">     * @return encrypt table</em>
+<a class="jxr_linenumber" name="L113" href="#L113">113</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>     @HighFrequencyInvocation
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>     <strong class="jxr_keyword">public</strong> Optional&lt;EncryptTable&gt; findEncryptTable(<strong class="jxr_keyword">final</strong> String tableName) {
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>         <strong class="jxr_keyword">return</strong> Optional.ofNullable(tables.get(tableName));
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>     }
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>     
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L120" href="#L120">120</a> <em class="jxr_javadoccomment">     * Get encrypt table.</em>
+<a class="jxr_linenumber" name="L121" href="#L121">121</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L122" href="#L122">122</a> <em class="jxr_javadoccomment">     * @param tableName table name</em>
+<a class="jxr_linenumber" name="L123" href="#L123">123</a> <em class="jxr_javadoccomment">     * @return encrypt table</em>
+<a class="jxr_linenumber" name="L124" href="#L124">124</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>     @HighFrequencyInvocation
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>     <strong class="jxr_keyword">public</strong> <a name="EncryptTable" href="../../../../../org/apache/shardingsphere/encrypt/rule/table/EncryptTable.html#EncryptTable">EncryptTable</a> getEncryptTable(<strong class="jxr_keyword">final</strong> String tableName) {
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>         <strong class="jxr_keyword">return</strong> findEncryptTable(tableName).orElseThrow(() -&gt; <strong class="jxr_keyword">new</strong> <a name="EncryptTableNotFoundException" href="../../../../../org/apache/shardingsphere/encrypt/exception/metadata/EncryptTableNotFoundException.html#EncryptTableNotFoundException">EncryptTableNotFoundException</a>(tableName));
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>     }
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>     
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L131" href="#L131">131</a> <em class="jxr_javadoccomment">     * Find query encryptor.</em>
+<a class="jxr_linenumber" name="L132" href="#L132">132</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L133" href="#L133">133</a> <em class="jxr_javadoccomment">     * @param tableName table name</em>
+<a class="jxr_linenumber" name="L134" href="#L134">134</a> <em class="jxr_javadoccomment">     * @param columnName column name</em>
+<a class="jxr_linenumber" name="L135" href="#L135">135</a> <em class="jxr_javadoccomment">     * @return query encryptor</em>
+<a class="jxr_linenumber" name="L136" href="#L136">136</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>     @HighFrequencyInvocation
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>     <strong class="jxr_keyword">public</strong> Optional&lt;EncryptAlgorithm&gt; findQueryEncryptor(<strong class="jxr_keyword">final</strong> String tableName, <strong class="jxr_keyword">final</strong> String columnName) {
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>         <strong class="jxr_keyword">return</strong> findEncryptTable(tableName).flatMap(optional -&gt; optional.findQueryEncryptor(columnName));
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>     }
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>     
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>     @Override
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>     <strong class="jxr_keyword">public</strong> <a name="RuleAttributes" href="../../../../../org/apache/shardingsphere/infra/rule/attribute/RuleAttributes.html#RuleAttributes">RuleAttributes</a> getAttributes() {
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>         <strong class="jxr_keyword">return</strong> attributes.get();
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>     }
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>     
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>     @Override
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>     <strong class="jxr_keyword">public</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> getConfiguration() {
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>         <strong class="jxr_keyword">return</strong> ruleConfig.get();
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>     }
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>     
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>     @Override
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">void</strong> updateConfiguration(<strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>         ruleConfig.set(toBeUpdatedRuleConfig);
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>     }
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>     
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>     @Override
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">boolean</strong> partialUpdate(<strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>         Collection&lt;String&gt; toBeUpdatedTablesNames = toBeUpdatedRuleConfig.getTables().stream().map(EncryptTableRuleConfiguration::getName).collect(Collectors.toCollection(CaseInsensitiveSet::<strong class="jxr_keyword">new</strong>));
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>         Collection&lt;String&gt; toBeAddedTableNames = toBeUpdatedTablesNames.stream().filter(each -&gt; !tables.containsKey(each)).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>         <strong class="jxr_keyword">if</strong> (!toBeAddedTableNames.isEmpty()) {
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>             toBeAddedTableNames.forEach(each -&gt; addTableRule(each, toBeUpdatedRuleConfig));
+<a class="jxr_linenumber" name="L163" href="#L163">163</a>             attributes.set(buildRuleAttributes());
+<a class="jxr_linenumber" name="L164" href="#L164">164</a>             <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
+<a class="jxr_linenumber" name="L165" href="#L165">165</a>         }
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>         Collection&lt;String&gt; toBeRemovedTableNames = tables.keySet().stream().filter(each -&gt; !toBeUpdatedTablesNames.contains(each)).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L167" href="#L167">167</a>         <strong class="jxr_keyword">if</strong> (!toBeRemovedTableNames.isEmpty()) {
+<a class="jxr_linenumber" name="L168" href="#L168">168</a>             toBeRemovedTableNames.forEach(tables::remove);
+<a class="jxr_linenumber" name="L169" href="#L169">169</a>             attributes.set(buildRuleAttributes());
+<a class="jxr_linenumber" name="L170" href="#L170">170</a>             <em class="jxr_comment">// TODO check and remove unused INLINE encryptors</em>
+<a class="jxr_linenumber" name="L171" href="#L171">171</a>             <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
+<a class="jxr_linenumber" name="L172" href="#L172">172</a>         }
+<a class="jxr_linenumber" name="L173" href="#L173">173</a>         <em class="jxr_comment">// TODO Process update table</em>
+<a class="jxr_linenumber" name="L174" href="#L174">174</a>         <em class="jxr_comment">// TODO Process CRUD encryptors</em>
+<a class="jxr_linenumber" name="L175" href="#L175">175</a>         <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L176" href="#L176">176</a>     }
+<a class="jxr_linenumber" name="L177" href="#L177">177</a>     
+<a class="jxr_linenumber" name="L178" href="#L178">178</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> addTableRule(<strong class="jxr_keyword">final</strong> String tableName, <strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>         <a name="EncryptTableRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/rule/EncryptTableRuleConfiguration.html#EncryptTableRuleConfiguration">EncryptTableRuleConfiguration</a> tableRuleConfig = getTableRuleConfiguration(tableName, toBeUpdatedRuleConfig);
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, AlgorithmConfiguration&gt; entry : toBeUpdatedRuleConfig.getEncryptors().entrySet()) {
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>             encryptors.computeIfAbsent(entry.getKey(), key -&gt; TypedSPILoader.getService(EncryptAlgorithm.<strong class="jxr_keyword">class</strong>, entry.getValue().getType(), entry.getValue().getProps()));
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>         }
+<a class="jxr_linenumber" name="L183" href="#L183">183</a>         tableRuleConfig.getColumns().forEach(<strong class="jxr_keyword">this</strong>::checkEncryptorType);
+<a class="jxr_linenumber" name="L184" href="#L184">184</a>         tables.put(tableName, <strong class="jxr_keyword">new</strong> <a name="EncryptTable" href="../../../../../org/apache/shardingsphere/encrypt/rule/table/EncryptTable.html#EncryptTable">EncryptTable</a>(tableRuleConfig, encryptors));
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>     }
+<a class="jxr_linenumber" name="L186" href="#L186">186</a>     
+<a class="jxr_linenumber" name="L187" href="#L187">187</a>     <strong class="jxr_keyword">private</strong> <a name="EncryptTableRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/rule/EncryptTableRuleConfiguration.html#EncryptTableRuleConfiguration">EncryptTableRuleConfiguration</a> getTableRuleConfiguration(<strong class="jxr_keyword">final</strong> String tableName, <strong class="jxr_keyword">final</strong> <a name="EncryptRuleConfiguration" href="../../../../../org/apache/shardingsphere/encrypt/config/EncryptRuleConfiguration.html#EncryptRuleConfiguration">EncryptRuleConfiguration</a> toBeUpdatedRuleConfig) {
+<a class="jxr_linenumber" name="L188" href="#L188">188</a>         Optional&lt;EncryptTableRuleConfiguration&gt; result = toBeUpdatedRuleConfig.getTables().stream().filter(table -&gt; table.getName().equals(tableName)).findFirst();
+<a class="jxr_linenumber" name="L189" href="#L189">189</a>         Preconditions.checkState(result.isPresent());
+<a class="jxr_linenumber" name="L190" href="#L190">190</a>         <strong class="jxr_keyword">return</strong> result.get();
+<a class="jxr_linenumber" name="L191" href="#L191">191</a>     }
+<a class="jxr_linenumber" name="L192" href="#L192">192</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2024 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

@@ -1,106 +1,438 @@
-commit ec1e1f60780f5af5ff9c9c60635e93ed6b43e579
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Wed Oct 9 09:42:06 2024 +0800
+commit da496acca5cba9edfb70ffa007765b02ee06d93e
+Author: Raigor <raigor.jiang@gmail.com>
+Date:   Thu Oct 10 16:59:11 2024 +0800
 
-    Fix table exist exception when execute preview create table statement with exist table (#33171)
+    Update docs for storage unit RDL (#33203)
     
-    * Fix table exist exception when execute preview create table statement with exist table
+    * Update docs for storage unit RDL
     
-    * Update release note
-    
-    * refactor SingleStandardRouteEngine
+    * Update RELEASE-NOTES
 
-diff --git a/docs/document/content/user-manual/common-config/sql-hint.cn.md b/docs/document/content/user-manual/common-config/sql-hint.cn.md
-index 6f73610d6a0..b3c22b82545 100644
---- a/docs/document/content/user-manual/common-config/sql-hint.cn.md
-+++ b/docs/document/content/user-manual/common-config/sql-hint.cn.md
-@@ -24,15 +24,16 @@ ShardingSphere 的 SQL Hint 语法格式如下：
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
+index efd493917c4..68a1ddcc01d 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
+@@ -13,7 +13,10 @@ weight = 2
+ {{% tab name="语法" %}}
+ ```sql
+ AlterStorageUnit ::=
+-  'ALTER' 'STORAGE' 'UNIT' storageUnitDefinition (',' storageUnitDefinition)*
++  'ALTER' 'STORAGE' 'UNIT' storageUnitsDefinition (',' checkPrivileges)?
++
++storageUnitsDefinition ::=
++  storageUnitDefinition (',' storageUnitDefinition)*
  
- ShardingSphere SQL Hint 中可以定义如下的属性，为了兼容低版本 SQL Hint 语法，也可以使用别名中定义的属性： 
+ storageUnitDefinition ::=
+   storageUnitName '(' ('HOST' '=' hostName ',' 'PORT' '=' port ',' 'DB' '=' dbName | 'URL' '=' url) ',' 'USER' '=' user (',' 'PASSWORD' '=' password)? (',' propertiesDefinition)?')'
+@@ -47,6 +50,12 @@ key ::=
  
--| *名称*                        | *别名*                  | *数据类型*     | *说明*                                  | *默认值* |
--|-----------------------------|-----------------------|------------|---------------------------------------|-------|
--| SHARDING_DATABASE_VALUE (?) | shardingDatabaseValue | Comparable | 数据分片分库值，和 Hint 分片策略配合使用               | -     |
--| SHARDING_TABLE_VALUE (?)    | shardingTableValue    | Comparable | 数据分片分表值，和 Hint 分片策略配合使用               | -     |
--| WRITE_ROUTE_ONLY (?)        | writeRouteOnly        | boolean    | 读写分离强制路由到主库执行                         | false |
--| DATA_SOURCE_NAME (?)        | dataSourceName        | String     | 数据源透传，将 SQL 直接路由到指定数据源                | -     |
--| SKIP_SQL_REWRITE (?)        | skipSQLRewrite        | boolean    | 跳过 SQL 改写阶段                           | false |
--| DISABLE_AUDIT_NAMES (?)     | disableAuditNames     | String     | 禁用指定 SQL 审计算法                         | -     |
--| SHADOW (?)                  | shadow                | boolean    | 影子库强制路由到影子库数据源执行，和影子库 SQL_HINT 算法配合使用 | false |
-+| *名称*                               | *别名*                   | *数据类型*     | *说明*                                  | *默认值* |
-+|------------------------------------|------------------------|------------|---------------------------------------|-------|
-+| SHARDING_DATABASE_VALUE (?)        | shardingDatabaseValue  | Comparable | 数据分片分库值，和 Hint 分片策略配合使用               | -     |
-+| SHARDING_TABLE_VALUE (?)           | shardingTableValue     | Comparable | 数据分片分表值，和 Hint 分片策略配合使用               | -     |
-+| WRITE_ROUTE_ONLY (?)               | writeRouteOnly         | boolean    | 读写分离强制路由到主库执行                         | false |
-+| DATA_SOURCE_NAME (?)               | dataSourceName         | String     | 数据源透传，将 SQL 直接路由到指定数据源                | -     |
-+| SKIP_SQL_REWRITE (?)               | skipSQLRewrite         | boolean    | 跳过 SQL 改写阶段                           | false |
-+| SKIP_METADATA_VALIDATE (?)         | skipMetadataValidate   | boolean    | 跳过 SQL 执行元数据校验                      | false |
-+| DISABLE_AUDIT_NAMES (?)            | disableAuditNames      | String     | 禁用指定 SQL 审计算法                         | -     |
-+| SHADOW (?)                         | shadow                 | boolean    | 影子库强制路由到影子库数据源执行，和影子库 SQL_HINT 算法配合使用 | false |
+ value ::=
+   literal
++
++checkPrivileges ::=
++  'CHECK_PRIVILEGES' '=' privilegeType (',' privilegeType)*
++
++privilegeType ::=
++  identifier
+ ```
+ {{% /tab %}}
+ {{% tab name="铁路图" %}}
+@@ -60,7 +69,8 @@ value ::=
+ - `ALTER STORAGE UNIT`不允许改变该存储单元关联的真实数据源（通过 host、port 和 db 判断）；
+ - `ALTER STORAGE UNIT`会发生连接池的切换，这个操作可能对进行中的业务造成影响，请谨慎使用；
+ - 请确认修改的存储单元是可以正常连接的， 否则将不能修改成功；
+-- `PROPERTIES` 为可选参数，用于自定义连接池属性，`key` 必须和连接池参数名一致。
++- `PROPERTIES` 为可选参数，用于自定义连接池属性，`key` 必须和连接池参数名一致;
++- 可通过 `CHECK_PRIVILEGES` 指定注册时校验存储单元用户的权限，`privilegeType` 支持的类型有 `SELECT`、`XA`、`PIPELINE`、`NONE`，缺省值为 `SELECT`，当类型列表中包含 `NONE` 时，跳过权限校验。
  
+ ### 示例
  
- ## SQL Hint
-@@ -82,6 +83,16 @@ ShardingSphere SQL Hint 中可以定义如下的属性，为了兼容低版本 S
- /* SHARDINGSPHERE_HINT: SKIP_SQL_REWRITE=true */ SELECT * FROM t_order;
+@@ -100,9 +110,21 @@ ALTER STORAGE UNIT ds_2 (
+ );
  ```
  
-+### 跳过 SQL 执行元数据校验
-+
-+跳过 SQL 执行元数据校验 SQL Hint 功能可选属性为 `SKIP_METADATA_VALIDATE`，`true` 表示跳过当前 SQL 执行的元数据校验。
-+
-+跳过 SQL 执行元数据校验 SQL Hint 功能的使用示例：
++- 修改存储单元时检查 `SELECT`、`XA` 和 `PIPELINE` 权限
 +
 +```sql
-+/* SHARDINGSPHERE_HINT: SKIP_METADATA_VALIDATE=true */ SELECT * FROM t_order;
++ALTER STORAGE UNIT ds_2 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
++    USER=root,
++    PASSWORD=root,
++    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
++    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
++);
 +```
 +
- ### 禁用 SQL 审计
+ ### 保留字
  
- 禁用 SQL 审计 SQL Hint 功能可选属性为 `DISABLE_AUDIT_NAMES`，需要指定需要禁用的 SQL 审计算法名称，多个 SQL 审计算法需要使用逗号分隔。
-diff --git a/docs/document/content/user-manual/common-config/sql-hint.en.md b/docs/document/content/user-manual/common-config/sql-hint.en.md
-index 6374fe5aa26..a21d9a995ff 100644
---- a/docs/document/content/user-manual/common-config/sql-hint.en.md
-+++ b/docs/document/content/user-manual/common-config/sql-hint.en.md
-@@ -24,15 +24,16 @@ If you use the MySQL client to connect, you need to add the `-c` option to retai
+-`ALTER`、`STORAGE`、`UNIT`、`HOST`、`PORT`、`DB`、`USER`、`PASSWORD`、`PROPERTIES`、`URL`
++`ALTER`、`STORAGE`、`UNIT`、`HOST`、`PORT`、`DB`、`USER`、`PASSWORD`、`PROPERTIES`、`URL`、`CHECK_PRIVILEGES`
  
- The following attributes can be defined in ShardingSphere SQL Hint. In order to be compatible with the lower version SQL Hint syntax, the attributes defined in the alias can also be used:
+ ### 相关链接
  
--| *Name*                      | *Alias*               | *Data Type* | *Description*                                                             | *Default Value* |
--|-----------------------------|-----------------------|-------------|---------------------------------------------------------------------------|-----------------|
--| SHARDING_DATABASE_VALUE (?) | shardingDatabaseValue | Comparable  | Database sharding value, used when config Hint sharding strategy          | -               |
--| SHARDING_TABLE_VALUE (?)    | shardingTableValue    | Comparable  | Table sharding value, used when config Hint sharding strategy             | -               |
--| WRITE_ROUTE_ONLY (?)        | writeRouteOnly        | boolean     | Route to the write datasource when use readwrite-splitting                | false           |
--| DATA_SOURCE_NAME (?)        | dataSourceName        | String      | Data source pass through, route SQL directly to the specified data source | -               |
--| SKIP_SQL_REWRITE (?)        | skipSQLRewrite        | boolean     | Skip the SQL rewrite phase                                                | false           |
--| DISABLE_AUDIT_NAMES (?)     | disableAuditNames     | String      | Disable the specified SQL audit algorithm                                 | -               |
--| SHADOW (?)                  | shadow                | boolean     | Route to the shadow datasource when use shadow                            | false           |
-+| *Name*                        | *Alias*               | *Data Type* | *Description*                                                          | *Default Value* |
-+|-------------------------------|-----------------------|-------------|------------------------------------------------------------------------|-----------------|
-+| SHARDING_DATABASE_VALUE (?)   | shardingDatabaseValue | Comparable  | Database sharding value, used when config Hint sharding strategy       | -               |
-+| SHARDING_TABLE_VALUE (?)      | shardingTableValue    | Comparable  | Table sharding value, used when config Hint sharding strategy          | -               |
-+| WRITE_ROUTE_ONLY (?)          | writeRouteOnly        | boolean     | Route to the write datasource when use readwrite-splitting             | false           |
-+| DATA_SOURCE_NAME (?)          | dataSourceName        | String      | Data source pass through, route SQL directly to the specified data source | -               |
-+| SKIP_SQL_REWRITE (?)          | skipSQLRewrite        | boolean     | Skip the SQL rewrite phase                                             | false           |
-+| SKIP_METADATA_VALIDATE (?)    | skipMetadataValidate  | boolean     | Skip the SQL metadata validate                                         | false |
-+| DISABLE_AUDIT_NAMES (?)       | disableAuditNames     | String      | Disable the specified SQL audit algorithm                              | -               |
-+| SHADOW (?)                    | shadow                | boolean     | Route to the shadow datasource when use shadow                         | false           |
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
+index 6c7aee224e4..e05cc4aefeb 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
+@@ -13,7 +13,10 @@ The `ALTER STORAGE UNIT` syntax is used to alter storage units for the currently
+ {{% tab name="Grammar" %}}
+ ```sql
+ AlterStorageUnit ::=
+-  'ALTER' 'STORAGE' 'UNIT' storageUnitDefinition (',' storageUnitDefinition)*
++  'ALTER' 'STORAGE' 'UNIT' storageUnitsDefinition (',' checkPrivileges)?
++
++storageUnitsDefinition ::=
++  storageUnitDefinition (',' storageUnitDefinition)*
  
+ storageUnitDefinition ::=
+   storageUnitName '(' ('HOST' '=' hostName ',' 'PORT' '=' port ',' 'DB' '=' dbName | 'URL' '=' url) ',' 'USER' '=' user (',' 'PASSWORD' '=' password)? (',' propertiesDefinition)?')'
+@@ -47,6 +50,12 @@ key ::=
  
- ## SQL Hint
-@@ -82,6 +83,16 @@ An example of skipping SQL rewrite SQL Hint:
- /* SHARDINGSPHERE_HINT: SKIP_SQL_REWRITE=true */ SELECT * FROM t_order;
+ value ::=
+   literal
++
++checkPrivileges ::=
++  'CHECK_PRIVILEGES' '=' privilegeType (',' privilegeType)*
++
++privilegeType ::=
++  identifier
+ ```
+ {{% /tab %}}
+ {{% tab name="Railroad diagram" %}}
+@@ -56,14 +65,12 @@ value ::=
+ 
+ ### Supplement
+ 
+-- Before altering the storage units, please confirm that a database exists in Proxy, and execute the `use` command to
+-  select a database;
++- Before altering the storage units, please confirm that a database exists in Proxy, and execute the `use` command to select a database;
+ - `ALTER STORAGE UNIT` is not allowed to change the real data source associated with this storageUnit (determined by host, port and db);
+-- `ALTER STORAGE UNIT` will switch the connection pool. This operation may affect the ongoing business, please use it with
+-  caution;
++- `ALTER STORAGE UNIT` will switch the connection pool. This operation may affect the ongoing business, please use it with caution;
+ - Please confirm that the storage unit to be altered can be connected successfully, otherwise the altering will fail;
+-- `PROPERTIES` is optional, used to customize connection pool properties, `key` must be the same as the connection pool
+-  property name.
++- `PROPERTIES` is optional, used to customize connection pool properties, `key` must be the same as the connection pool property name;
++- `CHECK_PRIVILEGES` can be specified to check privileges of the storage unit user. The supported types of `privilegeType` are `SELECT`, `XA`, `PIPELINE`, and `NONE`. The default value is `SELECT`. When `NONE` is included in the type list, the privilege check is skipped.
+ 
+ ### Example
+ 
+@@ -71,11 +78,11 @@ value ::=
+ 
+ ```sql
+ ALTER STORAGE UNIT ds_0 (
+-    HOST=127.0.0.1,
++    HOST="127.0.0.1",
+     PORT=3306,
+-    DB=db_0,
+-    USER=root,
+-    PASSWORD=root
++    DB="db_0",
++    USER="root",
++    PASSWORD="root"
+ );
  ```
  
-+### SKIP METADATA VALIDATE
-+
-+The optional attribute of skip SQL metadata validate SQL Hint is `SKIP_METADATA_VALIDATE`, and `true` means skipping the current SQL metadata validate.
-+
-+An example of skipping SQL metadata validate SQL Hint:
-+
+@@ -83,29 +90,41 @@ ALTER STORAGE UNIT ds_0 (
+ 
+ ```sql
+ ALTER STORAGE UNIT ds_1 (
+-    HOST=127.0.0.1,
++    HOST="127.0.0.1",
+     PORT=3306,
+-    DB=db_1,
+-    USER=root,
+-    PASSWORD=root
++    DB="db_1",
++    USER="root",
++    PASSWORD="root",
+     PROPERTIES("maximumPoolSize"=10)
+ );
+ ```
+ 
+ - Alter storage unit and set connection pool properties using URL method
+ 
 +```sql
-+/* SHARDINGSPHERE_HINT: SKIP_METADATA_VALIDATE=true */ SELECT * FROM t_order;
++ALTER STORAGE UNIT ds_2 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
++    USER="root",
++    PASSWORD="root",
++    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
++);
 +```
 +
- ### DISABLE SQL AUDIT
++- Check `SELECT`, `XA` and `PIPELINE` privileges when altering
++
+ ```sql
+ ALTER STORAGE UNIT ds_2 (
+     URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
+     USER=root,
+     PASSWORD=root,
+-    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
++    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
++    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
+ );
+ ```
  
- The optional attribute of disable SQL audit is `DISABLE_AUDIT_NAMES`, you need to specify names of SQL audit algorithm that needs to be disabled, and multiple SQL audit algorithms need to be separated by commas.
+ ### Reserved word
+ 
+-`ALTER`, `STORAGE`, `UNIT`, `HOST`, `PORT`, `DB`, `USER`, `PASSWORD`, `PROPERTIES`, `URL`
++`ALTER`, `STORAGE`, `UNIT`, `HOST`, `PORT`, `DB`, `USER`, `PASSWORD`, `PROPERTIES`, `URL`, `CHECK_PRIVILEGES`
+ 
+ ### Related links
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
+index 85723ee7ef7..9b66100eac6 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
+@@ -13,7 +13,10 @@ weight = 1
+ {{% tab name="语法" %}}
+ ```sql
+ RegisterStorageUnit ::=
+-  'REGISTER' 'STORAGE' 'UNIT' ifNotExists? storageUnitDefinition (',' storageUnitDefinition)*
++  'REGISTER' 'STORAGE' 'UNIT' ifNotExists? storageUnitsDefinition (',' checkPrivileges)?
++
++storageUnitsDefinition ::=
++  storageUnitDefinition (',' storageUnitDefinition)*
+ 
+ storageUnitDefinition ::=
+   storageUnitName '(' ('HOST' '=' hostName ',' 'PORT' '=' port ',' 'DB' '=' dbName | 'URL' '=' url) ',' 'USER' '=' user (',' 'PASSWORD' '=' password)? (',' propertiesDefinition)?')'
+@@ -50,6 +53,12 @@ key ::=
+ 
+ value ::=
+   literal
++
++checkPrivileges ::=
++  'CHECK_PRIVILEGES' '=' privilegeType (',' privilegeType)*
++
++privilegeType ::=
++  identifier
+ ```
+ {{% /tab %}}
+ {{% tab name="铁路图" %}}
+@@ -64,7 +73,8 @@ value ::=
+ - `storageUnitName` 区分大小写；
+ - `storageUnitName` 在当前逻辑库中需要唯一；
+ - `storageUnitName` 命名只允许使用字母、数字以及 `_` ，且必须以字母开头；
+-- `PROPERTIES` 为可选参数，用于自定义连接池属性，`key` 必须和连接池参数名一致。
++- `PROPERTIES` 为可选参数，用于自定义连接池属性，`key` 必须和连接池参数名一致；
++- 可通过 `CHECK_PRIVILEGES` 指定注册时校验存储单元用户的权限，`privilegeType` 支持的类型有 `SELECT`、`XA`、`PIPELINE`、`NONE`，缺省值为 `SELECT`，当类型列表中包含 `NONE` 时，跳过权限校验。
+ 
+ ### 示例
+ 
+@@ -116,9 +126,21 @@ REGISTER STORAGE UNIT IF NOT EXISTS ds_0 (
+ );
+ ```
+ 
++- 注册时校验 `SELECT`、`XA` 和 `PIPELINE` 权限
++
++```sql
++REGISTER STORAGE UNIT ds_3 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_3?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
++    USER="root",
++    PASSWORD="root",
++    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
++    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
++);
++```
++
+ ### 保留字
+ 
+-`REGISTER`、`STORAGE`、`UNIT`、`HOST`、`PORT`、`DB`、`USER`、`PASSWORD`、`PROPERTIES`、`URL`
++`REGISTER`、`STORAGE`、`UNIT`、`HOST`、`PORT`、`DB`、`USER`、`PASSWORD`、`PROPERTIES`、`URL`、`CHECK_PRIVILEGES`
+ 
+ ### 相关链接
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
+index 369ac975566..44992f1e4cd 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
+@@ -13,7 +13,10 @@ The `REGISTER STORAGE UNIT` syntax is used to register storage unit for the curr
+ {{% tab name="Grammar" %}}
+ ```sql
+ RegisterStorageUnit ::=
+-  'REGISTER' 'STORAGE' 'UNIT' ifNotExists? storageUnitDefinition (',' storageUnitDefinition)*
++  'REGISTER' 'STORAGE' 'UNIT' ifNotExists? storageUnitsDefinition (',' checkPrivileges)?
++
++storageUnitsDefinition ::=
++  storageUnitDefinition (',' storageUnitDefinition)*
+ 
+ storageUnitDefinition ::=
+   storageUnitName '(' ('HOST' '=' hostName ',' 'PORT' '=' port ',' 'DB' '=' dbName | 'URL' '=' url) ',' 'USER' '=' user (',' 'PASSWORD' '=' password)? (',' propertiesDefinition)?')'
+@@ -50,6 +53,12 @@ key ::=
+ 
+ value ::=
+   literal
++
++checkPrivileges ::=
++  'CHECK_PRIVILEGES' '=' privilegeType (',' privilegeType)*
++
++privilegeType ::=
++  identifier
+ ```
+ {{% /tab %}}
+ {{% tab name="Railroad diagram" %}}
+@@ -59,14 +68,14 @@ value ::=
+ 
+ ### Supplement
+ 
+-- Before register storage units, please confirm that a database has been created in Proxy, and execute the `use` command to
+-  successfully select a database;
++- Before register storage units, please confirm that a database has been created in Proxy, and execute the `use` command to successfully select a database;
+ - Confirm that the registered storage unit can be connected normally, otherwise it will not be added successfully;
+ - `storageUnitName` is case-sensitive;
+ - `storageUnitName` needs to be unique within the current database;
+ - `storageUnitName` name only allows letters, numbers and `_`, and must start with a letter;
+ - `PROPERTIES` is optional, used to customize connection pool properties, `key` must be the same as the connection pool
+-  property name.
++  property name;
++- `CHECK_PRIVILEGES` can be specified to check privileges of the storage unit user. The supported types of `privilegeType` are `SELECT`, `XA`, `PIPELINE`, and `NONE`. The default value is `SELECT`. When `NONE` is included in the type list, the privilege check is skipped.
+ 
+ ### Example
+ 
+@@ -118,9 +127,21 @@ REGISTER STORAGE UNIT IF NOT EXISTS ds_0 (
+ );
+ ```
+ 
++- Check `SELECT`, `XA` and `PIPELINE` privileges when registering
++
++```sql
++REGISTER STORAGE UNIT ds_3 (
++    URL="jdbc:mysql://127.0.0.1:3306/db_3?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
++    USER="root",
++    PASSWORD="root",
++    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
++    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
++);
++```
++
+ ### Reserved word
+ 
+-`REGISTER`, `STORAGE`, `UNIT`, `HOST`, `PORT`, `DB`, `USER`, `PASSWORD`, `PROPERTIES`, `URL`
++`REGISTER`, `STORAGE`, `UNIT`, `HOST`, `PORT`, `DB`, `USER`, `PASSWORD`, `PROPERTIES`, `URL`, `CHECK_PRIVILEGES`
+ 
+ ### Related links
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.cn.md
+index cdef6a5b472..d6b556ac095 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.cn.md
+@@ -13,22 +13,16 @@ weight = 3
+ {{% tab name="语法" %}}
+ ```sql
+ UnregisterStorageUnit ::=
+-  'UNREGISTER' 'STORAGE' 'UNIT' ifExists? storageUnitName (',' storageUnitName)* (ignoreSingleTables | ignoreBroadcastTables | ignoreSingleAndBroadcastTables)?
+-
+-ignoreSingleTables ::=
+-    'IGNORE' 'SINGLE' 'TABLES'
+-
+-ignoreBroadcastTables ::=
+-    'IGNORE' 'BROADCAST' 'TABLES'
+-
+-ignoreSingleAndBroadcastTables ::=
+-    'IGNORE' ('SINGLE' ',' 'BROADCAST' | 'BROADCAST' ',' 'SINGLE') 'TABLES'
++  'UNREGISTER' 'STORAGE' 'UNIT' ifExists? storageUnitName (',' storageUnitName)* ignoreTables?
+ 
+ ifExists ::=
+   'IF' 'EXISTS'
+ 
+ storageUnitName ::=
+   identifier
++
++ignoreTables ::=
++  'IGNORE' ('SINGLE')? (',')? ('BROADCAST')? 'TABLES'
+ ```
+ {{% /tab %}}
+ {{% tab name="铁路图" %}}
+@@ -83,7 +77,7 @@ UNREGISTER STORAGE UNIT IF EXISTS ds_0;
+ 
+ ### 保留字
+ 
+-`DROP`、`STORAGE`、`UNIT`、`IF`、`EXISTS`、`IGNORE`、`SINGLE`、`BROADCAST`、`TABLES`
++`UNREGISTER`、`STORAGE`、`UNIT`、`IF`、`EXISTS`、`IGNORE`、`SINGLE`、`BROADCAST`、`TABLES`
+ 
+ ### 相关链接
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.en.md
+index 88805066ca8..bf2d12112e9 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/unregister-storage-unit.en.md
+@@ -13,22 +13,16 @@ The `UNREGISTER STORAGE UNIT` syntax is used to unregister storage unit from the
+ {{% tab name="Grammar" %}}
+ ```sql
+ UnregisterStorageUnit ::=
+-  'UNREGISTER' 'STORAGE' 'UNIT' ifExists? storageUnitName (',' storageUnitName)* (ignoreSingleTables | ignoreBroadcastTables | ignoreSingleAndBroadcastTables)?
+-
+-ignoreSingleTables ::=
+-    'IGNORE' 'SINGLE' 'TABLES'
+-
+-ignoreBroadcastTables ::=
+-    'IGNORE' 'BROADCAST' 'TABLES'
+-
+-ignoreSingleAndBroadcastTables ::=
+-    'IGNORE' ('SINGLE' ',' 'BROADCAST' | 'BROADCAST' ',' 'SINGLE') 'TABLES'
++  'UNREGISTER' 'STORAGE' 'UNIT' ifExists? storageUnitName (',' storageUnitName)* ignoreTables?
+ 
+ ifExists ::=
+   'IF' 'EXISTS'
+ 
+ storageUnitName ::=
+   identifier
++
++ignoreTables ::=
++  'IGNORE' ('SINGLE')? (',')? ('BROADCAST')? 'TABLES'
+ ```
+ {{% /tab %}}
+ {{% tab name="Railroad diagram" %}}
+@@ -48,33 +42,37 @@ storageUnitName ::=
+ 
+ ### Example
+ 
+-- Drop a storage unit
++- Unregister a storage unit
+ 
+ ```sql
+ UNREGISTER STORAGE UNIT ds_0;
+ ```
+ 
+-- Drop multiple storage units
++- Unregister multiple storage units
+ 
+ ```sql
+ UNREGISTER STORAGE UNIT ds_0, ds_1;
+ ```
+ 
+-- Ignore single rule remove storage unit
++- Unregister storage unit and ignore single tables
+ 
+ ```sql
+ UNREGISTER STORAGE UNIT ds_0 IGNORE SINGLE TABLES;
+ ```
+ 
++- Unregister storage unit and ignore broadcast tables
++
+ ```sql
+ UNREGISTER STORAGE UNIT ds_0 IGNORE BROADCAST TABLES;
+ ```
+ 
++- Unregister storage unit, ignore single and broadcast tables
++
+ ```sql
+ UNREGISTER STORAGE UNIT ds_0 IGNORE SINGLE, BROADCAST TABLES;
+ ```
+ 
+-- Drop the storage unit with `ifExists` clause
++- Unregister storage unit with `ifExists` clause
+ 
+ ```sql
+ UNREGISTER STORAGE UNIT IF EXISTS ds_0;
+@@ -82,7 +80,7 @@ UNREGISTER STORAGE UNIT IF EXISTS ds_0;
+ 
+ ### Reserved word
+ 
+-`DROP`, `STORAGE`, `UNIT`, `IF`, `EXISTS`, `IGNORE`, `SINGLE`, `BROADCAST`, `TABLES`
++`UNREGISTER`, `STORAGE`, `UNIT`, `IF`, `EXISTS`, `IGNORE`, `SINGLE`, `BROADCAST`, `TABLES`
+ 
+ ### Related links
+ 

@@ -1,114 +1,123 @@
-commit e279df2e61f8e7b2101de26b73ac1f847e04e4d2
-Author: Raigor <raigor.jiang@gmail.com>
-Date:   Thu Oct 10 17:41:11 2024 +0800
+commit 2b6fccaba95377b9fed392ee53fb49a0528bc824
+Author: Ling Hengqian <linghengqian@outlook.com>
+Date:   Fri Oct 11 15:11:36 2024 +0800
 
-    Update docs for storage unit RDL (#33204)
+    Enable Safe Composition of Metadata for ShardingSphere Proxy Native (#33179)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
-index 68a1ddcc01d..55ccc1df3cb 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.cn.md
-@@ -106,7 +106,7 @@ ALTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-     USER="root",
-     PASSWORD="root",
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
- );
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+index 2cf6170ed98..6bf283d7683 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+@@ -251,9 +251,10 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+ ```json
+ [
+ {
+-  "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
+-  "name":"com.mysql.cj.jdbc.MysqlXADataSource",
+-  "allDeclaredConstructors": true
++   "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
++   "name":"com.mysql.cj.jdbc.MysqlXADataSource",
++   "allPublicMethods": true,
++   "methods": [{"name":"<init>","parameterTypes":[] }]
+ }
+ ]
+ ```
+@@ -484,7 +485,7 @@ sudo apt-get install build-essential zlib1g-dev -y
+ 
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+-./mvnw -PnativeTestInShardingSphere -e clean test
++./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
  ```
  
-@@ -115,11 +115,10 @@ ALTER STORAGE UNIT ds_2 (
- ```sql
- ALTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
--    USER=root,
--    PASSWORD=root,
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
--    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
--);
-+    USER="root",
-+    PASSWORD="root",
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
-+), CHECK_PRIVILEGES=SELECT,XA,PIPELINE;
+ 当贡献者发现缺少与 ShardingSphere 无关的第三方库的 GraalVM Reachability Metadata 时，应当在
+@@ -513,10 +514,26 @@ Reachability Metadata 位于 `shardingsphere-infra-reachability-metadata` 子模
+ ```bash
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+-./mvnw -PgenerateMetadata -DskipNativeTests -e clean test native:metadata-copy
++./mvnw -PgenerateMetadata -DskipNativeTests -e -T 1C clean test native:metadata-copy
  ```
  
- ### 保留字
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
-index e05cc4aefeb..032db83f9c0 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/alter-storage-unit.en.md
-@@ -106,7 +106,7 @@ ALTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-     USER="root",
-     PASSWORD="root",
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
- );
+-在使用 GraalVM Native Build Tools 的 Maven Plugin 时，
+-贡献者应避免使用 Maven 的并行构建功能。
+-GraalVM Native Build Tools 的 Maven Plugin并不是线程安全的，
+-它与 https://cwiki.apache.org/confluence/display/MAVEN/Parallel+builds+in+Maven+3 不兼容。
+\ No newline at end of file
++受 https://github.com/apache/shardingsphere/issues/33206 影响，
++贡献者执行 `./mvnw -PgenerateMetadata -DskipNativeTests -T 1C -e clean test native:metadata-copy` 后，
++`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` 会生成不必要的包含绝对路径的 JSON 条目，
++类似如下，
++
++```json
++{
++   "resources":{
++      "includes":[{
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
++      }]},
++   "bundles":[]
++}
++```
++
++贡献者应始终手动删除这些包含绝对路径的 JSON 条目，并等待 https://github.com/oracle/graal/issues/8417 被解决。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+index e85f6d60de1..ebee77e8a20 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+@@ -264,9 +264,10 @@ to define the constructor of `com.mysql.cj.jdbc.MysqlXADataSource` inside the Gr
+ ```json
+ [
+ {
+-"condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
+-"name":"com.mysql.cj.jdbc.MysqlXADataSource",
+-"allDeclaredConstructors": true
++   "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
++   "name":"com.mysql.cj.jdbc.MysqlXADataSource",
++   "allPublicMethods": true,
++   "methods": [{"name":"<init>","parameterTypes":[] }]
+ }
+ ]
+ ```
+@@ -502,7 +503,7 @@ sudo apt-get install build-essential zlib1g-dev -y
+ 
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+-./mvnw -PnativeTestInShardingSphere -e clean test
++./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
  ```
  
-@@ -115,11 +115,10 @@ ALTER STORAGE UNIT ds_2 (
- ```sql
- ALTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
--    USER=root,
--    PASSWORD=root,
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
--    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
--);
-+    USER="root",
-+    PASSWORD="root",
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
-+), CHECK_PRIVILEGES=SELECT,XA,PIPELINE;
+ When contributors discover that GraalVM Reachability Metadata is missing for a third-party library not related to ShardingSphere, 
+@@ -532,8 +533,26 @@ contributors should place it on the classpath of the `shardingsphere-test-native
+ ```bash
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+-./mvnw -PgenerateMetadata -DskipNativeTests -e clean test native:metadata-copy
++./mvnw -PgenerateMetadata -DskipNativeTests -e -T 1C clean test native:metadata-copy
  ```
  
- ### Reserved word
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
-index 9b66100eac6..127b41ed7f7 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.cn.md
-@@ -110,7 +110,7 @@ REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-     USER="root",
-     PASSWORD="root",
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
- );
- ```
- 
-@@ -133,9 +133,8 @@ REGISTER STORAGE UNIT ds_3 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_3?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-     USER="root",
-     PASSWORD="root",
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
--    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
--);
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
-+), CHECK_PRIVILEGES=SELECT,XA,PIPELINE;
- ```
- 
- ### 保留字
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
-index 44992f1e4cd..6797ec79e95 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/rdl/storage-unit-definition/register-storage-unit.en.md
-@@ -111,7 +111,7 @@ REGISTER STORAGE UNIT ds_2 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_2?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-     USER="root",
-     PASSWORD="root",
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000")
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
- );
- ```
- 
-@@ -134,9 +134,8 @@ REGISTER STORAGE UNIT ds_3 (
-     URL="jdbc:mysql://127.0.0.1:3306/db_3?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true",
-     USER="root",
-     PASSWORD="root",
--    PROPERTIES("maximumPoolSize"=10,"idleTimeout"="30000"),
--    CHECK_PRIVILEGES=SELECT,XA,PIPELINE
--);
-+    PROPERTIES("maximumPoolSize"=10,"idleTimeout"=30000)
-+), CHECK_PRIVILEGES=SELECT,XA,PIPELINE;
- ```
- 
- ### Reserved word
+-Contributors should avoid using Maven's parallel builds feature when using the Maven Plugin for GraalVM Native Build Tools. 
+-The Maven Plugin for GraalVM Native Build Tools is not thread-safe and is incompatible with https://cwiki.apache.org/confluence/display/MAVEN/Parallel+builds+in+Maven+3 .
++Affected by https://github.com/apache/shardingsphere/issues/33206 ,
++After the contributor executes `./mvnw -PgenerateMetadata -DskipNativeTests -T 1C -e clean test native:metadata-copy`,
++`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` will generate unnecessary JSON entries containing absolute paths,
++similar to the following.
++
++```json
++{
++   "resources":{
++      "includes":[{
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
++      }]},
++   "bundles":[]
++}
++```
++
++Contributors should always manually remove these JSON entries containing absolute paths and wait for https://github.com/oracle/graal/issues/8417 to be resolved.

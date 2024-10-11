@@ -1,123 +1,141 @@
-commit 2b6fccaba95377b9fed392ee53fb49a0528bc824
+commit c47c1009d1b1ee16ddde56ab8e9ebb46bff5b5e3
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Fri Oct 11 15:11:36 2024 +0800
+Date:   Fri Oct 11 19:22:20 2024 +0800
 
-    Enable Safe Composition of Metadata for ShardingSphere Proxy Native (#33179)
+    Support Hive integration module to connect to HiveServer2 4.0.1 (#33212)
 
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-index 2cf6170ed98..6bf283d7683 100644
+index 6bf283d7683..661c116ab3f 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-@@ -251,9 +251,10 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
- ```json
- [
- {
--  "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
--  "name":"com.mysql.cj.jdbc.MysqlXADataSource",
--  "allDeclaredConstructors": true
-+   "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
-+   "name":"com.mysql.cj.jdbc.MysqlXADataSource",
-+   "allPublicMethods": true,
-+   "methods": [{"name":"<init>","parameterTypes":[] }]
+@@ -47,7 +47,7 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
+             <plugin>
+                 <groupId>org.graalvm.buildtools</groupId>
+                 <artifactId>native-maven-plugin</artifactId>
+-                <version>0.10.2</version>
++                <version>0.10.3</version>
+                 <extensions>true</extensions>
+                 <configuration>
+                     <buildArgs>
+@@ -85,12 +85,12 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
+ 
+ ```groovy
+ plugins {
+-   id 'org.graalvm.buildtools.native' version '0.10.2'
++   id 'org.graalvm.buildtools.native' version '0.10.3'
  }
- ]
- ```
-@@ -484,7 +485,7 @@ sudo apt-get install build-essential zlib1g-dev -y
  
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
--./mvnw -PnativeTestInShardingSphere -e clean test
-+./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
- ```
+ dependencies {
+    implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
+-   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.2', classifier: 'repository', ext: 'zip')
++   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.3', classifier: 'repository', ext: 'zip')
+ }
  
- 当贡献者发现缺少与 ShardingSphere 无关的第三方库的 GraalVM Reachability Metadata 时，应当在
-@@ -513,10 +514,26 @@ Reachability Metadata 位于 `shardingsphere-infra-reachability-metadata` 子模
- ```bash
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
--./mvnw -PgenerateMetadata -DskipNativeTests -e clean test native:metadata-copy
-+./mvnw -PgenerateMetadata -DskipNativeTests -e -T 1C clean test native:metadata-copy
- ```
+ graalvmNative {
+@@ -289,8 +289,8 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
  
--在使用 GraalVM Native Build Tools 的 Maven Plugin 时，
--贡献者应避免使用 Maven 的并行构建功能。
--GraalVM Native Build Tools 的 Maven Plugin并不是线程安全的，
--它与 https://cwiki.apache.org/confluence/display/MAVEN/Parallel+builds+in+Maven+3 不兼容。
-\ No newline at end of file
-+受 https://github.com/apache/shardingsphere/issues/33206 影响，
-+贡献者执行 `./mvnw -PgenerateMetadata -DskipNativeTests -T 1C -e clean test native:metadata-copy` 后，
-+`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` 会生成不必要的包含绝对路径的 JSON 条目，
-+类似如下，
-+
-+```json
-+{
-+   "resources":{
-+      "includes":[{
-+         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
-+         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
-+      }, {
-+         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
-+         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
-+      }]},
-+   "bundles":[]
-+}
-+```
-+
-+贡献者应始终手动删除这些包含绝对路径的 JSON 条目，并等待 https://github.com/oracle/graal/issues/8417 被解决。
+ ClickHouse 不支持 ShardingSphere 集成级别的本地事务，XA 事务和 Seata AT 模式事务，更多讨论位于 https://github.com/ClickHouse/clickhouse-docs/issues/2300 。
+ 
+-7. 当需要通过 ShardingSphere JDBC 使用 Hive 方言时，受 https://issues.apache.org/jira/browse/HIVE-28308 影响，
+-用户不应该使用 `classifier` 为 `standalone` 的 `org.apache.hive:hive-jdbc:4.0.0`，以避免依赖冲突。
++7. 当需要通过 ShardingSphere JDBC 使用 Hive 方言时，受 https://issues.apache.org/jira/browse/HIVE-28445 影响，
++用户不应该使用 `classifier` 为 `standalone` 的 `org.apache.hive:hive-jdbc:4.0.1`，以避免依赖冲突。
+ 可能的配置例子如下，
+ 
+ ```xml
+@@ -314,12 +314,12 @@ ClickHouse 不支持 ShardingSphere 集成级别的本地事务，XA 事务和 S
+        <dependency>
+           <groupId>org.apache.hive</groupId>
+           <artifactId>hive-jdbc</artifactId>
+-          <version>4.0.0</version>
++          <version>4.0.1</version>
+        </dependency>
+        <dependency>
+           <groupId>org.apache.hive</groupId>
+           <artifactId>hive-service</artifactId>
+-          <version>4.0.0</version>
++          <version>4.0.1</version>
+        </dependency>
+        <dependency>
+           <groupId>org.apache.hadoop</groupId>
+@@ -355,7 +355,7 @@ ClickHouse 不支持 ShardingSphere 集成级别的本地事务，XA 事务和 S
+        <dependency>
+           <groupId>io.github.linghengqian</groupId>
+           <artifactId>hive-server2-jdbc-driver-thin</artifactId>
+-          <version>1.2.0</version>
++          <version>1.5.0</version>
+           <exclusions>
+              <exclusion>
+                 <groupId>com.fasterxml.woodstox</groupId>
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-index e85f6d60de1..ebee77e8a20 100644
+index ebee77e8a20..4783a5a4356 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-@@ -264,9 +264,10 @@ to define the constructor of `com.mysql.cj.jdbc.MysqlXADataSource` inside the Gr
- ```json
- [
- {
--"condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
--"name":"com.mysql.cj.jdbc.MysqlXADataSource",
--"allDeclaredConstructors": true
-+   "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
-+   "name":"com.mysql.cj.jdbc.MysqlXADataSource",
-+   "allPublicMethods": true,
-+   "methods": [{"name":"<init>","parameterTypes":[] }]
+@@ -20,7 +20,7 @@ https://sdkman.io/jdks#nik and https://sdkman.io/jdks#mandrel .
+ 
+ Users can still use the old versions of GraalVM CE such as `21.0.2-graalce` on SDKMAN! to build the GraalVM Native Image product of ShardingSphere. 
+ However, this will cause the failure of building the GraalVM Native Image when integrating some third-party dependencies. 
+-A typical example is related to the `org.apache.hive:hive-jdbc:4.0.0` HiveServer2 JDBC Driver, which uses AWT-related classes. 
++A typical example is related to the `org.apache.hive:hive-jdbc:4.0.1` HiveServer2 JDBC Driver, which uses AWT-related classes. 
+ GraalVM CE only supports AWT for GraalVM CE For JDK22 and higher versions.
+ 
+ ```shell
+@@ -49,7 +49,7 @@ and the documentation of GraalVM Native Build Tools shall prevail.
+              <plugin>
+                  <groupId>org.graalvm.buildtools</groupId>
+                  <artifactId>native-maven-plugin</artifactId>
+-                 <version>0.10.2</version>
++                 <version>0.10.3</version>
+                  <extensions>true</extensions>
+                  <configuration>
+                     <buildArgs>
+@@ -89,12 +89,12 @@ Reference https://github.com/graalvm/native-build-tools/issues/572 .
+ 
+ ```groovy
+ plugins {
+-   id 'org.graalvm.buildtools.native' version '0.10.2'
++   id 'org.graalvm.buildtools.native' version '0.10.3'
  }
- ]
- ```
-@@ -502,7 +503,7 @@ sudo apt-get install build-essential zlib1g-dev -y
  
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
--./mvnw -PnativeTestInShardingSphere -e clean test
-+./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
- ```
+ dependencies {
+    implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
+-   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.2', classifier: 'repository', ext: 'zip')
++   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.3', classifier: 'repository', ext: 'zip')
+ }
  
- When contributors discover that GraalVM Reachability Metadata is missing for a third-party library not related to ShardingSphere, 
-@@ -532,8 +533,26 @@ contributors should place it on the classpath of the `shardingsphere-test-native
- ```bash
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
--./mvnw -PgenerateMetadata -DskipNativeTests -e clean test native:metadata-copy
-+./mvnw -PgenerateMetadata -DskipNativeTests -e -T 1C clean test native:metadata-copy
- ```
+ graalvmNative {
+@@ -302,8 +302,8 @@ Possible configuration examples are as follows,
+ ClickHouse does not support local transactions, XA transactions, and Seata AT mode transactions at the ShardingSphere integration level. 
+ More discussion is at https://github.com/ClickHouse/clickhouse-docs/issues/2300 .
  
--Contributors should avoid using Maven's parallel builds feature when using the Maven Plugin for GraalVM Native Build Tools. 
--The Maven Plugin for GraalVM Native Build Tools is not thread-safe and is incompatible with https://cwiki.apache.org/confluence/display/MAVEN/Parallel+builds+in+Maven+3 .
-+Affected by https://github.com/apache/shardingsphere/issues/33206 ,
-+After the contributor executes `./mvnw -PgenerateMetadata -DskipNativeTests -T 1C -e clean test native:metadata-copy`,
-+`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` will generate unnecessary JSON entries containing absolute paths,
-+similar to the following.
-+
-+```json
-+{
-+   "resources":{
-+      "includes":[{
-+         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
-+         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
-+      }, {
-+         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
-+         "pattern":"\\QcustomPath/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
-+      }]},
-+   "bundles":[]
-+}
-+```
-+
-+Contributors should always manually remove these JSON entries containing absolute paths and wait for https://github.com/oracle/graal/issues/8417 to be resolved.
+-7. When using the Hive dialect through ShardingSphere JDBC, affected by https://issues.apache.org/jira/browse/HIVE-28308 ,
+-   users should not use `org.apache.hive:hive-jdbc:4.0.0` with `classifier` as `standalone` to avoid dependency conflicts.
++7. When using the Hive dialect through ShardingSphere JDBC, affected by https://issues.apache.org/jira/browse/HIVE-28445 ,
++   users should not use `org.apache.hive:hive-jdbc:4.0.1` with `classifier` as `standalone` to avoid dependency conflicts.
+    Possible configuration examples are as follows,
+ 
+ ```xml
+@@ -327,12 +327,12 @@ More discussion is at https://github.com/ClickHouse/clickhouse-docs/issues/2300
+       <dependency>
+          <groupId>org.apache.hive</groupId>
+          <artifactId>hive-jdbc</artifactId>
+-         <version>4.0.0</version>
++         <version>4.0.1</version>
+       </dependency>
+       <dependency>
+          <groupId>org.apache.hive</groupId>
+          <artifactId>hive-service</artifactId>
+-         <version>4.0.0</version>
++         <version>4.0.1</version>
+       </dependency>
+       <dependency>
+          <groupId>org.apache.hadoop</groupId>
+@@ -369,7 +369,7 @@ An example of a possible configuration is as follows,
+        <dependency>
+           <groupId>io.github.linghengqian</groupId>
+           <artifactId>hive-server2-jdbc-driver-thin</artifactId>
+-          <version>1.2.0</version>
++          <version>1.5.0</version>
+           <exclusions>
+              <exclusion>
+                 <groupId>com.fasterxml.woodstox</groupId>

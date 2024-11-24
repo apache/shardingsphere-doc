@@ -1,265 +1,522 @@
-commit dff17cf7463251e083086465553a3b5982ad533a
+commit 533d3c3429c3a431973665f96243856964a6e6d6
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Fri Nov 22 22:26:22 2024 +0800
+Date:   Sun Nov 24 13:43:23 2024 +0800
 
-    Support connecting to HiveServer2 through database connection pools other than HikariCP (#33762)
+    Support connecting to HiveServer2 with ZooKeeper Service Discovery enabled in GraalVM Native Image (#33768)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
-index 7317dd49f0a..73b9c8cc909 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
-@@ -128,6 +128,17 @@ cd ./shardingsphere/
- COPY --from=ghcr.io/apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
- ```
- 
-+#### 社区构建
-+
-+自 ShardingSphere 5.5.2 开始，ShardingSphere Agent 在 https://github.com/apache/shardingsphere/pkgs/container/shardingsphere-agent 发布社区构建。
-+此 Docker Image 不属于 ASF 分发产物之一，只是为了方便而提供。
-+
-+若在自定义 `Dockerfile` 中添加以下语句，这会将 ShardingSphere Agent 的目录复制到 `/shardingsphere-agent/` 。
-+
-+```dockerfile
-+COPY --from=ghcr.io/apache/shardingsphere-agent:5.5.2 /usr/agent/ /shardingsphere-agent/
-+```
-+
- #### 夜间构建
- 
- ShardingSphere Agent 在 https://github.com/apache/shardingsphere/pkgs/container/shardingsphere-agent 存在夜间构建的 Docker Image。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
-index 47d81c5e7c0..9ee8add0048 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
-@@ -130,6 +130,17 @@ If you add the following statement in your custom `Dockerfile`, it will copy the
- COPY --from=ghcr.io/apache/shardingsphere-agent:latest /usr/agent/ /shardingsphere-agent/
- ```
- 
-+#### Community Build
-+
-+Since ShardingSphere 5.5.2, ShardingSphere Agent has released community builds at https://github.com/apache/shardingsphere/pkgs/container/shardingsphere-agent .
-+This Docker Image is not part of the ASF distribution, but is provided for convenience.
-+
-+If you add the following statement in a custom `Dockerfile`, it will copy the ShardingSphere Agent directory to `/shardingsphere-agent/`.
-+
-+```dockerfile
-+COPY --from=ghcr.io/apache/shardingsphere-agent:5.5.2 /usr/agent/ /shardingsphere-agent/
-+```
-+
- #### Nightly Build
- 
- ShardingSphere Agent has a nightly built Docker Image at https://github.com/apache/shardingsphere/pkgs/container/shardingsphere-agent .
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
-index 0b74c032d80..f0d5e43ebc4 100644
+index f0d5e43ebc4..d071dbded28 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
-@@ -233,16 +233,6 @@ ShardingSphere 仅针对 HiveServer2 `4.0.1` 进行集成测试。
- HiveServer2 JDBC Driver `4.0.1` 不支持 Hadoop `3.4.1`，
- 参考 https://github.com/apache/hive/pull/5500 。
+@@ -94,12 +94,6 @@ services:
+       SERVICE_NAME: hiveserver2
+     ports:
+       - "10000:10000"
+-    expose:
+-      - 10002
+-    volumes:
+-      - warehouse:/opt/hive/data/warehouse
+-volumes:
+-  warehouse:
+ ```
  
--### 数据库连接池限制
--
--由于 `org.apache.hive.jdbc.DatabaseMetaData` 未实现 `java.sql.DatabaseMetaData#getURL()`， 
--ShardingSphere 在`org.apache.shardingsphere.infra.database.DatabaseTypeEngine#getStorageType(javax.sql.DataSource)`处做了模糊处理，
--因此用户暂时仅可通过 `com.zaxxer.hikari.HikariDataSource` 的数据库连接池连接 HiveServer2。
--
--若用户需要通过 `com.alibaba.druid.pool.DruidDataSource` 的数据库连接池连接 HiveServer2，
--用户应当考虑在 Hive 的主分支实现 `java.sql.DatabaseMetaData#getURL()`，
--而不是尝试修改 ShardingSphere 的内部类。
--
- ### SQL 限制
+ ### 创建业务表
+@@ -113,7 +107,8 @@ sudo snap install dbeaver-ce
+ snap run dbeaver-ce
+ ```
  
- ShardingSphere JDBC DataSource 尚不支持执行 HiveServer2 的 `SET` 语句，`CREATE TABLE` 语句和 `TRUNCATE TABLE` 语句。
+-在 DBeaver Community 内使用 `jdbc:hive2://localhost:10000/` 的 `jdbcUrl` 连接至 HiveServer2，`username` 和 `password` 留空。
++在 DBeaver Community 内，使用 `jdbc:hive2://localhost:10000/` 的 `jdbcUrl` 连接至 HiveServer2，`username` 和 `password` 留空。
++执行如下 SQL，
+ 
+ ```sql
+ -- noinspection SqlNoDataSourceInspectionForFile
+@@ -208,6 +203,210 @@ public class ExampleUtils {
+ }
+ ```
+ 
++## 外部集成
++
++### 连接至开启 ZooKeeper Service Discovery 的 HiveServer2
++
++ShardingSphere 配置文件中的 `jdbcUrl` 可配置连接至开启 ZooKeeper Service Discovery 的 HiveServer2。
++
++引入讨论，假设存在如下 Docker Compose 文件来启动开启 ZooKeeper Service Discovery 的 HiveServer2。
++
++```yaml
++name: test-1
++services:
++  zookeeper:
++    image: zookeeper:3.9.3-jre-17
++    ports:
++      - "2181:2181"
++  apache-hive-1:
++    image: apache/hive:4.0.1
++    depends_on:
++      - zookeeper
++    environment:
++      SERVICE_NAME: hiveserver2
++      SERVICE_OPTS: >-
++        -Dhive.server2.support.dynamic.service.discovery=true
++        -Dhive.zookeeper.quorum=zookeeper:2181
++        -Dhive.server2.thrift.bind.host=0.0.0.0
++        -Dhive.server2.thrift.port=10000
++    ports:
++      - "10000:10000"
++```
++
++在 DBeaver Community 内，
++使用 `jdbc:hive2://127.0.0.1:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` 的 `jdbcUrl` 连接至 HiveServer2，
++`username` 和 `password` 留空。
++执行如下 SQL，
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++CREATE DATABASE demo_ds_0;
++CREATE DATABASE demo_ds_1;
++CREATE DATABASE demo_ds_2;
++```
++
++分别使用 `jdbc:hive2://127.0.0.1:2181/demo_ds_0;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` ，
++`jdbc:hive2://127.0.0.1:2181/demo_ds_1;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` 和
++`jdbc:hive2://127.0.0.1:2181/demo_ds_2;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
++的 `jdbcUrl` 连接至 HiveServer2 来执行如下 SQL，
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++set iceberg.mr.schema.auto.conversion=true;
++
++CREATE TABLE IF NOT EXISTS t_order
++(
++    order_id   BIGINT,
++    order_type INT,
++    user_id    INT    NOT NULL,
++    address_id BIGINT NOT NULL,
++    status     VARCHAR(50),
++    PRIMARY KEY (order_id) disable novalidate
++) STORED BY ICEBERG STORED AS ORC TBLPROPERTIES ('format-version' = '2');
++
++TRUNCATE TABLE t_order;
++```
++
++在业务项目引入`前提条件`涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
++
++```yaml
++dataSources:
++    ds_0:
++        dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++        driverClassName: org.apache.hive.jdbc.HiveDriver
++        jdbcUrl: jdbc:hive2://127.0.0.1:2181/demo_ds_0;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2
++    ds_1:
++        dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++        driverClassName: org.apache.hive.jdbc.HiveDriver
++        jdbcUrl: jdbc:hive2://127.0.0.1:2181/demo_ds_1;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2
++    ds_2:
++        dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++        driverClassName: org.apache.hive.jdbc.HiveDriver
++        jdbcUrl: jdbc:hive2://127.0.0.1:2181/demo_ds_2;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2
++rules:
++- !SHARDING
++    tables:
++      t_order:
++        actualDataNodes:
++        keyGenerateStrategy:
++          column: order_id
++          keyGeneratorName: snowflake
++    defaultDatabaseStrategy:
++      standard:
++        shardingColumn: user_id
++        shardingAlgorithmName: inline
++    shardingAlgorithms:
++      inline:
++        type: INLINE
++        props:
++          algorithm-expression: ds_${user_id % 2}
++    keyGenerators:
++      snowflake:
++        type: SNOWFLAKE
++```
++
++此时可正常创建 ShardingSphere 的数据源并在虚拟数据源上执行逻辑 SQL，
++
++```java
++import com.zaxxer.hikari.HikariConfig;
++import com.zaxxer.hikari.HikariDataSource;
++import java.sql.Connection;
++import java.sql.SQLException;
++import java.sql.Statement;
++public class ExampleUtils {
++    void test() throws SQLException {
++        HikariConfig config = new HikariConfig();
++        config.setJdbcUrl("jdbc:shardingsphere:classpath:demo.yaml");
++        config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
++        try (HikariDataSource dataSource = new HikariDataSource(config);
++             Connection connection = dataSource.getConnection();
++             Statement statement = connection.createStatement()) {
++            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
++            statement.executeQuery("SELECT * FROM t_order");
++            statement.execute("DELETE FROM t_order WHERE order_id=1");
++        }
++    }
++}
++```
++
++此时，若上文通过 Docker Compose 文件启动的，对于 `service` 名为 `apache-hive-1` 的 HiveServer2 示例被手动销毁，
++通过另一份如下内容的 Docker Compose 文件启动第2个 HiveServer2 实例，
++
++```yaml
++name: test-2
++services:
++  apache-hive-2:
++    image: apache/hive:4.0.1
++    environment:
++      SERVICE_NAME: hiveserver2
++      SERVICE_OPTS: >-
++        -Dhive.server2.support.dynamic.service.discovery=true
++        -Dhive.zookeeper.quorum=zookeeper:2181
++        -Dhive.server2.thrift.bind.host=0.0.0.0
++        -Dhive.server2.thrift.port=20000
++    ports:
++      - "20000:20000"
++    networks:
++      - test-1_default
++networks:
++  test-1_default:
++    external: true
++```
++
++在 DBeaver Community 内，
++使用 `jdbc:hive2://127.0.0.1:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` 的 `jdbcUrl` 连接至 HiveServer2，
++`username` 和 `password` 留空。
++执行如下 SQL，
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++CREATE DATABASE demo_ds_0;
++CREATE DATABASE demo_ds_1;
++CREATE DATABASE demo_ds_2;
++```
++
++分别使用 `jdbc:hive2://127.0.0.1:2181/demo_ds_0;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` ，
++`jdbc:hive2://127.0.0.1:2181/demo_ds_1;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` 和
++`jdbc:hive2://127.0.0.1:2181/demo_ds_2;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
++的 `jdbcUrl` 连接至 HiveServer2 来执行如下 SQL，
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++set iceberg.mr.schema.auto.conversion=true;
++
++CREATE TABLE IF NOT EXISTS t_order
++(
++    order_id   BIGINT,
++    order_type INT,
++    user_id    INT    NOT NULL,
++    address_id BIGINT NOT NULL,
++    status     VARCHAR(50),
++    PRIMARY KEY (order_id) disable novalidate
++) STORED BY ICEBERG STORED AS ORC TBLPROPERTIES ('format-version' = '2');
++
++TRUNCATE TABLE t_order;
++```
++
++此时，旧的 ShardingSphere JDBC DataSource 仍可在不重新创建 JDBC DataSource 的情况下，
++正常切换到 `service` 名为 `apache-hive-2` 的 HiveServer2 实例执行逻辑 SQL，
++
++```java
++import com.zaxxer.hikari.HikariDataSource;
++import java.sql.Connection;
++import java.sql.SQLException;
++import java.sql.Statement;
++public class ExampleUtils {
++    void test(HikariDataSource dataSource) throws SQLException {
++        try (Connection connection = dataSource.getConnection();
++             Statement statement = connection.createStatement()) {
++            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
++            statement.executeQuery("SELECT * FROM t_order");
++            statement.execute("DELETE FROM t_order WHERE order_id=1");
++        }
++    }
++}
++```
++
+ ## 使用限制
+ 
+ ### 版本限制
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
-index e8ef96a059d..6b0296ef5d8 100644
+index 6b0296ef5d8..69e1c6d0389 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
-@@ -237,16 +237,6 @@ Users can only use Hadoop `3.3.6` as the underlying Hadoop dependency of HiveSer
- HiveServer2 JDBC Driver `4.0.1` does not support Hadoop `3.4.1`,
- Reference https://github.com/apache/hive/pull/5500.
+@@ -96,12 +96,6 @@ services:
+       SERVICE_NAME: hiveserver2
+     ports:
+       - "10000:10000"
+-    expose:
+-      - 10002
+-    volumes:
+-      - warehouse:/opt/hive/data/warehouse
+-volumes:
+-  warehouse:
+ ```
  
--### Database connection pool limitation
--
--Since `org.apache.hive.jdbc.DatabaseMetaData` does not implement `java.sql.DatabaseMetaData#getURL()`,
--ShardingSphere has done fuzzy processing at `org.apache.shardingsphere.infra.database.DatabaseTypeEngine#getStorageType(javax.sql.DataSource)`,
--so users can only connect to HiveServer2 through the database connection pool of `com.zaxxer.hikari.HikariDataSource` for the time being.
--
--If users need to connect to HiveServer2 through the database connection pool of `com.alibaba.druid.pool.DruidDataSource`,
--users should consider implementing `java.sql.DatabaseMetaData#getURL()` in the main branch of Hive,
--rather than trying to modify the internal classes of ShardingSphere.
--
- ### SQL Limitations
+ ### Create business tables
+@@ -115,7 +109,9 @@ sudo snap install dbeaver-ce
+ snap run dbeaver-ce
+ ```
  
- ShardingSphere JDBC DataSource does not yet support executing HiveServer2's `SET` statement, 
+-In DBeaver Community, connect to HiveServer2 using the `jdbcUrl` of `jdbc:hive2://localhost:10000/`, leaving `username` and `password` blank.
++In DBeaver Community, use the `jdbcUrl` of `jdbc:hive2://localhost:10000/` to connect to HiveServer2, 
++and leave `username` and `password` blank.
++Execute the following SQL,
+ 
+ ```sql
+ -- noinspection SqlNoDataSourceInspectionForFile
+@@ -211,6 +207,211 @@ public class ExampleUtils {
+ }
+ ```
+ 
++## External Integration
++
++### Connect to HiveServer2 with ZooKeeper Service Discovery enabled
++
++`jdbcUrl` in the ShardingSphere configuration file can be configured to connect to HiveServer2 with ZooKeeper Service Discovery enabled.
++
++For discussion, assume that there is the following Docker Compose file to start HiveServer2 with ZooKeeper Service Discovery.
++
++```yaml
++name: test-1
++services:
++  zookeeper:
++    image: zookeeper:3.9.3-jre-17
++    ports:
++      - "2181:2181"
++  apache-hive-1:
++    image: apache/hive:4.0.1
++    depends_on:
++      - zookeeper
++    environment:
++      SERVICE_NAME: hiveserver2
++      SERVICE_OPTS: >-
++        -Dhive.server2.support.dynamic.service.discovery=true
++        -Dhive.zookeeper.quorum=zookeeper:2181
++        -Dhive.server2.thrift.bind.host=0.0.0.0
++        -Dhive.server2.thrift.port=10000
++    ports:
++      - "10000:10000"
++```
++
++In DBeaver Community,
++use `jdbcUrl` of `jdbc:hive2://127.0.0.1:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` to connect to HiveServer2,
++leave `username` and `password` blank.
++Execute the following SQL,
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++CREATE DATABASE demo_ds_0;
++CREATE DATABASE demo_ds_1;
++CREATE DATABASE demo_ds_2;
++```
++
++Use `jdbcUrl` of `jdbc:hive2://127.0.0.1:2181/demo_ds_0;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`,
++`jdbc:hive2://127.0.0.1:2181/demo_ds_1;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
++and `jdbc:hive2://127.0.0.1:2181/demo_ds_2;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
++to connect to HiveServer2 and execute the following SQL,
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++set iceberg.mr.schema.auto.conversion=true;
++
++CREATE TABLE IF NOT EXISTS t_order
++(
++    order_id   BIGINT,
++    order_type INT,
++    user_id    INT    NOT NULL,
++    address_id BIGINT NOT NULL,
++    status     VARCHAR(50),
++    PRIMARY KEY (order_id) disable novalidate
++) STORED BY ICEBERG STORED AS ORC TBLPROPERTIES ('format-version' = '2');
++
++TRUNCATE TABLE t_order;
++```
++
++After the business project introduces the dependencies involved in the `prerequisites`,
++write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
++
++```yaml
++dataSources:
++    ds_0:
++        dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++        driverClassName: org.apache.hive.jdbc.HiveDriver
++        jdbcUrl: jdbc:hive2://127.0.0.1:2181/demo_ds_0;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2
++    ds_1:
++        dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++        driverClassName: org.apache.hive.jdbc.HiveDriver
++        jdbcUrl: jdbc:hive2://127.0.0.1:2181/demo_ds_1;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2
++    ds_2:
++        dataSourceClassName: com.zaxxer.hikari.HikariDataSource
++        driverClassName: org.apache.hive.jdbc.HiveDriver
++        jdbcUrl: jdbc:hive2://127.0.0.1:2181/demo_ds_2;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2
++rules:
++- !SHARDING
++    tables:
++      t_order:
++        actualDataNodes:
++        keyGenerateStrategy:
++          column: order_id
++          keyGeneratorName: snowflake
++    defaultDatabaseStrategy:
++      standard:
++        shardingColumn: user_id
++        shardingAlgorithmName: inline
++    shardingAlgorithms:
++      inline:
++        type: INLINE
++        props:
++          algorithm-expression: ds_${user_id % 2}
++    keyGenerators:
++      snowflake:
++        type: SNOWFLAKE
++```
++
++At this point, you can create the ShardingSphere data source normally and execute logical SQL on the virtual data source.
++
++```java
++import com.zaxxer.hikari.HikariConfig;
++import com.zaxxer.hikari.HikariDataSource;
++import java.sql.Connection;
++import java.sql.SQLException;
++import java.sql.Statement;
++public class ExampleUtils {
++    void test() throws SQLException {
++        HikariConfig config = new HikariConfig();
++        config.setJdbcUrl("jdbc:shardingsphere:classpath:demo.yaml");
++        config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
++        try (HikariDataSource dataSource = new HikariDataSource(config);
++             Connection connection = dataSource.getConnection();
++             Statement statement = connection.createStatement()) {
++            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
++            statement.executeQuery("SELECT * FROM t_order");
++            statement.execute("DELETE FROM t_order WHERE order_id=1");
++        }
++    }
++}
++```
++
++At this point, if the HiveServer2 example with the `service` named `apache-hive-1` is manually destroyed,
++start the second HiveServer2 instance through another Docker Compose file with the following content,
++
++```yaml
++name: test-2
++services:
++  apache-hive-2:
++    image: apache/hive:4.0.1
++    environment:
++      SERVICE_NAME: hiveserver2
++      SERVICE_OPTS: >-
++        -Dhive.server2.support.dynamic.service.discovery=true
++        -Dhive.zookeeper.quorum=zookeeper:2181
++        -Dhive.server2.thrift.bind.host=0.0.0.0
++        -Dhive.server2.thrift.port=20000
++    ports:
++      - "20000:20000"
++    networks:
++      - test-1_default
++networks:
++  test-1_default:
++    external: true
++```
++
++In DBeaver Community,
++use `jdbcUrl` of `jdbc:hive2://127.0.0.1:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2` to connect to HiveServer2,
++leave `username` and `password` blank.
++Execute the following SQL,
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++CREATE DATABASE demo_ds_0;
++CREATE DATABASE demo_ds_1;
++CREATE DATABASE demo_ds_2;
++```
++
++Use `jdbcUrl` of `jdbc:hive2://127.0.0.1:2181/demo_ds_0;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`,
++`jdbc:hive2://127.0.0.1:2181/demo_ds_1;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
++and `jdbc:hive2://127.0.0.1:2181/demo_ds_2;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
++to connect to HiveServer2 and execute the following SQL,
++
++```sql
++-- noinspection SqlNoDataSourceInspectionForFile
++set iceberg.mr.schema.auto.conversion=true;
++
++CREATE TABLE IF NOT EXISTS t_order
++(
++    order_id   BIGINT,
++    order_type INT,
++    user_id    INT    NOT NULL,
++    address_id BIGINT NOT NULL,
++    status     VARCHAR(50),
++    PRIMARY KEY (order_id) disable novalidate
++) STORED BY ICEBERG STORED AS ORC TBLPROPERTIES ('format-version' = '2');
++
++TRUNCATE TABLE t_order;
++```
++
++At this point,
++the old ShardingSphere JDBC DataSource can still be switched to the HiveServer2 instance named `apache-hive-2` in the `service` to execute the logical SQL without recreating the JDBC DataSource.
++
++```java
++import com.zaxxer.hikari.HikariDataSource;
++import java.sql.Connection;
++import java.sql.SQLException;
++import java.sql.Statement;
++public class ExampleUtils {
++    void test(HikariDataSource dataSource) throws SQLException {
++        try (Connection connection = dataSource.getConnection();
++             Statement statement = connection.createStatement()) {
++            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
++            statement.executeQuery("SELECT * FROM t_order");
++            statement.execute("DELETE FROM t_order WHERE order_id=1");
++        }
++    }
++}
++```
++
+ ## Usage Restrictions
+ 
+ ### Version Restrictions
+@@ -305,4 +506,4 @@ For more discussion, please visit https://cwiki.apache.org/confluence/display/Hi
+ 
+ When users use DBeaver Community to connect to HiveServer2, they need to ensure that the DBeaver Community version is greater than or equal to `24.2.5`.
+ 
+-See https://github.com/dbeaver/dbeaver/pull/35059.
++See https://github.com/dbeaver/dbeaver/pull/35059 .
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.cn.md
-index 6f011d9187a..9c537228ddc 100644
+index 9c537228ddc..8ef2c848526 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.cn.md
-@@ -3,8 +3,13 @@ title = "Testcontainers"
- weight = 6
- +++
- 
-+## 背景信息
-+
- ShardingSphere 默认情况下不提供对 `org.testcontainers.jdbc.ContainerDatabaseDriver` 的 `driverClassName` 的支持。
--要在 ShardingSphere 的配置文件为数据节点使用类似 `jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_0` 的 `jdbcUrl`，
-+
-+## 前提条件
-+
-+要在 ShardingSphere 的配置文件为数据节点使用类似 `jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0` 的 `jdbcUrl`，
- 可能的 Maven 依赖关系如下，
- 
- ```xml
-@@ -28,6 +33,8 @@ ShardingSphere 默认情况下不提供对 `org.testcontainers.jdbc.ContainerDat
- </dependencies>
- ```
- 
-+## 配置示例
-+
- 要使用 `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` 模块，
- 用户设备总是需要安装 Docker Engine 或符合 https://java.testcontainers.org/supported_docker_environment/ 要求的 alternative container runtimes。
- 此时可在 ShardingSphere 的 YAML 配置文件正常使用 `jdbc:tc:postgresql:` 前缀的 jdbcURL。
-@@ -37,15 +44,15 @@ dataSources:
-   ds_0:
-     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
--    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_0
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0
-   ds_1:
-     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
--    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_1
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_1
-   ds_2:
-     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
--    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_2
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_2
- ```
- 
- `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` 为 testcontainers-java 风格的 jdbcURL 提供支持，
-@@ -58,3 +65,34 @@ dataSources:
- 5. 为 `jdbc:tc:mysql:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:mysql:1.20.3`
- 6. 为 `jdbc:tc:oracle:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:oracle-xe:1.20.3` 和 `org.testcontainers:oracle-free:1.20.3`
- 7. 为 `jdbc:tc:tidb:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:tidb:1.20.3`
-+
-+## 使用限制
-+
-+### 生命周期限制
-+
-+如果像如下所示在 ShardingSphere 配置文件内定义通过 testcontainers-java 创建 Docker Container 的逻辑，
-+
-+```yaml
-+dataSources:
-+  ds_0:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0
-+```
-+
-+testcontainers 默认情况下仅在对 `jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0` 的最后一个 `java.sql.Connection` 关闭后，
-+停止`jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0`创建的 Docker Container。
-+但 ShardingSphere 的内部类会缓存 `java.sql.Connection`。这导致直到 JVM 关闭，
-+`jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0` 创建的 Docker Container 才会被关闭。
-+若有避免 Container 被长期开启的必要，
-+`org.testcontainers.jdbc.ContainerDatabaseDriver` 存在可用方法来在单元测试中快速关闭相关 Container，
-+示例如下，
-+
-+```java
-+import org.testcontainers.jdbc.ContainerDatabaseDriver;
-+public class ExampleUtils {
-+    void test() {
-+        ContainerDatabaseDriver.killContainers();
-+    }
-+}
-+```
+@@ -24,6 +24,11 @@ ShardingSphere 默认情况下不提供对 `org.testcontainers.jdbc.ContainerDat
+         <artifactId>shardingsphere-infra-database-testcontainers</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
++    <dependency>
++        <groupId>org.postgresql</groupId>
++        <artifactId>postgresql</artifactId>
++        <version>42.7.2</version>
++    </dependency>
+     <dependency>
+         <groupId>org.testcontainers</groupId>
+         <artifactId>postgresql</artifactId>
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.en.md
-index e2698a09e71..c8f4f9a2df7 100644
+index c8f4f9a2df7..f9faae7b4cd 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.en.md
-@@ -3,8 +3,13 @@ title = "Testcontainers"
- weight = 6
- +++
- 
-+## Background Information
-+
- ShardingSphere does not provide support for `driverClassName` of `org.testcontainers.jdbc.ContainerDatabaseDriver` by default.
--To use `jdbcUrl` like `jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_0` for data nodes in ShardingSphere's configuration file,
-+
-+## Prerequisites
-+
-+To use `jdbcUrl` like `jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0` for data nodes in ShardingSphere's configuration file,
- the possible Maven dependencies are as follows,
- 
- ```xml
-@@ -30,27 +35,29 @@ the possible Maven dependencies are as follows,
- 
- At this time, you can use the jdbcURL with the prefix `jdbc:tc:postgresql:` normally in the YAML configuration file of ShardingSphere.
- 
-+## Configuration Example
-+
-+To use the `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` module,
-+the user machine always needs to have Docker Engine or alternative container runtimes that comply with https://java.testcontainers.org/supported_docker_environment/ installed.
-+`org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` provides support for testcontainers-java style jdbcURL,
-+including but not limited to,
-+
- ```yaml
- dataSources:
-   ds_0:
-     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
--    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_0
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0
-   ds_1:
-     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
--    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_1
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_1
-   ds_2:
-     dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-     driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
--    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test-databases-postgres/demo_ds_2
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_2
- ```
- 
--To use the `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` module, 
--the user machine always needs to have Docker Engine or alternative container runtimes that comply with https://java.testcontainers.org/supported_docker_environment/ installed.
--`org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` provides support for testcontainers-java style jdbcURL,
--including but not limited to,
--
- 1. Maven module `org.testcontainers:clickhouse:1.20.3` that provides support for jdbcURL prefixes for `jdbc:tc:clickhouse:`
- 2. Maven module `org.testcontainers:postgresql:1.20.3` that provides support for jdbcURL prefixes for `jdbc:tc:postgresql:`
- 3. Maven module `org.testcontainers:mssqlserver:1.20.3` that provides support for jdbcURL prefixes for `jdbc:tc:sqlserver:`
-@@ -58,3 +65,33 @@ including but not limited to,
- 5. Maven module `org.testcontainers:mysql:1.20.3` that provides support for jdbcURL prefixes of `jdbc:tc:mysql:` 
- 6. Maven modules `org.testcontainers:oracle-xe:1.20.3` and `org.testcontainers:oracle-free:1.20.3` that provide support for jdbcURL prefixes of `jdbc:tc:oracle:`
- 7. Maven module `org.testcontainers:tidb:1.20.3` that provides support for jdbcURL prefixes of `jdbc:tc:tidb:`
-+
-+## Usage restrictions
-+
-+### Lifecycle restrictions
-+
-+If the logic of creating a Docker Container through testcontainers-java is defined in the ShardingSphere configuration file as shown below,
-+
-+```yaml
-+dataSources:
-+  ds_0:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
-+    jdbcUrl: jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0
-+```
-+
-+testcontainers, by default, 
-+stops the Docker Container created by `jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0` only after the last `java.sql.Connection` of `jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0` is closed.
-+But ShardingSphere's internal class will cache `java.sql.Connection`.
-+As a result, the Docker Container created by `jdbc:tc:postgresql:17.1-bookworm://test/demo_ds_0` will not be closed until the JVM is closed.
-+If it is necessary to prevent the Container from being opened for a long time, `org.testcontainers.jdbc.ContainerDatabaseDriver` has a method available to quickly close the relevant Container in the unit test.
-+The example is as follows,
-+
-+```java
-+import org.testcontainers.jdbc.ContainerDatabaseDriver;
-+public class ExampleUtils {
-+    void test() {
-+        ContainerDatabaseDriver.killContainers();
-+    }
-+}
-+```
+@@ -24,6 +24,11 @@ the possible Maven dependencies are as follows,
+         <artifactId>shardingsphere-infra-database-testcontainers</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
++    <dependency>
++        <groupId>org.postgresql</groupId>
++        <artifactId>postgresql</artifactId>
++        <version>42.7.2</version>
++    </dependency>
+     <dependency>
+         <groupId>org.testcontainers</groupId>
+         <artifactId>postgresql</artifactId>

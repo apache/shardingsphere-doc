@@ -1,34 +1,84 @@
-commit 702e00cf8b5e60e4ba4e15fc1cc7a0ab9e915387
-Author: corgy-w <73771213+corgy-w@users.noreply.github.com>
-Date:   Wed Dec 4 23:56:10 2024 +0800
+commit c13ea8519874d719cd1f42b0f01f0b8c729d6d3b
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Fri Dec 6 17:57:43 2024 +0800
 
-    [Fix][Doc] Doc fix (#33916)
-    
-    Co-authored-by: trevon.wang <trevon.wang@temu.com>
+    Revise #33939 (#33942)
 
-diff --git a/docs/document/content/user-manual/common-config/props.cn.md b/docs/document/content/user-manual/common-config/props.cn.md
-index 899de7d9d6f..09d55782873 100644
---- a/docs/document/content/user-manual/common-config/props.cn.md
-+++ b/docs/document/content/user-manual/common-config/props.cn.md
-@@ -29,7 +29,7 @@ props:
+diff --git a/docs/document/content/features/sharding/limitation.cn.md b/docs/document/content/features/sharding/limitation.cn.md
+index d902f38d706..b06a67ba385 100644
+--- a/docs/document/content/features/sharding/limitation.cn.md
++++ b/docs/document/content/features/sharding/limitation.cn.md
+@@ -91,6 +91,10 @@ MySQL、PostgreSQL 和 openGauss 都支持 LIMIT 分页，无需子查询：
+ SELECT * FROM t_order o ORDER BY id LIMIT ? OFFSET ?
+ ```
  
- ## 注意事项
++### 聚合查询
++
++支持 `MAX`, `MIN`, `SUM`, `COUNT`, `AVG`, `BIT_XOR`, `GROUP_CONCAT` 聚合语法。
++
+ ### 运算表达式中包含分片键
  
--`max-connections-size-per-query` 配置项的默认值为 1，这意味着每次查询请求在每个数据库实例中只能使用一个连接。如果您调整此参数以启用内存限制模式（详情参见 [内存限制模式](/cn/reference/sharding/execute.cn.md/#内存限制模式)），请确保您使用的数据库 JDBC 实现支持流式查询或能够启用流式查询。例如，在 MySQL 中，需要设置 `statement.setFetchSize(Integer.MIN_VALUE)` 才能实现流式查询。
-+`max-connections-size-per-query` 配置项的默认值为 1，这意味着每次查询请求在每个数据库实例中只能使用一个连接。如果您调整此参数以启用内存限制模式（详情参见 [内存限制模式](/cn/reference/sharding/execute/#内存限制模式)），请确保您使用的数据库 JDBC 实现支持流式查询或能够启用流式查询。例如，在 MySQL 中，需要设置 `statement.setFetchSize(Integer.MIN_VALUE)` 才能实现流式查询。
+ 当分片键处于运算表达式中时，无法通过 SQL `字面` 提取用于分片的值，将导致全路由。
+@@ -113,10 +117,6 @@ SELECT * FROM t_order WHERE to_date(create_time, 'yyyy-mm-dd') = '2019-01-01';
+ 5. 支持基于广播表和单表创建、修改和删除视图；
+ 6. 支持 MySQL `SHOW CREATE TABLE viewName` 查看视图的创建语句。
  
- ## 配置示例
+-### 聚合查询
+-
+-支持 MySQL `MAX`, `MIN`, `SUM`, `COUNT`, `AVG`, `BIT_XOR`, `GROUP_CONCAT` 聚合语法
+-
+ ## 实验性支持
  
-diff --git a/docs/document/content/user-manual/common-config/props.en.md b/docs/document/content/user-manual/common-config/props.en.md
-index 41bac7cfc54..cb6fe6b0674 100644
---- a/docs/document/content/user-manual/common-config/props.en.md
-+++ b/docs/document/content/user-manual/common-config/props.en.md
-@@ -29,7 +29,7 @@ props:
+ 实验性支持特指使用 Federation 执行引擎提供支持。 该引擎处于快速开发中，用户虽基本可用，但仍需大量优化，是实验性产品。
+@@ -159,10 +159,10 @@ SELECT * FROM t_user u RIGHT JOIN t_user_role r ON u.user_id = r.user_id WHERE u
  
- ## Notes
+ ### CASE WHEN
  
--The default value of the `max-connections-size-per-query` configuration is 1, meaning each query request can only use one connection per database instance. If you adjust this parameter to enable memory-restricted mode (see [Memory-Strictly Mode](/en/reference/sharding/execute.en.md/#memory_strictly-mode) for details), ensure that your database's JDBC implementation supports streaming queries or can enable them. For example, in MySQL, you need to set `statement.setFetchSize(Integer.MIN_VALUE)` to achieve streaming queries.### 优化后的中文描述
-+The default value of the `max-connections-size-per-query` configuration is 1, meaning each query request can only use one connection per database instance. If you adjust this parameter to enable memory-restricted mode (see [Memory-Strictly Mode](/en/reference/sharding/execute/#memory_strictly-mode) for details), ensure that your database's JDBC implementation supports streaming queries or can enable them. For example, in MySQL, you need to set `statement.setFetchSize(Integer.MIN_VALUE)` to achieve streaming queries.
+-以下 CASE WHEN 语句不支持：
++以下 `CASE WHEN` 语句不支持：
  
- ## Sample
+-- CASE WHEN 中包含子查询
+-- CASE WHEN 中使用逻辑表名（请使用表别名）
++- `CASE WHEN` 中包含子查询
++- `CASE WHEN` 中使用逻辑表名（请使用表别名）
+ 
+ ### 分页查询
+ 
+@@ -170,11 +170,11 @@ Oracle 和 SQLServer 由于分页查询较为复杂，目前有部分分页查
+ 
+ - Oracle
+ 
+-目前不支持 rownum + BETWEEN 的分页方式。
++目前不支持 `rownum + BETWEEN` 的分页方式。
+ 
+ - SQLServer
+ 
+-目前不支持使用 WITH xxx AS (SELECT …) 的方式进行分页。由于 Hibernate 自动生成的 SQLServer 分页语句使用了 WITH 语句，因此目前并不支持基于 Hibernate 的 SQLServer 分页。 目前也不支持使用两个 TOP + 子查询的方式实现分页。
++目前不支持使用 `WITH xxx AS (SELECT …)` 的方式进行分页。由于 Hibernate 自动生成的 SQLServer 分页语句使用了 `WITH` 语句，因此目前并不支持基于 Hibernate 的 SQLServer 分页。 目前也不支持使用两个 TOP + 子查询的方式实现分页。
+ 
+ ### LOAD DATA / LOAD XML
+ 
+diff --git a/docs/document/content/features/sharding/limitation.en.md b/docs/document/content/features/sharding/limitation.en.md
+index d60bda88476..f70580d318d 100644
+--- a/docs/document/content/features/sharding/limitation.en.md
++++ b/docs/document/content/features/sharding/limitation.en.md
+@@ -85,6 +85,10 @@ SELECT * FROM t_order o ORDER BY id OFFSET ? ROW FETCH NEXT ? ROWS ONLY
+ SELECT * FROM t_order o ORDER BY id LIMIT ? OFFSET ?
+ ```
+ 
++### Aggregation
++
++Support `MAX`, `MIN`, `SUM`, `COUNT`, `AVG`, `BIT_XOR`, `GROUP_CONCAT` and so on.
++
+ ### Shard keys included in operation expressions
+ 
+ When the sharding key is contained in an expression, the value used for sharding cannot be extracted through the SQL letters and will result in full routing.
+@@ -161,7 +165,7 @@ Due to the complexity of paging queries, there are currently some paging queries
+ The paging method of rownum + BETWEEN is not supported at present
+ 
+ - SQLServer
+-Currently, pagination with WITH xxx AS (SELECT ...) is not supported. Since the SQLServer paging statement automatically generated by Hibernate uses the WITH statement, Hibernate-based SQLServer paging is not supported at this moment. Pagination using two TOP + subquery also cannot be supported at this time.
++Currently, pagination with `WITH xxx AS (SELECT ...)` is not supported. Since the SQLServer paging statement automatically generated by Hibernate uses the `WITH` statement, Hibernate-based SQLServer paging is not supported at this moment. Pagination using two TOP + subquery also cannot be supported at this time.
+ 
+ ### LOAD DATA / LOAD XML
  

@@ -1,40 +1,241 @@
-commit 5736aab5bdfa1b344db4f5f02a8d7616fe5a5fd8
-Author: Zhengqiang Duan <duanzhengqiang@apache.org>
-Date:   Fri Dec 27 13:40:13 2024 +0800
+commit 428af0d11cc8442817bebbc1896987757509f36b
+Author: cccchen <385558455@qq.com>
+Date:   Fri Dec 27 14:09:09 2024 +0800
 
-    Add WithAvailable interface and encrypt with, combine, insert select support checker (#34175)
+    Add lock timeout in DistSQL LOCK CLUSTER WITH lockStrategy and UNLOCK CLUSTER (#34169)
     
-    * Add WithAvailable interface and encrypt with support checker
+    * Add lock timeout in DistSQL
     
-    * Add combine and insert select checker
+    * Modify the parameter name and type, fix checkstyle.
     
-    * update release note and doc
+    * Update document of DistSQL
     
-    * remove unsupported test case
+    * fix checkstyle
 
-diff --git a/docs/document/content/features/encrypt/appendix.cn.md b/docs/document/content/features/encrypt/appendix.cn.md
-index 43adc4bce47..c1ab43bb03d 100644
---- a/docs/document/content/features/encrypt/appendix.cn.md
-+++ b/docs/document/content/features/encrypt/appendix.cn.md
-@@ -9,6 +9,8 @@ weight = 3
- - 加密字段无法支持比较操作，如：大于、小于、ORDER BY、BETWEEN 等；
- - 加密字段无法支持计算操作，如：AVG、SUM 以及计算表达式；
- - 不支持子查询中包含加密字段，并且外层投影使用星号的 SQL；
-+- 不支持 WITH 语句中包含加密列；
-+- 不支持 INSERT SELECT 语句中包含加密列；
- - 不支持 UNION、INTERSECT、EXCEPT 等集合运算语句中包含加密列。
- 
- 其他：
-diff --git a/docs/document/content/features/encrypt/appendix.en.md b/docs/document/content/features/encrypt/appendix.en.md
-index a729ee62cc4..e347d56a0e4 100644
---- a/docs/document/content/features/encrypt/appendix.en.md
-+++ b/docs/document/content/features/encrypt/appendix.en.md
-@@ -9,6 +9,8 @@ Unsupported SQL：
- - Comparison operations are not supported for encrypted fields, such as GREATER THAN, LESS THAN, ORDER BY, BETWEEN.
- - Calculation operations are not supported for encrypted fields, such as AVG, SUM, and computation expressions.
- - SQL that contains encrypt column in subquery and uses asterisks for outer projection is not supported.
-+- SQL that contains encrypt column in WITH is not supported.
-+- SQL that contains encrypt column in INSERT SELECT is not supported.
- - SQL that contains encrypt column in UNION, INTERSECT, and EXCEPT statements is not supported.
- 
- Other:
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/lock-cluster-with.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/lock-cluster-with.cn.md
+new file mode 100644
+index 00000000000..ad51c5bafbb
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/lock-cluster-with.cn.md
+@@ -0,0 +1,53 @@
+++++
++title = "LOCK CLUSTER WITH"
++weight = 16
+++++
++
++### 描述
++
++`LOCK CLUSTER WITH` 语法用于向 `CLUSTER` 施加特定算法的锁。
++
++### 语法
++
++{{< tabs >}}
++{{% tab name="语法" %}}
++```sql
++LockClusterWith ::=
++  'LOCK' 'CLUSTER' 'WITH' lockStrategy ('TIMEOUT' timeoutMillis)?
++
++timeoutmillis ::=
++  long
++```
++{{% /tab %}}
++{{% tab name="铁路图" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### 补充说明
++
++- 当 `CLUSTER` 已经处于被锁状态时，无法重复加锁，否则会抛出异常。
++- `lockStrategy` 当前支持两种锁策略，分别是排他锁 `WRITE` 与读写锁 `READ_WRITE`。
++- `timeoutMillis` 用于表明尝试加锁的超时时间，其单位为毫秒，未指定时，默认为 3000 毫秒。
++
++### 示例
++
++- 采用排他锁锁定 `CLUSTER` ，不设置超时时间
++
++```sql
++LOCK CLUSTER WITH WRITE;
++```
++
++- 采用读写锁锁定 `CLUSTER` ，并设置超时时间为 2000 毫秒
++
++```sql
++LOCK CLUSTER WITH READ_WRITE TIMEOUT 2000;
++```
++
++### 保留字
++
++`LOCK`、`CLUSTER`、`WITH`
++
++### 相关链接
++
++- [保留字](/cn/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/lock-cluster-with.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/lock-cluster-with.en.md
+new file mode 100644
+index 00000000000..469e0386488
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/lock-cluster-with.en.md
+@@ -0,0 +1,50 @@
+++++
++title = "LOCK CLUSTER WITH"
++weight = 16
+++++
++
++### Description
++
++The `LOCK CLUSTER WITH` syntax is utilized to apply a lock with a specific algorithm to the `CLUSTER`.
++
++### Syntax
++
++{{< tabs >}}
++{{% tab name="Grammar" %}}
++```sql
++LockClusterWith ::=
++  'LOCK' 'CLUSTER' 'WITH' lockStrategy ('TIMEOUT' timeoutMillis)?
++
++timeoutmillis ::=
++  long
++```
++
++{{% /tab %}}
++{{% tab name="Railroad diagram" %}}
++
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>{{% /tab %}}{{< /tabs >}}
++
++### Supplement
++
++- When the `CLUSTER` is already locked, it is impossible to re-lock it, otherwise an exception will be thrown.
++- Currently, the `lockStrategy` supports two lock strategies, namely the exclusive lock `WRITE` and the read-write lock `READ_WRITE` .
++- The `timeoutMillis` is used to indicate the timeout period for attempting to acquire the lock, with the unit being milliseconds. When not specified, the default value is 3,000 milliseconds.
++
++### Example
++
++- Lock the `CLUSTER` with an exclusive lock without setting the timeout.
++```sql
++LOCK CLUSTER WITH WRITE;
++```
++- Lock the CLUSTER with a read-write lock and set the timeout to 2000 milliseconds.
++```sql
++LOCK CLUSTER WITH READ_WRITE TIMEOUT 2000;
++```
++
++### Reserved words
++
++`LOCK`,`CLUSTER`,`WITH`
++
++### Related links
++
++- [Reserved word](/en/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/unlock-cluster.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/unlock-cluster.cn.md
+new file mode 100644
+index 00000000000..4fb0e462d2a
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/unlock-cluster.cn.md
+@@ -0,0 +1,52 @@
+++++
++title = "UNLOCK CLUSTER"
++weight = 17
+++++
++
++### 描述
++
++`UNLOCK CLUSTER` 语法用于解除通过 `LOCK CLUSTER WITH` 语句施加在 `CLUSTER` 上的锁。
++
++### 语法
++
++{{< tabs >}}
++{{% tab name="语法" %}}
++```sql
++UnlockCluster ::=
++  'UNLOCK' 'CLUSTER' ('TIMEOUT' timeoutMillis)?
++
++timeoutmillis ::=
++  long
++```
++{{% /tab %}}
++{{% tab name="铁路图" %}}
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>
++{{% /tab %}}
++{{< /tabs >}}
++
++### 补充说明
++
++- 当 `CLUSTER` 不处于被锁状态时，无法解除锁，否则会抛出异常。
++- `timeoutMillis` 表明尝试解锁的超时时间，其单位为毫秒，未指定时，默认为 3000 毫秒。
++
++### 示例
++
++- 解锁 `CLUSTER` ，不设置超时时间。
++
++```sql
++UNLOCK CLUSTER;
++```
++
++- 解锁 `CLUSTER` ，并设置超时时间为 2000 毫秒。
++
++```sql
++UNLOCK CLUSTER TIMEOUT 2000;
++```
++
++### 保留字
++
++`UNLOCK`、`CLUSTER`
++
++### 相关链接
++
++- [保留字](/cn/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/unlock-cluster.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/unlock-cluster.en.md
+new file mode 100644
+index 00000000000..b7114d80ccc
+--- /dev/null
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/syntax/ral/unlock-cluster.en.md
+@@ -0,0 +1,48 @@
+++++
++title = "UNLOCK CLUSTER"
++weight = 17
+++++
++
++### Description
++
++The `UNLOCK CLUSTER` syntax is used to release the lock applied to the `CLUSTER` by the `LOCK CLUSTER WITH` statement.
++
++### Syntax
++
++{{< tabs >}}
++{{% tab name="Grammar" %}}
++```sql
++UnlockCluster ::=
++  'UNLOCK' 'CLUSTER' ('TIMEOUT' timeoutMillis)?
++
++timeoutmillis ::=
++  long
++```
++
++{{% /tab %}}
++{{% tab name="Railroad diagram" %}}
++
++<iframe frameborder="0" name="diagram" id="diagram" width="100%" height="100%"></iframe>{{% /tab %}}{{< /tabs >}}
++
++### Supplement
++
++- When the `CLUSTER` is not in a locked state, it is impossible to release the lock; otherwise, an exception will be thrown.
++- `timeoutMillis` is used to indicate the timeout duration for attempting to unlock, with the unit being milliseconds. When not specified, the default value is 3,000 milliseconds.
++### Example
++
++- Unlock the `CLUSTER` without setting a timeout.
++```sql
++UNLOCK CLUSTER;
++```
++- Unlock the `CLUSTER` and set the timeout to 2000 milliseconds.
++```sql
++UNLOCK CLUSTER TIMEOUT 2000;
++```
++
++### Reserved words
++
++`UNLOCK`,`CLUSTER`
++
++### Related links
++
++- [Reserved word](/en/user-manual/shardingsphere-proxy/distsql/syntax/reserved-word/)

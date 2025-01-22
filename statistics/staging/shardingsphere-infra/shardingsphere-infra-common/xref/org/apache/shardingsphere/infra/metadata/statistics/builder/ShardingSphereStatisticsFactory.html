@@ -34,10 +34,10 @@
 <a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.database.core.type.DatabaseTypeRegistry;
 <a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
 <a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
-<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereDatabaseData;
-<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereSchemaData;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.DatabaseStatistics;
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.SchemaStatistics;
 <a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereStatistics;
-<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.ShardingSphereTableData;
+<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.statistics.TableStatistics;
 <a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
 <a class="jxr_linenumber" name="L34" href="#L34">34</a>  
 <a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
@@ -64,59 +64,60 @@
 <a class="jxr_linenumber" name="L56" href="#L56">56</a>              <strong class="jxr_keyword">return</strong> result;
 <a class="jxr_linenumber" name="L57" href="#L57">57</a>          }
 <a class="jxr_linenumber" name="L58" href="#L58">58</a>          Optional&lt;DialectStatisticsAppender&gt; dialectStatisticsAppender = DatabaseTypedSPILoader.findService(DialectStatisticsAppender.<strong class="jxr_keyword">class</strong>, getDatabaseType(metaData));
-<a class="jxr_linenumber" name="L59" href="#L59">59</a>          Collection&lt;ShardingSphereDatabase&gt; unloadedDatabases = metaData.getAllDatabases().stream().filter(each -&gt; !loadedStatistics.containsDatabase(each.getName())).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>          <strong class="jxr_keyword">for</strong> (<a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> each : unloadedDatabases) {
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>              <a name="ShardingSphereDatabaseData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a> databaseData = <strong class="jxr_keyword">new</strong> <a name="ShardingSphereDatabaseData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a>();
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>              dialectStatisticsAppender.ifPresent(optional -&gt; optional.append(databaseData, each));
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>              <strong class="jxr_keyword">if</strong> (!databaseData.getSchemaData().isEmpty()) {
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>                  result.putDatabase(each.getName(), databaseData);
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>              }
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>          }
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>          loadedStatistics.getDatabaseData().forEach(result::putDatabase);
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>          fillDefaultShardingSphereStatistics(metaData, result);
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>          <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>      }
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>      
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> DatabaseType getDatabaseType(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereMetaData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a> metaData) {
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>          DatabaseType protocolType = metaData.getAllDatabases().iterator().next().getProtocolType();
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>          DialectDatabaseMetaData dialectDatabaseMetaData = <strong class="jxr_keyword">new</strong> DatabaseTypeRegistry(protocolType).getDialectDatabaseMetaData();
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>          <em class="jxr_comment">// TODO can `protocolType instanceof SchemaSupportedDatabaseType ? "PostgreSQL" : protocolType.getType()` replace to trunk database type?</em>
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>          <strong class="jxr_keyword">return</strong> dialectDatabaseMetaData.getDefaultSchema().isPresent() ? TypedSPILoader.getService(DatabaseType.<strong class="jxr_keyword">class</strong>, <span class="jxr_string">"PostgreSQL"</span>) : protocolType;
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>      }
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>      
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> fillDefaultShardingSphereStatistics(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereMetaData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a> metaData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics) {
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>          <strong class="jxr_keyword">for</strong> (<a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database : metaData.getAllDatabases()) {
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>              <a name="ShardingSphereDatabaseData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a> defaultDatabaseData = <strong class="jxr_keyword">new</strong> <a name="ShardingSphereDefaultStatisticsBuilder" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/builder/ShardingSphereDefaultStatisticsBuilder.html#ShardingSphereDefaultStatisticsBuilder">ShardingSphereDefaultStatisticsBuilder</a>().build(database);
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>              Collection&lt;String&gt; defaultSchemaNames = <strong class="jxr_keyword">new</strong> CaseInsensitiveSet&lt;&gt;(defaultDatabaseData.getSchemaData().keySet());
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>              <strong class="jxr_keyword">if</strong> (database.getAllSchemas().stream().noneMatch(optional -&gt; defaultSchemaNames.contains(optional.getName()))) {
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>                  <strong class="jxr_keyword">continue</strong>;
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>              }
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>              <strong class="jxr_keyword">if</strong> (!statistics.containsDatabase(database.getName())) {
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>                  statistics.putDatabase(database.getName(), defaultDatabaseData);
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>                  <strong class="jxr_keyword">continue</strong>;
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>              }
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>              fillDefaultShardingSphereStatistics(defaultDatabaseData, statistics.getDatabase(database.getName()));
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>          }
-<a class="jxr_linenumber" name="L92" href="#L92">92</a>      }
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>      
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> fillDefaultShardingSphereStatistics(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabaseData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a> defaultDatabaseData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereDatabaseData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereDatabaseData.html#ShardingSphereDatabaseData">ShardingSphereDatabaseData</a> existedDatabaseData) {
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>          <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereSchemaData&gt; entry : defaultDatabaseData.getSchemaData().entrySet()) {
-<a class="jxr_linenumber" name="L96" href="#L96">96</a>              <strong class="jxr_keyword">if</strong> (!existedDatabaseData.containsSchema(entry.getKey())) {
-<a class="jxr_linenumber" name="L97" href="#L97">97</a>                  existedDatabaseData.putSchema(entry.getKey(), entry.getValue());
-<a class="jxr_linenumber" name="L98" href="#L98">98</a>                  <strong class="jxr_keyword">continue</strong>;
-<a class="jxr_linenumber" name="L99" href="#L99">99</a>              }
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>             fillDefaultShardingSphereStatistics(entry.getValue(), existedDatabaseData.getSchema(entry.getKey()));
-<a class="jxr_linenumber" name="L101" href="#L101">101</a>         }
-<a class="jxr_linenumber" name="L102" href="#L102">102</a>     }
-<a class="jxr_linenumber" name="L103" href="#L103">103</a>     
-<a class="jxr_linenumber" name="L104" href="#L104">104</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> fillDefaultShardingSphereStatistics(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereSchemaData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereSchemaData.html#ShardingSphereSchemaData">ShardingSphereSchemaData</a> defaultSchemaData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereSchemaData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereSchemaData.html#ShardingSphereSchemaData">ShardingSphereSchemaData</a> existedSchemaData) {
-<a class="jxr_linenumber" name="L105" href="#L105">105</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, ShardingSphereTableData&gt; entry : defaultSchemaData.getTableData().entrySet()) {
-<a class="jxr_linenumber" name="L106" href="#L106">106</a>             <strong class="jxr_keyword">if</strong> (!existedSchemaData.containsTable(entry.getKey())) {
-<a class="jxr_linenumber" name="L107" href="#L107">107</a>                 existedSchemaData.putTable(entry.getKey(), entry.getValue());
-<a class="jxr_linenumber" name="L108" href="#L108">108</a>             }
-<a class="jxr_linenumber" name="L109" href="#L109">109</a>         }
-<a class="jxr_linenumber" name="L110" href="#L110">110</a>     }
-<a class="jxr_linenumber" name="L111" href="#L111">111</a> }
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>          Collection&lt;ShardingSphereDatabase&gt; unloadedDatabases = metaData.getAllDatabases().stream()
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>                  .filter(each -&gt; !loadedStatistics.containsDatabaseStatistics(each.getName())).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>          <strong class="jxr_keyword">for</strong> (<a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> each : unloadedDatabases) {
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>              <a name="DatabaseStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/DatabaseStatistics.html#DatabaseStatistics">DatabaseStatistics</a> databaseStatistics = <strong class="jxr_keyword">new</strong> <a name="DatabaseStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/DatabaseStatistics.html#DatabaseStatistics">DatabaseStatistics</a>();
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>              dialectStatisticsAppender.ifPresent(optional -&gt; optional.append(databaseStatistics, each));
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>              <strong class="jxr_keyword">if</strong> (!databaseStatistics.getSchemaStatisticsMap().isEmpty()) {
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>                  result.putDatabaseStatistics(each.getName(), databaseStatistics);
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>              }
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>          }
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>          loadedStatistics.getDatabaseStatisticsMap().forEach(result::putDatabaseStatistics);
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>          fillDefaultStatistics(metaData, result);
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>          <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>      }
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>      
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> DatabaseType getDatabaseType(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereMetaData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a> metaData) {
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>          DatabaseType protocolType = metaData.getAllDatabases().iterator().next().getProtocolType();
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>          DialectDatabaseMetaData dialectDatabaseMetaData = <strong class="jxr_keyword">new</strong> DatabaseTypeRegistry(protocolType).getDialectDatabaseMetaData();
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>          <em class="jxr_comment">// TODO can `protocolType instanceof SchemaSupportedDatabaseType ? "PostgreSQL" : protocolType.getType()` replace to trunk database type?</em>
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>          <strong class="jxr_keyword">return</strong> dialectDatabaseMetaData.getDefaultSchema().isPresent() ? TypedSPILoader.getService(DatabaseType.<strong class="jxr_keyword">class</strong>, <span class="jxr_string">"PostgreSQL"</span>) : protocolType;
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>      }
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>      
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> fillDefaultStatistics(<strong class="jxr_keyword">final</strong> <a name="ShardingSphereMetaData" href="../../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a> metaData, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/ShardingSphereStatistics.html#ShardingSphereStatistics">ShardingSphereStatistics</a> statistics) {
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>          <strong class="jxr_keyword">for</strong> (<a name="ShardingSphereDatabase" href="../../../../../../../org/apache/shardingsphere/infra/metadata/database/ShardingSphereDatabase.html#ShardingSphereDatabase">ShardingSphereDatabase</a> database : metaData.getAllDatabases()) {
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>              <a name="DatabaseStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/DatabaseStatistics.html#DatabaseStatistics">DatabaseStatistics</a> defaultDatabaseStatistics = <strong class="jxr_keyword">new</strong> <a name="ShardingSphereDefaultStatisticsBuilder" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/builder/ShardingSphereDefaultStatisticsBuilder.html#ShardingSphereDefaultStatisticsBuilder">ShardingSphereDefaultStatisticsBuilder</a>().build(database);
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>              Collection&lt;String&gt; defaultSchemaNames = <strong class="jxr_keyword">new</strong> CaseInsensitiveSet&lt;&gt;(defaultDatabaseStatistics.getSchemaStatisticsMap().keySet());
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>              <strong class="jxr_keyword">if</strong> (database.getAllSchemas().stream().noneMatch(optional -&gt; defaultSchemaNames.contains(optional.getName()))) {
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>                  <strong class="jxr_keyword">continue</strong>;
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>              }
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>              <strong class="jxr_keyword">if</strong> (!statistics.containsDatabaseStatistics(database.getName())) {
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>                  statistics.putDatabaseStatistics(database.getName(), defaultDatabaseStatistics);
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>                  <strong class="jxr_keyword">continue</strong>;
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>              }
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>              fillDefaultStatistics(defaultDatabaseStatistics, statistics.getDatabaseStatistics(database.getName()));
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>          }
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>      }
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>      
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> fillDefaultStatistics(<strong class="jxr_keyword">final</strong> <a name="DatabaseStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/DatabaseStatistics.html#DatabaseStatistics">DatabaseStatistics</a> defaultDatabaseStatistics, <strong class="jxr_keyword">final</strong> <a name="DatabaseStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/DatabaseStatistics.html#DatabaseStatistics">DatabaseStatistics</a> existedDatabaseStatistics) {
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>          <strong class="jxr_keyword">for</strong> (Entry&lt;String, SchemaStatistics&gt; entry : defaultDatabaseStatistics.getSchemaStatisticsMap().entrySet()) {
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>              <strong class="jxr_keyword">if</strong> (!existedDatabaseStatistics.containsSchemaStatistics(entry.getKey())) {
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>                  existedDatabaseStatistics.putSchemaStatistics(entry.getKey(), entry.getValue());
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>                  <strong class="jxr_keyword">continue</strong>;
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>             }
+<a class="jxr_linenumber" name="L101" href="#L101">101</a>             fillDefaultStatistics(entry.getValue(), existedDatabaseStatistics.getSchemaStatistics(entry.getKey()));
+<a class="jxr_linenumber" name="L102" href="#L102">102</a>         }
+<a class="jxr_linenumber" name="L103" href="#L103">103</a>     }
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>     
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> fillDefaultStatistics(<strong class="jxr_keyword">final</strong> <a name="SchemaStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/SchemaStatistics.html#SchemaStatistics">SchemaStatistics</a> defaultSchemaStatistics, <strong class="jxr_keyword">final</strong> <a name="SchemaStatistics" href="../../../../../../../org/apache/shardingsphere/infra/metadata/statistics/SchemaStatistics.html#SchemaStatistics">SchemaStatistics</a> existedSchemaStatistics) {
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>         <strong class="jxr_keyword">for</strong> (Entry&lt;String, TableStatistics&gt; entry : defaultSchemaStatistics.getTableStatisticsMap().entrySet()) {
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>             <strong class="jxr_keyword">if</strong> (!existedSchemaStatistics.containsTableStatistics(entry.getKey())) {
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>                 existedSchemaStatistics.putTableStatistics(entry.getKey(), entry.getValue());
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>             }
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>         }
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>     }
+<a class="jxr_linenumber" name="L112" href="#L112">112</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2025 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

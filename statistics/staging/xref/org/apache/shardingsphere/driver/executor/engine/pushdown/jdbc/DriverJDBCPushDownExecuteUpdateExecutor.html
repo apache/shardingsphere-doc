@@ -50,7 +50,7 @@
 <a class="jxr_linenumber" name="L42" href="#L42">42</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
 <a class="jxr_linenumber" name="L43" href="#L43">43</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.rule.ShardingSphereRule;
 <a class="jxr_linenumber" name="L44" href="#L44">44</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.rule.attribute.datanode.DataNodeRuleAttribute;
-<a class="jxr_linenumber" name="L45" href="#L45">45</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.metadata.refresher.metadata.MetaDataRefreshEngine;
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.metadata.refresher.metadata.pushdown.PushDownMetaDataRefreshEngine;
 <a class="jxr_linenumber" name="L46" href="#L46">46</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.ddl.DDLStatement;
 <a class="jxr_linenumber" name="L47" href="#L47">47</a>  
 <a class="jxr_linenumber" name="L48" href="#L48">48</a>  <strong class="jxr_keyword">import</strong> java.sql.Connection;
@@ -114,63 +114,64 @@
 <a class="jxr_linenumber" name="L106" href="#L106">106</a>         <strong class="jxr_keyword">try</strong> {
 <a class="jxr_linenumber" name="L107" href="#L107">107</a>             processEngine.executeSQL(executionGroupContext, executionContext.getQueryContext());
 <a class="jxr_linenumber" name="L108" href="#L108">108</a>             JDBCExecutorCallback&lt;Integer&gt; callback = <strong class="jxr_keyword">new</strong> <a name="ExecuteUpdateCallbackFactory" href="../../../../../../../../org/apache/shardingsphere/driver/executor/callback/execute/ExecuteUpdateCallbackFactory.html#ExecuteUpdateCallbackFactory">ExecuteUpdateCallbackFactory</a>(prepareEngine.getType())
-<a class="jxr_linenumber" name="L109" href="#L109">109</a>                     .newInstance(database, executionContext.getQueryContext().getSqlStatementContext().getSqlStatement(), updateCallback);
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>                     .newInstance(database, executionContext.getSqlStatementContext().getSqlStatement(), updateCallback);
 <a class="jxr_linenumber" name="L110" href="#L110">110</a>             List&lt;Integer&gt; updateCounts = jdbcExecutor.execute(executionGroupContext, callback);
-<a class="jxr_linenumber" name="L111" href="#L111">111</a>             <strong class="jxr_keyword">if</strong> (MetaDataRefreshEngine.isRefreshMetaDataRequired(executionContext.getQueryContext().getSqlStatementContext())) {
-<a class="jxr_linenumber" name="L112" href="#L112">112</a>                 <strong class="jxr_keyword">if</strong> (isNeedImplicitCommit(executionContext.getQueryContext().getSqlStatementContext())) {
-<a class="jxr_linenumber" name="L113" href="#L113">113</a>                     connection.commit();
-<a class="jxr_linenumber" name="L114" href="#L114">114</a>                 }
-<a class="jxr_linenumber" name="L115" href="#L115">115</a>                 <strong class="jxr_keyword">new</strong> <a name="MetaDataRefreshEngine" href="../../../../../../../../org/apache/shardingsphere/mode/metadata/refresher/metadata/MetaDataRefreshEngine.html#MetaDataRefreshEngine">MetaDataRefreshEngine</a>(connection.getContextManager().getPersistServiceFacade().getMetaDataManagerPersistService(), database, props)
-<a class="jxr_linenumber" name="L116" href="#L116">116</a>                         .refresh(executionContext.getQueryContext().getSqlStatementContext(), executionContext.getRouteContext().getRouteUnits());
-<a class="jxr_linenumber" name="L117" href="#L117">117</a>             }
-<a class="jxr_linenumber" name="L118" href="#L118">118</a>             <strong class="jxr_keyword">return</strong> isNeedAccumulate(database.getRuleMetaData().getRules(), executionContext.getQueryContext().getSqlStatementContext()) ? accumulate(updateCounts) : updateCounts.get(0);
-<a class="jxr_linenumber" name="L119" href="#L119">119</a>         } <strong class="jxr_keyword">finally</strong> {
-<a class="jxr_linenumber" name="L120" href="#L120">120</a>             processEngine.completeSQLExecution(executionGroupContext.getReportContext().getProcessId());
-<a class="jxr_linenumber" name="L121" href="#L121">121</a>         }
-<a class="jxr_linenumber" name="L122" href="#L122">122</a>     }
-<a class="jxr_linenumber" name="L123" href="#L123">123</a>     
-<a class="jxr_linenumber" name="L124" href="#L124">124</a>     <strong class="jxr_keyword">private</strong> Collection&lt;Statement&gt; getStatements(<strong class="jxr_keyword">final</strong> ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
-<a class="jxr_linenumber" name="L125" href="#L125">125</a>         Collection&lt;Statement&gt; result = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
-<a class="jxr_linenumber" name="L126" href="#L126">126</a>         <strong class="jxr_keyword">for</strong> (<a name="JDBCExecutionUnit" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/execute/engine/driver/jdbc/JDBCExecutionUnit.html#JDBCExecutionUnit">JDBCExecutionUnit</a> each : executionGroup.getInputs()) {
-<a class="jxr_linenumber" name="L127" href="#L127">127</a>             result.add(each.getStorageResource());
-<a class="jxr_linenumber" name="L128" href="#L128">128</a>         }
-<a class="jxr_linenumber" name="L129" href="#L129">129</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L130" href="#L130">130</a>     }
-<a class="jxr_linenumber" name="L131" href="#L131">131</a>     
-<a class="jxr_linenumber" name="L132" href="#L132">132</a>     <strong class="jxr_keyword">private</strong> Collection&lt;List&lt;Object&gt;&gt; getParameterSets(<strong class="jxr_keyword">final</strong> ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
-<a class="jxr_linenumber" name="L133" href="#L133">133</a>         Collection&lt;List&lt;Object&gt;&gt; result = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
-<a class="jxr_linenumber" name="L134" href="#L134">134</a>         <strong class="jxr_keyword">for</strong> (<a name="JDBCExecutionUnit" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/execute/engine/driver/jdbc/JDBCExecutionUnit.html#JDBCExecutionUnit">JDBCExecutionUnit</a> each : executionGroup.getInputs()) {
-<a class="jxr_linenumber" name="L135" href="#L135">135</a>             result.add(each.getExecutionUnit().getSqlUnit().getParameters());
-<a class="jxr_linenumber" name="L136" href="#L136">136</a>         }
-<a class="jxr_linenumber" name="L137" href="#L137">137</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L138" href="#L138">138</a>     }
-<a class="jxr_linenumber" name="L139" href="#L139">139</a>     
-<a class="jxr_linenumber" name="L140" href="#L140">140</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> isNeedImplicitCommit(<strong class="jxr_keyword">final</strong> <a name="SQLStatementContext" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/statement/SQLStatementContext.html#SQLStatementContext">SQLStatementContext</a> sqlStatementContext) {
-<a class="jxr_linenumber" name="L141" href="#L141">141</a>         <a name="DialectDatabaseMetaData" href="../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/database/DialectDatabaseMetaData.html#DialectDatabaseMetaData">DialectDatabaseMetaData</a> dialectDatabaseMetaData = DatabaseTypedSPILoader.getService(DialectDatabaseMetaData.<strong class="jxr_keyword">class</strong>, sqlStatementContext.getDatabaseType());
-<a class="jxr_linenumber" name="L142" href="#L142">142</a>         <strong class="jxr_keyword">return</strong> !connection.getAutoCommit() &amp;&amp; sqlStatementContext.getSqlStatement() instanceof <a name="DDLStatement" href="../../../../../../../../org/apache/shardingsphere/sql/parser/statement/core/statement/ddl/DDLStatement.html#DDLStatement">DDLStatement</a> &amp;&amp; dialectDatabaseMetaData.isDDLNeedImplicitCommit();
-<a class="jxr_linenumber" name="L143" href="#L143">143</a>     }
-<a class="jxr_linenumber" name="L144" href="#L144">144</a>     
-<a class="jxr_linenumber" name="L145" href="#L145">145</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> isNeedAccumulate(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingSphereRule&gt; rules, <strong class="jxr_keyword">final</strong> <a name="SQLStatementContext" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/statement/SQLStatementContext.html#SQLStatementContext">SQLStatementContext</a> sqlStatementContext) {
-<a class="jxr_linenumber" name="L146" href="#L146">146</a>         <strong class="jxr_keyword">if</strong> (!(sqlStatementContext instanceof <a name="TableAvailable" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/type/TableAvailable.html#TableAvailable">TableAvailable</a>)) {
-<a class="jxr_linenumber" name="L147" href="#L147">147</a>             <strong class="jxr_keyword">return</strong> false;
-<a class="jxr_linenumber" name="L148" href="#L148">148</a>         }
-<a class="jxr_linenumber" name="L149" href="#L149">149</a>         <strong class="jxr_keyword">for</strong> (<a name="ShardingSphereRule" href="../../../../../../../../org/apache/shardingsphere/infra/rule/ShardingSphereRule.html#ShardingSphereRule">ShardingSphereRule</a> each : rules) {
-<a class="jxr_linenumber" name="L150" href="#L150">150</a>             Optional&lt;DataNodeRuleAttribute&gt; ruleAttribute = each.getAttributes().findAttribute(DataNodeRuleAttribute.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L151" href="#L151">151</a>             <strong class="jxr_keyword">if</strong> (ruleAttribute.isPresent() &amp;&amp; ruleAttribute.get().isNeedAccumulate(((<a name="TableAvailable" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/type/TableAvailable.html#TableAvailable">TableAvailable</a>) sqlStatementContext).getTablesContext().getTableNames())) {
-<a class="jxr_linenumber" name="L152" href="#L152">152</a>                 <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
-<a class="jxr_linenumber" name="L153" href="#L153">153</a>             }
-<a class="jxr_linenumber" name="L154" href="#L154">154</a>         }
-<a class="jxr_linenumber" name="L155" href="#L155">155</a>         <strong class="jxr_keyword">return</strong> false;
-<a class="jxr_linenumber" name="L156" href="#L156">156</a>     }
-<a class="jxr_linenumber" name="L157" href="#L157">157</a>     
-<a class="jxr_linenumber" name="L158" href="#L158">158</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> accumulate(<strong class="jxr_keyword">final</strong> List&lt;Integer&gt; updateResults) {
-<a class="jxr_linenumber" name="L159" href="#L159">159</a>         <strong class="jxr_keyword">int</strong> result = 0;
-<a class="jxr_linenumber" name="L160" href="#L160">160</a>         <strong class="jxr_keyword">for</strong> (Integer each : updateResults) {
-<a class="jxr_linenumber" name="L161" href="#L161">161</a>             result += <strong class="jxr_keyword">null</strong> == each ? 0 : each;
-<a class="jxr_linenumber" name="L162" href="#L162">162</a>         }
-<a class="jxr_linenumber" name="L163" href="#L163">163</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L164" href="#L164">164</a>     }
-<a class="jxr_linenumber" name="L165" href="#L165">165</a> }
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>             <a name="PushDownMetaDataRefreshEngine" href="../../../../../../../../org/apache/shardingsphere/mode/metadata/refresher/metadata/pushdown/PushDownMetaDataRefreshEngine.html#PushDownMetaDataRefreshEngine">PushDownMetaDataRefreshEngine</a> pushDownMetaDataRefreshEngine =
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>                     <strong class="jxr_keyword">new</strong> <a name="PushDownMetaDataRefreshEngine" href="../../../../../../../../org/apache/shardingsphere/mode/metadata/refresher/metadata/pushdown/PushDownMetaDataRefreshEngine.html#PushDownMetaDataRefreshEngine">PushDownMetaDataRefreshEngine</a>(connection.getContextManager().getPersistServiceFacade().getMetaDataManagerPersistService(), database, props);
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>             <strong class="jxr_keyword">if</strong> (pushDownMetaDataRefreshEngine.isNeedRefresh(executionContext.getSqlStatementContext())) {
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>                 <strong class="jxr_keyword">if</strong> (isNeedImplicitCommit(executionContext.getSqlStatementContext())) {
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>                     connection.commit();
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>                 }
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>                 pushDownMetaDataRefreshEngine.refresh(executionContext.getSqlStatementContext(), executionContext.getRouteContext().getRouteUnits());
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>             }
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>             <strong class="jxr_keyword">return</strong> isNeedAccumulate(database.getRuleMetaData().getRules(), executionContext.getSqlStatementContext()) ? accumulate(updateCounts) : updateCounts.get(0);
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>         } <strong class="jxr_keyword">finally</strong> {
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>             processEngine.completeSQLExecution(executionGroupContext.getReportContext().getProcessId());
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>         }
+<a class="jxr_linenumber" name="L123" href="#L123">123</a>     }
+<a class="jxr_linenumber" name="L124" href="#L124">124</a>     
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>     <strong class="jxr_keyword">private</strong> Collection&lt;Statement&gt; getStatements(<strong class="jxr_keyword">final</strong> ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>         Collection&lt;Statement&gt; result = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>         <strong class="jxr_keyword">for</strong> (<a name="JDBCExecutionUnit" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/execute/engine/driver/jdbc/JDBCExecutionUnit.html#JDBCExecutionUnit">JDBCExecutionUnit</a> each : executionGroup.getInputs()) {
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>             result.add(each.getStorageResource());
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>         }
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>     }
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>     
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>     <strong class="jxr_keyword">private</strong> Collection&lt;List&lt;Object&gt;&gt; getParameterSets(<strong class="jxr_keyword">final</strong> ExecutionGroup&lt;JDBCExecutionUnit&gt; executionGroup) {
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>         Collection&lt;List&lt;Object&gt;&gt; result = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>         <strong class="jxr_keyword">for</strong> (<a name="JDBCExecutionUnit" href="../../../../../../../../org/apache/shardingsphere/infra/executor/sql/execute/engine/driver/jdbc/JDBCExecutionUnit.html#JDBCExecutionUnit">JDBCExecutionUnit</a> each : executionGroup.getInputs()) {
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>             result.add(each.getExecutionUnit().getSqlUnit().getParameters());
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>         }
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>     }
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>     
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> isNeedImplicitCommit(<strong class="jxr_keyword">final</strong> <a name="SQLStatementContext" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/statement/SQLStatementContext.html#SQLStatementContext">SQLStatementContext</a> sqlStatementContext) {
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>         <a name="DialectDatabaseMetaData" href="../../../../../../../../org/apache/shardingsphere/infra/database/core/metadata/database/DialectDatabaseMetaData.html#DialectDatabaseMetaData">DialectDatabaseMetaData</a> dialectDatabaseMetaData = DatabaseTypedSPILoader.getService(DialectDatabaseMetaData.<strong class="jxr_keyword">class</strong>, sqlStatementContext.getDatabaseType());
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>         <strong class="jxr_keyword">return</strong> !connection.getAutoCommit() &amp;&amp; sqlStatementContext.getSqlStatement() instanceof <a name="DDLStatement" href="../../../../../../../../org/apache/shardingsphere/sql/parser/statement/core/statement/ddl/DDLStatement.html#DDLStatement">DDLStatement</a> &amp;&amp; dialectDatabaseMetaData.isDDLNeedImplicitCommit();
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>     }
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>     
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> isNeedAccumulate(<strong class="jxr_keyword">final</strong> Collection&lt;ShardingSphereRule&gt; rules, <strong class="jxr_keyword">final</strong> <a name="SQLStatementContext" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/statement/SQLStatementContext.html#SQLStatementContext">SQLStatementContext</a> sqlStatementContext) {
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>         <strong class="jxr_keyword">if</strong> (!(sqlStatementContext instanceof <a name="TableAvailable" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/type/TableAvailable.html#TableAvailable">TableAvailable</a>)) {
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>             <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>         }
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>         <strong class="jxr_keyword">for</strong> (<a name="ShardingSphereRule" href="../../../../../../../../org/apache/shardingsphere/infra/rule/ShardingSphereRule.html#ShardingSphereRule">ShardingSphereRule</a> each : rules) {
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>             Optional&lt;DataNodeRuleAttribute&gt; ruleAttribute = each.getAttributes().findAttribute(DataNodeRuleAttribute.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>             <strong class="jxr_keyword">if</strong> (ruleAttribute.isPresent() &amp;&amp; ruleAttribute.get().isNeedAccumulate(((<a name="TableAvailable" href="../../../../../../../../org/apache/shardingsphere/infra/binder/context/type/TableAvailable.html#TableAvailable">TableAvailable</a>) sqlStatementContext).getTablesContext().getTableNames())) {
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>                 <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">true</strong>;
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>             }
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>         }
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>         <strong class="jxr_keyword">return</strong> false;
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>     }
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>     
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> accumulate(<strong class="jxr_keyword">final</strong> List&lt;Integer&gt; updateResults) {
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>         <strong class="jxr_keyword">int</strong> result = 0;
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>         <strong class="jxr_keyword">for</strong> (Integer each : updateResults) {
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>             result += <strong class="jxr_keyword">null</strong> == each ? 0 : each;
+<a class="jxr_linenumber" name="L163" href="#L163">163</a>         }
+<a class="jxr_linenumber" name="L164" href="#L164">164</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L165" href="#L165">165</a>     }
+<a class="jxr_linenumber" name="L166" href="#L166">166</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2025 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

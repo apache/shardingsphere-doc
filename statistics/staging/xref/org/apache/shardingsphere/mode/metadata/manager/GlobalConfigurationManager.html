@@ -36,7 +36,7 @@
 <a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.yaml.config.pojo.rule.YamlRuleConfiguration;
 <a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.yaml.config.swapper.rule.YamlRuleConfigurationSwapperEngine;
 <a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.metadata.MetaDataContexts;
-<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.metadata.persist.MetaDataPersistService;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.metadata.persist.MetaDataPersistFacade;
 <a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.tuple.annotation.RepositoryTupleEntity;
 <a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.transaction.rule.TransactionRule;
 <a class="jxr_linenumber" name="L34" href="#L34">34</a>  
@@ -54,7 +54,7 @@
 <a class="jxr_linenumber" name="L46" href="#L46">46</a>      
 <a class="jxr_linenumber" name="L47" href="#L47">47</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="MetaDataContexts" href="../../../../../../org/apache/shardingsphere/mode/metadata/MetaDataContexts.html#MetaDataContexts">MetaDataContexts</a> metaDataContexts;
 <a class="jxr_linenumber" name="L48" href="#L48">48</a>      
-<a class="jxr_linenumber" name="L49" href="#L49">49</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="MetaDataPersistService" href="../../../../../../org/apache/shardingsphere/mode/metadata/persist/MetaDataPersistService.html#MetaDataPersistService">MetaDataPersistService</a> metaDataPersistService;
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="MetaDataPersistFacade" href="../../../../../../org/apache/shardingsphere/mode/metadata/persist/MetaDataPersistFacade.html#MetaDataPersistFacade">MetaDataPersistFacade</a> metaDataPersistFacade;
 <a class="jxr_linenumber" name="L50" href="#L50">50</a>      
 <a class="jxr_linenumber" name="L51" href="#L51">51</a>      <em class="jxr_javadoccomment">/**</em>
 <a class="jxr_linenumber" name="L52" href="#L52">52</a>  <em class="jxr_javadoccomment">     * Alter global rule configuration.</em>
@@ -72,30 +72,29 @@
 <a class="jxr_linenumber" name="L64" href="#L64">64</a>          metaDataContexts.getMetaData().getGlobalRuleMetaData().getRules().clear();
 <a class="jxr_linenumber" name="L65" href="#L65">65</a>          metaDataContexts.getMetaData().getGlobalRuleMetaData().getRules().addAll(rules);
 <a class="jxr_linenumber" name="L66" href="#L66">66</a>          metaDataContexts.update(<strong class="jxr_keyword">new</strong> <a name="ShardingSphereMetaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a>(metaDataContexts.getMetaData().getAllDatabases(),
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>                  metaDataContexts.getMetaData().getGlobalResourceMetaData(), metaDataContexts.getMetaData().getGlobalRuleMetaData(), metaDataContexts.getMetaData().getProps()),
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>                  metaDataPersistService);
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>      }
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>      
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>      <em class="jxr_comment">// Optimize string comparison rule type.</em>
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>      @SneakyThrows(Exception.<strong class="jxr_keyword">class</strong>)
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> closeStaleTransactionRule(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig) {
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>          <a name="YamlRuleConfiguration" href="../../../../../../org/apache/shardingsphere/infra/yaml/config/pojo/rule/YamlRuleConfiguration.html#YamlRuleConfiguration">YamlRuleConfiguration</a> yamlRuleConfig = <strong class="jxr_keyword">new</strong> <a name="YamlRuleConfigurationSwapperEngine" href="../../../../../../org/apache/shardingsphere/infra/yaml/config/swapper/rule/YamlRuleConfigurationSwapperEngine.html#YamlRuleConfigurationSwapperEngine">YamlRuleConfigurationSwapperEngine</a>().swapToYamlRuleConfiguration(ruleConfig);
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>          <strong class="jxr_keyword">if</strong> (!<span class="jxr_string">"transaction"</span>.equals(Objects.requireNonNull(yamlRuleConfig.getClass().getAnnotation(RepositoryTupleEntity.<strong class="jxr_keyword">class</strong>)).value())) {
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>              <strong class="jxr_keyword">return</strong>;
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>          }
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>          metaDataContexts.getMetaData().getGlobalRuleMetaData().findSingleRule(TransactionRule.<strong class="jxr_keyword">class</strong>).ifPresent(TransactionRule::close);
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>      }
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>      
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>  <em class="jxr_javadoccomment">     * Alter properties.</em>
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>  <em class="jxr_javadoccomment">     * @param props properties to be altered</em>
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> alterProperties(<strong class="jxr_keyword">final</strong> Properties props) {
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>          metaDataContexts.update(<strong class="jxr_keyword">new</strong> <a name="ShardingSphereMetaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a>(metaDataContexts.getMetaData().getAllDatabases(),
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>                  metaDataContexts.getMetaData().getGlobalResourceMetaData(), metaDataContexts.getMetaData().getGlobalRuleMetaData(), <strong class="jxr_keyword">new</strong> <a name="ConfigurationProperties" href="../../../../../../org/apache/shardingsphere/infra/config/props/ConfigurationProperties.html#ConfigurationProperties">ConfigurationProperties</a>(props)), metaDataPersistService);
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>      }
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>  }
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>                  metaDataContexts.getMetaData().getGlobalResourceMetaData(), metaDataContexts.getMetaData().getGlobalRuleMetaData(), metaDataContexts.getMetaData().getProps()), metaDataPersistFacade);
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>      }
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>      
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>      <em class="jxr_comment">// Optimize string comparison rule type.</em>
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>      @SneakyThrows(Exception.<strong class="jxr_keyword">class</strong>)
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> closeStaleTransactionRule(<strong class="jxr_keyword">final</strong> <a name="RuleConfiguration" href="../../../../../../org/apache/shardingsphere/infra/config/rule/RuleConfiguration.html#RuleConfiguration">RuleConfiguration</a> ruleConfig) {
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>          <a name="YamlRuleConfiguration" href="../../../../../../org/apache/shardingsphere/infra/yaml/config/pojo/rule/YamlRuleConfiguration.html#YamlRuleConfiguration">YamlRuleConfiguration</a> yamlRuleConfig = <strong class="jxr_keyword">new</strong> <a name="YamlRuleConfigurationSwapperEngine" href="../../../../../../org/apache/shardingsphere/infra/yaml/config/swapper/rule/YamlRuleConfigurationSwapperEngine.html#YamlRuleConfigurationSwapperEngine">YamlRuleConfigurationSwapperEngine</a>().swapToYamlRuleConfiguration(ruleConfig);
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>          <strong class="jxr_keyword">if</strong> (!<span class="jxr_string">"transaction"</span>.equals(Objects.requireNonNull(yamlRuleConfig.getClass().getAnnotation(RepositoryTupleEntity.<strong class="jxr_keyword">class</strong>)).value())) {
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>              <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>          }
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>          metaDataContexts.getMetaData().getGlobalRuleMetaData().findSingleRule(TransactionRule.<strong class="jxr_keyword">class</strong>).ifPresent(TransactionRule::close);
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>      }
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>      
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>  <em class="jxr_javadoccomment">     * Alter properties.</em>
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>  <em class="jxr_javadoccomment">     * @param props properties to be altered</em>
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">synchronized</strong> <strong class="jxr_keyword">void</strong> alterProperties(<strong class="jxr_keyword">final</strong> Properties props) {
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>          metaDataContexts.update(<strong class="jxr_keyword">new</strong> <a name="ShardingSphereMetaData" href="../../../../../../org/apache/shardingsphere/infra/metadata/ShardingSphereMetaData.html#ShardingSphereMetaData">ShardingSphereMetaData</a>(metaDataContexts.getMetaData().getAllDatabases(),
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>                  metaDataContexts.getMetaData().getGlobalResourceMetaData(), metaDataContexts.getMetaData().getGlobalRuleMetaData(), <strong class="jxr_keyword">new</strong> <a name="ConfigurationProperties" href="../../../../../../org/apache/shardingsphere/infra/config/props/ConfigurationProperties.html#ConfigurationProperties">ConfigurationProperties</a>(props)), metaDataPersistFacade);
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>      }
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2025 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

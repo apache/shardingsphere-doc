@@ -33,9 +33,9 @@
 <a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.metadata.persist.config.RepositoryTuplePersistService;
 <a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.metadata.persist.version.MetaDataVersionPersistService;
 <a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.path.GlobalRuleNodePath;
-<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.spi.repository.PersistRepository;
-<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.tuple.RepositoryTuple;
-<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.tuple.YamlRepositoryTupleSwapperEngine;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.tuple.RepositoryTuple;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.tuple.YamlRepositoryTupleSwapperEngine;
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.spi.repository.PersistRepository;
 <a class="jxr_linenumber" name="L31" href="#L31">31</a>  
 <a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
 <a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedList;
@@ -100,18 +100,24 @@
 <a class="jxr_linenumber" name="L92" href="#L92">92</a>      <strong class="jxr_keyword">private</strong> Collection&lt;MetaDataVersion&gt; persistTuples(<strong class="jxr_keyword">final</strong> Collection&lt;RepositoryTuple&gt; repositoryTuples) {
 <a class="jxr_linenumber" name="L93" href="#L93">93</a>          Collection&lt;MetaDataVersion&gt; result = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
 <a class="jxr_linenumber" name="L94" href="#L94">94</a>          <strong class="jxr_keyword">for</strong> (<a name="RepositoryTuple" href="../../../../../../../../org/apache/shardingsphere/mode/node/tuple/RepositoryTuple.html#RepositoryTuple">RepositoryTuple</a> each : repositoryTuples) {
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>              List&lt;String&gt; versions = metaDataVersionPersistService.getVersions(GlobalRuleNodePath.getVersionRootPath(each.getKey()));
-<a class="jxr_linenumber" name="L96" href="#L96">96</a>              String nextActiveVersion = versions.isEmpty() ? MetaDataVersion.DEFAULT_VERSION : String.valueOf(Integer.parseInt(versions.get(0)) + 1);
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>              List&lt;Integer&gt; versions = metaDataVersionPersistService.getVersions(GlobalRuleNodePath.getVersionRootPath(each.getKey()));
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>              <strong class="jxr_keyword">int</strong> nextActiveVersion = versions.isEmpty() ? MetaDataVersion.DEFAULT_VERSION : versions.get(0) + 1;
 <a class="jxr_linenumber" name="L97" href="#L97">97</a>              repository.persist(GlobalRuleNodePath.getVersionPath(each.getKey(), nextActiveVersion), each.getValue());
 <a class="jxr_linenumber" name="L98" href="#L98">98</a>              String ruleActiveVersionPath = GlobalRuleNodePath.getActiveVersionPath(each.getKey());
-<a class="jxr_linenumber" name="L99" href="#L99">99</a>              <strong class="jxr_keyword">if</strong> (Strings.isNullOrEmpty(repository.query(ruleActiveVersionPath))) {
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>                 repository.persist(ruleActiveVersionPath, MetaDataVersion.DEFAULT_VERSION);
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>              <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == getRuleActiveVersion(ruleActiveVersionPath)) {
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>                 repository.persist(ruleActiveVersionPath, String.valueOf(MetaDataVersion.DEFAULT_VERSION));
 <a class="jxr_linenumber" name="L101" href="#L101">101</a>             }
-<a class="jxr_linenumber" name="L102" href="#L102">102</a>             result.add(<strong class="jxr_keyword">new</strong> <a name="MetaDataVersion" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/version/MetaDataVersion.html#MetaDataVersion">MetaDataVersion</a>(GlobalRuleNodePath.getRulePath(each.getKey()), repository.query(ruleActiveVersionPath), nextActiveVersion));
-<a class="jxr_linenumber" name="L103" href="#L103">103</a>         }
-<a class="jxr_linenumber" name="L104" href="#L104">104</a>         <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L105" href="#L105">105</a>     }
-<a class="jxr_linenumber" name="L106" href="#L106">106</a> }
+<a class="jxr_linenumber" name="L102" href="#L102">102</a>             Integer ruleActiveVersion = getRuleActiveVersion(ruleActiveVersionPath);
+<a class="jxr_linenumber" name="L103" href="#L103">103</a>             result.add(<strong class="jxr_keyword">new</strong> <a name="MetaDataVersion" href="../../../../../../../../org/apache/shardingsphere/infra/metadata/version/MetaDataVersion.html#MetaDataVersion">MetaDataVersion</a>(GlobalRuleNodePath.getRulePath(each.getKey()), <strong class="jxr_keyword">null</strong> == ruleActiveVersion ? MetaDataVersion.DEFAULT_VERSION : ruleActiveVersion, nextActiveVersion));
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>         }
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>     }
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>     
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>     <strong class="jxr_keyword">private</strong> Integer getRuleActiveVersion(<strong class="jxr_keyword">final</strong> String ruleActiveVersionPath) {
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>         String value = repository.query(ruleActiveVersionPath);
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>         <strong class="jxr_keyword">return</strong> Strings.isNullOrEmpty(value) ? <strong class="jxr_keyword">null</strong> : Integer.parseInt(value);
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>     }
+<a class="jxr_linenumber" name="L112" href="#L112">112</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2025 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

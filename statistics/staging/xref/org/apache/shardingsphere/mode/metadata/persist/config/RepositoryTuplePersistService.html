@@ -26,13 +26,13 @@
 <a class="jxr_linenumber" name="L18" href="#L18">18</a>  <strong class="jxr_keyword">package</strong> org.apache.shardingsphere.mode.metadata.persist.config;
 <a class="jxr_linenumber" name="L19" href="#L19">19</a>  
 <a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> lombok.RequiredArgsConstructor;
-<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.tuple.RepositoryTuple;
-<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.spi.repository.PersistRepository;
-<a class="jxr_linenumber" name="L23" href="#L23">23</a>  
-<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
-<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> java.util.Collections;
-<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedHashSet;
-<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> java.util.regex.Pattern;
+<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.path.version.VersionNodePathGenerator;
+<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.node.tuple.RepositoryTuple;
+<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mode.spi.repository.PersistRepository;
+<a class="jxr_linenumber" name="L24" href="#L24">24</a>  
+<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
+<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> java.util.Collections;
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> java.util.LinkedHashSet;
 <a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> java.util.stream.Collectors;
 <a class="jxr_linenumber" name="L29" href="#L29">29</a>  
 <a class="jxr_linenumber" name="L30" href="#L30">30</a>  <em class="jxr_javadoccomment">/**</em>
@@ -41,46 +41,36 @@
 <a class="jxr_linenumber" name="L33" href="#L33">33</a>  @RequiredArgsConstructor
 <a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a name="RepositoryTuplePersistService" href="../../../../../../../org/apache/shardingsphere/mode/metadata/persist/config/RepositoryTuplePersistService.html#RepositoryTuplePersistService">RepositoryTuplePersistService</a> {
 <a class="jxr_linenumber" name="L35" href="#L35">35</a>      
-<a class="jxr_linenumber" name="L36" href="#L36">36</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String ACTIVE_VERSION_PATTERN = <span class="jxr_string">"/active_version$"</span>;
+<a class="jxr_linenumber" name="L36" href="#L36">36</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="PersistRepository" href="../../../../../../../org/apache/shardingsphere/mode/spi/repository/PersistRepository.html#PersistRepository">PersistRepository</a> repository;
 <a class="jxr_linenumber" name="L37" href="#L37">37</a>      
-<a class="jxr_linenumber" name="L38" href="#L38">38</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String ACTIVE_VERSION_PATH = <span class="jxr_string">"active_version"</span>;
-<a class="jxr_linenumber" name="L39" href="#L39">39</a>      
-<a class="jxr_linenumber" name="L40" href="#L40">40</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> String VERSIONS_PATH = <span class="jxr_string">"versions"</span>;
-<a class="jxr_linenumber" name="L41" href="#L41">41</a>      
-<a class="jxr_linenumber" name="L42" href="#L42">42</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> <a name="PersistRepository" href="../../../../../../../org/apache/shardingsphere/mode/spi/repository/PersistRepository.html#PersistRepository">PersistRepository</a> repository;
-<a class="jxr_linenumber" name="L43" href="#L43">43</a>      
-<a class="jxr_linenumber" name="L44" href="#L44">44</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L45" href="#L45">45</a>  <em class="jxr_javadoccomment">     * Load repository tuples.</em>
-<a class="jxr_linenumber" name="L46" href="#L46">46</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L47" href="#L47">47</a>  <em class="jxr_javadoccomment">     * @param rootNode root node</em>
-<a class="jxr_linenumber" name="L48" href="#L48">48</a>  <em class="jxr_javadoccomment">     * @return loaded repository tuples</em>
-<a class="jxr_linenumber" name="L49" href="#L49">49</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L50" href="#L50">50</a>      <strong class="jxr_keyword">public</strong> Collection&lt;RepositoryTuple&gt; load(<strong class="jxr_keyword">final</strong> String rootNode) {
-<a class="jxr_linenumber" name="L51" href="#L51">51</a>          Pattern pattern = Pattern.compile(ACTIVE_VERSION_PATTERN, Pattern.CASE_INSENSITIVE);
-<a class="jxr_linenumber" name="L52" href="#L52">52</a>          <strong class="jxr_keyword">return</strong> loadNodes(rootNode).stream().filter(each -&gt; pattern.matcher(each).find()).map(<strong class="jxr_keyword">this</strong>::getRepositoryTuple).collect(Collectors.toList());
-<a class="jxr_linenumber" name="L53" href="#L53">53</a>      }
-<a class="jxr_linenumber" name="L54" href="#L54">54</a>      
-<a class="jxr_linenumber" name="L55" href="#L55">55</a>      <strong class="jxr_keyword">private</strong> Collection&lt;String&gt; loadNodes(<strong class="jxr_keyword">final</strong> String rootNode) {
-<a class="jxr_linenumber" name="L56" href="#L56">56</a>          Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
-<a class="jxr_linenumber" name="L57" href="#L57">57</a>          loadNodes(rootNode, result);
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>          <strong class="jxr_keyword">if</strong> (1 == result.size()) {
-<a class="jxr_linenumber" name="L59" href="#L59">59</a>              <strong class="jxr_keyword">return</strong> Collections.emptyList();
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>          }
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>          <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>      }
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>      
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> loadNodes(<strong class="jxr_keyword">final</strong> String toBeLoadedNode, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; loadedNodes) {
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>          loadedNodes.add(toBeLoadedNode);
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>          <strong class="jxr_keyword">for</strong> (String each : repository.getChildrenKeys(toBeLoadedNode)) {
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>              loadNodes(String.join(<span class="jxr_string">"/"</span>, toBeLoadedNode, each), loadedNodes);
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>          }
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>      }
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>      
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>      <strong class="jxr_keyword">private</strong> <a name="RepositoryTuple" href="../../../../../../../org/apache/shardingsphere/mode/node/tuple/RepositoryTuple.html#RepositoryTuple">RepositoryTuple</a> getRepositoryTuple(<strong class="jxr_keyword">final</strong> String node) {
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>          String activeRuleKey = node.replace(ACTIVE_VERSION_PATH, VERSIONS_PATH) + <span class="jxr_string">"/"</span> + repository.query(node);
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>          <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="RepositoryTuple" href="../../../../../../../org/apache/shardingsphere/mode/node/tuple/RepositoryTuple.html#RepositoryTuple">RepositoryTuple</a>(activeRuleKey, repository.query(activeRuleKey));
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>      }
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>  }
+<a class="jxr_linenumber" name="L38" href="#L38">38</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L39" href="#L39">39</a>  <em class="jxr_javadoccomment">     * Load repository tuples.</em>
+<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>  <em class="jxr_javadoccomment">     * @param rootNode root node</em>
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <em class="jxr_javadoccomment">     * @return loaded repository tuples</em>
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L44" href="#L44">44</a>      <strong class="jxr_keyword">public</strong> Collection&lt;RepositoryTuple&gt; load(<strong class="jxr_keyword">final</strong> String rootNode) {
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>          <strong class="jxr_keyword">return</strong> loadNodes(rootNode).stream().filter(VersionNodePathGenerator::isActiveVersionPath).map(<strong class="jxr_keyword">this</strong>::createRepositoryTuple).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>      }
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>      
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>      <strong class="jxr_keyword">private</strong> Collection&lt;String&gt; loadNodes(<strong class="jxr_keyword">final</strong> String rootNode) {
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>          Collection&lt;String&gt; result = <strong class="jxr_keyword">new</strong> LinkedHashSet&lt;&gt;();
+<a class="jxr_linenumber" name="L50" href="#L50">50</a>          loadNodes(rootNode, result);
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>          <strong class="jxr_keyword">return</strong> 1 == result.size() ? Collections.emptyList() : result;
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>      }
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>      
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> loadNodes(<strong class="jxr_keyword">final</strong> String toBeLoadedNode, <strong class="jxr_keyword">final</strong> Collection&lt;String&gt; loadedNodes) {
+<a class="jxr_linenumber" name="L55" href="#L55">55</a>          loadedNodes.add(toBeLoadedNode);
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>          <strong class="jxr_keyword">for</strong> (String each : repository.getChildrenKeys(toBeLoadedNode)) {
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>              loadNodes(String.join(<span class="jxr_string">"/"</span>, toBeLoadedNode, each), loadedNodes);
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>          }
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>      }
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>      
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>      <strong class="jxr_keyword">private</strong> <a name="RepositoryTuple" href="../../../../../../../org/apache/shardingsphere/mode/node/tuple/RepositoryTuple.html#RepositoryTuple">RepositoryTuple</a> createRepositoryTuple(<strong class="jxr_keyword">final</strong> String activeVersionPath) {
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>          String activeVersionKey = VersionNodePathGenerator.getVersionPath(activeVersionPath, Integer.parseInt(repository.query(activeVersionPath)));
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>          <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="RepositoryTuple" href="../../../../../../../org/apache/shardingsphere/mode/node/tuple/RepositoryTuple.html#RepositoryTuple">RepositoryTuple</a>(activeVersionKey, repository.query(activeVersionKey));
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>      }
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2025 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

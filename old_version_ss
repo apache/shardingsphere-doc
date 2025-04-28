@@ -1,28 +1,52 @@
-commit 110299f5509bb86512364dd4e267dadb7d32b154
+commit c4f79e52118c038f370ded75c539c3d2b64ad3d4
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Mon Apr 28 15:15:54 2025 +0800
+Date:   Mon Apr 28 23:32:16 2025 +0800
 
-    Remove P6spy module and related configurations from project files (#35280)
+    Remove testcontainers database module and related references from documentation and code (#35287)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/unsupported/p6spy/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/unsupported/p6spy/_index.cn.md
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md
+index 782d0853a24..e88a1fb5c95 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.cn.md
+@@ -50,7 +50,6 @@ ShardingSphere 默认情况下仅包含核心 SPI 的实现，在 Git Source 存
+ - 行表达式
+   - `org.apache.shardingsphere:shardingsphere-infra-expr-espresso`，基于 GraalVM Truffle 的 Espresso 实现的使用 Groovy 语法的行表达式
+ - 数据库类型识别
+-  - `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers`， 对 `testcontainers-java` 的 `JDBC support` 的 jdbcURL 的识别适配
+   - `org.apache.shardingsphere:shardingsphere-infra-database-hive`， 对 Hive 的 jdbcURL 的识别适配，元数据加载实现
+   - `org.apache.shardingsphere:shardingsphere-infra-database-presto`， 对 Presto 的 jdbcURL 的识别适配，元数据加载实现
+ - SQL 解析
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md
+index a157d2edf37..2b1733b8514 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/_index.en.md
+@@ -50,7 +50,6 @@ All optional plugins are listed below in the form of `groupId:artifactId`.
+ - Row Value Expressions definition
+   - `org.apache.shardingsphere:shardingsphere-infra-expr-espresso`，Row Value Expressions that uses the Groovy syntax based on GraalVM Truffle's Espresso implementation
+ - Database type identification
+-  - `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers`, Adaptation of jdbcURL for `JDBC support` of `testcontainers-java`
+   - `org.apache.shardingsphere:shardingsphere-infra-database-hive`, Adaptation of jdbcURL for `JDBC support` of Hive, and metadata loading implementation
+   - `org.apache.shardingsphere:shardingsphere-infra-database-presto`, Adaptation of jdbcURL for `JDBC support` of Presto, and metadata loading implementation
+ - SQL parsing
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.cn.md
 deleted file mode 100644
-index 5c7f25a593a..00000000000
---- a/docs/document/content/user-manual/shardingsphere-jdbc/unsupported/p6spy/_index.cn.md
+index d8e24da9a15..00000000000
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.cn.md
 +++ /dev/null
-@@ -1,154 +0,0 @@
+@@ -1,117 +0,0 @@
 -+++
--title = "P6Spy"
+-title = "Testcontainers"
 -weight = 6
 -+++
 -
 -## 背景信息
 -
--ShardingSphere 通过 `org.apache.shardingsphere:shardingsphere-infra-database-p6spy` 模块，
--对 `com.p6spy.engine.spy.P6SpyDriver` 提供部分支持。
+-ShardingSphere 默认情况下不提供对 `org.testcontainers.jdbc.ContainerDatabaseDriver` 的 `driverClassName` 的支持。
 -
 -## 前提条件
 -
--要在 ShardingSphere 的配置文件为 MySQL Server 数据节点使用 P6Spy， 可能的 Maven 依赖关系如下，
+-要在 ShardingSphere 的配置文件为数据节点使用类似 `jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0` 的 `jdbcUrl`，
+-可能的 Maven 依赖关系如下，
 -
 -```xml
 -<dependencies>
@@ -32,157 +56,119 @@ index 5c7f25a593a..00000000000
 -        <version>${shardingsphere.version}</version>
 -    </dependency>
 -    <dependency>
--        <groupId>p6spy</groupId>
--        <artifactId>p6spy</artifactId>
--        <version>3.9.1</version>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-infra-database-testcontainers</artifactId>
+-        <version>${shardingsphere.version}</version>
 -    </dependency>
 -    <dependency>
--        <groupId>com.mysql</groupId>
--        <artifactId>mysql-connector-j</artifactId>
--        <version>9.1.0</version>
+-        <groupId>org.postgresql</groupId>
+-        <artifactId>postgresql</artifactId>
+-        <version>42.7.5</version>
+-    </dependency>
+-    <dependency>
+-        <groupId>org.testcontainers</groupId>
+-        <artifactId>postgresql</artifactId>
+-        <version>1.20.3</version>
+-        <scope>test</scope>
 -    </dependency>
 -</dependencies>
 -```
 -
 -## 配置示例
 -
--### 启动 MySQL Server
--
--编写 Docker Compose 文件来启动 MySQL Server。
--
--```yaml
--services:
--   mysql:
--      image: mysql:9.1.0
--      environment:
--         MYSQL_ROOT_PASSWORD: example
--      volumes:
--         - ./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
--      ports:
--         - "3306:3306"
--```
--
--`./docker-entrypoint-initdb.d` 文件夹包含文件为 `init.sh`，内容如下，
--
--```shell
--#!/bin/bash
--set -e
--
--mysql -uroot -p"$MYSQL_ROOT_PASSWORD" <<EOSQL
--CREATE DATABASE demo_ds_0;
--CREATE DATABASE demo_ds_1;
--CREATE DATABASE demo_ds_2;
--EOSQL
--
--for i in "demo_ds_0" "demo_ds_1" "demo_ds_2"
--do
--mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$i" <<'EOSQL'
--CREATE TABLE IF NOT EXISTS t_order (
--   order_id BIGINT NOT NULL AUTO_INCREMENT,
--   order_type INT(11),
--   user_id INT NOT NULL,
--   address_id BIGINT NOT NULL,
--   status VARCHAR(50),
--   PRIMARY KEY (order_id)
--);
--EOSQL
--done
--```
--
--### 在业务项目创建 ShardingSphere 数据源
--
--在业务项目引入前提条件涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
+-要使用 `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` 模块，
+-用户设备总是需要安装 Docker Engine 或符合 https://java.testcontainers.org/supported_docker_environment/ 要求的 alternative container runtimes。
+-此时可在 ShardingSphere 的 YAML 配置文件正常使用 `jdbc:tc:postgresql:` 前缀的 jdbcURL。
 -
 -```yaml
 -dataSources:
 -  ds_0:
 -    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
--    driverClassName: com.p6spy.engine.spy.P6SpyDriver
--    jdbcUrl: jdbc:p6spy:mysql://localhost:3306/demo_ds_0?sslMode=REQUIRED
--    username: root
--    password: example
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0
 -  ds_1:
 -    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
--    driverClassName: com.p6spy.engine.spy.P6SpyDriver
--    jdbcUrl: jdbc:p6spy:mysql://localhost:3306/demo_ds_1?sslMode=REQUIRED
--    username: root
--    password: example
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_1
 -  ds_2:
 -    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
--    driverClassName: com.p6spy.engine.spy.P6SpyDriver
--    jdbcUrl: jdbc:p6spy:mysql://localhost:3306/demo_ds_2?sslMode=REQUIRED
--    username: root
--    password: example
--rules:
--- !SHARDING
--    tables:
--      t_order:
--        actualDataNodes:
--        keyGenerateStrategy:
--          column: order_id
--          keyGeneratorName: snowflake
--    defaultDatabaseStrategy:
--      standard:
--        shardingColumn: user_id
--        shardingAlgorithmName: inline
--    shardingAlgorithms:
--      inline:
--        type: INLINE
--        props:
--          algorithm-expression: ds_${user_id % 2}
--    keyGenerators:
--      snowflake:
--        type: SNOWFLAKE
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_2
 -```
 -
--### 享受集成
+-`org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` 为 testcontainers-java 风格的 jdbcURL 提供支持，
+-包括但不限于，
 -
--创建 ShardingSphere 的数据源以享受集成，
+-1. 为 `jdbc:tc:clickhouse:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:clickhouse:1.20.3`
+-2. 为 `jdbc:tc:postgresql:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:postgresql:1.20.3`
+-3. 为 `jdbc:tc:sqlserver:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:mssqlserver:1.20.3`
+-4. 为 `jdbc:tc:mariadb:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:mariadb:1.20.3`
+-5. 为 `jdbc:tc:mysql:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:mysql:1.20.3`
+-6. 为 `jdbc:tc:oracle:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:oracle-xe:1.20.3` 和 `org.testcontainers:oracle-free:1.20.3`
+-7. 为 `jdbc:tc:tidb:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.testcontainers:tidb:1.20.3`
+-8. 为 `jdbc:tc:firebird:` 的 jdbcURL 前缀提供支持的 Maven 模块 `org.firebirdsql:firebird-testcontainers-java:1.4.0`
+-
+-## 使用限制
+-
+-### 生命周期限制
+-
+-如果像如下所示在 ShardingSphere 配置文件内定义通过 testcontainers-java 创建 Docker Container 的逻辑，
+-
+-```yaml
+-dataSources:
+-  ds_0:
+-    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0
+-```
+-
+-testcontainers 默认情况下仅在对 `jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0` 的最后一个 `java.sql.Connection` 关闭后，
+-停止`jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0`创建的 Docker Container。
+-但 ShardingSphere 的内部类会缓存 `java.sql.Connection`。这导致直到 JVM 关闭，
+-`jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0` 创建的 Docker Container 才会被关闭。
+-若有避免 Container 被长期开启的必要，
+-`org.testcontainers.jdbc.ContainerDatabaseDriver` 存在可用方法来在单元测试中快速关闭相关 Container，
+-示例如下，
 -
 -```java
--import com.zaxxer.hikari.HikariConfig;
--import com.zaxxer.hikari.HikariDataSource;
--import java.sql.Connection;
--import java.sql.SQLException;
--import java.sql.Statement;
+-import org.testcontainers.jdbc.ContainerDatabaseDriver;
 -public class ExampleUtils {
--    void test() throws SQLException {
--        HikariConfig config = new HikariConfig();
--        config.setJdbcUrl("jdbc:shardingsphere:classpath:demo.yaml");
--        config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
--        try (HikariDataSource dataSource = new HikariDataSource(config);
--             Connection connection = dataSource.getConnection();
--             Statement statement = connection.createStatement()) {
--            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
--            statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("DELETE FROM t_order WHERE order_id=1");
--        }
+-    void test() {
+-        ContainerDatabaseDriver.killContainers();
 -    }
 -}
 -```
 -
--## 使用限制
+-`org.testcontainers.jdbc.ContainerDatabaseDriver#killContainers()`
+-将立刻销毁所有由 `org.testcontainers.jdbc.ContainerDatabaseDriver` 创建的 Docker Container。
+-默认情况下，通过 Junit 5 创建的单元测试是串行执行的，因此这一般不会造成问题。
 -
--目前仅支持为 MySQL JDBC Driver 配置 P6Spy。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/unsupported/p6spy/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/unsupported/p6spy/_index.en.md
+-
+-### host-less URIs 限制
+-
+-对于大多数 testcontainers-java 模块，
+-ShardingSphere 配置文件的 `jdbcUrl` 可以使用类似 `jdbc:tc:postgresql:17.2-bookworm:///databasename` 的 host-less URIs。
+-
+-但对于特定 Maven 模块 `org.testcontainers:mssqlserver`，无法使用类似 `jdbc:tc:sqlserver:2022-CU16-ubuntu-22.04:///databasename` 的 host-less URIs，
+-仅可使用类似 `jdbc:tc:sqlserver:2022-CU16-ubuntu-22.04://test;databaseName=databasename` 的 JDBC Url。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.en.md
 deleted file mode 100644
-index 7b07f7dd238..00000000000
---- a/docs/document/content/user-manual/shardingsphere-jdbc/unsupported/p6spy/_index.en.md
+index ffd24e3e6fb..00000000000
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/testcontainers/_index.en.md
 +++ /dev/null
-@@ -1,156 +0,0 @@
+@@ -1,115 +0,0 @@
 -+++
--title = "P6Spy"
+-title = "Testcontainers"
 -weight = 6
 -+++
 -
 -## Background Information
 -
--ShardingSphere provides partial support for `com.p6spy.engine.spy.P6SpyDriver` through the
--`org.apache.shardingsphere:shardingsphere-infra-database-p6spy` module.
+-ShardingSphere does not provide support for `driverClassName` of `org.testcontainers.jdbc.ContainerDatabaseDriver` by default.
 -
 -## Prerequisites
 -
--To use P6Spy for MySQL Server data nodes in ShardingSphere's configuration file, 
+-To use `jdbcUrl` like `jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0` for data nodes in ShardingSphere's configuration file,
 -the possible Maven dependencies are as follows,
 -
 -```xml
@@ -193,136 +179,120 @@ index 7b07f7dd238..00000000000
 -        <version>${shardingsphere.version}</version>
 -    </dependency>
 -    <dependency>
--        <groupId>p6spy</groupId>
--        <artifactId>p6spy</artifactId>
--        <version>3.9.1</version>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-infra-database-testcontainers</artifactId>
+-        <version>${shardingsphere.version}</version>
 -    </dependency>
 -    <dependency>
--        <groupId>com.mysql</groupId>
--        <artifactId>mysql-connector-j</artifactId>
--        <version>9.1.0</version>
+-        <groupId>org.postgresql</groupId>
+-        <artifactId>postgresql</artifactId>
+-        <version>42.7.5</version>
+-    </dependency>
+-    <dependency>
+-        <groupId>org.testcontainers</groupId>
+-        <artifactId>postgresql</artifactId>
+-        <version>1.20.3</version>
+-        <scope>test</scope>
 -    </dependency>
 -</dependencies>
 -```
 -
+-At this time, you can use the jdbcURL with the prefix `jdbc:tc:postgresql:` normally in the YAML configuration file of ShardingSphere.
+-
 -## Configuration Example
 -
--### Start MySQL Server
--
--Write a Docker Compose file to start MySQL Server.
--
--```yaml
--services:
--   mysql:
--      image: mysql:9.1.0
--      environment:
--         MYSQL_ROOT_PASSWORD: example
--      volumes:
--         - ./mysql/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
--      ports:
--         - "3306:3306"
--```
--
--The `./docker-entrypoint-initdb.d` folder contains the file `init.sh`, the content is as follows,
--
--```shell
--#!/bin/bash
--set -e
--
--mysql -uroot -p"$MYSQL_ROOT_PASSWORD" <<EOSQL
--CREATE DATABASE demo_ds_0;
--CREATE DATABASE demo_ds_1;
--CREATE DATABASE demo_ds_2;
--EOSQL
--
--for i in "demo_ds_0" "demo_ds_1" "demo_ds_2"
--do
--mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$i" <<'EOSQL'
--CREATE TABLE IF NOT EXISTS t_order (
--   order_id BIGINT NOT NULL AUTO_INCREMENT,
--   order_type INT(11),
--   user_id INT NOT NULL,
--   address_id BIGINT NOT NULL,
--   status VARCHAR(50),
--   PRIMARY KEY (order_id)
--);
--EOSQL
--done
--```
--
--### Create ShardingSphere data source in business project
--
--After the business project introduces the dependencies involved in the prerequisites, 
--write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
+-To use the `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` module,
+-the user machine always needs to have Docker Engine or alternative container runtimes that comply with https://java.testcontainers.org/supported_docker_environment/ installed.
+-`org.apache.shardingsphere:shardingsphere-infra-database-testcontainers` provides support for testcontainers-java style jdbcURL,
+-including but not limited to,
 -
 -```yaml
 -dataSources:
 -  ds_0:
 -    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
--    driverClassName: com.p6spy.engine.spy.P6SpyDriver
--    jdbcUrl: jdbc:p6spy:mysql://localhost:3306/demo_ds_0?sslMode=REQUIRED
--    username: root
--    password: example
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0
 -  ds_1:
 -    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
--    driverClassName: com.p6spy.engine.spy.P6SpyDriver
--    jdbcUrl: jdbc:p6spy:mysql://localhost:3306/demo_ds_1?sslMode=REQUIRED
--    username: root
--    password: example
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_1
 -  ds_2:
 -    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
--    driverClassName: com.p6spy.engine.spy.P6SpyDriver
--    jdbcUrl: jdbc:p6spy:mysql://localhost:3306/demo_ds_2?sslMode=REQUIRED
--    username: root
--    password: example
--rules:
--- !SHARDING
--    tables:
--      t_order:
--        actualDataNodes:
--        keyGenerateStrategy:
--          column: order_id
--          keyGeneratorName: snowflake
--    defaultDatabaseStrategy:
--      standard:
--        shardingColumn: user_id
--        shardingAlgorithmName: inline
--    shardingAlgorithms:
--      inline:
--        type: INLINE
--        props:
--          algorithm-expression: ds_${user_id % 2}
--    keyGenerators:
--      snowflake:
--        type: SNOWFLAKE
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_2
 -```
 -
--### Enjoy integration
+-1. Maven module `org.testcontainers:clickhouse:1.20.3` that provides support for jdbcURL prefixes for `jdbc:tc:clickhouse:`
+-2. Maven module `org.testcontainers:postgresql:1.20.3` that provides support for jdbcURL prefixes for `jdbc:tc:postgresql:`
+-3. Maven module `org.testcontainers:mssqlserver:1.20.3` that provides support for jdbcURL prefixes for `jdbc:tc:sqlserver:`
+-4. Maven module `org.testcontainers:mariadb:1.20.3` that provides support for jdbcURL prefixes for `jdbc:tc:mariadb:`
+-5. Maven module `org.testcontainers:mysql:1.20.3` that provides support for jdbcURL prefixes of `jdbc:tc:mysql:` 
+-6. Maven modules `org.testcontainers:oracle-xe:1.20.3` and `org.testcontainers:oracle-free:1.20.3` that provide support for jdbcURL prefixes of `jdbc:tc:oracle:`
+-7. Maven module `org.testcontainers:tidb:1.20.3` that provides support for jdbcURL prefixes of `jdbc:tc:tidb:`
+-8. Maven module `org.firebirdsql:firebird-testcontainers-java:1.4.0` that provides support for jdbcURL prefixes of `jdbc:tc:firebird:`
 -
--Create a ShardingSphere data source to enjoy integration,
+-## Usage restrictions
+-
+-### Lifecycle restrictions
+-
+-If the logic of creating a Docker Container through testcontainers-java is defined in the ShardingSphere configuration file as shown below,
+-
+-```yaml
+-dataSources:
+-  ds_0:
+-    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
+-    driverClassName: org.testcontainers.jdbc.ContainerDatabaseDriver
+-    jdbcUrl: jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0
+-```
+-
+-testcontainers, by default, 
+-stops the Docker Container created by `jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0` only after the last `java.sql.Connection` of `jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0` is closed.
+-But ShardingSphere's internal class will cache `java.sql.Connection`.
+-As a result, the Docker Container created by `jdbc:tc:postgresql:17.2-bookworm://test/demo_ds_0` will not be closed until the JVM is closed.
+-If it is necessary to prevent the Container from being opened for a long time, `org.testcontainers.jdbc.ContainerDatabaseDriver` has a method available to quickly close the relevant Container in the unit test.
+-The example is as follows,
 -
 -```java
--import com.zaxxer.hikari.HikariConfig;
--import com.zaxxer.hikari.HikariDataSource;
--import java.sql.Connection;
--import java.sql.SQLException;
--import java.sql.Statement;
+-import org.testcontainers.jdbc.ContainerDatabaseDriver;
 -public class ExampleUtils {
--    void test() throws SQLException {
--        HikariConfig config = new HikariConfig();
--        config.setJdbcUrl("jdbc:shardingsphere:classpath:demo.yaml");
--        config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
--        try (HikariDataSource dataSource = new HikariDataSource(config);
--             Connection connection = dataSource.getConnection();
--             Statement statement = connection.createStatement()) {
--            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
--            statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("DELETE FROM t_order WHERE order_id=1");
--        }
+-    void test() {
+-        ContainerDatabaseDriver.killContainers();
 -    }
 -}
 -```
 -
--## Usage Limitations
+-`org.testcontainers.jdbc.ContainerDatabaseDriver#killContainers()`
+-will immediately destroy all Docker Containers created by `org.testcontainers.jdbc.ContainerDatabaseDriver`.
+-By default, unit tests created by JUnit 5 are executed serially, so this is generally not a problem.
 -
--Currently only supports configuring P6Spy for MySQL JDBC Driver.
+-### host-less URIs restrictions
+-
+-For most testcontainers-java modules, 
+-the `jdbcUrl` of ShardingSphere configuration file can use host-less URIs like `jdbc:tc:postgresql:17.2-bookworm:///databasename`.
+-
+-But for the specific Maven module `org.testcontainers:mssqlserver`, host-less URIs like `jdbc:tc:sqlserver:2022-CU16-ubuntu-22.04:///databasename` cannot be used,
+-only JDBC Url like `jdbc:tc:sqlserver:2022-CU16-ubuntu-22.04://test;databaseName=databasename` can be used.
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md
+index 049cebaa28d..2c5880910ce 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.cn.md
+@@ -37,7 +37,6 @@ ShardingSphere 默认情况下仅包含核心 SPI 的实现，在 Git Source 存
+ - 行表达式
+   - `org.apache.shardingsphere:shardingsphere-infra-expr-espresso`，基于 GraalVM Truffle 的 Espresso 实现的使用 Groovy 语法的行表达式
+ - 数据库类型识别
+-  - `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers`， 对 `testcontainers-java` 的 `JDBC support` 的 jdbcURL 的识别适配
+   - `org.apache.shardingsphere:shardingsphere-infra-database-hive`， 对 Hive 的 jdbcURL 的识别适配，元数据加载实现
+   - `org.apache.shardingsphere:shardingsphere-infra-database-presto`， 对 Presto 的 jdbcURL 的识别适配，元数据加载实现
+ - SQL 解析
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md
+index 1d9b4038f28..19c0e3576a1 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/_index.en.md
+@@ -37,7 +37,6 @@ All optional plugins are listed below in the form of `groupId:artifactId`.
+ - Row Value Expressions definition
+   - `org.apache.shardingsphere:shardingsphere-infra-expr-espresso`，Row Value Expressions that uses the Groovy syntax based on GraalVM Truffle's Espresso implementation
+ - Database type identification
+-  - `org.apache.shardingsphere:shardingsphere-infra-database-testcontainers`, Adaptation of jdbcURL for `JDBC support` of `testcontainers-java` 
+   - `org.apache.shardingsphere:shardingsphere-infra-database-hive`, Adaptation of jdbcURL for `JDBC support` of Hive, and metadata loading implementation 
+   - `org.apache.shardingsphere:shardingsphere-infra-database-presto`, Adaptation of jdbcURL for `JDBC support` of Presto, and metadata loading implementation
+ - SQL parsing

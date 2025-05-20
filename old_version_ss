@@ -1,477 +1,722 @@
-commit 3ae8427e446afe8d8aa6e8ae3fd77373cb31c89b
+commit a916439fc56189108b248aa2f66880b07d9b96ca
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon May 19 17:19:14 2025 +0800
+Date:   Tue May 20 12:47:37 2025 +0800
 
-    Fix nativeTest for Firebird optional module (#35427)
+    Add doc for running nativeTest on Windows 11 and Windows Server 2025 (#35473)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
-index a9594b8f1fc..fc097a8bbcb 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
-@@ -116,7 +116,7 @@ rules:
- - !SHARDING
-     tables:
-       t_order:
--        actualDataNodes:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-         keyGenerateStrategy:
-           column: order_id
-           keyGeneratorName: snowflake
-@@ -154,7 +154,7 @@ public class ExampleUtils {
-              Statement statement = connection.createStatement()) {
-             statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-             statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("alter table t_order delete where order_id=1");
-+            statement.execute("alter table t_order delete where user_id=1");
-         }
-     }
- }
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
-index d2a08b8ce26..e6dc45e38d4 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
-@@ -50,7 +50,7 @@ services:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+index f7b772c4e13..b54903fcd62 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+@@ -332,89 +332,3 @@ ShardingSphere 的单元测试仅使用 Maven 模块 `io.github.linghengqian:hiv
  
- ### Create business tables
+ 10. 由于 https://github.com/prestodb/presto/issues/23226 的影响，当通过 Shardinghere JDBC 连接至 Presto Server，
+ 用户需自行提供 `com.facebook.presto:presto-jdbc` 和 `prestodb/presto` 集成模块相关的 GraalVM Reachability Metadata。
+-
+-## 贡献 GraalVM Reachability Metadata
+-
+-ShardingSphere 对在 GraalVM Native Image 下的可用性的验证，是通过 GraalVM Native Build Tools 的 Maven Plugin 子项目来完成的。
+-通过在 JVM 下运行单元测试，为单元测试打上 `junit-platform-unique-ids*` 标签，此后构建为 GraalVM Native Image 进行 nativeTest 来测试
+-在 GraalVM Native Image 下的单元测试覆盖率。请贡献者不要使用 `io.kotest:kotest-runner-junit5-jvm:5.5.4` 等在 `test listener` mode 下
+-failed to discover tests 的测试库。
+-
+-ShardingSphere 定义了 `shardingsphere-test-native` 的 Maven Module 用于为 native Test 提供小型的单元测试子集，
+-此单元测试子集避免了使用 Mockito 等 native Test 下无法使用的第三方库。
+-
+-ShardingSphere 定义了 `nativeTestInShardingSphere` 的 Maven Profile 用于为 `shardingsphere-test-native` 模块执行 nativeTest 。
+-
+-贡献者必须安装 Docker Engine 以执行 `testcontainers-java` 相关的单元测试，以 https://java.testcontainers.org/supported_docker_environment/ 为准。
+-
+-假设贡献者处于新的 Ubuntu 22.04.4 LTS 实例下，其可通过如下 bash 命令通过 SDKMAN! 管理 JDK 和工具链，
+-并为 `shardingsphere-test-native` 子模块执行 nativeTest。
+-
+-```bash
+-sudo apt install unzip zip -y
+-curl -s "https://get.sdkman.io" | bash
+-source "$HOME/.sdkman/bin/sdkman-init.sh"
+-sdk install java 22.0.2-graalce
+-sdk use java 22.0.2-graalce
+-sudo apt-get install build-essential zlib1g-dev -y
+-
+-git clone git@github.com:apache/shardingsphere.git
+-cd ./shardingsphere/
+-./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
+-```
+-
+-当贡献者发现缺少与 ShardingSphere 无关的第三方库的 GraalVM Reachability Metadata 时，应当在
+-https://github.com/oracle/graalvm-reachability-metadata 打开新的 issue， 并提交包含依赖的第三方库缺失的 GraalVM Reachability
+-Metadata 的 PR。ShardingSphere 在 `shardingsphere-infra-reachability-metadata` 子模块主动托管了部分第三方库的 GraalVM Reachability Metadata。
+-
+-如果 nativeTest 执行失败， 应为单元测试生成初步的 GraalVM Reachability Metadata，
+-并手动调整 `shardingsphere-infra-reachability-metadata` 子模块的 classpath 的 `META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/` 文件夹下的内容以修复 nativeTest。
+-如有需要，请使用 `org.junit.jupiter.api.condition.DisabledInNativeImage` 注解或 `org.graalvm.nativeimage.imagecode` 的
+-System Property 屏蔽部分单元测试在 GraalVM Native Image 下运行。
+-
+-ShardingSphere 定义了 `generateMetadata` 的 Maven Profile 用于在 GraalVM JIT Compiler 下携带 GraalVM Tracing Agent 执行单元测试，
+-并在 `shardingsphere-infra-reachability-metadata` 子模块的 classpath 的 `META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` 文件夹下，
+-生成或覆盖已有的 GraalVM Reachability Metadata 文件。可通过如下 bash 命令简单处理此流程。
+-贡献者仍可能需要手动调整具体的 JSON 条目，并适时调整 Maven Profile 和 GraalVM Tracing Agent 的 Filter 链。
+-针对 `shardingsphere-infra-reachability-metadata` 子模块，
+-手动增删改动的 JSON 条目应位于 `META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/` 文件夹下，
+-而 `META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` 中的条目仅应由 `generateMetadata` 的 Maven Profile 生成。
+-
+-以下命令仅为 `shardingsphere-test-native` 生成 Conditional 形态的 GraalVM Reachability Metadata 的一个举例。生成的 GraalVM
+-Reachability Metadata 位于 `shardingsphere-infra-reachability-metadata` 子模块下。
+-
+-对于测试类和测试文件独立使用的 GraalVM Reachability Metadata，贡献者应该放置到 `shardingsphere-test-native` 子模块的 classpath 的
+-`META-INF/native-image/shardingsphere-test-native-test-metadata/` 下。
+-
+-```bash
+-git clone git@github.com:apache/shardingsphere.git
+-cd ./shardingsphere/
+-./mvnw -PgenerateMetadata -e -T 1C clean test native:metadata-copy
+-```
+-
+-受 https://github.com/apache/shardingsphere/issues/33206 影响，
+-贡献者执行 `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy` 后，
+-`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` 会生成不必要的包含绝对路径的 JSON 条目，
+-类似如下，
+-
+-```json
+-{
+-   "resources":{
+-      "includes":[{
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
+-      }, {
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
+-      }, {
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding//global.yaml\\E"
+-      }, {
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding/\\E"
+-      }]},
+-   "bundles":[]
+-}
+-```
+-
+-贡献者应始终手动删除这些包含绝对路径的 JSON 条目，并等待 https://github.com/oracle/graal/issues/8417 被解决。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+index fab99cd64cb..99a6cdd4a75 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+@@ -346,91 +346,3 @@ the Oracle JDBC Driver corresponding to the `com.oracle.database.jdbc:ojdbc8` Ma
  
--Use a third-party tool to create a business database and business table in ClickHouse.
-+Use a third-party tool to create some business databases and business tables in ClickHouse.
- Taking DBeaver Community as an example, if you use Ubuntu 22.04.4, you can quickly install it through Snapcraft.
- 
- ```shell
-@@ -118,7 +118,7 @@ rules:
- - !SHARDING
-     tables:
-       t_order:
--        actualDataNodes:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-         keyGenerateStrategy:
-           column: order_id
-           keyGeneratorName: snowflake
-@@ -156,7 +156,7 @@ public class ExampleUtils {
-              Statement statement = connection.createStatement()) {
-             statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-             statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("alter table t_order delete where order_id=1");
-+            statement.execute("alter table t_order delete where user_id=1");
-         }
-     }
- }
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
+ 10. Due to https://github.com/prestodb/presto/issues/23226, when connecting to Presto Server via Shardinghere JDBC,
+     users need to provide GraalVM Reachability Metadata related to the `com.facebook.presto:presto-jdbc` and `prestodb/presto` integration module.
+-
+-## Contribute GraalVM Reachability Metadata
+-
+-The verification of ShardingSphere's availability under GraalVM Native Image is completed through the Maven Plugin subproject 
+-of GraalVM Native Build Tools. By running the unit test under the JVM, label the unit test with `junit-platform-unique-ids*`, 
+-and then build it as GraalVM Native Image for nativeTest to test Unit Test Coverage under GraalVM Native Image. 
+-Please do not use `io.kotest:kotest-runner-junit5-jvm:5.5.4` and some third-party test libraries, they are in `test listener` 
+-mode failed to discover tests.
+-
+-ShardingSphere defines the Maven Module of `shardingsphere-test-native` to provide a small subset of unit tests for native Test.
+-This subset of unit tests avoids the use of third-party libraries such as Mockito that are not available under native Test.
+-
+-ShardingSphere defines the Maven Profile of `nativeTestInShardingSphere` for executing nativeTest for the `shardingsphere-test-native` module.
+-
+-Contributors must install Docker Engine to execute unit tests related to `testcontainers-java`, as per https://java.testcontainers.org/supported_docker_environment/ .
+-
+-Assuming that the contributor is under a new Ubuntu 22.04.4 LTS instance, Contributors can manage the JDK and tool chain through 
+-`SDKMAN!` through the following bash command, and execute nativeTest for the `shardingsphere-test-native` submodule.
+-
+-```bash
+-sudo apt install unzip zip -y
+-curl -s "https://get.sdkman.io" | bash
+-source "$HOME/.sdkman/bin/sdkman-init.sh"
+-sdk install java 22.0.2-graalce
+-sdk use java 22.0.2-graalce
+-sudo apt-get install build-essential zlib1g-dev -y
+-
+-git clone git@github.com:apache/shardingsphere.git
+-cd ./shardingsphere/
+-./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
+-```
+-
+-When contributors discover that GraalVM Reachability Metadata is missing for a third-party library not related to ShardingSphere, 
+-they should open a new issue and submit PR containing the missing third-party library GraalVM Reachability Metadata that depends 
+-on https://github.com/oracle/graalvm-reachability-metadata . ShardingSphere actively hosts the GraalVM Reachability Metadata of 
+-some third-party libraries in the `shardingsphere-infra-reachability-metadata` submodule.
+-
+-If nativeTest execution fails, preliminary GraalVM Reachability Metadata should be generated for unit tests,
+-and manually adjust the contents of the `META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/` folder on the classpath of the `shardingsphere-infra-reachability-metadata` submodule to fix nativeTest.
+-If necessary, 
+-use the `org.junit.jupiter.api.condition.DisabledInNativeImage` annotation or the `org.graalvm.nativeimage.imagecode` System Property blocks some unit tests from running under GraalVM Native Image.
+-
+-ShardingSphere defines the Maven Profile of `generateMetadata` to carry the GraalVM Tracing Agent under the GraalVM JIT Compiler to perform unit testing,
+-and generate or overwrite existing GraalVM Reachability Metadata files  in the `META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` folder of the classpath of the `shardingsphere-infra-reachability-metadata` submodule. 
+-This process can be easily handled with the following bash command.
+-Contributors may still need to manually adjust specific JSON entries and adjust the Filter chain of Maven Profile and GraalVM Tracing Agent as appropriate.
+-For the `shardingsphere-infra-reachability-metadata` submodule,
+-manually added, deleted, and changed JSON entries should be located in the `META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/` folder,
+-entries in `META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` should only be generated by the Maven Profile of `generateMetadata`.
+-
+-The following command is only an example of using `shardingsphere-test-native` to generate GraalVM Reachability Metadata in Conditional form. 
+-Generated GraalVM Reachability Metadata is located under the `shardingsphere-infra-reachability-metadata` submodule.
+-
+-For GraalVM Reachability Metadata to be used independently by test classes and test files, 
+-contributors should place it on the classpath of the `shardingsphere-test-native` submodule `META-INF/native-image/shardingsphere-test-native-test-metadata/`.
+-
+-```bash
+-git clone git@github.com:apache/shardingsphere.git
+-cd ./shardingsphere/
+-./mvnw -PgenerateMetadata -e -T 1C clean test native:metadata-copy
+-```
+-
+-Affected by https://github.com/apache/shardingsphere/issues/33206 ,
+-After the contributor executes `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy`,
+-`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` will generate unnecessary JSON entries containing absolute paths,
+-similar to the following.
+-
+-```json
+-{
+-   "resources":{
+-      "includes":[{
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
+-      }, {
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
+-      }, {
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding//global.yaml\\E"
+-      }, {
+-         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
+-         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding/\\E"
+-      }]},
+-   "bundles":[]
+-}
+-```
+-
+-Contributors should always manually remove these JSON entries containing absolute paths and wait for https://github.com/oracle/graal/issues/8417 to be resolved.
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
 new file mode 100644
-index 00000000000..faab8e0c4d9
+index 00000000000..1c7e19582e0
 --- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
-@@ -0,0 +1,167 @@
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
+@@ -0,0 +1,252 @@
 ++++
-+title = "Firebird"
++title = "开发和测试"
 +weight = 6
 ++++
++
++本文旨在向潜在贡献者，介绍如何参与开发和贡献与 ShardingSphere 相关的 GraalVM Reachability Metadata。
 +
 +## 背景信息
 +
-+ShardingSphere 默认情况下不提供对 `org.firebirdsql.jdbc.FBDriver` 的 `driverClassName` 的支持。
-+ShardingSphere 对 Firebird JDBC Driver 的支持位于可选模块中。
++当贡献者发现缺少与 ShardingSphere 无关的第三方库的 GraalVM Reachability Metadata 时，
++最优解是在 https://github.com/oracle/graalvm-reachability-metadata 打开新的 issue，并提交包含依赖的，第三方库缺失的 GraalVM Reachability Metadata 的 PR。
++
++为了简化流程，ShardingSphere 在 Maven 模块 `shardingsphere-infra-reachability-metadata` 主动托管了部分第三方库的 GraalVM Reachability Metadata。
++
++ShardingSphere 对在 GraalVM Native Image 下的可用性的验证，是通过 GraalVM Native Build Tools 的 Maven Plugin 子项目来完成的。
++通过在 JVM 下运行单元测试，为单元测试打上 Junit 标签， 
++此后构建为 GraalVM Native Image 进行 nativeTest 来测试在 GraalVM Native Image 下的单元测试覆盖率。
++
++ShardingSphere 定义了，
++1. `shardingsphere-test-native` 的 Maven Module，用于为 nativeTest 提供小型的单元测试子集。此单元测试子集避免了使用 nativeTest 下无法使用的第三方库。
++2. `nativeTestInShardingSphere` 的 Maven Profile，用于为 `shardingsphere-test-native` 模块编译单元测试所需的 GraalVM Native Image 和执行 nativeTest。
++3. `generateMetadata` 的 Maven Profile，用于在 GraalVM JIT Compiler 下携带 GraalVM Tracing Agent 执行单元测试，以采集初步的 GraalVM Reachability Metadata。
 +
 +## 前提条件
 +
-+要在 ShardingSphere 的配置文件为数据节点使用类似 `jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_0.fdb` 的 `jdbcUrl`，
-+可能的 Maven 依赖关系如下，
++贡献者必须在设备安装，
 +
-+```xml
-+<dependencies>
-+    <dependency>
-+        <groupId>org.apache.shardingsphere</groupId>
-+        <artifactId>shardingsphere-jdbc</artifactId>
-+        <version>${shardingsphere.version}</version>
-+    </dependency>
-+    <dependency>
-+        <groupId>org.apache.shardingsphere</groupId>
-+        <artifactId>shardingsphere-parser-sql-firebird</artifactId>
-+        <version>${shardingsphere.version}</version>
-+    </dependency>
-+    <dependency>
-+        <groupId>org.firebirdsql.jdbc</groupId>
-+        <artifactId>jaybird</artifactId>
-+        <version>5.0.6.java8</version>
-+    </dependency>
-+</dependencies>
++1. GraalVM CE 22.0.2，或与 GraalVM CE 22.0.2 兼容的 GraalVM 下游发行版。以 [GraalVM Native Image](/cn/user-manual/shardingsphere-jdbc/graalvm-native-image) 为准。
++2. 编译 GraalVM Native Image 所需要的本地工具链。以 https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites 为准。
++3. 可运行 Linux Containers 的 Docker Engine，或与 testcontainer-java 兼容的 Container Runtime。以 https://java.testcontainers.org/supported_docker_environment/ 为准。
++
++本文不讨论 `LLVM Backend for Native Image`。下文分别讨论在 Ubuntu，Windows 与 Windows Server 下可能的所需操作。
++
++### Ubuntu
++
++假设贡献者处于新的 Ubuntu 22.04.5 LTS 实例下，且已配置 git。
++
++可在 bash 通过如下命令利用 `SDKMAN!` 安装 GraalVM CE。
++
++```shell
++sudo apt install unzip zip -y
++curl -s "https://get.sdkman.io" | bash
++source "$HOME/.sdkman/bin/sdkman-init.sh"
++sdk install java 22.0.2-graalce
++sdk use java 22.0.2-graalce
 +```
 +
-+## 配置示例
++可在 bash 通过如下命令安装编译 GraalVM Native Image 所需要的本地工具链。
 +
-+### 启动 Firebird
-+
-+编写 Docker Compose 文件来启动 Firebird。
-+
-+```yaml
-+services:
-+  firebird:
-+    image: firebirdsql/firebird:5.0.1
-+    environment:
-+      FIREBIRD_ROOT_PASSWORD: masterkey
-+      FIREBIRD_USER: alice
-+      FIREBIRD_PASSWORD: masterkey
-+      FIREBIRD_DATABASE: mirror.fdb
-+      FIREBIRD_DATABASE_DEFAULT_CHARSET: UTF8
-+    ports:
-+      - "3050:3050"
++```shell
++sudo apt-get install build-essential zlib1g-dev -y
 +```
 +
-+### 创建业务库
++可在 bash 通过如下命令安装 Rootful 模式的 Docker Engine。本文不讨论更改 `/etc/docker/daemon.json` 的默认 logging driver。
 +
-+通过第三方工具在 Firebird 内创建业务库。
++```shell
++sudo apt update && sudo apt upgrade -y
++sudo apt-get remove docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc
++cd /tmp/
++sudo apt-get install ca-certificates curl
++sudo install -m 0755 -d /etc/apt/keyrings
++sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
++sudo chmod a+r /etc/apt/keyrings/docker.asc
 +
-+包括 DBeaver Community 在内的第三方工具无法为 Firebird 创建 databases，
-+下以 Maven 模块 `org.firebirdsql.jdbc:jaybird:5.0.6.java8` 的 Java API 为例，
++echo \
++  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
++  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
++  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
++
++sudo apt-get update
++sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
++sudo groupadd docker
++sudo usermod -aG docker $USER
++newgrp docker
++```
++
++### Windows
++
++假设贡献者处于新的 Windows 11 Home 24H2 实例下，且已安装和配置 `git-for-windows/git` 和 `PowerShell/PowerShell`。
++
++可在 Powershell 7 通过如下命令利用 `version-fox/vfox` 安装 GraalVM CE。
++
++```shell
++winget install version-fox.vfox
++if (-not (Test-Path -Path $PROFILE)) { New-Item -Type File -Path $PROFILE -Force }; Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'
++# 此时需要打开新的 Powershell 7 终端
++vfox add java
++vfox install java@22.0.2-graalce
++vfox use --global java@22.0.2-graalce
++```
++
++当 Windows 弹出窗口，要求允许类似 `C:\users\shard\.version-fox\cache\java\v-22.0.2-graalce\java-22.0.2-graalce\bin\java.exe` 路径的应用通过 Windows 防火墙时，应当批准。
++背景参考 https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c 。
++
++可在 Powershell 7 通过如下命令安装编译 GraalVM Native Image 所需要的本地工具链。**特定情况下，开发者可能需要为 Visual Studio 的使用购买许可证。**
++
++```shell
++winget install --id Microsoft.VisualStudio.2022.Community
++```
++
++打开 `Visual Studio Installer` 以修改 `Visual Studio Community 2022` 的 `工作负荷`，勾选 `桌面应用与移动应用` 的 `使用 C++ 的桌面开发` 后点击`修改`。
++
++可在 Powershell 7 通过如下命令启用 WSL2 并设置 `Ubuntu WSL` 为默认 Linux 发行版。
++
++```shell
++wsl --install
++```
++
++完成 WSL2 的启用后，在 https://rancherdesktop.io/ 下载和安装 `rancher-sandbox/rancher-desktop`，并设置使用 `dockerd(moby)` 的 `Container Engine`。
++本文不讨论更改 Linux 发行版 `rancher-desktop` 的 `/etc/docker/daemon.json` 的默认 logging driver。
++
++### Windows Server
++
++对于通常的 Windows Server 2025 实例，操作等同于 Windows 11 Home 24H2。
++但 `windows-latest` 的 Github Actions Runner 实例无法运行 Linux Containers，因此 ShardingSphere 不为 Windows 设置 nativeTest 的 CI。
++
++## 处理单元测试
++
++### 在 GraalVM JIT Compiler 下执行单元测试
++
++若仅需在 GraalVM JIT Compiler 下，即在避开编译 GraalVM Native Image 的情况下执行 nativeTest 相关的单元测试，可执行如下命令。
++
++```shell
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -PgenerateMetadata -e -T 1C clean test
++```
++
++### 在 GraalVM Native Image 下执行单元测试
++
++可通过如下命令为 `shardingsphere-test-native` 子模块编译单元测试所需的 GraalVM Native Image 和执行 nativeTest。
++
++```bash
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
++```
++
++当 Windows 弹出窗口，要求允许类似 `C:\users\shard\shardingsphere\test\native\target\native-tests.exe.exe` 路径的应用通过 Windows 防火墙时，应当批准。
++背景参考 https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c 。
++
++### 生成和更改 GraalVM Reachability Metadata
++
++如果 nativeTest 执行失败，应为单元测试生成初步的 GraalVM Reachability Metadata，
++并手动调整 `shardingsphere-infra-reachability-metadata` 子模块的 classpath 中，
++`META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/` 文件夹下的内容，以修复 nativeTest。
++如有需要，可使用 `org.junit.jupiter.api.condition.DisabledInNativeImage` 注解或 `org.graalvm.nativeimage.imagecode` 的 System Property，
++以屏蔽部分单元测试在 GraalVM Native Image 下运行。
++
++`generateMetadata` 的 Maven Profile 将在 `shardingsphere-infra-reachability-metadata` 子模块的 classpath 中，
++`META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` 文件夹下，
++生成或覆盖已有的 GraalVM Reachability Metadata 文件。可通过如下命令简单处理此流程。
++
++```bash
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -PgenerateMetadata -e -T 1C clean test native:metadata-copy
++```
++
++贡献者仍可能需要手动调整具体的 JSON 条目，并适时调整 Maven Profile 和 GraalVM Tracing Agent 的 Filter 链。
++针对 `shardingsphere-infra-reachability-metadata` 子模块，
++手动增删改动的 JSON 条目应位于 `META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/` 文件夹下，
++而 `META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` 中的条目仅应由 `generateMetadata` 的 Maven Profile 生成。
++
++对于测试类和测试文件独立使用的 GraalVM Reachability Metadata，贡献者应该放置到 `shardingsphere-test-native` 子模块的 classpath 的
++`META-INF/native-image/shardingsphere-test-native-test-metadata/` 下。
++
++## 已知限制
++
++### `resource-config.json` 限制
++
++受 https://github.com/apache/shardingsphere/issues/33206 影响，
++开发者执行 `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy` 后，
++`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` 会生成不必要的包含绝对路径的 JSON 条目，
++
++对于 Ubuntu，类似如下，
++
++```json
++{
++   "resources":{
++      "includes":[{
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding//global.yaml\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding/\\E"
++      }]},
++   "bundles":[]
++}
++```
++
++需要为 ShardingSphere 提交 PR 的贡献者应始终手动删除这些包含绝对路径的 JSON 条目，并等待 https://github.com/oracle/graal/issues/8417 被解决。
++
++### 单元测试库限制
++
++对于 `shardingsphere-test-native` 的 Maven Module，
++应避免使用 `io.kotest:kotest-runner-junit5-jvm:5.5.4` 等在 Junit 的 `test listener` mode 下存在 `failed to discover tests` 问题的测试库。
++
++由于 Mockito Inline 无法在 GraalVM Native Image 下运行，应避免在此 Maven 模块的单元测试使用 Mockito。
++
++对于 testcontainers，对 `org.testcontainers.utility.MountableFile#forClasspathResource(String)` 的使用应更改为 
++`org.testcontainers.utility.MountableFile#forHostPath(java.nio.file.Path)`，
++以避开 https://github.com/testcontainers/testcontainers-java/issues/7954 的影响。举例如下，
 +
 +```java
-+import org.firebirdsql.management.FBManager;
-+import org.firebirdsql.management.PageSizeConstants;
-+class Solution {
-+    void test() throws Exception {
-+        try (FBManager fbManager = new FBManager()) {
-+            fbManager.setServer("localhost");
-+            fbManager.setUserName("alice");
-+            fbManager.setPassword("masterkey");
-+            fbManager.setFileName("/var/lib/firebird/data/mirror.fdb");
-+            fbManager.setPageSize(PageSizeConstants.SIZE_16K);
-+            fbManager.setDefaultCharacterSet("UTF8");
-+            fbManager.setPort(3050);
-+            fbManager.start();
-+            fbManager.createDatabase("/var/lib/firebird/data/demo_ds_0.fdb", "alice", "masterkey");
-+            fbManager.createDatabase("/var/lib/firebird/data/demo_ds_1.fdb", "alice", "masterkey");
-+            fbManager.createDatabase("/var/lib/firebird/data/demo_ds_2.fdb", "alice", "masterkey");
++import org.junit.jupiter.api.Test;
++import org.testcontainers.containers.PostgreSQLContainer;
++import org.testcontainers.utility.MountableFile;
++class SolutionTest {
++    @Test
++    void test() {
++        try (PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:17.5-bookworm").withCopyFileToContainer(
++                MountableFile.forClasspathResource("test-native/sh/postgres.sh"), 
++                "/docker-entrypoint-initdb.d/postgres.sh")) {
++            container.start();
 +        }
 +    }
 +}
 +```
 +
-+### 在业务项目创建 ShardingSphere 数据源
-+
-+在业务项目引入`前提条件`涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
-+
-+```yaml
-+dataSources:
-+  ds_0:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.firebirdsql.jdbc.FBDriver
-+    jdbcUrl: jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_0.fdb
-+    username: alice
-+    password: masterkey
-+  ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.firebirdsql.jdbc.FBDriver
-+    jdbcUrl: jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_1.fdb
-+    username: alice
-+    password: masterkey
-+  ds_2:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.firebirdsql.jdbc.FBDriver
-+    jdbcUrl: jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_2.fdb
-+    username: alice
-+    password: masterkey
-+rules:
-+- !SHARDING
-+    tables:
-+      t_order:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-+        keyGenerateStrategy:
-+          column: order_id
-+          keyGeneratorName: snowflake
-+    defaultDatabaseStrategy:
-+      standard:
-+        shardingColumn: user_id
-+        shardingAlgorithmName: inline
-+    shardingAlgorithms:
-+      inline:
-+        type: INLINE
-+        props:
-+          algorithm-expression: ds_${user_id % 2}
-+    keyGenerators:
-+      snowflake:
-+        type: SNOWFLAKE
-+```
-+
-+### 享受集成
-+
-+创建 ShardingSphere 的数据源以享受集成，
++应更改为，
 +
 +```java
-+import com.zaxxer.hikari.HikariConfig;
-+import com.zaxxer.hikari.HikariDataSource;
-+import java.sql.Connection;
-+import java.sql.SQLException;
-+import java.sql.Statement;
-+class Solution {
-+    void test() throws SQLException {
-+        HikariConfig config = new HikariConfig();
-+        config.setJdbcUrl("jdbc:shardingsphere:classpath:demo.yaml");
-+        config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
-+        try (HikariDataSource dataSource = new HikariDataSource(config);
-+             Connection connection = dataSource.getConnection();
-+             Statement statement = connection.createStatement()) {
-+            statement.execute("CREATE TABLE t_order (order_id BIGINT generated by default as identity PRIMARY KEY, order_type INT, user_id INT NOT NULL, address_id BIGINT NOT NULL, status VARCHAR(50))");
-+            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-+            statement.executeQuery("SELECT * FROM t_order");
-+            statement.execute("DELETE FROM t_order WHERE user_id=1");
-+            statement.execute("DROP TABLE t_order");
++import org.junit.jupiter.api.Test;
++import org.testcontainers.containers.PostgreSQLContainer;
++import org.testcontainers.utility.MountableFile;
++import java.nio.file.Paths;
++class SolutionTest {
++    @Test
++    void test() {
++        try (PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:17.5-bookworm").withCopyFileToContainer(
++                MountableFile.forHostPath(Paths.get("src/test/resources/test-native/sh/postgres.sh").toAbsolutePath()),
++                "/docker-entrypoint-initdb.d/postgres.sh")) {
++            container.start();
 +        }
 +    }
 +}
 +```
 +
-+## 使用限制
++### 单元测试的已知问题
 +
-+### 事务限制
++受 https://github.com/apache/shardingsphere/issues/35052 影响，
++`org.apache.shardingsphere.test.natived.jdbc.modes.cluster.EtcdTest` 的单元测试无法在通过 Windows 11 Home 24H2 编译的 GraalVM Native Image 下运行。
 +
-+Firebird 支持 ShardingSphere 集成级别的本地事务，但不支持 XA 事务或 Seata 的 AT 模式事务。
-+
-+对 XA 事务的讨论位于 https://github.com/apache/shardingsphere/issues/34973 。
-+
-+对 Seata 的 AT 模式事务的处理，则应在 https://github.com/apache/incubator-seata 提交包含对应实现的 PR。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
++`org.apache.shardingsphere.test.natived.proxy.transactions.base.SeataTest` 已被禁用，
++因为在 Github Actions Runner 执行此单元测试将导致其他单元测试出现 JDBC 连接泄露。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
 new file mode 100644
-index 00000000000..2b522837c55
+index 00000000000..bb3979e59b9
 --- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
-@@ -0,0 +1,168 @@
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
+@@ -0,0 +1,262 @@
 ++++
-+title = "Firebird"
++title = "Development and test"
 +weight = 6
 ++++
 +
++This article aims to introduce potential developers how to participate in the development and contribute to GraalVM
++Reachability Metadata related to ShardingSphere.
++
 +## Background Information
 +
-+ShardingSphere does not provide support for `driverClassName` of `org.firebirdsql.jdbc.FBDriver` by default.
-+ShardingSphere's support for Firebird JDBC Driver is in an optional module.
++When developer find that GraalVM Reachability Metadata of a third-party library not related to ShardingSphere is missing,
++the best solution is to open a new issue at https://github.com/oracle/graalvm-reachability-metadata and submit a PR containing the GraalVM Reachability Metadata of the dependent, 
++missing third-party library.
++
++To simplify the process, ShardingSphere proactively hosts GraalVM Reachability Metadata of some third-party libraries in the Maven module `shardingsphere-infra-reachability-metadata`.
++
++ShardingSphere verifies the availability under GraalVM Native Image through the Maven Plugin subproject of GraalVM Native Build Tools.
++By running unit tests under JVM and tagging the unit tests with Junit,
++then build it as GraalVM Native Image for nativeTest to test the unit test coverage under GraalVM Native Image.
++
++ShardingSphere defines,
++1. `shardingsphere-test-native` Maven Module, which is used to provide a small unit test subset for nativeTest. This unit test subset avoids the use of third-party libraries that cannot be used under nativeTest.
++2. `nativeTestInShardingSphere` Maven Profile, which is used to compile the GraalVM Native Image required for unit testing for the `shardingsphere-test-native` module and execute nativeTest.
++3. `generateMetadata` Maven Profile, which is used to carry GraalVM Tracing Agent to execute unit tests under GraalVM JIT Compiler to collect preliminary GraalVM Reachability Metadata.
 +
 +## Prerequisites
 +
-+To use a `jdbcUrl` like `jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_0.fdb` for the data node in the ShardingSphere configuration file,
-+the possible Maven dependencies are as follows,
++Developer must have installed on their devices,
 +
-+```xml
-+<dependencies>
-+    <dependency>
-+        <groupId>org.apache.shardingsphere</groupId>
-+        <artifactId>shardingsphere-jdbc</artifactId>
-+        <version>${shardingsphere.version}</version>
-+    </dependency>
-+    <dependency>
-+        <groupId>org.apache.shardingsphere</groupId>
-+        <artifactId>shardingsphere-parser-sql-firebird</artifactId>
-+        <version>${shardingsphere.version}</version>
-+    </dependency>
-+    <dependency>
-+        <groupId>org.firebirdsql.jdbc</groupId>
-+        <artifactId>jaybird</artifactId>
-+        <version>5.0.6.java8</version>
-+    </dependency>
-+</dependencies>
++1. GraalVM CE 22.0.2, or a GraalVM downstream distribution compatible with GraalVM CE 22.0.2. Refer to [GraalVM Native Image](/en/user-manual/shardingsphere-jdbc/graalvm-native-image).
++2. The native toolchain required to compile the GraalVM Native Image. Refer to https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites .
++3. Docker Engine that can run Linux Containers, or a Container Runtime compatible with testcontainer-java. Refer to https://java.testcontainers.org/supported_docker_environment/ .
++
++This article does not discuss `LLVM Backend for Native Image`. The following sections discuss the possible required operations under Ubuntu, Windows, and Windows Server.
++
++### Ubuntu
++
++It is assumed that the developer is on a fresh Ubuntu 22.04.5 LTS instance with git configured.
++
++GraalVM CE can be installed using `SDKMAN!` in bash using the following command.
++
++```shell
++sudo apt install unzip zip -y
++curl -s "https://get.sdkman.io" | bash
++source "$HOME/.sdkman/bin/sdkman-init.sh"
++sdk install java 22.0.2-graalce
++sdk use java 22.0.2-graalce
 +```
 +
-+## Configuration example
++Developer can use the following command in bash to install the local toolchain required to compile GraalVM Native Image.
 +
-+### Start Firebird
-+
-+Write a Docker Compose file to start Firebird.
-+
-+```yaml
-+services:
-+  firebird:
-+    image: firebirdsql/firebird:5.0.1
-+    environment:
-+      FIREBIRD_ROOT_PASSWORD: masterkey
-+      FIREBIRD_USER: alice
-+      FIREBIRD_PASSWORD: masterkey
-+      FIREBIRD_DATABASE: mirror.fdb
-+      FIREBIRD_DATABASE_DEFAULT_CHARSET: UTF8
-+    ports:
-+      - "3050:3050"
++```shell
++sudo apt-get install build-essential zlib1g-dev -y
 +```
 +
-+### Create business databases
++Developer can install Docker Engine in rootful mode by running the following command in bash. 
++This article does not discuss changing the default logging driver in `/etc/docker/daemon.json`.
 +
-+Create some business databases in Firebird through third-party tools.
++```shell
++sudo apt update && sudo apt upgrade -y
++sudo apt-get remove docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc
++cd /tmp/
++sudo apt-get install ca-certificates curl
++sudo install -m 0755 -d /etc/apt/keyrings
++sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
++sudo chmod a+r /etc/apt/keyrings/docker.asc
 +
-+Third-party tools including DBeaver Community cannot create databases for Firebird.
-+Below is the Java API of the Maven module `org.firebirdsql.jdbc:jaybird:5.0.6.java8` as an example.
++echo \
++  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
++  $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
++  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
++
++sudo apt-get update
++sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
++sudo groupadd docker
++sudo usermod -aG docker $USER
++newgrp docker
++```
++
++### Windows
++
++It is assumed that the developer is on a fresh Windows 11 Home 24H2 instance with `git-for-windows/git` and `PowerShell/PowerShell` installed and configured.
++
++GraalVM CE can be installed using `version-fox/vfox` in Powershell 7 using the following command.
++
++```shell
++winget install version-fox.vfox
++if (-not (Test-Path -Path $PROFILE)) { New-Item -Type File -Path $PROFILE -Force }; Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'
++# At this time, developer need to open a new Powershell 7 terminal
++vfox add java
++vfox install java@22.0.2-graalce
++vfox use --global java@22.0.2-graalce
++```
++
++When Windows pops up a window asking developer to allow an application with a path like `C:\users\shard\.version-fox\cache\java\v-22.0.2-graalce\java-22.0.2-graalce\bin\java.exe` to pass through Windows Firewall,
++developer should approve it.
++Background reference https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c .
++
++Developer can install the local toolchain required to compile GraalVM Native Image using the following command in Powershell 7. 
++**In certain cases, developer may need to purchase a license for the use of Visual Studio.**
++
++```shell
++winget install --id Microsoft.VisualStudio.2022.Community
++```
++
++Open `Visual Studio Installer` to modify `Workloads` of `Visual Studio Community 2022`, 
++check `Desktop development with C++` of `Desktop apps and mobile apps` and click `Change`.
++
++Developer can enable WSL2 and set `Ubuntu WSL` as the default Linux distribution in Powershell 7 with the following command.
++
++```shell
++wsl --install
++```
++
++After enabling WSL2, 
++download and install `rancher-sandbox/rancher-desktop` from https://rancherdesktop.io/ and set up `Container Engine` using `dockerd(moby)`.
++This article does not discuss changing the default logging driver in `/etc/docker/daemon.json` of the Linux distribution `rancher-desktop`.
++
++### Windows Server
++
++For a regular Windows Server 2025 instance, the operation is equivalent to Windows 11 Home 24H2.
++But the Github Actions Runner instance of `windows-latest` cannot run Linux Containers, so ShardingSphere does not set up CI for nativeTest for Windows.
++
++## Handling unit tests
++
++### Execute unit tests under GraalVM JIT Compiler
++
++If developer only need to execute nativeTest related unit tests under GraalVM JIT Compiler, 
++that is, avoid compiling GraalVM Native Image, developer can execute the following command.
++
++```shell
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -PgenerateMetadata -e -T 1C clean test
++```
++
++### Execute unit tests under GraalVM Native Image
++
++Developer can use the following commands to compile the GraalVM Native Image required for unit testing for the `shardingsphere-test-native` submodule and execute nativeTest.
++
++```shell
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -PgenerateMetadata -e -T 1C clean test
++```
++
++When Windows pops up a window asking developer to allow an app with a path like `C:\users\shard\shardingsphere\test\native\target\native-tests.exe.exe` to pass through Windows Firewall, 
++developer should approve it.
++Background reference https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c .
++
++### Generate and modify GraalVM Reachability Metadata
++
++If nativeTest fails, generate preliminary GraalVM Reachability Metadata for the unit tests, 
++and manually adjust the contents of the `META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/`
++folder in the classpath of the `shardingsphere-infra-reachability-metadata` submodule to fix nativeTest. 
++If necessary, 
++use the `org.junit.jupiter.api.condition.DisabledInNativeImage` annotation or the `org.graalvm.nativeimage.imagecode` System Property to block some unit tests from running under the GraalVM Native Image.
++
++The `generateMetadata` Maven Profile will generate or overwrite the existing GraalVM Reachability Metadata file in the `shardingsphere-infra-reachability-metadata` submodule's classpath, 
++under the `META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` folder. 
++This process can be easily handled by the following command.
++
++```bash
++git clone git@github.com:apache/shardingsphere.git
++cd ./shardingsphere/
++./mvnw -PgenerateMetadata -e -T 1C clean test native:metadata-copy
++```
++
++Developer may still need to manually adjust specific JSON entries and adjust the filter chain of Maven Profile and GraalVM Tracing Agent as appropriate.
++For the `shardingsphere-infra-reachability-metadata` submodule, manually added, deleted, 
++and modified JSON entries should be located in the `META-INF/native-image/org.apache.shardingsphere/shardingsphere-infra-reachability-metadata/` folder,
++while the entries in `META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/` should only be generated by the Maven Profile of `generateMetadata`.
++
++For GraalVM Reachability Metadata used independently by test classes and test files,
++developer should place it in the classpath of the `shardingsphere-test-native` submodule under `META-INF/native-image/shardingsphere-test-native-test-metadata/`.
++
++## Known limitations
++
++### `resource-config.json` limitations
++
++Affected by https://github.com/apache/shardingsphere/issues/33206,
++after developers execute `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy`,
++`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` will generate unnecessary JSON entries containing absolute paths.
++
++For Ubuntu, it is similar to the following,
++
++```json
++{
++   "resources":{
++      "includes":[{
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding//global.yaml\\E"
++      }, {
++         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
++         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding/\\E"
++      }]},
++   "bundles":[]
++}
++```
++
++Contributors who need to submit PRs for ShardingSphere should always manually remove these JSON entries containing absolute paths
++and wait for https://github.com/oracle/graal/issues/8417 to be resolved.
++
++### Unit test library limitations
++
++For the Maven Module of `shardingsphere-test-native`,
++Avoid using test libraries such as `io.kotest:kotest-runner-junit5-jvm:5.5.4` which have the `failed to discover tests` issue in Junit's `test listener` mode.
++
++Since Mockito Inline cannot run under GraalVM Native Image, avoid using Mockito in unit tests of this Maven module.
++
++For testcontainers, the use of `org.testcontainers.utility.MountableFile#forClasspathResource(String)` should be changed to
++`org.testcontainers.utility.MountableFile#forHostPath(java.nio.file.Path)`,
++to avoid the impact of https://github.com/testcontainers/testcontainers-java/issues/7954. For example,
 +
 +```java
-+import org.firebirdsql.management.FBManager;
-+import org.firebirdsql.management.PageSizeConstants;
-+class Solution {
-+    void test() throws Exception {
-+        try (FBManager fbManager = new FBManager()) {
-+            fbManager.setServer("localhost");
-+            fbManager.setUserName("alice");
-+            fbManager.setPassword("masterkey");
-+            fbManager.setFileName("/var/lib/firebird/data/mirror.fdb");
-+            fbManager.setPageSize(PageSizeConstants.SIZE_16K);
-+            fbManager.setDefaultCharacterSet("UTF8");
-+            fbManager.setPort(3050);
-+            fbManager.start();
-+            fbManager.createDatabase("/var/lib/firebird/data/demo_ds_0.fdb", "alice", "masterkey");
-+            fbManager.createDatabase("/var/lib/firebird/data/demo_ds_1.fdb", "alice", "masterkey");
-+            fbManager.createDatabase("/var/lib/firebird/data/demo_ds_2.fdb", "alice", "masterkey");
++import org.junit.jupiter.api.Test;
++import org.testcontainers.containers.PostgreSQLContainer;
++import org.testcontainers.utility.MountableFile;
++class SolutionTest {
++    @Test
++    void test() {
++        try (PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:17.5-bookworm").withCopyFileToContainer(
++                MountableFile.forClasspathResource("test-native/sh/postgres.sh"), 
++                "/docker-entrypoint-initdb.d/postgres.sh")) {
++            container.start();
 +        }
 +    }
 +}
 +```
 +
-+### Create ShardingSphere data source in business project
-+
-+After the business project introduces the dependencies involved in the `prerequisites`, 
-+write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
-+
-+```yaml
-+dataSources:
-+  ds_0:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.firebirdsql.jdbc.FBDriver
-+    jdbcUrl: jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_0.fdb
-+    username: alice
-+    password: masterkey
-+  ds_1:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.firebirdsql.jdbc.FBDriver
-+    jdbcUrl: jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_1.fdb
-+    username: alice
-+    password: masterkey
-+  ds_2:
-+    dataSourceClassName: com.zaxxer.hikari.HikariDataSource
-+    driverClassName: org.firebirdsql.jdbc.FBDriver
-+    jdbcUrl: jdbc:firebird://localhost:3050//var/lib/firebird/data/demo_ds_2.fdb
-+    username: alice
-+    password: masterkey
-+rules:
-+- !SHARDING
-+    tables:
-+      t_order:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-+        keyGenerateStrategy:
-+          column: order_id
-+          keyGeneratorName: snowflake
-+    defaultDatabaseStrategy:
-+      standard:
-+        shardingColumn: user_id
-+        shardingAlgorithmName: inline
-+    shardingAlgorithms:
-+      inline:
-+        type: INLINE
-+        props:
-+          algorithm-expression: ds_${user_id % 2}
-+    keyGenerators:
-+      snowflake:
-+        type: SNOWFLAKE
-+```
-+
-+### Enjoy integration
-+
-+Create a ShardingSphere data source to enjoy the integration,
++Should be changed to,
 +
 +```java
-+import com.zaxxer.hikari.HikariConfig;
-+import com.zaxxer.hikari.HikariDataSource;
-+import java.sql.Connection;
-+import java.sql.SQLException;
-+import java.sql.Statement;
-+class Solution {
-+    void test() throws SQLException {
-+        HikariConfig config = new HikariConfig();
-+        config.setJdbcUrl("jdbc:shardingsphere:classpath:demo.yaml");
-+        config.setDriverClassName("org.apache.shardingsphere.driver.ShardingSphereDriver");
-+        try (HikariDataSource dataSource = new HikariDataSource(config);
-+             Connection connection = dataSource.getConnection();
-+             Statement statement = connection.createStatement()) {
-+            statement.execute("CREATE TABLE t_order (order_id BIGINT generated by default as identity PRIMARY KEY, order_type INT, user_id INT NOT NULL, address_id BIGINT NOT NULL, status VARCHAR(50))");
-+            statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-+            statement.executeQuery("SELECT * FROM t_order");
-+            statement.execute("DELETE FROM t_order WHERE user_id=1");
-+            statement.execute("DROP TABLE t_order");
++import org.junit.jupiter.api.Test;
++import org.testcontainers.containers.PostgreSQLContainer;
++import org.testcontainers.utility.MountableFile;
++import java.nio.file.Paths;
++class SolutionTest {
++    @Test
++    void test() {
++        try (PostgreSQLContainer<?> container = new PostgreSQLContainer<>("postgres:17.5-bookworm").withCopyFileToContainer(
++                MountableFile.forHostPath(Paths.get("src/test/resources/test-native/sh/postgres.sh").toAbsolutePath()),
++                "/docker-entrypoint-initdb.d/postgres.sh")) {
++            container.start();
 +        }
 +    }
 +}
 +```
 +
-+## Usage Limitations
++### Known issues with unit testing
 +
-+### Transaction Limitations
++Affected by https://github.com/apache/shardingsphere/issues/35052 , 
++the unit test of `org.apache.shardingsphere.test.natived.jdbc.modes.cluster.EtcdTest` cannot be run under GraalVM Native Image compiled by Windows 11 Home 24H2.
 +
-+Firebird supports local transactions at the ShardingSphere integration level, but does not support XA transactions or Seata's AT mode transactions.
-+
-+Discussions on XA transactions are at https://github.com/apache/shardingsphere/issues/34973 .
-+
-+For Seata's AT mode transactions, a PR containing the corresponding implementation should be submitted at https://github.com/apache/incubator-seata .
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
-index 40f88bd9ae5..f4d891933bb 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
-@@ -183,7 +183,7 @@ rules:
- - !SHARDING
-     tables:
-       t_order:
--        actualDataNodes:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-         keyGenerateStrategy:
-           column: order_id
-           keyGeneratorName: snowflake
-@@ -221,7 +221,7 @@ public class ExampleUtils {
-              Statement statement = connection.createStatement()) {
-             statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-             statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("DELETE FROM t_order WHERE order_id=1");
-+            statement.execute("DELETE FROM t_order WHERE user_id=1");
-         }
-     }
- }
-@@ -309,7 +309,7 @@ rules:
- - !SHARDING
-     tables:
-       t_order:
--        actualDataNodes:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-         keyGenerateStrategy:
-           column: order_id
-           keyGeneratorName: snowflake
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
-index 0e8c562079c..4e188e525fa 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
-@@ -126,7 +126,7 @@ services:
- 
- ### Create business tables
- 
--Use a third-party tool to create a business database and business table in HiveServer2.
-+Use a third-party tool to create some business databases and business tables in HiveServer2.
- Taking DBeaver Community as an example, if you use Ubuntu 22.04.4, you can quickly install it through Snapcraft.
- 
- ```shell
-@@ -187,7 +187,7 @@ rules:
- - !SHARDING
-     tables:
-       t_order:
--        actualDataNodes:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-         keyGenerateStrategy:
-           column: order_id
-           keyGeneratorName: snowflake
-@@ -225,7 +225,7 @@ public class ExampleUtils {
-              Statement statement = connection.createStatement()) {
-             statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-             statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("DELETE FROM t_order WHERE order_id=1");
-+            statement.execute("DELETE FROM t_order WHERE user_id=1");
-         }
-     }
- }
-@@ -314,7 +314,7 @@ rules:
- - !SHARDING
-     tables:
-       t_order:
--        actualDataNodes:
-+        actualDataNodes: <LITERAL>ds_0.t_order, ds_1.t_order, ds_2.t_order
-         keyGenerateStrategy:
-           column: order_id
-           keyGeneratorName: snowflake
++`org.apache.shardingsphere.test.natived.proxy.transactions.base.SeataTest` has been disabled
++because executing this unit test in Github Actions Runner will cause JDBC connection leaks in other unit tests.

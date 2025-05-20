@@ -79,12 +79,12 @@
 *****************************************************
 Summary
 -------
-Generated at: 2025-05-20T03:33:10Z
+Generated at: 2025-05-20T06:18:18Z
 
 Notes: 5
-Binaries: 998
+Binaries: 999
 Archives: 0
-Standards: 1122
+Standards: 1123
 
 Apache Licensed: 132
 Generated Documents: 0
@@ -92,7 +92,7 @@ Generated Documents: 0
 JavaDocs are generated, thus a license header is optional.
 Generated files do not require license headers.
 
-987 Unknown Licenses
+988 Unknown Licenses
 
 *****************************************************
 
@@ -816,6 +816,7 @@ Files with unapproved licenses:
   docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/narayana.cn.md
   docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
   docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+  docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
   docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
   docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
   docs/document/content/user-manual/shardingsphere-jdbc/unsupported/_index.en.md
@@ -2676,6 +2677,8 @@ Files with unapproved licenses:
   B     docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/_index.cn.md
  !????? docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
  !????? docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+ !????? docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
+  B     docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
  !????? docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md
  !????? docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.cn.md
  !????? docs/document/content/user-manual/shardingsphere-jdbc/unsupported/_index.en.md
@@ -3401,6 +3404,7 @@ shardingsphere-example
 1. SQL Parser: Support Oracle SQL parsing V1 keywords as identifiers - [#35373](https://github.com/apache/shardingsphere/pull/35373)
 1. SQL Parser: Support Oracle in literal sql parsing - [#35384](https://github.com/apache/shardingsphere/pull/35384)
 1. SQL Bind: Support explain statement sql bind - [#35439](https://github.com/apache/shardingsphere/pull/35439)
+1. SQL Parser: Add MySQL interval expression sql parsing - [#35468](https://github.com/apache/shardingsphere/pull/35468)
 
 ### Bug Fixes
 
@@ -3410,7 +3414,6 @@ shardingsphere-example
 1. SQL Parser: Fix set OnDuplicateKeyColumnsSegment on PostgreSQLInsertStatement - [#34425](https://github.com/apache/shardingsphere/pull/34425)
 1. SQL Parser: Fix mysql sql parser error when sql contains implicit concat expression - [#34660](https://github.com/apache/shardingsphere/pull/34660)
 1. JDBC: Fix wrong jdbc database metadata pass through logic - [#34959](https://github.com/apache/shardingsphere/pull/34959)
-1. JDBC: Fix getting database name from sql statement context - [#34960](https://github.com/apache/shardingsphere/pull/34960)
 
 =====================================================
 == File: .github/PULL_REQUEST_TEMPLATE
@@ -34384,6 +34387,60 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
                 &lt;groupId&gt;org.graalvm.buildtools&lt;/groupId&gt;
                 &lt;artifactId&gt;native-maven-plugin&lt;/artifactId&gt;
                 &lt;version&gt;0.10.5&lt;/version&gt;
+
+=====================================================
+== File: docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
+=====================================================
++++
+title = &quot;Development and test&quot;
+weight = 6
++++
+
+This article aims to introduce potential developers how to participate in the development and contribute to GraalVM
+Reachability Metadata related to ShardingSphere.
+
+## Background Information
+
+When developer find that GraalVM Reachability Metadata of a third-party library not related to ShardingSphere is missing,
+the best solution is to open a new issue at https://github.com/oracle/graalvm-reachability-metadata and submit a PR containing the GraalVM Reachability Metadata of the dependent, 
+missing third-party library.
+
+To simplify the process, ShardingSphere proactively hosts GraalVM Reachability Metadata of some third-party libraries in the Maven module `shardingsphere-infra-reachability-metadata`.
+
+ShardingSphere verifies the availability under GraalVM Native Image through the Maven Plugin subproject of GraalVM Native Build Tools.
+By running unit tests under JVM and tagging the unit tests with Junit,
+then build it as GraalVM Native Image for nativeTest to test the unit test coverage under GraalVM Native Image.
+
+ShardingSphere defines,
+1. `shardingsphere-test-native` Maven Module, which is used to provide a small unit test subset for nativeTest. This unit test subset avoids the use of third-party libraries that cannot be used under nativeTest.
+2. `nativeTestInShardingSphere` Maven Profile, which is used to compile the GraalVM Native Image required for unit testing for the `shardingsphere-test-native` module and execute nativeTest.
+3. `generateMetadata` Maven Profile, which is used to carry GraalVM Tracing Agent to execute unit tests under GraalVM JIT Compiler to collect preliminary GraalVM Reachability Metadata.
+
+## Prerequisites
+
+Developer must have installed on their devices,
+
+1. GraalVM CE 22.0.2, or a GraalVM downstream distribution compatible with GraalVM CE 22.0.2. Refer to [GraalVM Native Image](/en/user-manual/shardingsphere-jdbc/graalvm-native-image).
+2. The native toolchain required to compile the GraalVM Native Image. Refer to https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites .
+3. Docker Engine that can run Linux Containers, or a Container Runtime compatible with testcontainer-java. Refer to https://java.testcontainers.org/supported_docker_environment/ .
+
+This article does not discuss `LLVM Backend for Native Image`. The following sections discuss the possible required operations under Ubuntu, Windows, and Windows Server.
+
+### Ubuntu
+
+It is assumed that the developer is on a fresh Ubuntu 22.04.5 LTS instance with git configured.
+
+GraalVM CE can be installed using `SDKMAN!` in bash using the following command.
+
+```shell
+sudo apt install unzip zip -y
+curl -s &quot;https://get.sdkman.io&quot; | bash
+source &quot;$HOME/.sdkman/bin/sdkman-init.sh&quot;
+sdk install java 22.0.2-graalce
+sdk use java 22.0.2-graalce
+```
+
+Developer can use the following command in bash to install the local toolchain required to compile GraalVM Native Image.
 
 =====================================================
 == File: docs/document/content/user-manual/shardingsphere-jdbc/observability/_index.en.md

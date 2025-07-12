@@ -1,133 +1,128 @@
-commit cbe7cccf8646e5957d7b00a92171fe168e2e4efc
+commit 379000c149195c9437b85b7949c49f5d9c48b08b
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon Jul 7 22:39:51 2025 +0800
+Date:   Sat Jul 12 10:58:38 2025 +0800
 
-    Enable nativeTest test suite with GraalVM JIT Compiler on Windows Server 2025 CI via `rdctl` (#35905)
+    Fix the bug that nativeTest test suite cannot recognize modules without source code (#35959)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
-index 28f4c7b05f1..3115c1d59c2 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
-@@ -112,7 +112,6 @@ wsl --install
- ### Windows Server
- 
- 对于通常的 Windows Server 2025 实例，操作等同于 Windows 11 Home 24H2。
--但 `windows-latest` 的 Github Actions Runner 实例无法运行 Linux Containers，因此 ShardingSphere 不为 Windows 设置 nativeTest 的 CI。
- 
- ## 处理单元测试
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
-index a45cf96da6d..ee384852fe9 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
-@@ -119,7 +119,6 @@ This article does not discuss changing the default logging driver in `/etc/docke
- ### Windows Server
- 
- For a regular Windows Server 2025 instance, the operation is equivalent to Windows 11 Home 24H2.
--But the Github Actions Runner instance of `windows-latest` cannot run Linux Containers, so ShardingSphere does not set up CI for nativeTest for Windows.
- 
- ## Handling unit tests
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
-index b11a45cbf63..28e8460aaba 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
-@@ -360,7 +360,7 @@ public class ExampleUtils {
-              Statement statement = connection.createStatement()) {
-             statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-             statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("DELETE FROM t_order WHERE order_id=1");
-+            statement.execute("DELETE FROM t_order WHERE user_id=1");
-         }
-     }
- }
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
-index ab3f30953a7..4b36d3128fe 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
-@@ -365,39 +365,8 @@ public class ExampleUtils {
-              Statement statement = connection.createStatement()) {
-             statement.execute("INSERT INTO t_order (user_id, order_type, address_id, status) VALUES (1, 1, 1, 'INSERT_TEST')");
-             statement.executeQuery("SELECT * FROM t_order");
--            statement.execute("DELETE FROM t_order WHERE order_id=1");
-+            statement.execute("DELETE FROM t_order WHERE user_id=1");
-         }
-     }
- }
- ```
--
--## Usage restrictions
--
--### ShardingSphere Proxy Native for GraalVM Native Image
--
--For ShardingSphere Proxy Native in GraalVM Native Image,
--Users always need to modify the ShardingSphere source code to add the Seata Client and Seata integrated Maven modules and compile them into GraalVM Native Image.
--ShardingSphere Proxy Native in GraalVM Native Image cannot recognize the additional JAR files.
--
--```xml
--<project>
--    <dependencies>
--      <dependency>
--         <groupId>org.apache.shardingsphere</groupId>
--         <artifactId>shardingsphere-transaction-base-seata-at</artifactId>
--         <version>${shardingsphere.version}</version>
--      </dependency>
--      <dependency>
--         <groupId>org.apache.seata</groupId>
--         <artifactId>seata-all</artifactId>
--         <version>2.2.0</version>
--         <exclusions>
--            <exclusion>
--               <groupId>org.antlr</groupId>
--               <artifactId>antlr4-runtime</artifactId>
--            </exclusion>
--         </exclusions>
--      </dependency>
--    </dependencies>
--</project>
--```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-index e4b2dc59e92..ceac6c94b3e 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-@@ -95,7 +95,7 @@ services:
- 
- 若从源码构建，开发者有2种选择，
- 
--1. 在不安装本地工具链的情况下，构建包含 ShardingSphere Proxy Native 产物的 `Linux Docker Image`
-+1. 在不安装本地工具链的情况下，构建包含 ShardingSphere Proxy Native 产物的 `Linux Container`
- 2. 在安装本地工具链的情况下，构建包含 ShardingSphere Proxy Native 产物。对于 Windows，可通过此途径创建`.exe`形态的 GraalVM Native Image
- 
- ### 使用存在自定义 SPI 实现的 JAR 或第三方依赖的 JAR
-@@ -113,7 +113,7 @@ services:
- </dependencies>
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
+index c4ff7abbee6..d7fd211fcd9 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
+@@ -22,7 +22,7 @@ ShardingSphere 对 ClickHouse JDBC Driver 的支持位于可选模块中。
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-clickhouse</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-clickhouse</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
+index 1dfb22db5de..6d500363947 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
+@@ -22,7 +22,7 @@ the possible Maven dependencies are as follows,
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-clickhouse</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-clickhouse</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
+index faab8e0c4d9..49755454244 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
+@@ -22,7 +22,7 @@ ShardingSphere 对 Firebird JDBC Driver 的支持位于可选模块中。
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-firebird</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-firebird</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
+index 2b522837c55..8809e7fe2ed 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
+@@ -22,7 +22,7 @@ the possible Maven dependencies are as follows,
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-firebird</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-firebird</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
+index 2041da71989..fc61495d6ac 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
+@@ -22,7 +22,7 @@ ShardingSphere 对 HiveServer2 JDBC Driver 的支持位于可选模块中。
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-hive</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-hive</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+@@ -589,7 +589,7 @@ create table IF NOT EXISTS t_order
  ```
  
--### 构建 Linux Docker Image
-+### 构建 Linux Container
+ 第2种选择是使用 Iceberg 表，可能的建表流程如下。Apache Iceberg 表格式有望在未来几年取代传统的 Hive 表格式， 
+-参考 https://blog.cloudera.com/from-hive-tables-to-iceberg-tables-hassle-free/ 。
++参考 https://lists.apache.org/thread/cfwxjd8tjt2wwz54crdjy2qsgzjnfxfm 。
  
- #### 前提条件
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-index 779536e34aa..fc4d40e31cd 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-@@ -97,8 +97,7 @@ services:
- 
- If you build from source code, developers have two options,
- 
--1. Build a `Linux Docker Image` containing ShardingSphere Proxy Native products without installing a local toolchain
--
-+1. Build a `Linux Container` containing ShardingSphere Proxy Native products without installing a local toolchain
- 2. Build a ShardingSphere Proxy Native product with a local toolchain installed. For Windows, you can create a GraalVM Native Image in the form of `.exe` in this way
- 
- ### Use JARs with custom SPI implementations or third-party dependent JARs
-@@ -116,7 +115,7 @@ An example of adding a MySQL JDBC Driver dependency is as follows. The relevant
- </dependencies>
+ ```sql
+ -- noinspection SqlNoDataSourceInspectionForFile
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
+index d8b17b371e7..e4e91e21de1 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
+@@ -23,7 +23,7 @@ The possible Maven dependencies are as follows.
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-hive</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-hive</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+@@ -600,7 +600,7 @@ create table IF NOT EXISTS t_order
  ```
  
--### Build Linux Docker Image
-+### Build Linux Container
+ The second option is to use Iceberg tables. The possible table creation process is as follows. Apache Iceberg table format is expected to replace the traditional Hive table format in the next few years.
+-Refer to https://blog.cloudera.com/from-hive-tables-to-iceberg-tables-hassle-free/ .
++Refer to https://lists.apache.org/thread/cfwxjd8tjt2wwz54crdjy2qsgzjnfxfm .
  
- #### Prerequisites
- 
+ ```sql
+ -- noinspection SqlNoDataSourceInspectionForFile
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md
+index ad237d5bf78..777a1ff9989 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md
+@@ -22,7 +22,7 @@ ShardingSphere 对 Presto JDBC Driver 的支持位于可选模块中。
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-presto</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-presto</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md
+index ce8f3a3dc8e..b1c25a7f784 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md
+@@ -22,7 +22,7 @@ Possible Maven dependencies are as follows,
+     </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-presto</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-presto</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>

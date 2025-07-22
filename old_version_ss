@@ -1,615 +1,118 @@
-commit 83429a8c743b0da4c7aedc58246fb2be3e5c7560
+commit 2d05e74a3e730c686c9c53d680db0cf69bafd493
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon Jul 21 18:06:33 2025 +0800
+Date:   Tue Jul 22 15:54:34 2025 +0800
 
-    Remove requirement for `--report-unsupported-elements-at-runtime` buildArg when building GraalVM Native Image (#36037)
+    Change the execution phase of NativeTest under GraalVM Native Image from `test` to `integration-test` (#36050)
 
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-index 91ec24ce604..7201234f3cd 100644
+index 7201234f3cd..61bccaa3e7b 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
-@@ -15,18 +15,23 @@ CE 的 `native-image` 命令行工具的长篇大论的 shell 命令。
- ShardingSphere JDBC 要求在如下或更高版本的 `GraalVM CE` 完成构建 GraalVM Native Image。使用者可通过 SDKMAN! 快速切换 JDK。这同理
- 适用于 https://sdkman.io/jdks#graal ， https://sdkman.io/jdks#nik 和 https://sdkman.io/jdks#mandrel 等 `GraalVM CE` 的下游发行版。
+@@ -17,7 +17,7 @@ ShardingSphere JDBC 要求在如下或更高版本的 `GraalVM CE` 完成构建
  
--- GraalVM CE For JDK 22.0.2，对应于 SDKMAN! 的 `22.0.2-graalce`
-+- GraalVM CE For JDK 24.0.2，对应于 SDKMAN! 的 `24.0.2-graalce`
+ - GraalVM CE For JDK 24.0.2，对应于 SDKMAN! 的 `24.0.2-graalce`
  
--用户依然可以使用 SDKMAN! 上的 `21.0.2-graalce` 等旧版本的 GraalVM CE 来构建 ShardingSphere 的 GraalVM Native Image 产物。
-+用户依然可以使用 SDKMAN! 上的 `21.0.8-graal` 等旧版本的 GraalVM CE 来构建 ShardingSphere 的 GraalVM Native Image 产物。
+-用户依然可以使用 SDKMAN! 上的 `21.0.8-graal` 等旧版本的 GraalVM CE 来构建 ShardingSphere 的 GraalVM Native Image 产物。
++用户依然可以使用 SDKMAN! 上的 `21.0.8-graal` 等旧版本的 Oracle GraalVM 来构建 ShardingSphere 的 GraalVM Native Image 产物。
  但这将导致集成部分第三方依赖时，构建 GraalVM Native Image 失败。
--典型的例子来自 HiveServer2 JDBC Driver 相关的 `org.apache.hive:hive-jdbc:4.0.0`，HiveServer2 JDBC Driver 使用了 AWT 相关的类，
--而 GraalVM CE 对 `java.beans.**` package 的支持仅位于 GraalVM CE For JDK22 及更高版本。
-+分类讨论，
-+
-+1. 开发者正在使用 HiveServer2 JDBC Driver 相关的 `org.apache.hive:hive-jdbc:4.0.1`。由于 HiveServer2 JDBC Driver 使用了 AWT 相关的类，
-+   且 `GraalVM CE` 对 AWT 相关类的支持仅位于 GraalVM CE For JDK22 及更高版本，这将破环 GraalVM Native Image 的构建。
+ 分类讨论，
  
- ```shell
- com.sun.beans.introspect.ClassInfo was unintentionally initialized at build time. To see why com.sun.beans.introspect.ClassInfo got initialized use --trace-class-initialization=com.sun.beans.introspect.ClassInfo
- java.beans.Introspector was unintentionally initialized at build time. To see why java.beans.Introspector got initialized use --trace-class-initialization=java.beans.Introspector
- ```
- 
-+2. 开发者使用的旧版本的 `GraalVM CE` 或 `GraalVM CE` 的下游发行版未包含 https://github.com/graalvm/graalvm-community-jdk21u/pull/23 的向后移植补丁。
-+   此情况下开发者需要自行编写更多的可被旧版本 `GraalVM CE` 识别的，GraalVM Reachability Metadata 相关的 JSON。
-+
- ### Maven 生态
- 
- 使用者需要主动使用 GraalVM Reachability Metadata 中央仓库。
-@@ -47,11 +52,12 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
-             <plugin>
-                 <groupId>org.graalvm.buildtools</groupId>
-                 <artifactId>native-maven-plugin</artifactId>
--                <version>0.10.6</version>
-+                <version>0.11.0</version>
-                 <extensions>true</extensions>
-                 <configuration>
-                     <buildArgs>
-                         <buildArg>-H:+AddAllCharsets</buildArg>
-+                        <buildArg>-H:+IncludeAllLocales</buildArg>
-                     </buildArgs>
-                 </configuration>
-                 <executions>
-@@ -85,21 +91,23 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
- 
- ```groovy
- plugins {
--   id 'org.graalvm.buildtools.native' version '0.10.6'
-+   id 'org.graalvm.buildtools.native' version '0.11.0'
- }
- 
- dependencies {
-    implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
--   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.6', classifier: 'repository', ext: 'zip')
-+   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.11.0', classifier: 'repository', ext: 'zip')
- }
- 
- graalvmNative {
-    binaries {
-       main {
-          buildArgs.add('-H:+AddAllCharsets')
-+         buildArgs.add('-H:+IncludeAllLocales')
-       }
-       test {
-          buildArgs.add('-H:+AddAllCharsets')
-+         buildArgs.add('-H:+IncludeAllLocales')
-       }
-    }
-    metadataRepository {
-@@ -184,16 +192,18 @@ rules:
-           algorithmClassName: org.example.test.TestShardingAlgorithmFixture
- ```
- 
--在 `src/main/resources/META-INF/native-image/exmaple-test-metadata/reflect-config.json` 加入如下内容即可在正常在 GraalVM Native 
-+在 `src/main/resources/META-INF/native-image/exmaple-test-metadata/reachability-metadata.json` 加入如下内容即可在正常在 GraalVM Native 
- Image 下使用。
- 
- ```json
--[
- {
--  "name":"org.example.test.TestShardingAlgorithmFixture",
--  "methods":[{"name":"<init>","parameterTypes":[] }]
-+   "reflection": [
-+      {
-+         "type":"org.example.test.TestShardingAlgorithmFixture",
-+         "methods":[{"name":"<init>","parameterTypes":[] }]
-+      }
-+   ]
- }
--]
- ```
- 
- 2. 对于 `读写分离` 的功能，你需要使用 `行表达式` SPI 的其他实现，以在配置 `logic database name`，`writeDataSourceName` 和 `readDataSourceNames` 
-@@ -245,18 +255,27 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
- 或将对应 JSON 提交到 https://github.com/oracle/graalvm-reachability-metadata 一侧。
- 
- 以 `com.mysql:mysql-connector-j:9.0.0` 的 `com.mysql.cj.jdbc.MysqlXADataSource` 类为例，这是 MySQL JDBC Driver 的 `javax.sql.XADataSource` 的实现。
--用户需要在自有项目的 claapath 的 `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` 文件夹的 `reflect-config.json`文件内定义如下 JSON，
-+用户需要在自有项目的 claapath 的 `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` 文件夹的 `reachability-metadata.json`文件内定义如下 JSON，
- 以在 GraalVM Native Image 内部定义 `com.mysql.cj.jdbc.MysqlXADataSource` 的构造函数。
- 
- ```json
--[
- {
--   "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
--   "name":"com.mysql.cj.jdbc.MysqlXADataSource",
--   "allPublicMethods": true,
--   "methods": [{"name":"<init>","parameterTypes":[] }]
-+   "reflection": [
-+      {
-+         "condition": {
-+            "typeReached": "com.mysql.cj.jdbc.MysqlXADataSource"
-+         },
-+         "type": "com.mysql.cj.jdbc.MysqlXADataSource",
-+         "allPublicMethods": true,
-+         "methods": [
-+            {
-+               "name": "<init>",
-+               "parameterTypes": []
-+            }
-+         ]
-+      }
-+   ]
- }
--]
- ```
- 
- 6. 当需要通过 ShardingSphere JDBC 使用 ClickHouse 方言时，
-@@ -294,3 +313,27 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
- 8. 由于 https://github.com/oracle/graal/issues/7979 的影响，
- 对应 `com.oracle.database.jdbc:ojdbc8` Maven 模块的 Oracle JDBC Driver 无法在 GraalVM Native Image 下使用。
- 
-+9. 包括但不限于来自第三方依赖的 `com.mysql.cj.LocalizedErrorMessages`,
-+   `com.microsoft.sqlserver.jdbc.SQLServerResource`,
-+   `org.postgresql.translation.messages`,
-+   `org.opengauss.translation.messages` 等 `Resource Bundles` 在默认情况下会根据系统的默认语言环境加载 L10N 资源，
-+   并显示针对特定语言环境的本地化信息。
-+   通过 GraalVM Reachability Metadata 的 JSON 定义来穷举 `Resource Bundles` 是一件繁琐的事情。
-+   这有时会导致 GraalVM Native Image 在运行时中抛出类似如下的警告日志。 
-+   通常的操作是设置 `-H:+IncludeAllLocales` 的 `buildArg`。
-+
-+```shell
-+com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError: The program tried to access the resource at path
-+
-+   com/mysql/cj/LocalizedErrorMessages_zh_Hans_CN.properties
-+
-+without it being registered as reachable. Add it to the resource metadata to solve this problem. See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#resources-and-resource-bundles for help
-+  java.base@24.0.2/java.util.ResourceBundle.getBundle(ResourceBundle.java:1261)
-+  com.mysql.cj.Messages.<clinit>(Messages.java:56)
-+  com.mysql.cj.Constants.<clinit>(Constants.java:50)
-+  com.mysql.cj.util.Util.<clinit>(Util.java:69)
-+  com.mysql.cj.conf.ConnectionUrl$Type.getImplementingInstance(ConnectionUrl.java:251)
-+  com.mysql.cj.conf.ConnectionUrl$Type.getConnectionUrlInstance(ConnectionUrl.java:221)
-+  com.mysql.cj.conf.ConnectionUrl.getConnectionUrlInstance(ConnectionUrl.java:291)
-+  com.mysql.cj.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:186)
-+```
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-index 147e9d9d63e..51b9648c545 100644
+index 51b9648c545..e6b796dd66e 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
-@@ -16,18 +16,22 @@ ShardingSphere JDBC requires GraalVM Native Image to be built with GraalVM CE as
- JDK through `SDKMAN!`. Same reason applicable to downstream distributions of `GraalVM CE` such as https://sdkman.io/jdks#graal ,
- https://sdkman.io/jdks#nik and https://sdkman.io/jdks#mandrel .
+@@ -18,7 +18,7 @@ https://sdkman.io/jdks#nik and https://sdkman.io/jdks#mandrel .
  
--- GraalVM CE For JDK 22.0.2, corresponding to `22.0.2-graalce` of SDKMAN!
-+- GraalVM CE For JDK 24.0.2, corresponding to `24.0.2-graalce` of SDKMAN!
+ - GraalVM CE For JDK 24.0.2, corresponding to `24.0.2-graalce` of SDKMAN!
  
--Users can still use the old versions of GraalVM CE such as `21.0.2-graalce` on SDKMAN! to build the GraalVM Native Image product of ShardingSphere. 
--However, this will cause the failure of building the GraalVM Native Image when integrating some third-party dependencies. 
--A typical example is related to the `org.apache.hive:hive-jdbc:4.0.1` HiveServer2 JDBC Driver, which uses AWT-related classes. 
--GraalVM CE only supports AWT for GraalVM CE For JDK22 and higher versions.
-+Users can still use old versions of GraalVM CE such as `21.0.8-graal` on SDKMAN! to build ShardingSphere's GraalVM Native Image product.
-+But this will cause the failure of building GraalVM Native Image when integrating some third-party dependencies.
-+Classification discussion,
-+1. Developers are using `org.apache.hive:hive-jdbc:4.0.1` related to HiveServer2 JDBC Driver. Since HiveServer2 JDBC Driver uses AWT-related classes,
-+   and `GraalVM CE`'s support for AWT-related classes is only in GraalVM CE For JDK22 and higher, this will destroy the construction of GraalVM Native Image.
- 
- ```shell
- com.sun.beans.introspect.ClassInfo was unintentionally initialized at build time. To see why com.sun.beans.introspect.ClassInfo got initialized use --trace-class-initialization=com.sun.beans.introspect.ClassInfo
- java.beans.Introspector was unintentionally initialized at build time. To see why java.beans.Introspector got initialized use --trace-class-initialization=java.beans.Introspector
- ```
- 
-+2. The developer is using an old version of `GraalVM CE` or a downstream distribution of `GraalVM CE` that does not include the backported patch of https://github.com/graalvm/graalvm-community-jdk21u/pull/23 .
-+   In this case, the developer needs to write more JSON related to GraalVM Reachability Metadata that can be recognized by the old version of `GraalVM CE`.
-+
- ### Maven Ecology
- 
- Users need to actively use the GraalVM Reachability Metadata central repository. 
-@@ -49,11 +53,12 @@ and the documentation of GraalVM Native Build Tools shall prevail.
-              <plugin>
-                  <groupId>org.graalvm.buildtools</groupId>
-                  <artifactId>native-maven-plugin</artifactId>
--                 <version>0.10.6</version>
-+                 <version>0.11.0</version>
-                  <extensions>true</extensions>
-                  <configuration>
-                     <buildArgs>
-                        <buildArg>-H:+AddAllCharsets</buildArg>
-+                       <buildArg>-H:+IncludeAllLocales</buildArg>
-                     </buildArgs>
-                  </configuration>
-                  <executions>
-@@ -89,21 +94,23 @@ Reference https://github.com/graalvm/native-build-tools/issues/572 .
- 
- ```groovy
- plugins {
--   id 'org.graalvm.buildtools.native' version '0.10.6'
-+   id 'org.graalvm.buildtools.native' version '0.11.0'
- }
- 
- dependencies {
-    implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
--   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.10.6', classifier: 'repository', ext: 'zip')
-+   implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.11.0', classifier: 'repository', ext: 'zip')
- }
- 
- graalvmNative {
-    binaries {
-       main {
-          buildArgs.add('-H:+AddAllCharsets')
-+         buildArgs.add('-H:+IncludeAllLocales')
-       }
-       test {
-          buildArgs.add('-H:+AddAllCharsets')
-+         buildArgs.add('-H:+IncludeAllLocales')
-       }
-    }
-    metadataRepository {
-@@ -190,16 +197,18 @@ rules:
-            algorithmClassName: org.example.test.TestShardingAlgorithmFixture
- ```
- 
--Add the following content to `src/main/resources/META-INF/native-image/exmaple-test-metadata/reflect-config.json` to used 
-+Add the following content to `src/main/resources/META-INF/native-image/exmaple-test-metadata/reachability-metadata.json` to used 
- normally under GraalVM Native Image.
- 
- ```json
--[
- {
--   "name":"org.example.test.TestShardingAlgorithmFixture",
--   "methods":[{"name":"<init>","parameterTypes":[] }]
-+   "reflection": [
-+      {
-+         "type":"org.example.test.TestShardingAlgorithmFixture",
-+         "methods":[{"name":"<init>","parameterTypes":[] }]
-+      }
-+   ]
- }
--]
- ```
- 
- 2. For the `ReadWrite Splitting` feature, you need to use other implementations of `Row Value Expressions` SPI to configure 
-@@ -258,18 +267,27 @@ or the corresponding JSON should be submitted to https://github.com/oracle/graal
- 
- Take the `com.mysql.cj.jdbc.MysqlXADataSource` class of `com.mysql:mysql-connector-j:9.0.0` as an example,
- which is the implementation of `javax.sql.XADataSource` of MySQL JDBC Driver.
--Users need to define the following JSON in the `reflect-config.json` file in the `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` folder of their own project's claapath,
-+Users need to define the following JSON in the `reachability-metadata.json` file in the `/META-INF/native-image/com.mysql/mysql-connector-j/9.0.0/` folder of their own project's claapath,
- to define the constructor of `com.mysql.cj.jdbc.MysqlXADataSource` inside the GraalVM Native Image.
- 
- ```json
--[
- {
--   "condition":{"typeReachable":"com.mysql.cj.jdbc.MysqlXADataSource"},
--   "name":"com.mysql.cj.jdbc.MysqlXADataSource",
--   "allPublicMethods": true,
--   "methods": [{"name":"<init>","parameterTypes":[] }]
-+   "reflection": [
-+      {
-+         "condition": {
-+            "typeReached": "com.mysql.cj.jdbc.MysqlXADataSource"
-+         },
-+         "type": "com.mysql.cj.jdbc.MysqlXADataSource",
-+         "allPublicMethods": true,
-+         "methods": [
-+            {
-+               "name": "<init>",
-+               "parameterTypes": []
-+            }
-+         ]
-+      }
-+   ]
- }
--]
- ```
- 
- 6. When using the ClickHouse dialect through ShardingSphere JDBC, 
-@@ -306,3 +324,28 @@ If developers use `org.apache.hive:hive-jdbc` directly, they should handle depen
- 
- 8. Due to https://github.com/oracle/graal/issues/7979 , 
- the Oracle JDBC Driver corresponding to the `com.oracle.database.jdbc:ojdbc8` Maven module cannot be used under GraalVM Native Image.
-+
-+9. Including but not limited to `com.mysql.cj.LocalizedErrorMessages`,
-+   `com.microsoft.sqlserver.jdbc.SQLServerResource`,
-+   `org.postgresql.translation.messages`,
-+   `org.opengauss.translation.messages` from third-party dependencies. By default, L10N resources are loaded according to the system's default locale,
-+   and localized information for a specific locale is displayed.
-+   It is tedious to exhaustively enumerate `Resource Bundles` through the JSON definition of GraalVM Reachability Metadata.
-+   This sometimes causes GraalVM Native Image to throw a warning log similar to the following at runtime.
-+   The usual operation is to set the `buildArg` of `-H:+IncludeAllLocales`.
-+
-+```shell
-+com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError: The program tried to access the resource at path
-+
-+   com/mysql/cj/LocalizedErrorMessages_zh_Hans_CN.properties
-+
-+without it being registered as reachable. Add it to the resource metadata to solve this problem. See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#resources-and-resource-bundles for help
-+  java.base@24.0.2/java.util.ResourceBundle.getBundle(ResourceBundle.java:1261)
-+  com.mysql.cj.Messages.<clinit>(Messages.java:56)
-+  com.mysql.cj.Constants.<clinit>(Constants.java:50)
-+  com.mysql.cj.util.Util.<clinit>(Util.java:69)
-+  com.mysql.cj.conf.ConnectionUrl$Type.getImplementingInstance(ConnectionUrl.java:251)
-+  com.mysql.cj.conf.ConnectionUrl$Type.getConnectionUrlInstance(ConnectionUrl.java:221)
-+  com.mysql.cj.conf.ConnectionUrl.getConnectionUrlInstance(ConnectionUrl.java:291)
-+  com.mysql.cj.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:186)
-+```
+-Users can still use old versions of GraalVM CE such as `21.0.8-graal` on SDKMAN! to build ShardingSphere's GraalVM Native Image product.
++Users can still use old versions of Oracle GraalVM such as `21.0.8-graal` on SDKMAN! to build ShardingSphere's GraalVM Native Image product.
+ But this will cause the failure of building GraalVM Native Image when integrating some third-party dependencies.
+ Classification discussion,
+ 1. Developers are using `org.apache.hive:hive-jdbc:4.0.1` related to HiveServer2 JDBC Driver. Since HiveServer2 JDBC Driver uses AWT-related classes,
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
-index 3115c1d59c2..4bb886cdbe9 100644
+index 4bb886cdbe9..af8091f202b 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
-@@ -25,7 +25,7 @@ ShardingSphere 定义了，
+@@ -112,6 +112,11 @@ wsl --install
+ ### Windows Server
  
- 贡献者必须在设备安装，
+ 对于通常的 Windows Server 2025 实例，操作等同于 Windows 11 Home 24H2。
++但受 https://github.com/rancher-sandbox/rancher-desktop/issues/3999 影响，
++如果开发者正在使用的 Windows Server 2025 实例包含可运行 Windows Containers 的 Docker Engine，
++则需要根据 https://github.com/microsoft/Windows-Containers/pull/602 的内容来完全卸载 Docker Engine，
++再安装 Rancher Desktop。
++这类操作常见于 `windows-2025` 的 GitHub Actions Runner 中。
  
--1. GraalVM CE 22.0.2，或与 GraalVM CE 22.0.2 兼容的 GraalVM 下游发行版。以 [GraalVM Native Image](/cn/user-manual/shardingsphere-jdbc/graalvm-native-image) 为准。
-+1. GraalVM CE 24.0.2，或与 GraalVM CE 24.0.2 兼容的 GraalVM 下游发行版。以 [GraalVM Native Image](/cn/user-manual/shardingsphere-jdbc/graalvm-native-image) 为准。
- 2. 编译 GraalVM Native Image 所需要的本地工具链。以 https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites 为准。
- 3. 可运行 Linux Containers 的 Docker Engine，或与 testcontainers-java 兼容的 Container Runtime。以 https://java.testcontainers.org/supported_docker_environment/ 为准。
+ ## 处理单元测试
  
-@@ -41,8 +41,8 @@ ShardingSphere 定义了，
- sudo apt install unzip zip -y
- curl -s "https://get.sdkman.io" | bash
- source "$HOME/.sdkman/bin/sdkman-init.sh"
--sdk install java 22.0.2-graalce
--sdk use java 22.0.2-graalce
-+sdk install java 24.0.2-graalce
-+sdk use java 24.0.2-graalce
+@@ -122,7 +127,7 @@ wsl --install
+ ```shell
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+-./mvnw -PgenerateMetadata -e -T 1C clean test
++./mvnw -PgenerateMetadata -e -T 1C clean verify
  ```
  
- 可在 bash 通过如下命令安装编译 GraalVM Native Image 所需要的本地工具链。
-@@ -85,11 +85,11 @@ winget install version-fox.vfox
- if (-not (Test-Path -Path $PROFILE)) { New-Item -Type File -Path $PROFILE -Force }; Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'
- # 此时需要打开新的 Powershell 7 终端
- vfox add java
--vfox install java@22.0.2-graalce
--vfox use --global java@22.0.2-graalce
-+vfox install java@24.0.2-graalce
-+vfox use --global java@24.0.2-graalce
+ ### 在 GraalVM Native Image 下执行单元测试
+@@ -132,7 +137,7 @@ cd ./shardingsphere/
+ ```bash
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+-./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
++./mvnw -PnativeTestInShardingSphere -e -T 1C clean verify
  ```
  
--当 Windows 弹出窗口，要求允许类似 `C:\users\shard\.version-fox\cache\java\v-22.0.2-graalce\java-22.0.2-graalce\bin\java.exe` 路径的应用通过 Windows 防火墙时，应当批准。
-+当 Windows 弹出窗口，要求允许类似 `C:\users\shard\.version-fox\cache\java\v-24.0.2-graalce\java-24.0.2-graalce\bin\java.exe` 路径的应用通过 Windows 防火墙时，应当批准。
- 背景参考 https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c 。
- 
- 可在 Powershell 7 通过如下命令安装编译 GraalVM Native Image 所需要的本地工具链。**特定情况下，开发者可能需要为 Visual Studio 的使用购买许可证。**
-@@ -166,31 +166,42 @@ cd ./shardingsphere/
- 
- ## 已知限制
- 
--### `resource-config.json` 限制
-+### `reachability-metadata.json` 限制
- 
- 受 https://github.com/apache/shardingsphere/issues/33206 影响，
- 开发者执行 `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy` 后，
--`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` 会生成不必要的包含绝对路径的 JSON 条目，
-+`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/reachability-metadata.json` 会生成不必要的包含绝对路径的 JSON 条目，
- 
- 对于 Ubuntu，类似如下，
- 
- ```json
- {
--   "resources":{
--      "includes":[{
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
--      }, {
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
--      }, {
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding//global.yaml\\E"
--      }, {
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding/\\E"
--      }]},
--   "bundles":[]
-+  "resources": [
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql/"
-+    },
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql//global.yaml"
-+    },
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/"
-+    },
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml"
-+    }
-+  ]
- }
+ 当 Windows 弹出窗口，要求允许类似 `C:\users\shard\shardingsphere\test\native\target\native-tests.exe.exe` 路径的应用通过 Windows 防火墙时，应当批准。
+@@ -153,7 +158,7 @@ cd ./shardingsphere/
+ ```bash
+ git clone git@github.com:apache/shardingsphere.git
+ cd ./shardingsphere/
+-./mvnw -PgenerateMetadata -e -T 1C clean test native:metadata-copy
++./mvnw -PgenerateMetadata -e -T 1C clean verify native:metadata-copy
  ```
  
+ 贡献者仍可能需要手动调整具体的 JSON 条目，并适时调整 Maven Profile 和 GraalVM Tracing Agent 的 Filter 链。
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
-index ee384852fe9..d0acd48f2dc 100644
+index d0acd48f2dc..ddbb5b57ae7 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
-@@ -27,7 +27,7 @@ ShardingSphere defines,
+@@ -119,6 +119,11 @@ This article does not discuss changing the default logging driver in `/etc/docke
+ ### Windows Server
  
- Developer must have installed on their devices,
+ For a regular Windows Server 2025 instance, the operation is equivalent to Windows 11 Home 24H2.
++However, affected by https://github.com/rancher-sandbox/rancher-desktop/issues/3999 ,
++if the Windows Server 2025 instance that the developer is using contains Docker Engine that can run Windows Containers,
++it is necessary to completely uninstall Docker Engine according to the content of https://github.com/microsoft/Windows-Containers/pull/602 ,
++and then install Rancher Desktop.
++This type of operation is common in the GitHub Actions Runner of `windows-2025`.
  
--1. GraalVM CE 22.0.2, or a GraalVM downstream distribution compatible with GraalVM CE 22.0.2. Refer to [GraalVM Native Image](/en/user-manual/shardingsphere-jdbc/graalvm-native-image).
-+1. GraalVM CE 24.0.2, or a GraalVM downstream distribution compatible with GraalVM CE 24.0.2. Refer to [GraalVM Native Image](/en/user-manual/shardingsphere-jdbc/graalvm-native-image).
- 2. The native toolchain required to compile the GraalVM Native Image. Refer to https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites .
- 3. Docker Engine that can run Linux Containers, or a Container Runtime compatible with testcontainers-java. Refer to https://java.testcontainers.org/supported_docker_environment/ .
+ ## Handling unit tests
  
-@@ -43,8 +43,8 @@ GraalVM CE can be installed using `SDKMAN!` in bash using the following command.
- sudo apt install unzip zip -y
- curl -s "https://get.sdkman.io" | bash
- source "$HOME/.sdkman/bin/sdkman-init.sh"
--sdk install java 22.0.2-graalce
--sdk use java 22.0.2-graalce
-+sdk install java 24.0.2-graalce
-+sdk use java 24.0.2-graalce
- ```
- 
- Developer can use the following command in bash to install the local toolchain required to compile GraalVM Native Image.
-@@ -88,11 +88,11 @@ winget install version-fox.vfox
- if (-not (Test-Path -Path $PROFILE)) { New-Item -Type File -Path $PROFILE -Force }; Add-Content -Path $PROFILE -Value 'Invoke-Expression "$(vfox activate pwsh)"'
- # At this time, developer need to open a new Powershell 7 terminal
- vfox add java
--vfox install java@22.0.2-graalce
--vfox use --global java@22.0.2-graalce
-+vfox install java@24.0.2-graalce
-+vfox use --global java@24.0.2-graalce
- ```
- 
--When Windows pops up a window asking developer to allow an application with a path like `C:\users\shard\.version-fox\cache\java\v-22.0.2-graalce\java-22.0.2-graalce\bin\java.exe` to pass through Windows Firewall,
-+When Windows pops up a window asking developer to allow an application with a path like `C:\users\shard\.version-fox\cache\java\v-24.0.2-graalce\java-24.0.2-graalce\bin\java.exe` to pass through Windows Firewall,
- developer should approve it.
- Background reference https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c .
- 
-@@ -175,31 +175,42 @@ developer should place it in the classpath of the `shardingsphere-test-native` s
- 
- ## Known limitations
- 
--### `resource-config.json` limitations
-+### `reachability-metadata.json` limitations
- 
- Affected by https://github.com/apache/shardingsphere/issues/33206,
- after developers execute `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy`,
--`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/resource-config.json` will generate unnecessary JSON entries containing absolute paths.
-+`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/reachability-metadata.json` will generate unnecessary JSON entries containing absolute paths.
- 
- For Ubuntu, it is similar to the following,
- 
- ```json
- {
--   "resources":{
--      "includes":[{
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml\\E"
--      }, {
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/\\E"
--      }, {
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding//global.yaml\\E"
--      }, {
--         "condition":{"typeReachable":"org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"},
--         "pattern":"\\Qhome/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/features/sharding/\\E"
--      }]},
--   "bundles":[]
-+  "resources": [
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql/"
-+    },
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql//global.yaml"
-+    },
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/"
-+    },
-+    {
-+      "condition": {
-+        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
-+      },
-+      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml"
-+    }
-+  ]
- }
- ```
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
-index 28e8460aaba..be1a1813a89 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
-@@ -38,8 +38,8 @@ ShardingSphere Proxy 或 GraalVM Native Image 形态的 ShardingSphere Proxy Nat
- ```shell
- sdk install java 23-open
- sdk use java 23-open
--sdk install maven 3.9.9
--sdk use maven 3.9.9
-+sdk install maven 3.9.11
-+sdk use maven 3.9.11
- mvn dependency:get -Dartifact=org.apache.seata:seata-all:2.3.0
- mvn -f ~/.m2/repository/org/apache/seata/seata-all/2.3.0/seata-all-2.3.0.pom dependency:tree | grep -v ':provided' | grep -v ':runtime'
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
-index 4b36d3128fe..10d5eedaacc 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
-@@ -39,8 +39,8 @@ you can confirm all `compile` scope dependencies of Seata Client with the follow
- ```shell
- sdk install java 23-open
- sdk use java 23-open
--sdk install maven 3.9.9
--sdk use maven 3.9.9
-+sdk install maven 3.9.11
-+sdk use maven 3.9.11
- mvn dependency:get -Dartifact=org.apache.seata:seata-all:2.3.0
- mvn -f ~/.m2/repository/org/apache/seata/seata-all/2.3.0/seata-all-2.3.0.pom dependency:tree | grep -v ':provided' | grep -v ':runtime'
- ```
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-index ceac6c94b3e..f2933de0c0f 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-@@ -260,7 +260,7 @@ services:
- 
- 贡献者必须在设备安装，
- 
--1. GraalVM CE 22.0.2，或与 GraalVM CE 22.0.2 兼容的 GraalVM 下游发行版。以 [GraalVM Native Image](/cn/user-manual/shardingsphere-jdbc/graalvm-native-image) 为准。
-+1. GraalVM CE 24.0.2，或与 GraalVM CE 24.0.2 兼容的 GraalVM 下游发行版。以 [GraalVM Native Image](/cn/user-manual/shardingsphere-jdbc/graalvm-native-image) 为准。
- 2. 编译 GraalVM Native Image 所需要的本地工具链。以 https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites 为准。
- 
- 在 Ubuntu 与 Windows 下可能的所需操作与[开发和测试](/cn/user-manual/shardingsphere-jdbc/graalvm-native-image/development)一致。
-@@ -288,7 +288,7 @@ cd ./shardingsphere/
+@@ -130,7 +135,7 @@ that is, avoid compiling GraalVM Native Image, developer can execute the followi
  ```shell
  git clone git@github.com:apache/shardingsphere.git
  cd ./shardingsphere/
--./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,-H:+StaticExecutableWithDynamicLibC" clean package
-+./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,-H:+IncludeAllLocales,--static-nolibc" clean package
+-./mvnw -PgenerateMetadata -e -T 1C clean test
++./mvnw -PgenerateMetadata -e -T 1C clean verify
  ```
  
- #### 构建完全静态链接的 GraalVM Native Image
-@@ -298,7 +298,7 @@ cd ./shardingsphere/
+ ### Execute unit tests under GraalVM Native Image
+@@ -140,7 +145,7 @@ Developer can use the following commands to compile the GraalVM Native Image req
  ```shell
  git clone git@github.com:apache/shardingsphere.git
  cd ./shardingsphere/
--./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,--static,--libc=musl" clean package
-+./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,-H:+IncludeAllLocales,--static,--libc=musl" clean package
+-./mvnw -PnativeTestInShardingSphere -e -T 1C clean test
++./mvnw -PnativeTestInShardingSphere -e -T 1C clean verify
  ```
  
- #### 使用 GraalVM Native Image
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-index fc4d40e31cd..f969a55d4a4 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-@@ -264,7 +264,7 @@ services:
- 
- Contributors must have installed on their devices,
- 
--1. GraalVM CE 22.0.2, or a GraalVM downstream distribution compatible with GraalVM CE 22.0.2. Refer to [GraalVM Native Image](/en/user-manual/shardingsphere-jdbc/graalvm-native-image).
-+1. GraalVM CE 24.0.2, or a GraalVM downstream distribution compatible with GraalVM CE 24.0.2. Refer to [GraalVM Native Image](/en/user-manual/shardingsphere-jdbc/graalvm-native-image).
- 2. The native toolchain required to compile GraalVM Native Image. Refer to https://www.graalvm.org/latest/reference-manual/native-image/#prerequisites .
- 
- The possible required operations under Ubuntu and Windows are consistent with [Development and test](/en/user-manual/shardingsphere-jdbc/graalvm-native-image/development).
-@@ -292,7 +292,7 @@ You can execute the following command to build.
- ```shell
+ When Windows pops up a window asking developer to allow an app with a path like `C:\users\shard\shardingsphere\test\native\target\native-tests.exe.exe` to pass through Windows Firewall, 
+@@ -162,7 +167,7 @@ This process can be easily handled by the following command.
+ ```bash
  git clone git@github.com:apache/shardingsphere.git
  cd ./shardingsphere/
--./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,-H:+StaticExecutableWithDynamicLibC" clean package
-+./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,-H:+IncludeAllLocales,--static-nolibc" clean package
+-./mvnw -PgenerateMetadata -e -T 1C clean test native:metadata-copy
++./mvnw -PgenerateMetadata -e -T 1C clean verify native:metadata-copy
  ```
  
- #### Build a fully statically linked GraalVM Native Image
-@@ -302,7 +302,7 @@ You can execute the following command to build.
- ```shell
- git clone git@github.com:apache/shardingsphere.git
- cd ./shardingsphere/
--./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,--static,--libc=musl" clean package
-+./mvnw -am -pl distribution/proxy-native -T1C -DskipTests "-Prelease.native" "-DbuildArgs=-H:+AddAllCharsets,-H:+IncludeAllLocales,--static,--libc=musl" clean package
- ```
- 
- #### Use GraalVM Native Image
+ Developer may still need to manually adjust specific JSON entries and adjust the filter chain of Maven Profile and GraalVM Tracing Agent as appropriate.

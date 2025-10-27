@@ -79,12 +79,12 @@
 *****************************************************
 Summary
 -------
-Generated at: 2025-10-27T09:28:05Z
+Generated at: 2025-10-27T12:21:57Z
 
-Notes: 5
-Binaries: 999
+Notes: 6
+Binaries: 1002
 Archives: 0
-Standards: 1124
+Standards: 1128
 
 Apache Licensed: 130
 Generated Documents: 0
@@ -92,7 +92,7 @@ Generated Documents: 0
 JavaDocs are generated, thus a license header is optional.
 Generated files do not require license headers.
 
-991 Unknown Licenses
+993 Unknown Licenses
 
 *****************************************************
 
@@ -110,6 +110,8 @@ Files with unapproved licenses:
   .github/ISSUE_TEMPLATE/bug-report.md
   .github/ISSUE_TEMPLATE/feature-request.md
   .github/ISSUE_TEMPLATE/question.md
+  .github/actions/mvnd-action/action.yml
+  .github/actions/mvnd-action/index.js
   RELEASE-NOTES.md
   README.md
   .mvn/jvm.config
@@ -1224,6 +1226,14 @@ Files with unapproved licenses:
  !????? .github/ISSUE_TEMPLATE/bug-report.md
  !????? .github/ISSUE_TEMPLATE/feature-request.md
  !????? .github/ISSUE_TEMPLATE/question.md
+  B     .github/actions/mvnd-action/dist/package.json
+  MIT   .github/actions/mvnd-action/dist/licenses.txt
+  MIT   .github/actions/mvnd-action/dist/index.js
+  N     .github/actions/mvnd-action/LICENSE
+ !????? .github/actions/mvnd-action/action.yml
+  B     .github/actions/mvnd-action/package-lock.json
+  B     .github/actions/mvnd-action/package.json
+ !????? .github/actions/mvnd-action/index.js
   AL    .gitattributes
   AL    mvnw.cmd
  !????? RELEASE-NOTES.md
@@ -3668,6 +3678,96 @@ Before asking a question, make sure you have:
 
 Please pay attention on issues you submitted, because we maybe need more details. 
 If no response anymore and we cannot reproduce it on current information, we will **close it**.
+
+=====================================================
+== File: .github/actions/mvnd-action/action.yml
+=====================================================
+name: 'Maven Daemon Action'
+description: Allows the use of Maven Daemon in your Github actions workflows.
+inputs:
+  version:
+    description: |
+      The version of Maven Daemon to install. See here for available versions: https://downloads.apache.org/maven/mvnd/
+      By default, it uses `1.0.2`. It doesn't yet utilize the later 2.x versions because 2.x utilizes Maven 4.x which is
+      still experimental and the majority of projects haven't switched over to using it yet.
+    required: false
+    default: '1.0.2'
+  hosted-binary-url:
+    description: The location as a URL where the mvnd binaries are hosted.
+    required: false
+    default: 'https://downloads.apache.org/maven/mvnd/'
+  cache-directory-override:
+    description: |
+      The directory to save the mvnd binaries. This is useful to configure if you want to use `actions/cache` to cache
+      the binaries.
+    required: false
+outputs:
+  cached-binary-path:
+    description: The fully qualified path where the mvnd binary was saved.
+  cached-directory-path:
+    description: |
+      The directory containing the extracted mvnd binary and all related files. Useful for caching the
+      entire directory with `actions/cache`.
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
+branding:
+  icon: 'feather'
+  color: 'green'
+
+=====================================================
+== File: .github/actions/mvnd-action/index.js
+=====================================================
+import * as core from '@actions/core';
+import path from 'path';
+import fs from 'fs/promises';
+import os from 'os';
+import StreamZip from 'node-stream-zip';
+import * as exec from '@actions/exec';
+
+/**
+ * Fetches a platform-specific mvnd binary from a URL and saves it locally
+ *
+ * @param {string} baseUrl - Base URL where the binary can be downloaded from
+ * @param {string} version - Version of mvnd to download
+ * @param {string} saveDir - Directory path where the binary should be saved
+ * @returns {Promise&lt;[string, string]&gt;} Path to the extracted binary directory and the installation directory
+ * @throws {Error} If the download or extraction fails
+ */
+const fetchAndSaveBinary = async (baseUrl, version, saveDir) =&gt; {
+  try {
+    let platformSuffix;
+
+    switch(process.platform) {
+      case 'win32':
+        platformSuffix = 'windows-amd64';
+        break;
+      case 'darwin':
+        platformSuffix = process.arch === 'arm64' ? 'darwin-aarch64' : 'darwin-amd64';
+        break;
+      case 'linux':
+        platformSuffix = 'linux-amd64';
+        break;
+      default:
+        core.warning(`Unknown platform detected: ${process.platform}. Defaulting to fetching linux variant`)
+        platformSuffix = 'linux-amd64';
+        break;
+    }
+
+    const directoryName = `maven-mvnd-${version}-${platformSuffix}`;
+    const url = new URL(baseUrl);
+    url.pathname += `${version}/${directoryName}.zip`;
+
+    core.info(`Fetching binary from: ${url}`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    core.info(`Writing zip to file: ${saveDir}.zip`);
+    await fs.writeFile(`${saveDir}.zip`, buffer);
+
 
 =====================================================
 == File: RELEASE-NOTES.md

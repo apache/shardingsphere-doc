@@ -3120,199 +3120,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L1272">1272</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L1309">1309</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>return visit(ctx.simpleExpr(0));
-        }
-        if (null != ctx.TILDE_()) {
-            return new UnaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.simpleExpr(0)), &quot;~&quot;, ctx.getText());
-        }
-        if (null != ctx.variable()) {
-            return visit(ctx.variable());
-        }
-        if (null != ctx.LP_()) {
-            RowExpression result = new RowExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.getText());
-            for (ExprContext each : ctx.expr()) {
-                result.getItems().add((ExpressionSegment) visit(each));
-            }
-            return result;
-        }
-        if (null != ctx.RETURNING()) {
-            ListExpression result = new ListExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
-            result.getItems().add(new LiteralExpressionSegment(ctx.path().start.getStartIndex(), ctx.path().stop.getStopIndex(), ctx.path().getText()));
-            result.getItems().add(new LiteralExpressionSegment(ctx.RETURNING().getSymbol().getStartIndex(), ctx.RETURNING().getSymbol().getStopIndex(), ctx.RETURNING().getSymbol().getText()));
-            result.getItems().add((ExpressionSegment) visit(ctx.dataType()));
-            return result;
-        }
-        if (null != ctx.LBE_()) {
-            return visit(ctx.expr(0));
-        }
-        for (ExprContext each : ctx.expr()) {
-            visit(each);
-        }
-        for (SimpleExprContext each : ctx.simpleExpr()) {
-            visit(each);
-        }
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new CommonExpressionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), text);
-    }
-    
-    @Override
-    public ASTNode visitCaseExpression(final CaseExpressionContext ctx) {
-        Collection&lt;ExpressionSegment&gt; whenExprs = new LinkedList&lt;&gt;();
-        Collection&lt;ExpressionSegment&gt; thenExprs = new LinkedList&lt;&gt;();
-        for (CaseWhenContext each : ctx.caseWhen()) {
-            whenExprs.add((ExpressionSegment) visit(each.expr(0)));
-            thenExprs.add((ExpressionSegment) visit(each.expr(1)));
-        }
-        ExpressionSegment caseExpr = null == ctx.expr() ? null : (ExpressionSegment) visit(ctx.expr());
-        ExpressionSegment elseExpr = null == ctx.caseElse() ? null : (ExpressionSegment) visit(ctx.caseElse().expr());
-        return new CaseWhenExpression(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), caseExpr, whenExprs, thenExprs, elseExpr);
-    }
-    
-    @Override
-    public ASTNode visitVariable(final VariableContext ctx) {
-        return null == ctx.systemVariable() ? visit(ctx.userVariable()) : visit(ctx.systemVariable());
-    }
-    
-    @Override
-    public ASTNode visitUserVariable(final UserVariableContext ctx) {
-        return new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.textOrIdentifier().getText());
-    }
-    
-    @Override
-    public ASTNode visitSystemVariable(final SystemVariableContext ctx) {
-        VariableSegment result = new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.rvalueSystemVariable().getText());
-        if (null != ctx.systemVariableScope) {
-            result.setScope(ctx.systemVariableScope.getText());
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitMatchExpression(final MatchExpressionContext ctx) {
-        ExpressionSegment expressionSegment = (ExpressionSegment) visit(ctx.expr());
-        MatchAgainstExpression result = new MatchAgainstExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), expressionSegment, getOriginalText(ctx.matchSearchModifier()),
-                getOriginalText(ctx));
-        for (ColumnRefContext each : ctx.columnRefList().columnRef()) {
-            result.getColumns().add((ColumnSegment) visit(each));
-        }
-        return result;
-    }
-    
-    // TODO :FIXME, sql case id: insert_with_str_to_date
-    private void calculateParameterCount(final Collection&lt;ExprContext&gt; exprContexts) {
-        for (ExprContext each : exprContexts) {
-            visit(each);
-        }
-    }
-    
-    @Override
-    public final ASTNode visitDataType(final DataTypeContext ctx) {
-        DataTypeSegment result = new DataTypeSegment();
-        result.setDataTypeName(ctx.dataTypeName.getText());
-        result.setStartIndex(ctx.start.getStartIndex());
-        result.setStopIndex(ctx.stop.getStopIndex());
-        if (null != ctx.fieldLength()) {
-            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.fieldLength());
-            result.setDataLength(dataTypeLengthSegment);
-        }
-        if (null != ctx.precision()) {
-            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.precision());
-            result.setDataLength(dataTypeLengthSegment);
-        }
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitFieldLength(final FieldLengthContext ctx) {
-        DataTypeLengthSegment result = new DataTypeLengthSegment();
-        result.setStartIndex(ctx.start.getStartIndex());
-        result.setStopIndex(ctx.stop.getStartIndex());
-        result.setPrecision(new BigDecimal(ctx.length.getText()).intValue());
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitPrecision(final PrecisionContext ctx) {
-        DataTypeLengthSegment result = new DataTypeLengthSegment();
-        result.setStartIndex(ctx.start.getStartIndex());
-        result.setStopIndex(ctx.stop.getStartIndex());
-        List&lt;TerminalNode&gt; numbers = ctx.NUMBER_();
-        result.setPrecision(Integer.parseInt(numbers.get(0).getText()));
-        result.setScale(Integer.parseInt(numbers.get(1).getText()));
-        return result;
-    }
-    
-    @Override
-    public ASTNode visitTypeDatetimePrecision(final TypeDatetimePrecisionContext ctx) {
-        DataTypeLengthSegment result = new DataTypeLengthSegment();
-        result.setStartIndex(ctx.start.getStartIndex());
-        result.setStopIndex(ctx.stop.getStartIndex());
-        result.setPrecision(Integer.parseInt(ctx.NUMBER_().getText()));
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitOrderByClause(final OrderByClauseContext ctx) {
-        Collection&lt;OrderByItemSegment&gt; items = new LinkedList&lt;&gt;();
-        for (OrderByItemContext each : ctx.orderByItem()) {
-            items.add((OrderByItemSegment) visit(each));
-        }
-        return new OrderBySegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), items);
-    }
-    
-    @Override
-    public final ASTNode visitOrderByItem(final OrderByItemContext ctx) {
-        OrderDirection orderDirection;
-        if (null != ctx.direction()) {
-            orderDirection = null == ctx.direction().DESC() ? OrderDirection.ASC : OrderDirection.DESC;
-        } else {
-            orderDirection = OrderDirection.ASC;
-        }
-        if (null != ctx.numberLiterals()) {
-            return new IndexOrderByItemSegment(ctx.numberLiterals().getStart().getStartIndex(), ctx.numberLiterals().getStop().getStopIndex(),
-                    SQLUtils.getExactlyNumber(ctx.numberLiterals().getText(), 10).intValue(), orderDirection, null);
-        } else {
-            ASTNode expr = visitExpr(ctx.expr());
-            if (expr instanceof ColumnSegment) {
-                return new ColumnOrderByItemSegment((ColumnSegment) expr, orderDirection, null);
-            } else {
-                return new ExpressionOrderByItemSegment(ctx.expr().getStart().getStartIndex(),
-                        ctx.expr().getStop().getStopIndex(), getOriginalText(ctx.expr()), orderDirection, null, (ExpressionSegment) expr);
-            }
-        }
-    }
-    
-    @Override
-    public ASTNode visitInsert(final InsertContext ctx) {
-        // TODO :FIXME, since there is no segment for insertValuesClause, InsertStatement is created by sub rule.
-        InsertStatement result;
-        if (null != ctx.insertValuesClause()) {
-            result = (InsertStatement) visit(ctx.insertValuesClause());
-        } else if (null != ctx.insertSelectClause()) {
-            result = (InsertStatement) visit(ctx.insertSelectClause());
-        } else {
-            result = new InsertStatement(databaseType);
-            result.setSetAssignment((SetAssignmentSegment) visit(ctx.setAssignmentsClause()));
-        }
-        if (null != ctx.onDuplicateKeyClause()) {
-            result.setOnDuplicateKeyColumns((OnDuplicateKeyColumnsSegment) visit(ctx.onDuplicateKeyClause()));
-        }
-        result.setTable((SimpleTableSegment) visit(ctx.tableName()));</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/type/DorisDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/type/DorisDDLStatementVisitor.html#L445">445</a></td></tr>
@@ -5796,6 +5603,154 @@
     }
     
     @SuppressWarnings(&quot;unchecked&quot;)</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L1317">1317</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L1354">1354</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>return new CaseWhenExpression(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), caseExpr, whenExprs, thenExprs, elseExpr);
+    }
+    
+    @Override
+    public ASTNode visitVariable(final VariableContext ctx) {
+        return null == ctx.systemVariable() ? visit(ctx.userVariable()) : visit(ctx.systemVariable());
+    }
+    
+    @Override
+    public ASTNode visitUserVariable(final UserVariableContext ctx) {
+        return new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.textOrIdentifier().getText());
+    }
+    
+    @Override
+    public ASTNode visitSystemVariable(final SystemVariableContext ctx) {
+        VariableSegment result = new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.rvalueSystemVariable().getText());
+        if (null != ctx.systemVariableScope) {
+            result.setScope(ctx.systemVariableScope.getText());
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitMatchExpression(final MatchExpressionContext ctx) {
+        ExpressionSegment expressionSegment = (ExpressionSegment) visit(ctx.expr());
+        MatchAgainstExpression result = new MatchAgainstExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), expressionSegment, getOriginalText(ctx.matchSearchModifier()),
+                getOriginalText(ctx));
+        for (ColumnRefContext each : ctx.columnRefList().columnRef()) {
+            result.getColumns().add((ColumnSegment) visit(each));
+        }
+        return result;
+    }
+    
+    // TODO :FIXME, sql case id: insert_with_str_to_date
+    private void calculateParameterCount(final Collection&lt;ExprContext&gt; exprContexts) {
+        for (ExprContext each : exprContexts) {
+            visit(each);
+        }
+    }
+    
+    @Override
+    public final ASTNode visitDataType(final DataTypeContext ctx) {
+        DataTypeSegment result = new DataTypeSegment();
+        result.setDataTypeName(ctx.dataTypeName.getText());
+        result.setStartIndex(ctx.start.getStartIndex());
+        result.setStopIndex(ctx.stop.getStopIndex());
+        if (null != ctx.fieldLength()) {
+            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.fieldLength());
+            result.setDataLength(dataTypeLengthSegment);
+        }
+        if (null != ctx.precision()) {
+            DataTypeLengthSegment dataTypeLengthSegment = (DataTypeLengthSegment) visit(ctx.precision());
+            result.setDataLength(dataTypeLengthSegment);
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitFieldLength(final FieldLengthContext ctx) {
+        DataTypeLengthSegment result = new DataTypeLengthSegment();
+        result.setStartIndex(ctx.start.getStartIndex());
+        result.setStopIndex(ctx.stop.getStartIndex());
+        result.setPrecision(new BigDecimal(ctx.length.getText()).intValue());
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitPrecision(final PrecisionContext ctx) {
+        DataTypeLengthSegment result = new DataTypeLengthSegment();
+        result.setStartIndex(ctx.start.getStartIndex());
+        result.setStopIndex(ctx.stop.getStartIndex());
+        List&lt;TerminalNode&gt; numbers = ctx.NUMBER_();
+        result.setPrecision(Integer.parseInt(numbers.get(0).getText()));
+        result.setScale(Integer.parseInt(numbers.get(1).getText()));
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitTypeDatetimePrecision(final TypeDatetimePrecisionContext ctx) {
+        DataTypeLengthSegment result = new DataTypeLengthSegment();
+        result.setStartIndex(ctx.start.getStartIndex());
+        result.setStopIndex(ctx.stop.getStartIndex());
+        result.setPrecision(Integer.parseInt(ctx.NUMBER_().getText()));
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitOrderByClause(final OrderByClauseContext ctx) {
+        Collection&lt;OrderByItemSegment&gt; items = new LinkedList&lt;&gt;();
+        for (OrderByItemContext each : ctx.orderByItem()) {
+            items.add((OrderByItemSegment) visit(each));
+        }
+        return new OrderBySegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), items);
+    }
+    
+    @Override
+    public final ASTNode visitOrderByItem(final OrderByItemContext ctx) {
+        OrderDirection orderDirection;
+        if (null != ctx.direction()) {
+            orderDirection = null == ctx.direction().DESC() ? OrderDirection.ASC : OrderDirection.DESC;
+        } else {
+            orderDirection = OrderDirection.ASC;
+        }
+        if (null != ctx.numberLiterals()) {
+            return new IndexOrderByItemSegment(ctx.numberLiterals().getStart().getStartIndex(), ctx.numberLiterals().getStop().getStopIndex(),
+                    SQLUtils.getExactlyNumber(ctx.numberLiterals().getText(), 10).intValue(), orderDirection, null);
+        } else {
+            ASTNode expr = visitExpr(ctx.expr());
+            if (expr instanceof ColumnSegment) {
+                return new ColumnOrderByItemSegment((ColumnSegment) expr, orderDirection, null);
+            } else {
+                return new ExpressionOrderByItemSegment(ctx.expr().getStart().getStartIndex(),
+                        ctx.expr().getStop().getStopIndex(), getOriginalText(ctx.expr()), orderDirection, null, (ExpressionSegment) expr);
+            }
+        }
+    }
+    
+    @Override
+    public ASTNode visitInsert(final InsertContext ctx) {
+        // TODO :FIXME, since there is no segment for insertValuesClause, InsertStatement is created by sub rule.
+        InsertStatement result;
+        if (null != ctx.insertValuesClause()) {
+            result = (InsertStatement) visit(ctx.insertValuesClause());
+        } else if (null != ctx.insertSelectClause()) {
+            result = (InsertStatement) visit(ctx.insertSelectClause());
+        } else {
+            result = new InsertStatement(databaseType);
+            result.setSetAssignment((SetAssignmentSegment) visit(ctx.setAssignmentsClause()));
+        }
+        if (null != ctx.onDuplicateKeyClause()) {
+            result.setOnDuplicateKeyColumns((OnDuplicateKeyColumnsSegment) visit(ctx.onDuplicateKeyClause()));
+        }
+        result.setTable((SimpleTableSegment) visit(ctx.tableName()));</pre></td></tr></table>
 <table class="table table-striped">
 <tr class="a">
 <th>File</th>
@@ -8607,6 +8562,67 @@
             return createShorthandProjection(ctx.qualifiedShorthand());
         }
         AliasSegment alias = null == ctx.alias() ? null : (AliasSegment) visit(ctx.alias());</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L1272">1272</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L1309">1309</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>return visit(ctx.simpleExpr(0));
+        }
+        if (null != ctx.TILDE_()) {
+            return new UnaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.simpleExpr(0)), &quot;~&quot;, ctx.getText());
+        }
+        if (null != ctx.variable()) {
+            return visit(ctx.variable());
+        }
+        if (null != ctx.LP_()) {
+            RowExpression result = new RowExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.getText());
+            for (ExprContext each : ctx.expr()) {
+                result.getItems().add((ExpressionSegment) visit(each));
+            }
+            return result;
+        }
+        if (null != ctx.RETURNING()) {
+            ListExpression result = new ListExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex());
+            result.getItems().add(new LiteralExpressionSegment(ctx.path().start.getStartIndex(), ctx.path().stop.getStopIndex(), ctx.path().getText()));
+            result.getItems().add(new LiteralExpressionSegment(ctx.RETURNING().getSymbol().getStartIndex(), ctx.RETURNING().getSymbol().getStopIndex(), ctx.RETURNING().getSymbol().getText()));
+            result.getItems().add((ExpressionSegment) visit(ctx.dataType()));
+            return result;
+        }
+        if (null != ctx.LBE_()) {
+            return visit(ctx.expr(0));
+        }
+        for (ExprContext each : ctx.expr()) {
+            visit(each);
+        }
+        for (SimpleExprContext each : ctx.simpleExpr()) {
+            visit(each);
+        }
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new CommonExpressionSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), text);
+    }
+    
+    @Override
+    public ASTNode visitCaseExpression(final CaseExpressionContext ctx) {
+        Collection&lt;ExpressionSegment&gt; whenExprs = new LinkedList&lt;&gt;();
+        Collection&lt;ExpressionSegment&gt; thenExprs = new LinkedList&lt;&gt;();
+        for (CaseWhenContext each : ctx.caseWhen()) {
+            whenExprs.add((ExpressionSegment) visit(each.expr(0)));
+            thenExprs.add((ExpressionSegment) visit(each.expr(1)));
+        }
+        ExpressionSegment caseExpr = null == ctx.expr() ? null : (ExpressionSegment) visit(ctx.expr());
+        ExpressionSegment elseExpr = null == ctx.caseElse() ? null : (ExpressionSegment) visit(ctx.caseElse().expr());
+        return new CaseWhenExpression(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), caseExpr, whenExprs, thenExprs, elseExpr);</pre></td></tr></table>
 <table class="table table-striped">
 <tr class="a">
 <th>File</th>
@@ -14680,14 +14696,10 @@
 <td>shardingsphere-parser-sql-engine-hive</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/type/HiveDMLStatementVisitor.html#L763">763</a></td></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L1352">1352</a></td></tr>
-<tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/type/PrestoDMLStatementVisitor.html#L735">735</a></td></tr>
-<tr class="b">
+<tr class="a">
 <td colspan="3">
 <pre>ExpressionSegment caseExpr = null == ctx.expr() ? null : (ExpressionSegment) visit(ctx.expr());
         ExpressionSegment elseExpr = null == ctx.caseElse() ? null : (ExpressionSegment) visit(ctx.caseElse().expr());
@@ -18803,6 +18815,84 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/type/HiveDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/type/HiveDMLStatementVisitor.html#L765">765</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L1354">1354</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>return new CaseWhenExpression(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), caseExpr, whenExprs, thenExprs, elseExpr);
+    }
+    
+    @Override
+    public ASTNode visitVariable(final VariableContext ctx) {
+        return null == ctx.systemVariable() ? visit(ctx.userVariable()) : visit(ctx.systemVariable());
+    }
+    
+    @Override
+    public ASTNode visitUserVariable(final UserVariableContext ctx) {
+        return new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.textOrIdentifier().getText());
+    }
+    
+    @Override
+    public ASTNode visitSystemVariable(final SystemVariableContext ctx) {
+        VariableSegment result = new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.rvalueSystemVariable().getText());
+        if (null != ctx.systemVariableScope) {
+            result.setScope(ctx.systemVariableScope.getText());
+        }
+        return result;
+    }
+    
+    @Override
+    public ASTNode visitMatchExpression(final MatchExpressionContext ctx) {</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L1354">1354</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/type/PrestoDMLStatementVisitor.html#L737">737</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>return new CaseWhenExpression(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), caseExpr, whenExprs, thenExprs, elseExpr, getOriginalText(ctx));
+    }
+    
+    @Override
+    public ASTNode visitVariable(final VariableContext ctx) {
+        return null == ctx.systemVariable() ? visit(ctx.userVariable()) : visit(ctx.systemVariable());
+    }
+    
+    @Override
+    public ASTNode visitUserVariable(final UserVariableContext ctx) {
+        return new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.textOrIdentifier().getText());
+    }
+    
+    @Override
+    public ASTNode visitSystemVariable(final SystemVariableContext ctx) {
+        VariableSegment result = new VariableSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.rvalueSystemVariable().getText());
+        if (null != ctx.systemVariableScope) {
+            result.setScope(ctx.systemVariableScope.getText());
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitMatchExpression(final MatchExpressionContext ctx) {</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/encrypt/rule/column/item/AssistedQueryColumnItem.java</td>
 <td>shardingsphere-encrypt-core</td>
 <td><a href="./xref/org/apache/shardingsphere/encrypt/rule/column/item/AssistedQueryColumnItem.html#L33">33</a></td></tr>
@@ -19990,34 +20080,6 @@
             for (EncryptRuleSegment each : actual) {
                 ExpectedEncryptRule expectedEncryptRule = expected.get(count);
                 assertThat(assertContext.getText(&quot;encrypt rule table name assertion error: &quot;), each.getTableName(), is(expectedEncryptRule.getName()));</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/database/connector/mysql/metadata/data/loader/MySQLMetaDataLoader.java</td>
-<td>shardingsphere-database-connector-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/database/connector/mysql/metadata/data/loader/MySQLMetaDataLoader.html#L175">175</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/database/connector/sql92/sqlserver/metadata/data/loader/SQLServerMetaDataLoader.java</td>
-<td>shardingsphere-database-connector-sqlserver</td>
-<td><a href="./xref/org/apache/shardingsphere/database/connector/sql92/sqlserver/metadata/data/loader/SQLServerMetaDataLoader.html#L132">132</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    String indexName = resultSet.getString(&quot;INDEX_NAME&quot;);
-                    String tableName = resultSet.getString(&quot;TABLE_NAME&quot;);
-                    if (!tableToIndex.containsKey(tableName)) {
-                        tableToIndex.put(tableName, new HashMap&lt;&gt;());
-                    }
-                    Map&lt;String, IndexMetaData&gt; indexMap = tableToIndex.get(tableName);
-                    if (indexMap.containsKey(indexName)) {
-                        indexMap.get(indexName).getColumns().add(resultSet.getString(&quot;COLUMN_NAME&quot;));
-                    } else {
-                        IndexMetaData indexMetaData = new IndexMetaData(indexName, new LinkedList&lt;&gt;(Collections.singleton(resultSet.getString(&quot;COLUMN_NAME&quot;))));
-                        indexMetaData.setUnique(&quot;0&quot;.equals(resultSet.getString(&quot;NON_UNIQUE&quot;)));</pre></td></tr></table>
 <table class="table table-striped">
 <tr class="a">
 <th>File</th>

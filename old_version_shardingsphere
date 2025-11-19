@@ -1,22 +1,77 @@
-commit 98dae9f20742101538d0838a04a52f7614a0758c
-Author: Niall Pemberton <niall.pemberton@gmail.com>
-Date:   Fri Nov 14 11:35:01 2025 +0000
+commit 37c6a603cd0c66ceea8642be4cee3d63f19671a5
+Author: Liang Zhang <zhangliang@apache.org>
+Date:   Wed Nov 19 22:08:16 2025 +0800
 
-    Remove reference to google-analytics.com (causes a reference in rat-report.html which appears on a Privacy Report) - Fixes Issue #37095 (#37096)
+    Add explanations for binding table validation regarding table names ending with digits (#37143)
+    
+    * Refactor InvalidBindingTablesException to accept a custom message and enhance binding table validation logic
+    
+    * Refactor InvalidBindingTablesException to accept a custom message and enhance binding table validation logic
+    
+    * Add explanations for binding table validation regarding table names ending with digits
 
-diff --git a/docs/document/themes/hugo-theme-learn/exampleSite/layouts/partials/custom-footer.html b/docs/document/themes/hugo-theme-learn/exampleSite/layouts/partials/custom-footer.html
-index 50e11eb394a..e69de29bb2d 100644
---- a/docs/document/themes/hugo-theme-learn/exampleSite/layouts/partials/custom-footer.html
-+++ b/docs/document/themes/hugo-theme-learn/exampleSite/layouts/partials/custom-footer.html
-@@ -1,10 +0,0 @@
--<script>
--  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
--  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
--  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
--  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+diff --git a/docs/document/content/faq/_index.cn.md b/docs/document/content/faq/_index.cn.md
+index 327c733877d..0e37169c52c 100644
+--- a/docs/document/content/faq/_index.cn.md
++++ b/docs/document/content/faq/_index.cn.md
+@@ -127,6 +127,12 @@ Java的整数相除结果是整数，但是对于 inline 表达式中的 Groovy
+ 
+ 不分库分表的表在 ShardingSphere 中叫做单表，可以使用 [LOAD 语句](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table/)或者 [SINGLE 规则](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-jdbc/yaml-config/rules/single/)配置需要加载的单表。
+ 
++### 为什么绑定表中包含数字结尾的表名时会提示配置无效？
++
++回答：
++
++绑定表校验会把真实表名末尾的数字当作逻辑表的分片后缀（如 `t_order_0`），再据此对齐其它表。如果业务表名本身就以数字结尾（例如 `AllPatientsV1`），这些数字会被误判为分片后缀，最终抛出 `Invalid binding table configuration`。请为分片后缀保留额外的分隔符（例如 `AllPatientsV_1`、`table_${0..1}`），或者不要为此类表启用绑定表。
++
+ ### 指定了泛型为 Long 的 `SingleKeyTableShardingAlgorithm`，遇到 `ClassCastException: Integer can not cast to Long`?
+ 
+ 回答：
+diff --git a/docs/document/content/faq/_index.en.md b/docs/document/content/faq/_index.en.md
+index ffc305e30bb..d901d5d072b 100644
+--- a/docs/document/content/faq/_index.en.md
++++ b/docs/document/content/faq/_index.en.md
+@@ -129,6 +129,12 @@ Answer:
+ 
+ A table that does not use sharding is called single table in ShardingSphere, and you can use [LOAD statements](https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-proxy/distsql/syntax/rdl/rule-definition/single-table/load-single-table/) or [SINGLE rule](https://shardingsphere.apache.org/document/current/en/user-manual/shardingsphere-jdbc/yaml-config/rules/single/) to configure the single table that needs to be loaded.
+ 
++### Why are binding tables rejected when my table names already end with digits?
++
++Answer:
++
++Binding-table validation assumes that digits at the end of an actual table name are sharding suffixes derived from the logical table (for example `t_order_0`). When the business table name itself ends with digits (for example `AllPatientsV1`), those digits are interpreted as suffixes, so ShardingSphere cannot align the binding tables and will report `Invalid binding table configuration`. To avoid this, reserve the trailing digits exclusively for sharding suffixes (add a separator such as `_` before the suffix) or skip binding-table configuration for tables whose names inherently contain digits.
++
+ ### When generic Long type `SingleKeyTableShardingAlgorithm` is used, why does the `ClassCastException: Integer can not cast to Long` exception appear?
+ 
+ Answer:
+diff --git a/docs/document/content/features/sharding/concept.cn.md b/docs/document/content/features/sharding/concept.cn.md
+index ed9d8f29f5d..4e439e3c993 100644
+--- a/docs/document/content/features/sharding/concept.cn.md
++++ b/docs/document/content/features/sharding/concept.cn.md
+@@ -59,6 +59,8 @@ rules:
+     - t_order, t_order_item
+ ```
+ 
++> **命名提示**：ShardingSphere 会通过移除真实表名尾部的数字来推导绑定关系，因此表尾部的数字应仅用于 `_0`、`_1` 这类分片后缀。
++
+ ### 广播表
+ 
+ 指所有的数据源中都存在的表，表结构及其数据在每个数据库中均完全一致。 适用于数据量不大且需要与海量数据的表进行关联查询的场景，例如：字典表。
+@@ -191,4 +193,3 @@ online_table1, online_table2, online_table3, offline_table1, offline_table2, off
+ 传统数据库软件开发中，主键自动生成技术是基本需求。而各个数据库对于该需求也提供了相应的支持，比如 MySQL 的自增键，Oracle 的自增序列等。 数据分片后，不同数据节点生成全局唯一主键是非常棘手的问题。同一个逻辑表内的不同实际表之间的自增键由于无法互相感知而产生重复主键。 虽然可通过约束自增主键初始值和步长的方式避免碰撞，但需引入额外的运维规则，使解决方案缺乏完整性和可扩展性。
+ 
+ 目前有许多第三方解决方案可以完美解决这个问题，如 UUID 等依靠特定算法自生成不重复键，或者通过引入主键生成服务等。为了方便用户使用、满足不同用户不同使用场景的需求， Apache ShardingSphere 不仅提供了内置的分布式主键生成器，例如 UUID、SNOWFLAKE，还抽离出分布式主键生成器的接口，方便用户自行实现自定义的自增主键生成器。
 -
--  ga('create', 'UA-105947713-1', 'auto');
--  ga('send', 'pageview');
--
--</script>
-\ No newline at end of file
+diff --git a/docs/document/content/features/sharding/concept.en.md b/docs/document/content/features/sharding/concept.en.md
+index ff607d2fcd9..37100521ad1 100644
+--- a/docs/document/content/features/sharding/concept.en.md
++++ b/docs/document/content/features/sharding/concept.en.md
+@@ -64,6 +64,8 @@ rules:
+     - t_order, t_order_item
+ ```
+ 
++> **Naming reminder**: ShardingSphere derives binding information by stripping numeric suffixes from actual table names. Keep the digits at the end exclusively for sharding suffixes such as `_0`, `_1`, etc.
++
+ ### Broadcast data frame
+ 
+ Refers to tables that exist in all data sources. The table structure and its data are identical in each database. Suitable for scenarios where the data volume is small and queries are required to be associated with tables of massive data, e.g., dictionary tables.

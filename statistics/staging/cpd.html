@@ -1357,8 +1357,7 @@
             // TODO optimize operatorToken
             String rightText = &quot;&quot;;
             if (null != ctx.NOT()) {
-                rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(),
-                        ctx.NOT().getSymbol().getStopIndex()))).concat(&quot; &quot;);
+                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;
             }
             Token operatorToken = null;
             if (null != ctx.NULL()) {
@@ -1371,7 +1370,7 @@
                 operatorToken = ctx.FALSE().getSymbol();
             }
             int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
-            rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex())));
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
             ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
             String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
             ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
@@ -2246,6 +2245,265 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L259">259</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L100">100</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>public abstract class DorisStatementVisitor extends DorisStatementBaseVisitor&lt;ASTNode&gt; {
+    
+    private final DatabaseType databaseType;
+    
+    private final Collection&lt;ParameterMarkerSegment&gt; parameterMarkerSegments = new LinkedList&lt;&gt;();
+    
+    @Override
+    public final ASTNode visitParameterMarker(final ParameterMarkerContext ctx) {
+        return new ParameterMarkerValue(parameterMarkerSegments.size(), ParameterMarkerType.QUESTION);
+    }
+    
+    @Override
+    public final ASTNode visitLiterals(final LiteralsContext ctx) {
+        if (null != ctx.stringLiterals()) {
+            return visit(ctx.stringLiterals());
+        }
+        if (null != ctx.numberLiterals()) {
+            return visit(ctx.numberLiterals());
+        }
+        if (null != ctx.temporalLiterals()) {
+            return visit(ctx.temporalLiterals());
+        }
+        if (null != ctx.hexadecimalLiterals()) {
+            return visit(ctx.hexadecimalLiterals());
+        }
+        if (null != ctx.bitValueLiterals()) {
+            return visit(ctx.bitValueLiterals());
+        }
+        if (null != ctx.booleanLiterals()) {
+            return visit(ctx.booleanLiterals());
+        }
+        if (null != ctx.nullValueLiterals()) {
+            return visit(ctx.nullValueLiterals());
+        }
+        throw new IllegalStateException(&quot;Literals must have string, number, dateTime, hex, bit, boolean or null.&quot;);
+    }
+    
+    @Override
+    public final ASTNode visitStringLiterals(final StringLiteralsContext ctx) {
+        return new StringLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public ASTNode visitString_(final String_Context ctx) {
+        return new StringLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitNumberLiterals(final NumberLiteralsContext ctx) {
+        return new NumberLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public ASTNode visitTemporalLiterals(final TemporalLiteralsContext ctx) {
+        // TODO deal with TemporalLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitHexadecimalLiterals(final HexadecimalLiteralsContext ctx) {
+        // TODO deal with hexadecimalLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitBitValueLiterals(final BitValueLiteralsContext ctx) {
+        // TODO deal with bitValueLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitBooleanLiterals(final BooleanLiteralsContext ctx) {
+        return new BooleanLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitNullValueLiterals(final NullValueLiteralsContext ctx) {
+        return new NullLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitIdentifier(final IdentifierContext ctx) {
+        return new IdentifierValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
+        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitTableName(final TableNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
+                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewName(final ViewNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
+                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitOwner(final OwnerContext ctx) {
+        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
+        if (null != ctx.owner()) {
+            result.setOwner((OwnerSegment) visit(ctx.owner()));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
+        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitIndexName(final IndexNameContext ctx) {
+        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
+    }
+    
+    @Override
+    public ASTNode visitTableList(final TableListContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (TableNameContext each : ctx.tableName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ViewNameContext each : ctx.viewName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
+        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ColumnNameContext each : ctx.columnName()) {
+            result.getValue().add((ColumnSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitExpr(final ExprContext ctx) {
+        if (null != ctx.booleanPrimary()) {
+            return visit(ctx.booleanPrimary());
+        }
+        if (null != ctx.XOR()) {
+            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
+        }
+        if (null != ctx.andOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
+        }
+        if (null != ctx.orOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
+        }
+        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
+    }
+    
+    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    @Override
+    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
+        if (null != ctx.IS()) {
+            // TODO optimize operatorToken
+            String rightText = &quot;&quot;;
+            if (null != ctx.NOT()) {
+                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;
+            }
+            Token operatorToken = null;
+            if (null != ctx.NULL()) {
+                operatorToken = ctx.NULL().getSymbol();
+            }
+            if (null != ctx.TRUE()) {
+                operatorToken = ctx.TRUE().getSymbol();
+            }
+            if (null != ctx.FALSE()) {
+                operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }
+        if (null != ctx.MEMBER()) {
+            int startIndex = ctx.MEMBER().getSymbol().getStopIndex() + 5;
+            int endIndex = ctx.stop.getStopIndex() - 1;
+            String rightText = ctx.start.getInputStream().getText(new Interval(startIndex, endIndex));
+            ExpressionSegment right = new ExpressionProjectionSegment(startIndex, endIndex, rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;MEMBER OF&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.assignmentOperator()) {
+            return createAssignmentSegment(ctx);
+        }
+        return visit(ctx.predicate());
+    }
+    
+    private ASTNode createAssignmentSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.predicate());
+        String operator = ctx.assignmentOperator().getText();
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    private ASTNode createCompareSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right;</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/type/DorisDALStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/type/DorisDALStatementVisitor.html#L438">438</a></td></tr>
@@ -2898,6 +3156,210 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L155">155</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L333">333</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitHexadecimalLiterals(final HexadecimalLiteralsContext ctx) {
+        // TODO deal with hexadecimalLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitBitValueLiterals(final BitValueLiteralsContext ctx) {
+        // TODO deal with bitValueLiterals
+        return new OtherLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitBooleanLiterals(final BooleanLiteralsContext ctx) {
+        return new BooleanLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitNullValueLiterals(final NullValueLiteralsContext ctx) {
+        return new NullLiteralValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitIdentifier(final IdentifierContext ctx) {
+        return new IdentifierValue(ctx.getText());
+    }
+    
+    @Override
+    public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
+        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitTableName(final TableNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
+                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewName(final ViewNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
+                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitOwner(final OwnerContext ctx) {
+        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
+        if (null != ctx.owner()) {
+            result.setOwner((OwnerSegment) visit(ctx.owner()));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
+        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitIndexName(final IndexNameContext ctx) {
+        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
+    }
+    
+    @Override
+    public ASTNode visitTableList(final TableListContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (TableNameContext each : ctx.tableName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ViewNameContext each : ctx.viewName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
+        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ColumnNameContext each : ctx.columnName()) {
+            result.getValue().add((ColumnSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitExpr(final ExprContext ctx) {
+        if (null != ctx.booleanPrimary()) {
+            return visit(ctx.booleanPrimary());
+        }
+        if (null != ctx.XOR()) {
+            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
+        }
+        if (null != ctx.andOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
+        }
+        if (null != ctx.orOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
+        }
+        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
+    }
+    
+    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    @Override
+    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
+        if (null != ctx.IS()) {
+            // TODO optimize operatorToken
+            String rightText = &quot;&quot;;
+            if (null != ctx.NOT()) {
+                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;
+            }
+            Token operatorToken = null;
+            if (null != ctx.NULL()) {
+                operatorToken = ctx.NULL().getSymbol();
+            }
+            if (null != ctx.TRUE()) {
+                operatorToken = ctx.TRUE().getSymbol();
+            }
+            if (null != ctx.FALSE()) {
+                operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }
+        if (null != ctx.MEMBER()) {
+            int startIndex = ctx.MEMBER().getSymbol().getStopIndex() + 5;
+            int endIndex = ctx.stop.getStopIndex() - 1;
+            String rightText = ctx.start.getInputStream().getText(new Interval(startIndex, endIndex));
+            ExpressionSegment right = new ExpressionProjectionSegment(startIndex, endIndex, rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;MEMBER OF&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.assignmentOperator()) {
+            return createAssignmentSegment(ctx);
+        }
+        return visit(ctx.predicate());
+    }
+    
+    private ASTNode createAssignmentSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.predicate());
+        String operator = ctx.assignmentOperator().getText();
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    private ASTNode createCompareSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right;</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L1868">1868</a></td></tr>
@@ -3462,6 +3924,326 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L358">358</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L215">215</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>}
+    
+    @Override
+    public final ASTNode visitViewName(final ViewNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
+                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitOwner(final OwnerContext ctx) {
+        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
+        if (null != ctx.owner()) {
+            result.setOwner((OwnerSegment) visit(ctx.owner()));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
+        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitIndexName(final IndexNameContext ctx) {
+        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
+    }
+    
+    @Override
+    public ASTNode visitTableList(final TableListContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (TableNameContext each : ctx.tableName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ViewNameContext each : ctx.viewName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
+        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ColumnNameContext each : ctx.columnName()) {
+            result.getValue().add((ColumnSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitExpr(final ExprContext ctx) {
+        if (null != ctx.booleanPrimary()) {
+            return visit(ctx.booleanPrimary());
+        }
+        if (null != ctx.XOR()) {
+            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
+        }
+        if (null != ctx.andOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
+        }
+        if (null != ctx.orOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
+        }
+        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
+    }
+    
+    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    @Override
+    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
+        if (null != ctx.IS()) {
+            // TODO optimize operatorToken
+            String rightText = &quot;&quot;;
+            if (null != ctx.NOT()) {
+                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;
+            }
+            Token operatorToken = null;
+            if (null != ctx.NULL()) {
+                operatorToken = ctx.NULL().getSymbol();
+            }
+            if (null != ctx.TRUE()) {
+                operatorToken = ctx.TRUE().getSymbol();
+            }
+            if (null != ctx.FALSE()) {
+                operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }
+        if (null != ctx.MEMBER()) {
+            int startIndex = ctx.MEMBER().getSymbol().getStopIndex() + 5;
+            int endIndex = ctx.stop.getStopIndex() - 1;
+            String rightText = ctx.start.getInputStream().getText(new Interval(startIndex, endIndex));
+            ExpressionSegment right = new ExpressionProjectionSegment(startIndex, endIndex, rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;MEMBER OF&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.assignmentOperator()) {
+            return createAssignmentSegment(ctx);
+        }
+        return visit(ctx.predicate());
+    }
+    
+    private ASTNode createAssignmentSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.predicate());
+        String operator = ctx.assignmentOperator().getText();
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    private ASTNode createCompareSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right;</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L377">377</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L215">215</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>}
+    
+    @Override
+    public final ASTNode visitViewName(final ViewNameContext ctx) {
+        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
+                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
+        OwnerContext owner = ctx.owner();
+        if (null != owner) {
+            result.setOwner((OwnerSegment) visit(owner));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitOwner(final OwnerContext ctx) {
+        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
+        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
+        if (null != ctx.owner()) {
+            result.setOwner((OwnerSegment) visit(ctx.owner()));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
+        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+    }
+    
+    @Override
+    public final ASTNode visitIndexName(final IndexNameContext ctx) {
+        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
+        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
+    }
+    
+    @Override
+    public ASTNode visitTableList(final TableListContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (TableNameContext each : ctx.tableName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
+        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ViewNameContext each : ctx.viewName()) {
+            result.getValue().add((SimpleTableSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
+        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
+        for (ColumnNameContext each : ctx.columnName()) {
+            result.getValue().add((ColumnSegment) visit(each));
+        }
+        return result;
+    }
+    
+    @Override
+    public final ASTNode visitExpr(final ExprContext ctx) {
+        if (null != ctx.booleanPrimary()) {
+            return visit(ctx.booleanPrimary());
+        }
+        if (null != ctx.XOR()) {
+            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
+        }
+        if (null != ctx.andOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
+        }
+        if (null != ctx.orOperator()) {
+            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
+        }
+        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
+    }
+    
+    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    @Override
+    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
+        if (null != ctx.IS()) {
+            // TODO optimize operatorToken
+            String rightText = &quot;&quot;;
+            if (null != ctx.NOT()) {
+                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;
+            }
+            Token operatorToken = null;
+            if (null != ctx.NULL()) {
+                operatorToken = ctx.NULL().getSymbol();
+            }
+            if (null != ctx.TRUE()) {
+                operatorToken = ctx.TRUE().getSymbol();
+            }
+            if (null != ctx.FALSE()) {
+                operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }
+        if (null != ctx.MEMBER()) {
+            int startIndex = ctx.MEMBER().getSymbol().getStopIndex() + 5;
+            int endIndex = ctx.stop.getStopIndex() - 1;
+            String rightText = ctx.start.getInputStream().getText(new Interval(startIndex, endIndex));
+            ExpressionSegment right = new ExpressionProjectionSegment(startIndex, endIndex, rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;MEMBER OF&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.assignmentOperator()) {
+            return createAssignmentSegment(ctx);
+        }
+        return visit(ctx.predicate());
+    }
+    
+    private ASTNode createAssignmentSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right = (ExpressionSegment) visit(ctx.predicate());
+        String operator = ctx.assignmentOperator().getText();
+        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+    }
+    
+    private ASTNode createCompareSegment(final BooleanPrimaryContext ctx) {
+        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+        ExpressionSegment right;</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/type/FirebirdDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/type/FirebirdDMLStatementVisitor.html#L321">321</a></td></tr>
@@ -4006,216 +4788,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L259">259</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L100">100</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>public abstract class DorisStatementVisitor extends DorisStatementBaseVisitor&lt;ASTNode&gt; {
-    
-    private final DatabaseType databaseType;
-    
-    private final Collection&lt;ParameterMarkerSegment&gt; parameterMarkerSegments = new LinkedList&lt;&gt;();
-    
-    @Override
-    public final ASTNode visitParameterMarker(final ParameterMarkerContext ctx) {
-        return new ParameterMarkerValue(parameterMarkerSegments.size(), ParameterMarkerType.QUESTION);
-    }
-    
-    @Override
-    public final ASTNode visitLiterals(final LiteralsContext ctx) {
-        if (null != ctx.stringLiterals()) {
-            return visit(ctx.stringLiterals());
-        }
-        if (null != ctx.numberLiterals()) {
-            return visit(ctx.numberLiterals());
-        }
-        if (null != ctx.temporalLiterals()) {
-            return visit(ctx.temporalLiterals());
-        }
-        if (null != ctx.hexadecimalLiterals()) {
-            return visit(ctx.hexadecimalLiterals());
-        }
-        if (null != ctx.bitValueLiterals()) {
-            return visit(ctx.bitValueLiterals());
-        }
-        if (null != ctx.booleanLiterals()) {
-            return visit(ctx.booleanLiterals());
-        }
-        if (null != ctx.nullValueLiterals()) {
-            return visit(ctx.nullValueLiterals());
-        }
-        throw new IllegalStateException(&quot;Literals must have string, number, dateTime, hex, bit, boolean or null.&quot;);
-    }
-    
-    @Override
-    public final ASTNode visitStringLiterals(final StringLiteralsContext ctx) {
-        return new StringLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public ASTNode visitString_(final String_Context ctx) {
-        return new StringLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitNumberLiterals(final NumberLiteralsContext ctx) {
-        return new NumberLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public ASTNode visitTemporalLiterals(final TemporalLiteralsContext ctx) {
-        // TODO deal with TemporalLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitHexadecimalLiterals(final HexadecimalLiteralsContext ctx) {
-        // TODO deal with hexadecimalLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitBitValueLiterals(final BitValueLiteralsContext ctx) {
-        // TODO deal with bitValueLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitBooleanLiterals(final BooleanLiteralsContext ctx) {
-        return new BooleanLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitNullValueLiterals(final NullValueLiteralsContext ctx) {
-        return new NullLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitIdentifier(final IdentifierContext ctx) {
-        return new IdentifierValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
-        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitTableName(final TableNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
-                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewName(final ViewNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
-                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitOwner(final OwnerContext ctx) {
-        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
-        if (null != ctx.owner()) {
-            result.setOwner((OwnerSegment) visit(ctx.owner()));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
-        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitIndexName(final IndexNameContext ctx) {
-        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
-    }
-    
-    @Override
-    public ASTNode visitTableList(final TableListContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (TableNameContext each : ctx.tableName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ViewNameContext each : ctx.viewName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
-        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ColumnNameContext each : ctx.columnName()) {
-            result.getValue().add((ColumnSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitExpr(final ExprContext ctx) {
-        if (null != ctx.booleanPrimary()) {
-            return visit(ctx.booleanPrimary());
-        }
-        if (null != ctx.XOR()) {
-            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
-        }
-        if (null != ctx.andOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
-        }
-        if (null != ctx.orOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
-        }
-        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
-    }
-    
-    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            // TODO optimize operatorToken
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/type/DorisDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/type/DorisDMLStatementVisitor.html#L63">63</a></td></tr>
@@ -4705,11 +5277,11 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L357">357</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L356">356</a></td></tr>
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L373">373</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L372">372</a></td></tr>
 <tr class="a">
 <td colspan="3">
 <pre>String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
@@ -5072,7 +5644,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L359">359</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L358">358</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
@@ -5191,7 +5763,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L375">375</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L374">374</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>}
@@ -5294,161 +5866,6 @@
         if (null != ctx.subquery()) {
             SubquerySegment subquerySegment = new SubquerySegment(
                     ctx.subquery().getStart().getStartIndex(), ctx.subquery().getStop().getStopIndex(), (SelectStatement) visit(ctx.subquery()), getOriginalText(ctx.subquery()));</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L155">155</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L333">333</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitHexadecimalLiterals(final HexadecimalLiteralsContext ctx) {
-        // TODO deal with hexadecimalLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitBitValueLiterals(final BitValueLiteralsContext ctx) {
-        // TODO deal with bitValueLiterals
-        return new OtherLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitBooleanLiterals(final BooleanLiteralsContext ctx) {
-        return new BooleanLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitNullValueLiterals(final NullValueLiteralsContext ctx) {
-        return new NullLiteralValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitIdentifier(final IdentifierContext ctx) {
-        return new IdentifierValue(ctx.getText());
-    }
-    
-    @Override
-    public final ASTNode visitDatabaseName(final DatabaseNameContext ctx) {
-        return new DatabaseSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitTableName(final TableNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.name().getStart().getStartIndex(),
-                ctx.name().getStop().getStopIndex(), new IdentifierValue(ctx.name().identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewName(final ViewNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
-                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitOwner(final OwnerContext ctx) {
-        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
-        if (null != ctx.owner()) {
-            result.setOwner((OwnerSegment) visit(ctx.owner()));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
-        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitIndexName(final IndexNameContext ctx) {
-        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
-    }
-    
-    @Override
-    public ASTNode visitTableList(final TableListContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (TableNameContext each : ctx.tableName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ViewNameContext each : ctx.viewName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
-        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ColumnNameContext each : ctx.columnName()) {
-            result.getValue().add((ColumnSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitExpr(final ExprContext ctx) {
-        if (null != ctx.booleanPrimary()) {
-            return visit(ctx.booleanPrimary());
-        }
-        if (null != ctx.XOR()) {
-            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
-        }
-        if (null != ctx.andOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
-        }
-        if (null != ctx.orOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
-        }
-        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
-    }
-    
-    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            // TODO optimize operatorToken
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(),</pre></td></tr></table>
 <table class="table table-striped">
 <tr class="a">
 <th>File</th>
@@ -6608,228 +7025,6 @@
         }
         // DORIS ADDED BEGIN
         if (null != ctx.bitwiseFunction()) {</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L358">358</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L215">215</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>}
-    
-    @Override
-    public final ASTNode visitViewName(final ViewNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
-                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitOwner(final OwnerContext ctx) {
-        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
-        if (null != ctx.owner()) {
-            result.setOwner((OwnerSegment) visit(ctx.owner()));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
-        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitIndexName(final IndexNameContext ctx) {
-        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
-    }
-    
-    @Override
-    public ASTNode visitTableList(final TableListContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (TableNameContext each : ctx.tableName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ViewNameContext each : ctx.viewName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
-        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ColumnNameContext each : ctx.columnName()) {
-            result.getValue().add((ColumnSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitExpr(final ExprContext ctx) {
-        if (null != ctx.booleanPrimary()) {
-            return visit(ctx.booleanPrimary());
-        }
-        if (null != ctx.XOR()) {
-            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
-        }
-        if (null != ctx.andOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
-        }
-        if (null != ctx.orOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
-        }
-        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
-    }
-    
-    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            // TODO optimize operatorToken
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L377">377</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L215">215</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>}
-    
-    @Override
-    public final ASTNode visitViewName(final ViewNameContext ctx) {
-        SimpleTableSegment result = new SimpleTableSegment(new TableNameSegment(ctx.identifier().getStart().getStartIndex(),
-                ctx.identifier().getStop().getStopIndex(), new IdentifierValue(ctx.identifier().getText())));
-        OwnerContext owner = ctx.owner();
-        if (null != owner) {
-            result.setOwner((OwnerSegment) visit(owner));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitOwner(final OwnerContext ctx) {
-        return new OwnerSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public ASTNode visitFunctionName(final FunctionNameContext ctx) {
-        FunctionSegment result = new FunctionSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), ctx.identifier().IDENTIFIER_().getText(), ctx.getText());
-        if (null != ctx.owner()) {
-            result.setOwner((OwnerSegment) visit(ctx.owner()));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnName(final ColumnNameContext ctx) {
-        return new ColumnSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-    }
-    
-    @Override
-    public final ASTNode visitIndexName(final IndexNameContext ctx) {
-        IndexNameSegment indexName = new IndexNameSegment(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (IdentifierValue) visit(ctx.identifier()));
-        return new IndexSegment(ctx.getStart().getStartIndex(), ctx.getStop().getStopIndex(), indexName);
-    }
-    
-    @Override
-    public ASTNode visitTableList(final TableListContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (TableNameContext each : ctx.tableName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitViewNames(final ViewNamesContext ctx) {
-        CollectionValue&lt;SimpleTableSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ViewNameContext each : ctx.viewName()) {
-            result.getValue().add((SimpleTableSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitColumnNames(final ColumnNamesContext ctx) {
-        CollectionValue&lt;ColumnSegment&gt; result = new CollectionValue&lt;&gt;();
-        for (ColumnNameContext each : ctx.columnName()) {
-            result.getValue().add((ColumnSegment) visit(each));
-        }
-        return result;
-    }
-    
-    @Override
-    public final ASTNode visitExpr(final ExprContext ctx) {
-        if (null != ctx.booleanPrimary()) {
-            return visit(ctx.booleanPrimary());
-        }
-        if (null != ctx.XOR()) {
-            return createBinaryOperationExpression(ctx, &quot;XOR&quot;);
-        }
-        if (null != ctx.andOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.andOperator().getText());
-        }
-        if (null != ctx.orOperator()) {
-            return createBinaryOperationExpression(ctx, ctx.orOperator().getText());
-        }
-        return new NotExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), (ExpressionSegment) visit(ctx.expr(0)), false);
-    }
-    
-    private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            // TODO optimize operatorToken
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;</pre></td></tr></table>
 <table class="table table-striped">
 <tr class="a">
 <th>File</th>
@@ -10061,71 +10256,23 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L466">466</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L308">308</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L324">324</a></td></tr>
-<tr class="a">
-<td colspan="3">
-<pre>rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
-            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
-            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-            String operator = &quot;IS&quot;;
-            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-        }
-        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
-            return createCompareSegment(ctx);
-        }
-        if (null != ctx.MEMBER()) {
-            int startIndex = ctx.MEMBER().getSymbol().getStopIndex() + 5;
-            int endIndex = ctx.stop.getStopIndex() - 1;
-            String rightText = ctx.start.getInputStream().getText(new Interval(startIndex, endIndex));
-            ExpressionSegment right = new ExpressionProjectionSegment(startIndex, endIndex, rightText);
-            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-            String operator = &quot;MEMBER OF&quot;;
-            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-        }
-        if (null != ctx.assignmentOperator()) {
-            return createAssignmentSegment(ctx);
-        }
-        return visit(ctx.predicate());
-    }
-    
-    private ASTNode createAssignmentSegment(final BooleanPrimaryContext ctx) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.predicate());
-        String operator = ctx.assignmentOperator().getText();
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    private ASTNode createCompareSegment(final BooleanPrimaryContext ctx) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-        ExpressionSegment right;</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L440">440</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.html#L266">266</a></td></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L281">281</a></td></tr>
+<tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L459">459</a></td></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L297">297</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -10881,7 +11028,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L324">324</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L323">323</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -10935,11 +11082,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L517">517</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L516">516</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L527">527</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L526">526</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>visit(each);
@@ -11027,7 +11174,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L324">324</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L323">323</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sqlserver</td>
@@ -11193,7 +11340,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L459">459</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L458">458</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>return new ExistsSubqueryExpression(startIndex, stopIndex, subquerySegment);
@@ -11303,56 +11450,9 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L229">229</a></td></tr>
-<tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L289">289</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L305">305</a></td></tr>
-<tr class="a">
-<td colspan="3">
-<pre>public final ASTNode visitBooleanPrimary(final ClickHouseStatementParser.BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(),
-                        ctx.NOT().getSymbol().getStopIndex()))).concat(&quot; &quot;);
-            }
-            Token operatorToken = null;
-            if (null != ctx.NULL()) {
-                operatorToken = ctx.NULL().getSymbol();
-            }
-            if (null != ctx.TRUE()) {
-                operatorToken = ctx.TRUE().getSymbol();
-            }
-            if (null != ctx.FALSE()) {
-                operatorToken = ctx.FALSE().getSymbol();
-            }
-            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
-            rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex())));
-            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
-            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-            String operator = &quot;IS&quot;;
-            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-        }
-        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
-            return createCompareSegment(ctx);
-        }</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L459">459</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L458">458</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
@@ -11548,7 +11648,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L475">475</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L474">474</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>return new ExistsSubqueryExpression(startIndex, stopIndex, subquerySegment);
@@ -11599,7 +11699,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L475">475</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L474">474</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>return new SubqueryExpressionSegment(subquerySegment);
@@ -11947,7 +12047,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L324">324</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L323">323</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-oracle</td>
@@ -11991,7 +12091,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L533">533</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L532">532</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>return visitRemainSimpleExpr(ctx);
@@ -12082,7 +12182,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L523">523</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L522">522</a></td></tr>
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
@@ -12782,6 +12882,56 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-clickhouse</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L233">233</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-firebird</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.html#L278">278</a></td></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-sql92</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.html#L263">263</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-sqlserver</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L509">509</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>rightText = (rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex()))) + &quot; &quot;;
+            }
+            Token operatorToken = null;
+            if (null != ctx.NULL()) {
+                operatorToken = ctx.NULL().getSymbol();
+            }
+            if (null != ctx.TRUE()) {
+                operatorToken = ctx.TRUE().getSymbol();
+            }
+            if (null != ctx.FALSE()) {
+                operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }
+        return visit(ctx.predicate());
+    }
+    
+    private ASTNode createCompareSegment(final ClickHouseStatementParser.BooleanPrimaryContext ctx) {</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.html#L457">457</a></td></tr>
@@ -12892,7 +13042,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L552">552</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L551">551</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>}
@@ -12991,7 +13141,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L555">555</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L554">554</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>public final ASTNode visitDataType(final DataTypeContext ctx) {
@@ -13085,6 +13235,56 @@
     public ASTNode visitAssignmentValue(final AssignmentValueContext ctx) {
         ExprContext expr = ctx.expr();
         if (null != expr) {</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-clickhouse</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L233">233</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-doris</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L453">453</a></td></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L294">294</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-mysql</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L472">472</a></td></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L310">310</a></td></tr>
+<tr class="a">
+<td colspan="3">
+<pre>rightText = (rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex()))) + &quot; &quot;;
+            }
+            Token operatorToken = null;
+            if (null != ctx.NULL()) {
+                operatorToken = ctx.NULL().getSymbol();
+            }
+            if (null != ctx.TRUE()) {
+                operatorToken = ctx.TRUE().getSymbol();
+            }
+            if (null != ctx.FALSE()) {
+                operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }</pre></td></tr></table>
 <table class="table table-striped">
 <tr class="a">
 <th>File</th>
@@ -13393,6 +13593,10 @@
 <td>shardingsphere-parser-sql-engine-oracle</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.html#L470">470</a></td></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L297">297</a></td></tr>
+<tr class="a">
 <td colspan="3">
 <pre>private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
         ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
@@ -13577,7 +13781,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L429">429</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L428">428</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
@@ -13585,7 +13789,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L445">445</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L444">444</a></td></tr>
 <tr class="a">
 <td colspan="3">
 <pre>return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
@@ -13760,7 +13964,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L362">362</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L361">361</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -14656,6 +14860,38 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-clickhouse</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L243">243</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-oracle</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.html#L495">495</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }
+        return visit(ctx.predicate());
+    }
+    
+    private ASTNode createCompareSegment(final ClickHouseStatementParser.BooleanPrimaryContext ctx) {</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L1315">1315</a></td></tr>
@@ -15320,6 +15556,34 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-hive</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L304">304</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-oracle</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.html#L495">495</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L482">482</a></td></tr>
@@ -15330,6 +15594,34 @@
 <tr class="b">
 <td colspan="3">
 <pre>operatorToken = ctx.FALSE().getSymbol();
+            }
+            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
+            rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
+            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
+            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
+            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
+            String operator = &quot;IS&quot;;
+            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
+        }
+        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
+            return createCompareSegment(ctx);
+        }</pre></td></tr></table>
+<table class="table table-striped">
+<tr class="a">
+<th>File</th>
+<th>Project</th>
+<th>Line</th></tr>
+<tr class="b">
+<td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-oracle</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.html#L495">495</a></td></tr>
+<tr class="a">
+<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
+<td>shardingsphere-parser-sql-engine-presto</td>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L320">320</a></td></tr>
+<tr class="b">
+<td colspan="3">
+<pre>operatorToken = ctx.NAN().getSymbol();
             }
             int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
             rightText = rightText + ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex()));
@@ -15605,11 +15897,11 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L495">495</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L494">494</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L508">508</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L507">507</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>return visit(ctx.expr(0));
@@ -16389,7 +16681,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L444">444</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L443">443</a></td></tr>
 <tr class="a">
 <td colspan="3">
 <pre>String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
@@ -16454,7 +16746,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L428">428</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L427">427</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-oracle</td>
@@ -16765,7 +17057,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L526">526</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L525">525</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -17871,7 +18163,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L260">260</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L259">259</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -18476,47 +18768,6 @@
         }
         return Optional.empty();
     }</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L247">247</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-firebird</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.html#L291">291</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-oracle</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.html#L498">498</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sql92</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.html#L276">276</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sqlserver</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L522">522</a></td></tr>
-<tr class="a">
-<td colspan="3">
-<pre>rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex())));
-            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
-            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-            String operator = &quot;IS&quot;;
-            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-        }
-        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
-            return createCompareSegment(ctx);
-        }
-        return visit(ctx.predicate());
-    }
-    
-    private ASTNode createCompareSegment(final ClickHouseStatementParser.BooleanPrimaryContext ctx) {</pre></td></tr></table>
 <table class="table table-striped">
 <tr class="a">
 <th>File</th>
@@ -19623,75 +19874,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-firebird</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.html#L266">266</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L281">281</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L297">297</a></td></tr>
-<tr class="a">
-<td colspan="3">
-<pre>private ASTNode createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText + ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(), ctx.NOT().getSymbol().getStopIndex())) + &quot; &quot;;</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L281">281</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-oracle</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.html#L470">470</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sql92</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.html#L251">251</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sqlserver</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L497">497</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>private BinaryOperationExpression createBinaryOperationExpression(final ExprContext ctx, final String operator) {
-        ExpressionSegment left = (ExpressionSegment) visit(ctx.expr(0));
-        ExpressionSegment right = (ExpressionSegment) visit(ctx.expr(1));
-        String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-        return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-    }
-    
-    @Override
-    public final ASTNode visitBooleanPrimary(final BooleanPrimaryContext ctx) {
-        if (null != ctx.IS()) {
-            // TODO optimize operatorToken
-            String rightText = &quot;&quot;;
-            if (null != ctx.NOT()) {
-                rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(ctx.NOT().getSymbol().getStartIndex(),</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/type/MySQLDDLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/type/MySQLDDLStatementVisitor.html#L253">253</a></td></tr>
@@ -19732,7 +19914,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L414">414</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L413">413</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
@@ -19769,7 +19951,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L455">455</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L454">454</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -20041,56 +20223,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L247">247</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L466">466</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L308">308</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L485">485</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-oracle</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.html#L498">498</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L324">324</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sql92</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.html#L276">276</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sqlserver</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L522">522</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex())));
-            ExpressionSegment right = new LiteralExpressionSegment(ctx.IS().getSymbol().getStopIndex() + 2, ctx.stop.getStopIndex(), rightText);
-            String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
-            ExpressionSegment left = (ExpressionSegment) visit(ctx.booleanPrimary());
-            String operator = &quot;IS&quot;;
-            return new BinaryOperationExpression(ctx.start.getStartIndex(), ctx.stop.getStopIndex(), left, right, operator, text);
-        }
-        if (null != ctx.comparisonOperator() || null != ctx.SAFE_EQ_()) {
-            return createCompareSegment(ctx);
-        }</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L455">455</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L454">454</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
@@ -20618,7 +20751,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L526">526</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L525">525</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
@@ -21349,7 +21482,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L298">298</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L297">297</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
@@ -21381,11 +21514,11 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L357">357</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L356">356</a></td></tr>
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L373">373</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L372">372</a></td></tr>
 <tr class="a">
 <td colspan="3">
 <pre>String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
@@ -21411,7 +21544,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L357">357</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L356">356</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-oracle</td>
@@ -21453,7 +21586,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L373">373</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L372">372</a></td></tr>
 <tr class="b">
 <td colspan="3">
 <pre>String text = ctx.start.getInputStream().getText(new Interval(ctx.start.getStartIndex(), ctx.stop.getStopIndex()));
@@ -21479,7 +21612,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L502">502</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L501">501</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -22524,7 +22657,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L366">366</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L365">365</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
@@ -22617,7 +22750,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L459">459</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L458">458</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sqlserver</td>
@@ -22671,7 +22804,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L475">475</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L474">474</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sqlserver</td>
@@ -22749,7 +22882,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L362">362</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L361">361</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-oracle</td>
@@ -23627,7 +23760,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L497">497</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L496">496</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-oracle</td>
@@ -23635,7 +23768,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L510">510</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L509">509</a></td></tr>
 <tr class="a">
 <td colspan="3">
 <pre>if (null != ctx.OR_()) {
@@ -24241,7 +24374,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L290">290</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L289">289</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-firebird</td>
@@ -24526,7 +24659,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L326">326</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L325">325</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
@@ -24538,7 +24671,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L443">443</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L442">442</a></td></tr>
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
@@ -24550,7 +24683,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L459">459</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L458">458</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -24804,58 +24937,6 @@
 <th>Project</th>
 <th>Line</th></tr>
 <tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L235">235</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-doris</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L454">454</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-firebird</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/firebird/visitor/statement/FirebirdStatementVisitor.html#L279">279</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L296">296</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-mysql</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.html#L473">473</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L312">312</a></td></tr>
-<tr class="b">
-<td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sql92</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.html#L264">264</a></td></tr>
-<tr class="a">
-<td>org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.java</td>
-<td>shardingsphere-parser-sql-engine-sqlserver</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/sqlserver/visitor/statement/SQLServerStatementVisitor.html#L510">510</a></td></tr>
-<tr class="b">
-<td colspan="3">
-<pre>}
-            Token operatorToken = null;
-            if (null != ctx.NULL()) {
-                operatorToken = ctx.NULL().getSymbol();
-            }
-            if (null != ctx.TRUE()) {
-                operatorToken = ctx.TRUE().getSymbol();
-            }
-            if (null != ctx.FALSE()) {
-                operatorToken = ctx.FALSE().getSymbol();
-            }
-            int startIndex = null == operatorToken ? ctx.IS().getSymbol().getStopIndex() + 2 : operatorToken.getStartIndex();
-            rightText = rightText.concat(ctx.start.getInputStream().getText(new Interval(startIndex, ctx.stop.getStopIndex())));</pre></td></tr></table>
-<table class="table table-striped">
-<tr class="a">
-<th>File</th>
-<th>Project</th>
-<th>Line</th></tr>
-<tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
 <td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.html#L1053">1053</a></td></tr>
@@ -25030,7 +25111,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L290">290</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L289">289</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/oracle/visitor/statement/OracleStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-oracle</td>
@@ -25209,7 +25290,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L266">266</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L265">265</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/doris/visitor/statement/DorisStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-doris</td>
@@ -25241,7 +25322,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L469">469</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L468">468</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/sql92/visitor/statement/SQL92StatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-sql92</td>
@@ -25802,7 +25883,7 @@
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-hive</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L514">514</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/hive/visitor/statement/HiveStatementVisitor.html#L513">513</a></td></tr>
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/mysql/visitor/statement/MySQLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-mysql</td>
@@ -25831,7 +25912,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-clickhouse</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L513">513</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/clickhouse/visitor/statement/ClickHouseStatementVisitor.html#L512">512</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/opengauss/visitor/statement/OpenGaussStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-opengauss</td>
@@ -25946,7 +26027,7 @@
 <tr class="b">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>
-<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L557">557</a></td></tr>
+<td><a href="./xref/org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/PrestoStatementVisitor.html#L556">556</a></td></tr>
 <tr class="a">
 <td>org/apache/shardingsphere/sql/parser/engine/presto/visitor/statement/type/PrestoDMLStatementVisitor.java</td>
 <td>shardingsphere-parser-sql-engine-presto</td>

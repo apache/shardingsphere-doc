@@ -99,10 +99,10 @@
 <a class="jxr_linenumber" name="L91" href="#L91">91</a>          Optional&lt;IdentifierValue&gt; schemaName = getSchemaName(segment, binderContext, databaseName);
 <a class="jxr_linenumber" name="L92" href="#L92">92</a>          IdentifierValue tableName = segment.getTableName().getIdentifier();
 <a class="jxr_linenumber" name="L93" href="#L93">93</a>          Optional&lt;ShardingSphereSchema&gt; schema = schemaName.map(identifierValue -&gt; binderContext.getMetaData().getDatabase(databaseName.getValue()).getSchema(identifierValue.getValue()));
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>          checkTableExists(binderContext, schema, tableName.getValue());
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>          checkTableExists(binderContext, schema.orElse(<strong class="jxr_keyword">null</strong>), tableName.getValue());
 <a class="jxr_linenumber" name="L95" href="#L95">95</a>          checkTableMetadata(binderContext, schema.orElse(<strong class="jxr_keyword">null</strong>), schemaName.map(IdentifierValue::getValue).orElse(<strong class="jxr_keyword">null</strong>), tableName.getValue());
 <a class="jxr_linenumber" name="L96" href="#L96">96</a>          tableBinderContexts.put(<strong class="jxr_keyword">new</strong> CaseInsensitiveString(segment.getAliasName().orElseGet(tableName::getValue)),
-<a class="jxr_linenumber" name="L97" href="#L97">97</a>                  createSimpleTableBinderContext(segment, schema, databaseName, schemaName, binderContext));
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>                  createSimpleTableBinderContext(segment, schema.orElse(<strong class="jxr_keyword">null</strong>), databaseName, schemaName.orElse(<strong class="jxr_keyword">null</strong>), binderContext));
 <a class="jxr_linenumber" name="L98" href="#L98">98</a>          TableNameSegment tableNameSegment = <strong class="jxr_keyword">new</strong> TableNameSegment(segment.getTableName().getStartIndex(), segment.getTableName().getStopIndex(), tableName);
 <a class="jxr_linenumber" name="L99" href="#L99">99</a>          tableNameSegment.setTableBoundInfo(<strong class="jxr_keyword">new</strong> TableSegmentBoundInfo(databaseName, schemaName.orElse(<strong class="jxr_keyword">null</strong>)));
 <a class="jxr_linenumber" name="L100" href="#L100">100</a>         SimpleTableSegment result = <strong class="jxr_keyword">new</strong> SimpleTableSegment(tableNameSegment);
@@ -141,49 +141,49 @@
 <a class="jxr_linenumber" name="L133" href="#L133">133</a>         <strong class="jxr_keyword">return</strong> Optional.of(<strong class="jxr_keyword">new</strong> IdentifierValue(databaseTypeRegistry.getDefaultSchemaName(binderContext.getCurrentDatabaseName())));
 <a class="jxr_linenumber" name="L134" href="#L134">134</a>     }
 <a class="jxr_linenumber" name="L135" href="#L135">135</a>     
-<a class="jxr_linenumber" name="L136" href="#L136">136</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTableExists(<strong class="jxr_keyword">final</strong> <a name="SQLStatementBinderContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/engine/statement/SQLStatementBinderContext.html#SQLStatementBinderContext">SQLStatementBinderContext</a> binderContext, <strong class="jxr_keyword">final</strong> Optional&lt;ShardingSphereSchema&gt; schema, <strong class="jxr_keyword">final</strong> String tableName) {
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">void</strong> checkTableExists(<strong class="jxr_keyword">final</strong> <a name="SQLStatementBinderContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/engine/statement/SQLStatementBinderContext.html#SQLStatementBinderContext">SQLStatementBinderContext</a> binderContext, <strong class="jxr_keyword">final</strong> ShardingSphereSchema schema, <strong class="jxr_keyword">final</strong> String tableName) {
 <a class="jxr_linenumber" name="L137" href="#L137">137</a>         <em class="jxr_comment">// TODO refactor table exists check with spi @duanzhengqiang</em>
 <a class="jxr_linenumber" name="L138" href="#L138">138</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof CreateTableStatement &amp;&amp; isCreateTable(((CreateTableStatement) binderContext.getSqlStatement()).getTable(), tableName)) {
 <a class="jxr_linenumber" name="L139" href="#L139">139</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate()
-<a class="jxr_linenumber" name="L140" href="#L140">140</a>                     || ((CreateTableStatement) binderContext.getSqlStatement()).isIfNotExists() || !schema.isPresent() || !schema.get().containsTable(tableName),
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>                     || ((CreateTableStatement) binderContext.getSqlStatement()).isIfNotExists() || <strong class="jxr_keyword">null</strong> == schema || !schema.containsTable(tableName),
 <a class="jxr_linenumber" name="L141" href="#L141">141</a>                     () -&gt; <strong class="jxr_keyword">new</strong> TableExistsException(tableName));
 <a class="jxr_linenumber" name="L142" href="#L142">142</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L143" href="#L143">143</a>         }
 <a class="jxr_linenumber" name="L144" href="#L144">144</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof AlterTableStatement &amp;&amp; isRenameTable((AlterTableStatement) binderContext.getSqlStatement(), tableName)) {
-<a class="jxr_linenumber" name="L145" href="#L145">145</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate() || !schema.isPresent() || !schema.get().containsTable(tableName),
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate() || <strong class="jxr_keyword">null</strong> == schema || !schema.containsTable(tableName),
 <a class="jxr_linenumber" name="L146" href="#L146">146</a>                     () -&gt; <strong class="jxr_keyword">new</strong> TableExistsException(tableName));
 <a class="jxr_linenumber" name="L147" href="#L147">147</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L148" href="#L148">148</a>         }
 <a class="jxr_linenumber" name="L149" href="#L149">149</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof DropTableStatement) {
-<a class="jxr_linenumber" name="L150" href="#L150">150</a>             ShardingSpherePreconditions.checkState(((DropTableStatement) binderContext.getSqlStatement()).isIfExists() || schema.isPresent() &amp;&amp; schema.get().containsTable(tableName),
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>             ShardingSpherePreconditions.checkState(((DropTableStatement) binderContext.getSqlStatement()).isIfExists() || <strong class="jxr_keyword">null</strong> != schema &amp;&amp; schema.containsTable(tableName),
 <a class="jxr_linenumber" name="L151" href="#L151">151</a>                     () -&gt; <strong class="jxr_keyword">new</strong> TableNotFoundException(tableName));
 <a class="jxr_linenumber" name="L152" href="#L152">152</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L153" href="#L153">153</a>         }
 <a class="jxr_linenumber" name="L154" href="#L154">154</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof RenameTableStatement &amp;&amp; isRenameTable((RenameTableStatement) binderContext.getSqlStatement(), tableName)) {
-<a class="jxr_linenumber" name="L155" href="#L155">155</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate() || !schema.isPresent() || !schema.get().containsTable(tableName),
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate() || <strong class="jxr_keyword">null</strong> == schema || !schema.containsTable(tableName),
 <a class="jxr_linenumber" name="L156" href="#L156">156</a>                     () -&gt; <strong class="jxr_keyword">new</strong> TableExistsException(tableName));
 <a class="jxr_linenumber" name="L157" href="#L157">157</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L158" href="#L158">158</a>         }
 <a class="jxr_linenumber" name="L159" href="#L159">159</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof CreateViewStatement &amp;&amp; isCreateTable(((CreateViewStatement) binderContext.getSqlStatement()).getView(), tableName)) {
 <a class="jxr_linenumber" name="L160" href="#L160">160</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate()
-<a class="jxr_linenumber" name="L161" href="#L161">161</a>                     || ((CreateViewStatement) binderContext.getSqlStatement()).isReplaceView() || !schema.isPresent() || !schema.get().containsTable(tableName),
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>                     || ((CreateViewStatement) binderContext.getSqlStatement()).isReplaceView() || <strong class="jxr_keyword">null</strong> == schema || !schema.containsTable(tableName),
 <a class="jxr_linenumber" name="L162" href="#L162">162</a>                     () -&gt; <strong class="jxr_keyword">new</strong> TableExistsException(tableName));
 <a class="jxr_linenumber" name="L163" href="#L163">163</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L164" href="#L164">164</a>         }
 <a class="jxr_linenumber" name="L165" href="#L165">165</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof AlterViewStatement &amp;&amp; isRenameView((AlterViewStatement) binderContext.getSqlStatement(), tableName)) {
-<a class="jxr_linenumber" name="L166" href="#L166">166</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate() || !schema.isPresent() || !schema.get().containsTable(tableName),
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>             ShardingSpherePreconditions.checkState(binderContext.getHintValueContext().isSkipMetadataValidate() || <strong class="jxr_keyword">null</strong> == schema || !schema.containsTable(tableName),
 <a class="jxr_linenumber" name="L167" href="#L167">167</a>                     () -&gt; <strong class="jxr_keyword">new</strong> TableExistsException(tableName));
 <a class="jxr_linenumber" name="L168" href="#L168">168</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L169" href="#L169">169</a>         }
 <a class="jxr_linenumber" name="L170" href="#L170">170</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof DropViewStatement) {
-<a class="jxr_linenumber" name="L171" href="#L171">171</a>             ShardingSpherePreconditions.checkState(((DropViewStatement) binderContext.getSqlStatement()).isIfExists() || schema.isPresent() &amp;&amp; schema.get().containsTable(tableName),
+<a class="jxr_linenumber" name="L171" href="#L171">171</a>             ShardingSpherePreconditions.checkState(((DropViewStatement) binderContext.getSqlStatement()).isIfExists() || <strong class="jxr_keyword">null</strong> != schema &amp;&amp; schema.containsTable(tableName),
 <a class="jxr_linenumber" name="L172" href="#L172">172</a>                     () -&gt; <strong class="jxr_keyword">new</strong> TableNotFoundException(tableName));
 <a class="jxr_linenumber" name="L173" href="#L173">173</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L174" href="#L174">174</a>         }
 <a class="jxr_linenumber" name="L175" href="#L175">175</a>         <strong class="jxr_keyword">if</strong> (<span class="jxr_string">"DUAL"</span>.equalsIgnoreCase(tableName)) {
 <a class="jxr_linenumber" name="L176" href="#L176">176</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L177" href="#L177">177</a>         }
-<a class="jxr_linenumber" name="L178" href="#L178">178</a>         <strong class="jxr_keyword">if</strong> (schema.isPresent() &amp;&amp; SystemSchemaManager.isSystemTable(schema.get().getName(), tableName)) {
+<a class="jxr_linenumber" name="L178" href="#L178">178</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != schema &amp;&amp; SystemSchemaManager.isSystemTable(schema.getName(), tableName)) {
 <a class="jxr_linenumber" name="L179" href="#L179">179</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L180" href="#L180">180</a>         }
 <a class="jxr_linenumber" name="L181" href="#L181">181</a>         <strong class="jxr_keyword">if</strong> (binderContext.getExternalTableBinderContexts().containsKey(<strong class="jxr_keyword">new</strong> CaseInsensitiveString(tableName))) {
@@ -192,7 +192,7 @@
 <a class="jxr_linenumber" name="L184" href="#L184">184</a>         <strong class="jxr_keyword">if</strong> (binderContext.getCommonTableExpressionsSegmentsUniqueAliases().contains(tableName)) {
 <a class="jxr_linenumber" name="L185" href="#L185">185</a>             <strong class="jxr_keyword">return</strong>;
 <a class="jxr_linenumber" name="L186" href="#L186">186</a>         }
-<a class="jxr_linenumber" name="L187" href="#L187">187</a>         ShardingSpherePreconditions.checkState(schema.isPresent() &amp;&amp; schema.get().containsTable(tableName), () -&gt; <strong class="jxr_keyword">new</strong> TableNotFoundException(tableName));
+<a class="jxr_linenumber" name="L187" href="#L187">187</a>         ShardingSpherePreconditions.checkState(<strong class="jxr_keyword">null</strong> != schema &amp;&amp; schema.containsTable(tableName), () -&gt; <strong class="jxr_keyword">new</strong> TableNotFoundException(tableName));
 <a class="jxr_linenumber" name="L188" href="#L188">188</a>     }
 <a class="jxr_linenumber" name="L189" href="#L189">189</a>     
 <a class="jxr_linenumber" name="L190" href="#L190">190</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">boolean</strong> isCreateTable(<strong class="jxr_keyword">final</strong> SimpleTableSegment simpleTableSegment, <strong class="jxr_keyword">final</strong> String tableName) {
@@ -244,14 +244,14 @@
 <a class="jxr_linenumber" name="L236" href="#L236">236</a>         }
 <a class="jxr_linenumber" name="L237" href="#L237">237</a>     }
 <a class="jxr_linenumber" name="L238" href="#L238">238</a>     
-<a class="jxr_linenumber" name="L239" href="#L239">239</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="SimpleTableSegmentBinderContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/engine/segment/dml/from/context/type/SimpleTableSegmentBinderContext.html#SimpleTableSegmentBinderContext">SimpleTableSegmentBinderContext</a> createSimpleTableBinderContext(<strong class="jxr_keyword">final</strong> SimpleTableSegment segment, <strong class="jxr_keyword">final</strong> Optional&lt;ShardingSphereSchema&gt; schema, <strong class="jxr_keyword">final</strong> IdentifierValue databaseName,
-<a class="jxr_linenumber" name="L240" href="#L240">240</a>                                                                                   <strong class="jxr_keyword">final</strong> Optional&lt;IdentifierValue&gt; schemaName, <strong class="jxr_keyword">final</strong> <a name="SQLStatementBinderContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/engine/statement/SQLStatementBinderContext.html#SQLStatementBinderContext">SQLStatementBinderContext</a> binderContext) {
+<a class="jxr_linenumber" name="L239" href="#L239">239</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <a name="SimpleTableSegmentBinderContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/engine/segment/dml/from/context/type/SimpleTableSegmentBinderContext.html#SimpleTableSegmentBinderContext">SimpleTableSegmentBinderContext</a> createSimpleTableBinderContext(<strong class="jxr_keyword">final</strong> SimpleTableSegment segment, <strong class="jxr_keyword">final</strong> ShardingSphereSchema schema, <strong class="jxr_keyword">final</strong> IdentifierValue databaseName,
+<a class="jxr_linenumber" name="L240" href="#L240">240</a>                                                                                   <strong class="jxr_keyword">final</strong> IdentifierValue schemaName, <strong class="jxr_keyword">final</strong> <a name="SQLStatementBinderContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/engine/statement/SQLStatementBinderContext.html#SQLStatementBinderContext">SQLStatementBinderContext</a> binderContext) {
 <a class="jxr_linenumber" name="L241" href="#L241">241</a>         IdentifierValue tableName = segment.getTableName().getIdentifier();
-<a class="jxr_linenumber" name="L242" href="#L242">242</a>         <strong class="jxr_keyword">if</strong> (schema.isPresent() &amp;&amp; schema.get().containsTable(tableName.getValue())) {
-<a class="jxr_linenumber" name="L243" href="#L243">243</a>             <strong class="jxr_keyword">return</strong> createSimpleTableSegmentBinderContextWithMetaData(segment, schema.get(), databaseName, schemaName.get(), binderContext, tableName);
+<a class="jxr_linenumber" name="L242" href="#L242">242</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != schema &amp;&amp; schema.containsTable(tableName.getValue())) {
+<a class="jxr_linenumber" name="L243" href="#L243">243</a>             <strong class="jxr_keyword">return</strong> createSimpleTableSegmentBinderContextWithMetaData(segment, schema, databaseName, schemaName, binderContext, tableName);
 <a class="jxr_linenumber" name="L244" href="#L244">244</a>         }
 <a class="jxr_linenumber" name="L245" href="#L245">245</a>         <strong class="jxr_keyword">if</strong> (binderContext.getSqlStatement() instanceof CreateTableStatement) {
-<a class="jxr_linenumber" name="L246" href="#L246">246</a>             Collection&lt;ProjectionSegment&gt; projectionSegments = createProjectionSegments((CreateTableStatement) binderContext.getSqlStatement(), databaseName, schemaName.orElse(<strong class="jxr_keyword">null</strong>), tableName);
+<a class="jxr_linenumber" name="L246" href="#L246">246</a>             Collection&lt;ProjectionSegment&gt; projectionSegments = createProjectionSegments((CreateTableStatement) binderContext.getSqlStatement(), databaseName, schemaName, tableName);
 <a class="jxr_linenumber" name="L247" href="#L247">247</a>             <strong class="jxr_keyword">return</strong> <strong class="jxr_keyword">new</strong> <a name="SimpleTableSegmentBinderContext" href="../../../../../../../../../../org/apache/shardingsphere/infra/binder/engine/segment/dml/from/context/type/SimpleTableSegmentBinderContext.html#SimpleTableSegmentBinderContext">SimpleTableSegmentBinderContext</a>(projectionSegments, TableSourceType.PHYSICAL_TABLE);
 <a class="jxr_linenumber" name="L248" href="#L248">248</a>         }
 <a class="jxr_linenumber" name="L249" href="#L249">249</a>         CaseInsensitiveString caseInsensitiveTableName = <strong class="jxr_keyword">new</strong> CaseInsensitiveString(tableName.getValue());

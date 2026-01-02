@@ -270,5 +270,9 @@ else
     export TZ="Asia/Shanghai"
     dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
     git commit -m  "Update shardingsphere documents at $dateStr."
-    git push
+    branch_name=$(git rev-parse --abbrev-ref HEAD)
+    echo "sync latest from origin/${branch_name} before pushing..."
+    set -e
+    git pull --rebase origin "${branch_name}"
+    git push origin "${branch_name}"
 fi

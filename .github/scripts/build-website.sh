@@ -28,7 +28,7 @@ export TZ="Asia/Shanghai"
 echo "[1] ====>>>> process shardingsphere/docs"
 echo git clone https://github.com/apache/shardingsphere
 
-git clone https://github.com/apache/shardingsphere _shardingsphere 
+git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere _shardingsphere 
 
 # ------------------------- build history docs --------------------------------------
 cd _shardingsphere
@@ -133,7 +133,7 @@ rm -rf _shardingsphere
 echo "[2] ====>>>> process shardingsphere-elasticjob/docs"
 echo git clone https://github.com/apache/shardingsphere-elasticjob
 
-git clone https://github.com/apache/shardingsphere-elasticjob _elasticjob 
+git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-elasticjob _elasticjob 
 
 echo check diff
 if  [ ! -s old_version_ej ]  ; then
@@ -186,7 +186,7 @@ fi
 echo "[1] ====>>>> process shardingsphere-on-cloud/docs"
 echo git clone https://github.com/apache/shardingsphere-on-cloud
 
-git clone https://github.com/apache/shardingsphere-on-cloud _oncloud 
+git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-on-cloud _oncloud 
 
 # ------------------------- build history docs --------------------------------------
 cd _oncloud

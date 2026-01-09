@@ -6,7 +6,8 @@
                 word-wrap: break-word;
             }
         </style>
-    </head>  
+
+    </head>
     <body>
         <head>
 		<meta charset="UTF-8">
@@ -14,16 +15,17 @@
 
 		<title>How does ShardingSphere’s Show processlist &amp; Kill Work? &middot; ShardingSphere - Blog</title>
 
-		
+
   		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
 		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
-		
+
 		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
 		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
 		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
 
-		
+
 		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - Blog" />
+            <script src="https://shardingsphere.apache.org/js/kapa-widget.js"></script>
 	</head>
 
         <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
@@ -33,47 +35,47 @@
 				</a>
 
 				<span style="padding-left: 65px;">
-					
-					
+
+
 					<li>
 						<a href="https://shardingsphere.apache.org/blog/en/material/">
 							<h3>Articles</h3>
 						</a>
 					</li>
-					
+
 					<li>
 						<a href="https://shardingsphere.apache.org/blog/en/videos/">
 							<h3>Videos</h3>
 						</a>
 					</li>
-					
+
 				</span>
 
-				<span style="position: relative; left: 75px; 
+				<span style="position: relative; left: 75px;
 				background: rgba(0, 0, 0, 0.664);
 				font-weight: bold;
-				padding:0.1rem; 
-				padding-left:15px; 
-				padding-right:15px; 
-				padding-top: 2px; 
-				padding-bottom: 5px; 
+				padding:0.1rem;
+				padding-left:15px;
+				padding-right:15px;
+				padding-top: 2px;
+				padding-bottom: 5px;
 				border-radius:10px;">
-					
+
 				</span>
 			</div>
 			</div>
 		</nav></div>
-        
+
 
 <main>
 	<div class="post">
 		<h1 class="post-title">How does ShardingSphere’s Show processlist &amp; Kill Work?</h1>
 
 		<div class="post-info">
-        
+
 </div>
 
-		
+
 
 		<p>For those of you who often use databases, you may wonder:</p>
 <ol>
@@ -108,7 +110,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 <p>Each SQL executed in ShardingSphere will generate an <code>ExecutionGroupContext</code> object. The object contains all the information about this SQL, among which there is an <code>processID</code> field to ensure its uniqueness.</p>
 <p>When ShardingSphere receives a SQL command, the <code>GovernanceExecuteProcessReporter# report</code> is called to store <code>ExecutionGroupContext</code> information into the cache of <code>ConcurrentHashMap </code>(currently only DML and DDL statements of MySQL are supported; other types of databases will be supported in later versions. Query statements are also classified into DML).</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">GovernanceExecuteProcessReporter</span> <span style="color:#66d9ef">implements</span> ExecuteProcessReporter <span style="color:#f92672">{</span>
-    
+
     <span style="color:#a6e22e">@Override</span>
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">report</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> QueryContext queryContext<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> ExecutionGroupContext<span style="color:#f92672">&lt;?</span> <span style="color:#66d9ef">extends</span> SQLExecutionUnit<span style="color:#f92672">&gt;</span> executionGroupContext<span style="color:#f92672">,</span>
                        <span style="color:#66d9ef">final</span> ExecuteProcessConstants constants<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> EventBusContext eventBusContext<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
@@ -118,23 +120,23 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
     <span style="color:#f92672">}</span>
 <span style="color:#f92672">}</span><span style="color:#a6e22e">@NoArgsConstructor</span><span style="color:#f92672">(</span>access <span style="color:#f92672">=</span> AccessLevel<span style="color:#f92672">.</span><span style="color:#a6e22e">PRIVATE</span><span style="color:#f92672">)</span>
 <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ShowProcessListManager</span> <span style="color:#f92672">{</span>
-    
+
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">static</span> <span style="color:#66d9ef">final</span> ShowProcessListManager INSTANCE <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ShowProcessListManager<span style="color:#f92672">();</span>
-    
+
     <span style="color:#a6e22e">@Getter</span>
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> ExecuteProcessContext<span style="color:#f92672">&gt;</span> processes <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ConcurrentHashMap<span style="color:#f92672">&lt;&gt;();</span>
-    
+
     <span style="color:#a6e22e">@Getter</span>
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> Map<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">,</span> Collection<span style="color:#f92672">&lt;</span>Statement<span style="color:#f92672">&gt;&gt;</span> processStatements <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ConcurrentHashMap<span style="color:#f92672">&lt;&gt;();</span>
- 
+
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">static</span> ShowProcessListManager <span style="color:#a6e22e">getInstance</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
         <span style="color:#66d9ef">return</span> INSTANCE<span style="color:#f92672">;</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">putProcessContext</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String processID<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> ExecuteProcessContext process<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         processes<span style="color:#f92672">.</span><span style="color:#a6e22e">put</span><span style="color:#f92672">(</span>processID<span style="color:#f92672">,</span> process<span style="color:#f92672">);</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">putProcessStatement</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String processID<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> Collection<span style="color:#f92672">&lt;</span>Statement<span style="color:#f92672">&gt;</span> statements<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span>statements<span style="color:#f92672">.</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
             <span style="color:#66d9ef">return</span><span style="color:#f92672">;</span>
@@ -147,15 +149,15 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 <p>Every time ShardingSphere receives a SQL statement, the SQL information will be cached into the two Maps. After SQL is executed, the cache of Map will be deleted.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#a6e22e">@RequiredArgsConstructor</span>
 <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ProxyJDBCExecutor</span> <span style="color:#f92672">{</span>
-    
+
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> String type<span style="color:#f92672">;</span>
-    
+
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> ConnectionSession connectionSession<span style="color:#f92672">;</span>
-    
+
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> JDBCDatabaseCommunicationEngine databaseCommunicationEngine<span style="color:#f92672">;</span>
-    
+
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">final</span> JDBCExecutor jdbcExecutor<span style="color:#f92672">;</span>
-    
+
     <span style="color:#66d9ef">public</span> List<span style="color:#f92672">&lt;</span>ExecuteResult<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> QueryContext queryContext<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> ExecutionGroupContext<span style="color:#f92672">&lt;</span>JDBCExecutionUnit<span style="color:#f92672">&gt;</span> executionGroupContext<span style="color:#f92672">,</span>
                                        <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">boolean</span> isReturnGeneratedKeys<span style="color:#f92672">,</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">boolean</span> isExceptionThrown<span style="color:#f92672">)</span> <span style="color:#66d9ef">throws</span> SQLException <span style="color:#f92672">{</span>
         <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
@@ -182,30 +184,30 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 <h2 id="22-how-does-show-processlist-work">2.2 How does <code>Show processlist</code> work?</h2>
 <p>When ShardingSphere receives the <code>Show process</code> command, it is sent to the executor <code>ShowProcessListExecutor#execute</code> for processing. The implementation of the <code>getQueryResult()</code> is the focus.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ShowProcessListExecutor</span> <span style="color:#66d9ef">implements</span> DatabaseAdminQueryExecutor <span style="color:#f92672">{</span>
-    
+
     <span style="color:#66d9ef">private</span> Collection<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> batchProcessContexts<span style="color:#f92672">;</span>
-    
+
     <span style="color:#a6e22e">@Getter</span>
     <span style="color:#66d9ef">private</span> QueryResultMetaData queryResultMetaData<span style="color:#f92672">;</span>
-    
+
     <span style="color:#a6e22e">@Getter</span>
     <span style="color:#66d9ef">private</span> MergedResult mergedResult<span style="color:#f92672">;</span>
-    
+
     <span style="color:#66d9ef">public</span> <span style="color:#a6e22e">ShowProcessListExecutor</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
         ProxyContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getContextManager</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getInstanceContext</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getEventBusContext</span><span style="color:#f92672">().</span><span style="color:#a6e22e">register</span><span style="color:#f92672">(</span><span style="color:#66d9ef">this</span><span style="color:#f92672">);</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#a6e22e">@Subscribe</span>
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">receiveProcessListData</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ShowProcessListResponseEvent event<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         batchProcessContexts <span style="color:#f92672">=</span> event<span style="color:#f92672">.</span><span style="color:#a6e22e">getBatchProcessContexts</span><span style="color:#f92672">();</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#a6e22e">@Override</span>
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">execute</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ConnectionSession connectionSession<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         queryResultMetaData <span style="color:#f92672">=</span> createQueryResultMetaData<span style="color:#f92672">();</span>
         mergedResult <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> TransparentMergedResult<span style="color:#f92672">(</span>getQueryResult<span style="color:#f92672">());</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#66d9ef">private</span> QueryResult <span style="color:#a6e22e">getQueryResult</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
         ProxyContext<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getContextManager</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getInstanceContext</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getEventBusContext</span><span style="color:#f92672">().</span><span style="color:#a6e22e">post</span><span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> ShowProcessListRequestEvent<span style="color:#f92672">());</span>
         <span style="color:#66d9ef">if</span> <span style="color:#f92672">(</span><span style="color:#66d9ef">null</span> <span style="color:#f92672">==</span> batchProcessContexts <span style="color:#f92672">||</span> batchProcessContexts<span style="color:#f92672">.</span><span style="color:#a6e22e">isEmpty</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
@@ -235,7 +237,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
         <span style="color:#f92672">}).</span><span style="color:#a6e22e">collect</span><span style="color:#f92672">(</span>Collectors<span style="color:#f92672">.</span><span style="color:#a6e22e">toList</span><span style="color:#f92672">());</span>
         <span style="color:#66d9ef">return</span> <span style="color:#66d9ef">new</span> RawMemoryQueryResult<span style="color:#f92672">(</span>queryResultMetaData<span style="color:#f92672">,</span> rows<span style="color:#f92672">);</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#66d9ef">private</span> QueryResultMetaData <span style="color:#a6e22e">createQueryResultMetaData</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
         List<span style="color:#f92672">&lt;</span>RawQueryResultColumnMetaData<span style="color:#f92672">&gt;</span> columns <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> ArrayList<span style="color:#f92672">&lt;&gt;();</span>
         columns<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span><span style="color:#66d9ef">new</span> RawQueryResultColumnMetaData<span style="color:#f92672">(</span><span style="color:#e6db74">&#34;&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;Id&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;Id&#34;</span><span style="color:#f92672">,</span> Types<span style="color:#f92672">.</span><span style="color:#a6e22e">VARCHAR</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;VARCHAR&#34;</span><span style="color:#f92672">,</span> 20<span style="color:#f92672">,</span> 0<span style="color:#f92672">));</span>
@@ -252,7 +254,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 </code></pre></div><p>You’ll use the <code>guava</code> package&rsquo;s <code>EventBus</code> function, which is an information publish/subscribe database that is an elegant implementation of the <a href="https://en.wikipedia.org/wiki/Observer_pattern">Observer pattern</a>. <code>EventBus</code> decouples classes from each other, and you&rsquo;ll find out more about it below.</p>
 <p><code>getQueryResult()</code> method will post <code>ShowProcessListRequestEvent</code>. <code>ProcessRegistrySubscriber#loadShowProcessListData</code> uses the <code>@Subscribe</code> annotations to subscribe to the event.</p>
 <p>This method is the core to implementing <code>Show processlist</code>. Next, we&rsquo;ll introduce specific procedures of this method.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ProcessRegistrySubscriber</span> <span style="color:#f92672">{</span>    
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ProcessRegistrySubscriber</span> <span style="color:#f92672">{</span>
     <span style="color:#a6e22e">@Subscribe</span>
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">loadShowProcessListData</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ShowProcessListRequestEvent event<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         String processId <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> UUID<span style="color:#f92672">(</span>ThreadLocalRandom<span style="color:#f92672">.</span><span style="color:#a6e22e">current</span><span style="color:#f92672">().</span><span style="color:#a6e22e">nextLong</span><span style="color:#f92672">(),</span> ThreadLocalRandom<span style="color:#f92672">.</span><span style="color:#a6e22e">current</span><span style="color:#f92672">().</span><span style="color:#a6e22e">nextLong</span><span style="color:#f92672">()).</span><span style="color:#a6e22e">toString</span><span style="color:#f92672">().</span><span style="color:#a6e22e">replace</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;-&#34;</span><span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;&#34;</span><span style="color:#f92672">);</span>
@@ -262,7 +264,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
         <span style="color:#66d9ef">try</span> <span style="color:#f92672">{</span>
             <span style="color:#75715e">// 2. Iterate through the path and write an empty string to the node, to trigger the node monitoring.
 </span><span style="color:#75715e"></span>            triggerPaths<span style="color:#f92672">.</span><span style="color:#a6e22e">forEach</span><span style="color:#f92672">(</span>each <span style="color:#f92672">-&gt;</span> repository<span style="color:#f92672">.</span><span style="color:#a6e22e">persist</span><span style="color:#f92672">(</span>each<span style="color:#f92672">,</span> <span style="color:#e6db74">&#34;&#34;</span><span style="color:#f92672">));</span>
-            <span style="color:#75715e">// 3. Lock and wait 5 seconds for each node to write the information of currently running SQL to the persistence layer. 
+            <span style="color:#75715e">// 3. Lock and wait 5 seconds for each node to write the information of currently running SQL to the persistence layer.
 </span><span style="color:#75715e"></span>            triggerIsComplete <span style="color:#f92672">=</span> waitAllNodeDataReady<span style="color:#f92672">(</span>processId<span style="color:#f92672">,</span> triggerPaths<span style="color:#f92672">);</span>
             <span style="color:#75715e">// 4. Fetch and aggregate the data written by each proxy node from the persistence layer. Then EventBus will post a ShowProcessListResponseEvent command, which means the operation is completed.
 </span><span style="color:#75715e"></span>            sendShowProcessList<span style="color:#f92672">(</span>processId<span style="color:#f92672">);</span>
@@ -282,17 +284,17 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 <p>However, monitoring is an asynchronous process and the main thread does not block, so step 3 is required to lock and wait for each ShardingSphere node to write its currently running SQL information into the persistence layer.</p>
 <p>Let&rsquo;s take a look at how the ShardingSphere handles the monitoring logic.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ComputeNodeStateChangedWatcher</span> <span style="color:#66d9ef">implements</span> GovernanceWatcher<span style="color:#f92672">&lt;</span>GovernanceEvent<span style="color:#f92672">&gt;</span> <span style="color:#f92672">{</span>
-    
+
     <span style="color:#a6e22e">@Override</span>
     <span style="color:#66d9ef">public</span> Collection<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">getWatchingKeys</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String databaseName<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         <span style="color:#66d9ef">return</span> Collections<span style="color:#f92672">.</span><span style="color:#a6e22e">singleton</span><span style="color:#f92672">(</span>ComputeNode<span style="color:#f92672">.</span><span style="color:#a6e22e">getComputeNodePath</span><span style="color:#f92672">());</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#a6e22e">@Override</span>
     <span style="color:#66d9ef">public</span> Collection<span style="color:#f92672">&lt;</span>Type<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">getWatchingTypes</span><span style="color:#f92672">()</span> <span style="color:#f92672">{</span>
         <span style="color:#66d9ef">return</span> Arrays<span style="color:#f92672">.</span><span style="color:#a6e22e">asList</span><span style="color:#f92672">(</span>Type<span style="color:#f92672">.</span><span style="color:#a6e22e">ADDED</span><span style="color:#f92672">,</span> Type<span style="color:#f92672">.</span><span style="color:#a6e22e">UPDATED</span><span style="color:#f92672">,</span> Type<span style="color:#f92672">.</span><span style="color:#a6e22e">DELETED</span><span style="color:#f92672">);</span>
     <span style="color:#f92672">}</span>
-    
+
     <span style="color:#a6e22e">@SuppressWarnings</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#34;unchecked&#34;</span><span style="color:#f92672">)</span>
     <span style="color:#a6e22e">@Override</span>
     <span style="color:#66d9ef">public</span> Optional<span style="color:#f92672">&lt;</span>GovernanceEvent<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">createGovernanceEvent</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> DataChangedEvent event<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
@@ -310,8 +312,8 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
         <span style="color:#f92672">}</span>
         <span style="color:#66d9ef">return</span> Optional<span style="color:#f92672">.</span><span style="color:#a6e22e">empty</span><span style="color:#f92672">();</span>
     <span style="color:#f92672">}</span>
-    
-        
+
+
     <span style="color:#66d9ef">private</span> Optional<span style="color:#f92672">&lt;</span>GovernanceEvent<span style="color:#f92672">&gt;</span> <span style="color:#a6e22e">createShowProcessListTriggerEvent</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> DataChangedEvent event<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         Matcher matcher <span style="color:#f92672">=</span> getShowProcessTriggerMatcher<span style="color:#f92672">(</span>event<span style="color:#f92672">);</span>
         <span style="color:#66d9ef">if</span> <span style="color:#f92672">(!</span>matcher<span style="color:#f92672">.</span><span style="color:#a6e22e">find</span><span style="color:#f92672">())</span> <span style="color:#f92672">{</span>
@@ -345,7 +347,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 </code></pre></div><p><code>ClusterContextManagerCoordinator#triggerShowProcessList</code> will subscribe to <code>ShowProcessListTriggerEvent</code>, in which <code>process</code> data is processed by itself. <code>ShowProcessListManager.getInstance().getAllProcessContext()</code> retrieves the <code>process</code> that is currently running (here the data refers to the SQL information that ShardingSphere stores in the Map before each SQL execution, which is described at the beginning of the article) and transfers it to the persistence layer. If the <code>/nodes/compute_nodes/show_process_list_trigger/&lt;instanceId&gt;:&lt;processId&gt;</code> node is deleted, the processing is completed.</p>
 <p>When you delete the node, monitoring will also be triggered and <code>ShowProcessListUnitCompleteEvent</code> will be posted. This event will finally awake the pending lock.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ClusterContextManagerCoordinator</span> <span style="color:#f92672">{</span>
-    
+
     <span style="color:#a6e22e">@Subscribe</span>
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">synchronized</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">completeUnitShowProcessList</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ShowProcessListUnitCompleteEvent event<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         ShowProcessListLock lock <span style="color:#f92672">=</span> ShowProcessListManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getLocks</span><span style="color:#f92672">().</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(</span>event<span style="color:#f92672">.</span><span style="color:#a6e22e">getProcessId</span><span style="color:#f92672">());</span>
@@ -358,7 +360,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 <p>ShardingSphere uses the <code>isReady(Paths)</code> method to determine whether all instances have been processed. It returns <code>true</code> only when all instances have been processed.</p>
 <p>There is a maximum waiting time of 5 seconds for data processing. If the processing is not completed in 5 seconds, then <code>false</code> is returned.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ClusterContextManagerCoordinator</span> <span style="color:#f92672">{</span>
-    
+
     <span style="color:#a6e22e">@Subscribe</span>
     <span style="color:#66d9ef">public</span> <span style="color:#66d9ef">synchronized</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">completeUnitShowProcessList</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> ShowProcessListUnitCompleteEvent event<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         ShowProcessListLock lock <span style="color:#f92672">=</span> ShowProcessListManager<span style="color:#f92672">.</span><span style="color:#a6e22e">getInstance</span><span style="color:#f92672">().</span><span style="color:#a6e22e">getLocks</span><span style="color:#f92672">().</span><span style="color:#a6e22e">get</span><span style="color:#f92672">(</span>event<span style="color:#f92672">.</span><span style="color:#a6e22e">getProcessId</span><span style="color:#f92672">());</span>
@@ -369,8 +371,8 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 <span style="color:#f92672">}</span>
 </code></pre></div><h3 id="223-aggregate-the-processlist-data-and-return-it">2.2.3 Aggregate the <code>processList</code> data and return it</h3>
 <p>After each instance processed the data, the instance that received the <code>Show processlist</code> command needs to aggregate the data and then display the result.</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ProcessRegistrySubscriber</span> <span style="color:#f92672">{</span>  
-    
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-java" data-lang="java"><span style="color:#66d9ef">public</span> <span style="color:#66d9ef">final</span> <span style="color:#66d9ef">class</span> <span style="color:#a6e22e">ProcessRegistrySubscriber</span> <span style="color:#f92672">{</span>
+
     <span style="color:#66d9ef">private</span> <span style="color:#66d9ef">void</span> <span style="color:#a6e22e">sendShowProcessList</span><span style="color:#f92672">(</span><span style="color:#66d9ef">final</span> String processId<span style="color:#f92672">)</span> <span style="color:#f92672">{</span>
         List<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> childrenKeys <span style="color:#f92672">=</span> repository<span style="color:#f92672">.</span><span style="color:#a6e22e">getChildrenKeys</span><span style="color:#f92672">(</span>ProcessNode<span style="color:#f92672">.</span><span style="color:#a6e22e">getProcessIdPath</span><span style="color:#f92672">(</span>processId<span style="color:#f92672">));</span>
         Collection<span style="color:#f92672">&lt;</span>String<span style="color:#f92672">&gt;</span> batchProcessContexts <span style="color:#f92672">=</span> <span style="color:#66d9ef">new</span> LinkedList<span style="color:#f92672">&lt;&gt;();</span>
@@ -399,7 +401,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 <p>Xu Yang, a middleware R&amp;D engineer at <a href="https://www.crunchbase.com/organization/servyou-group">Servyou Group</a>. Responsible for the table and database sharding with massive data. An open source enthusiast and ShardingSphere contributor. Currently, he’s interested in developing the kernel module of the ShardingSphere project.</p>
 
 
-		
+
 	</div>
 
 	<div class="pagination">
@@ -413,7 +415,7 @@ Query OK, <span style="color:#ae81ff">0</span> rows <span style="color:#a6e22e">
 
         		<footer>
 			<span>
-			
+
 			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
 			</span>
 		</footer>

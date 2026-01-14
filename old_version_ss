@@ -1,62 +1,1289 @@
-commit 1149470df170cd4a3c70979a0cdc251c67a8c206
+commit 202dbb0dbb9d9e9ae19be65d9903abc4837f093c
 Author: Ling Hengqian <linghengqian@outlook.com>
-Date:   Mon Jan 12 22:11:22 2026 +0800
+Date:   Wed Jan 14 05:27:01 2026 +0800
 
-    Remove documentation for older versions of testcontainers-java (#37719)
+    Update outdated documentation related to optional JDBC components and GraalVM Native Image (#37733)
+    
+    * Update outdated documentation related to optional JDBC components and GraalVM Native Image
+    
+    * Optimize document wording
+    
+    * Update presto doc
+    
+    * Update presto doc again
 
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+index b4029669f02..a006ac3cba6 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.cn.md
+@@ -34,9 +34,32 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
+ 
+ ### Maven 生态
+ 
+-使用者需要主动使用 GraalVM Reachability Metadata 中央仓库。
+ 如下配置可供参考，以配置项目额外的 Maven Profiles，以 GraalVM Native Build Tools 的文档为准。
+ 
++```xml
++<project>
++    <dependencies>
++        <dependency>
++            <groupId>org.apache.shardingsphere</groupId>
++            <artifactId>shardingsphere-infra-reachability-metadata</artifactId>
++            <version>${shardingsphere.version}</version>
++        </dependency>
++    </dependencies>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.graalvm.buildtools</groupId>
++                <artifactId>native-maven-plugin</artifactId>
++                <version>0.11.3</version>
++                <extensions>true</extensions>
++            </plugin>
++        </plugins>
++    </build>
++</project>
++```
++
++一个更方便测试第三方依赖的配置可能如下，
++
+ ```xml
+ <project>
+     <dependencies>
+@@ -45,8 +68,12 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
+             <artifactId>shardingsphere-jdbc</artifactId>
+             <version>${shardingsphere.version}</version>
+         </dependency>
++        <dependency>
++            <groupId>org.apache.shardingsphere</groupId>
++            <artifactId>shardingsphere-infra-reachability-metadata</artifactId>
++            <version>${shardingsphere.version}</version>
++        </dependency>
+     </dependencies>
+-    
+     <build>
+         <plugins>
+             <plugin>
+@@ -85,21 +112,28 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
+ 
+ ### Gradle 生态
+ 
+-使用者需要主动使用 GraalVM Reachability Metadata 中央仓库。
+ 如下配置可供参考，以配置项目额外的 Gradle Tasks，以 GraalVM Native Build Tools 的文档为准。
+-由于 https://github.com/gradle/gradle/issues/17559 的限制，用户需要通过 Maven 依赖的形式引入 Metadata Repository 的 JSON 文件。
+-参考 https://github.com/graalvm/native-build-tools/issues/572 。
+ 
+ ```groovy
+ plugins {
+    id 'org.graalvm.buildtools.native' version '0.11.3'
+ }
++dependencies {
++   implementation 'org.apache.shardingsphere:shardingsphere-infra-reachability-metadata:${shardingsphere.version}'
++}
++```
+ 
++一个更方便测试第三方依赖的配置可能如下。由于 https://github.com/gradle/gradle/issues/17559 的限制，用户可能需要通过 Maven 依赖的形式引入 Metadata Repository 的 JSON 文件。参考 https://github.com/graalvm/native-build-tools/issues/572 。
++
++```groovy
++plugins {
++   id 'org.graalvm.buildtools.native' version '0.11.3'
++}
+ dependencies {
+    implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
++   implementation 'org.apache.shardingsphere:shardingsphere-infra-reachability-metadata:${shardingsphere.version}'
+    implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.11.3', classifier: 'repository', ext: 'zip')
+ }
+-
+ graalvmNative {
+    binaries {
+       main {
+@@ -119,9 +153,10 @@ graalvmNative {
+ }
+ ```
+ 
+-### 对于 sbt 等不被 GraalVM Native Build Tools 支持的构建工具
++### sbt
+ 
+-此类需求需要在 https://github.com/graalvm/native-build-tools 打开额外的 issue 并提供对应构建工具的 Plugin 实现。
++对于 sbt 等不被 GraalVM Native Build Tools 支持的构建工具，
++需要在 https://github.com/graalvm/native-build-tools 打开额外的 issue 并提供对应构建工具的 Plugin 实现。
+ 
+ ## 使用限制
+ 
+@@ -249,6 +284,28 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+  [...]
+ ```
+ 
++对于 Maven，可能的配置为，
++
++```xml
++<project>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.graalvm.buildtools</groupId>
++                <artifactId>native-maven-plugin</artifactId>
++                <version>0.11.3</version>
++                <extensions>true</extensions>
++                <configuration>
++                    <buildArgs>
++                        <buildArg>-H:+AddAllCharsets</buildArg>
++                    </buildArgs>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++</project>
++```
++
+ 5. 讨论在 ShardingSphere JDBC 的 GraalVM Native Image 下使用 XA 分布式事务的所需步骤，则需要引入额外的已知前提，
+    - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` 会通过 `java.lang.Class#getDeclaredConstructors` 实例化各数据库驱动的 `javax.sql.XADataSource` 实现类。
+    - 各数据库驱动的 `javax.sql.XADataSource` 实现类的全类名通过实现 `org.apache.shardingsphere.database.connector.core.metadata.database.metadata.option.transaction.DialectTransactionOption` 的 SPI，来存入 ShardingSphere 的元数据。
+@@ -311,6 +368,29 @@ without it being registered as reachable. Add it to the resource metadata to sol
+   com.mysql.cj.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:186)
+ ```
+ 
++对于 Maven，可能的配置为，
++
++```xml
++<project>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.graalvm.buildtools</groupId>
++                <artifactId>native-maven-plugin</artifactId>
++                <version>0.11.3</version>
++                <extensions>true</extensions>
++                <configuration>
++                    <buildArgs>
++                        <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
++                        <buildArg>-H:+IncludeAllLocales</buildArg>
++                    </buildArgs>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++</project>
++```
++
+ 9. 受 `apache/calcite` 使用的 `janino-compiler/janino` 的影响，
+     ShardingSphere 的 `SQL Federation` 功能在 GraalVM Native Image 下不可用。
+     这同样导致 ShardingSphere Proxy Native 无法使用 OpenGauss 集成。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+index dc2b58bad05..1e2f46fc900 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/_index.en.md
+@@ -34,75 +34,108 @@ java.beans.Introspector was unintentionally initialized at build time. To see wh
+ 
+ ### Maven Ecology
+ 
+-Users need to actively use the GraalVM Reachability Metadata central repository. 
+ The following configuration is for reference to configure additional Maven Profiles for the project, 
+ and the documentation of GraalVM Native Build Tools shall prevail.
+ 
+ ```xml
+ <project>
+-     <dependencies>
+-         <dependency>
+-             <groupId>org.apache.shardingsphere</groupId>
+-             <artifactId>shardingsphere-jdbc</artifactId>
+-             <version>${shardingsphere.version}</version>
+-         </dependency>
+-     </dependencies>
+-    
+-     <build>
+-         <plugins>
+-             <plugin>
+-                 <groupId>org.graalvm.buildtools</groupId>
+-                 <artifactId>native-maven-plugin</artifactId>
+-                 <version>0.11.3</version>
+-                 <extensions>true</extensions>
+-                 <configuration>
++    <dependencies>
++        <dependency>
++            <groupId>org.apache.shardingsphere</groupId>
++            <artifactId>shardingsphere-infra-reachability-metadata</artifactId>
++            <version>${shardingsphere.version}</version>
++        </dependency>
++    </dependencies>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.graalvm.buildtools</groupId>
++                <artifactId>native-maven-plugin</artifactId>
++                <version>0.11.3</version>
++                <extensions>true</extensions>
++            </plugin>
++        </plugins>
++    </build>
++</project>
++```
++
++A more convenient configuration for testing third-party dependencies might look like this,
++
++```xml
++<project>
++    <dependencies>
++        <dependency>
++            <groupId>org.apache.shardingsphere</groupId>
++            <artifactId>shardingsphere-jdbc</artifactId>
++            <version>${shardingsphere.version}</version>
++        </dependency>
++        <dependency>
++            <groupId>org.apache.shardingsphere</groupId>
++            <artifactId>shardingsphere-infra-reachability-metadata</artifactId>
++            <version>${shardingsphere.version}</version>
++        </dependency>
++    </dependencies>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.graalvm.buildtools</groupId>
++                <artifactId>native-maven-plugin</artifactId>
++                <version>0.11.3</version>
++                <extensions>true</extensions>
++                <configuration>
+                     <buildArgs>
+-                       <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
+-                       <buildArg>-H:+AddAllCharsets</buildArg>
+-                       <buildArg>-H:+IncludeAllLocales</buildArg>
++                        <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
++                        <buildArg>-H:+AddAllCharsets</buildArg>
++                        <buildArg>-H:+IncludeAllLocales</buildArg>
+                     </buildArgs>
+-                 </configuration>
+-                 <executions>
+-                     <execution>
+-                         <id>build-native</id>
+-                         <goals>
+-                             <goal>compile-no-fork</goal>
+-                         </goals>
+-                         <phase>package</phase>
+-                     </execution>
+-                     <execution>
+-                         <id>test-native</id>
+-                         <goals>
+-                             <goal>test</goal>
+-                         </goals>
+-                         <phase>test</phase>
+-                     </execution>
+-                 </executions>
+-             </plugin>
+-         </plugins>
+-     </build>
++                </configuration>
++                <executions>
++                    <execution>
++                        <id>build-native</id>
++                        <goals>
++                            <goal>compile-no-fork</goal>
++                        </goals>
++                        <phase>package</phase>
++                    </execution>
++                    <execution>
++                        <id>test-native</id>
++                        <goals>
++                            <goal>test</goal>
++                        </goals>
++                        <phase>test</phase>
++                    </execution>
++                </executions>
++            </plugin>
++        </plugins>
++    </build>
+ </project>
+ ```
+ 
+ ### Gradle Ecosystem
+ 
+-Users need to actively use the GraalVM Reachability Metadata central repository.
+ The following configuration is for reference to configure additional Gradle Tasks for the project,
+ and the documentation of GraalVM Native Build Tools shall prevail.
+-Due to the limitations of https://github.com/gradle/gradle/issues/17559 , 
+-users need to introduce the JSON file of Metadata Repository through Maven dependency. 
+-Reference https://github.com/graalvm/native-build-tools/issues/572 .
+ 
+ ```groovy
+ plugins {
+    id 'org.graalvm.buildtools.native' version '0.11.3'
+ }
++dependencies {
++   implementation 'org.apache.shardingsphere:shardingsphere-infra-reachability-metadata:${shardingsphere.version}'
++}
++```
+ 
++A more convenient configuration for testing third-party dependencies might look like this. Due to limitations outlined in https://github.com/gradle/gradle/issues/17559 , users may need to include the Metadata Repository's JSON file as a Maven dependency. See https://github.com/graalvm/native-build-tools/issues/572 .
++
++```groovy
++plugins {
++   id 'org.graalvm.buildtools.native' version '0.11.3'
++}
+ dependencies {
+    implementation 'org.apache.shardingsphere:shardingsphere-jdbc:${shardingsphere.version}'
++   implementation 'org.apache.shardingsphere:shardingsphere-infra-reachability-metadata:${shardingsphere.version}'
+    implementation(group: 'org.graalvm.buildtools', name: 'graalvm-reachability-metadata', version: '0.11.3', classifier: 'repository', ext: 'zip')
+ }
+-
+ graalvmNative {
+    binaries {
+       main {
+@@ -117,19 +150,19 @@ graalvmNative {
+       }
+    }
+    metadataRepository {
+-      enabled.set(false)
++        enabled.set(false)
+    }
+ }
+ ```
+ 
+-### For build tools such as sbt that are not supported by GraalVM Native Build Tools
++### sbt
+ 
+-Such requirements require opening additional issues at https://github.com/graalvm/native-build-tools 
+-and providing the Plugin implementation of the corresponding build tool.
++For build tools such as sbt that are not supported by GraalVM Native Build Tools,
++you need to open an additional issue at https://github.com/graalvm/native-build-tools and provide the corresponding plugin implementation for the build tool.
+ 
+ ## Usage restrictions
+ 
+-1. The following algorithm classes are not available under GraalVM Native Image due to the involvement of https://github.com/oracle/graal/issues/5522.
++1. The following algorithm classes are not available under GraalVM Native Image due to the involvement of https://github.com/oracle/graal/issues/5522 .
+     - `org.apache.shardingsphere.sharding.algorithm.sharding.inline.InlineShardingAlgorithm`
+     - `org.apache.shardingsphere.sharding.algorithm.sharding.inline.ComplexInlineShardingAlgorithm`
+     - `org.apache.shardingsphere.sharding.algorithm.sharding.hint.HintInlineShardingAlgorithm`
+@@ -257,6 +290,28 @@ Caused by: java.io.UnsupportedEncodingException: Codepage Cp1252 is not supporte
+  [...]
+ ```
+ 
++For Maven, possible configurations are,
++
++```xml
++<project>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.graalvm.buildtools</groupId>
++                <artifactId>native-maven-plugin</artifactId>
++                <version>0.11.3</version>
++                <extensions>true</extensions>
++                <configuration>
++                    <buildArgs>
++                        <buildArg>-H:+AddAllCharsets</buildArg>
++                    </buildArgs>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++</project>
++```
++
+ 5. To discuss the steps required to use XA distributed transactions under the GraalVM Native Image of ShardingSphere JDBC, 
+ additional known prerequisites need to be introduced,
+    - `org.apache.shardingsphere.transaction.xa.jta.datasource.swapper.DataSourceSwapper#loadXADataSource(String)` will instantiate the `javax.sql.XADataSource` implementation class of each database driver through `java.lang.Class#getDeclaredConstructors`.
+@@ -322,6 +377,29 @@ without it being registered as reachable. Add it to the resource metadata to sol
+   com.mysql.cj.jdbc.NonRegisteringDriver.connect(NonRegisteringDriver.java:186)
+ ```
+ 
++For Maven, possible configurations are,
++
++```xml
++<project>
++    <build>
++        <plugins>
++            <plugin>
++                <groupId>org.graalvm.buildtools</groupId>
++                <artifactId>native-maven-plugin</artifactId>
++                <version>0.11.3</version>
++                <extensions>true</extensions>
++                <configuration>
++                    <buildArgs>
++                        <buildArg>-H:+UnlockExperimentalVMOptions</buildArg>
++                        <buildArg>-H:+IncludeAllLocales</buildArg>
++                    </buildArgs>
++                </configuration>
++            </plugin>
++        </plugins>
++    </build>
++</project>
++```
++
+ 9. Due to the use of `janino-compiler/janino` by `apache/calcite`, 
+     ShardingSphere's `SQL Federation` feature is unavailable in the GraalVM Native Image.
+     This also prevents ShardingSphere Proxy Native from integrating with OpenGauss.
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
-index b78da45ef71..288160cad3f 100644
+index 288160cad3f..7a3766fc464 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
-@@ -77,8 +77,7 @@ newgrp docker
+@@ -346,6 +346,10 @@ without it being registered for runtime reflection. Add com.oracle.svm.core.code
+   java.management@24.0.2/javax.management.StandardMBean.<init>(StandardMBean.java:268)
+ ```
  
- sudo tee /etc/docker/daemon.json <<EOF
- {
--  "log-driver": "local",
--  "min-api-version": "1.24"
-+  "log-driver": "local"
- }
- EOF
- 
+-相关警告在 `GraalVM CE For JDK 24.0.2` 上无法避免。
++相关警告暂时无法避免。
+ 因为 `com.oracle.svm.core.code.CodeCachePoolMXBean` 的无参构造函数通过 Java 类 `org.graalvm.nativeimage.Platform.HOSTED_ONLY` 被标记为无论实际的 Platform 是什么，
+ 仅在 Native Image 生成期间可见，且无法在 Runtime 使用的元素。
++
++向上追溯，`org.apache.seata:seata-all:2.5.0` 依赖的 `com.alibaba:druid:1.2.20` 中，
++`com.alibaba.druid.proxy.DruidDriver` 在未确认 JMX 是否在 GraalVM Native Image 下可用的前提下，
++调用了 `java.lang.management.ManagementFactory#getPlatformMBeanServer()`。
 diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
-index 0ce86a929a9..4cc3c4dfcbd 100644
+index 4cc3c4dfcbd..17b6d1d93a5 100644
 --- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
-@@ -79,8 +79,7 @@ newgrp docker
+@@ -354,7 +354,8 @@ without it being registered for runtime reflection. Add com.oracle.svm.core.code
+   java.management@24.0.2/javax.management.StandardMBean.<init>(StandardMBean.java:268)
+ ```
  
- sudo tee /etc/docker/daemon.json <<EOF
- {
--  "log-driver": "local",
--  "min-api-version": "1.24"
-+  "log-driver": "local"
- }
- EOF
+-The relevant warning cannot be avoided on `GraalVM CE For JDK 24.0.2`.
+-Because the no-argument constructor of `com.oracle.svm.core.code.CodeCachePoolMXBean` is marked as an element that is only visible during Native Image generation and cannot be used at Runtime, 
+-regardless of the actual Platform,
+-through the Java class `org.graalvm.nativeimage.Platform.HOSTED_ONLY`.
++The related warnings cannot be avoided at this time.
++This is because the parameterless constructor of `com.oracle.svm.core.code.CodeCachePoolMXBean` is marked, via the Java class `org.graalvm.nativeimage.Platform.HOSTED_ONLY`, as an element that is visible only during Native Image generation and unusable at runtime, regardless of the actual platform.
++
++Tracing upwards, in `com.alibaba:druid:1.2.20`, which `org.apache.seata:seata-all:2.5.0` depends on,
++`com.alibaba.druid.proxy.DruidDriver` calls `java.lang.management.ManagementFactory#getPlatformMBeanServer()` without confirming whether JMX is available under the GraalVM Native Image.
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
+index 2c562169352..2371713b7a6 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.cn.md
+@@ -15,11 +15,6 @@ ShardingSphere 对 ClickHouse JDBC Driver 的支持位于可选模块中。
  
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-index c08c5d9eaef..4e28f95a846 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
-@@ -163,8 +163,7 @@ newgrp docker
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-clickhouse</artifactId>
+@@ -53,11 +48,11 @@ services:
+ ### 创建业务表
  
- sudo tee /etc/docker/daemon.json <<EOF
- {
--  "log-driver": "local",
--  "min-api-version": "1.24"
-+  "log-driver": "local"
- }
- EOF
+ 通过第三方工具在 ClickHouse 内创建业务库与业务表。
+-以 DBeaver Community 为例，若使用 Ubuntu 22.04.4，可通过 Snapcraft 快速安装，
++以 DBeaver Community 为例，若使用 Ubuntu 24.04，可通过 Snapcraft 快速安装，
  
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-index efeaa08b849..34bf73ab48c 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
-@@ -167,8 +167,7 @@ newgrp docker
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
  
- sudo tee /etc/docker/daemon.json <<EOF
- {
--  "log-driver": "local",
--  "min-api-version": "1.24"
-+  "log-driver": "local"
- }
- EOF
+@@ -92,7 +87,42 @@ TRUNCATE TABLE t_order;
+ 
+ ### 在业务项目创建 ShardingSphere 数据源
+ 
+-在业务项目引入`前提条件`涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
++在业务项目引入`前提条件`涉及的依赖后，额外引入如下依赖，
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件 `demo.yaml`，
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
+index 893cb460153..cc3a166ccc1 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/clickhouse/_index.en.md
+@@ -15,11 +15,6 @@ the possible Maven dependencies are as follows,
+ 
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-clickhouse</artifactId>
+@@ -53,11 +48,11 @@ services:
+ ### Create business tables
+ 
+ Use a third-party tool to create some business databases and business tables in ClickHouse.
+-Taking DBeaver Community as an example, if you use Ubuntu 22.04.4, you can quickly install it through Snapcraft.
++Taking DBeaver Community as an example, if you use Ubuntu 24.04, you can quickly install it through Snapcraft.
+ 
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
+ 
+@@ -93,8 +88,42 @@ TRUNCATE TABLE t_order;
+ 
+ ### Create ShardingSphere data source in business project
+ 
+-After the business project introduces the dependencies involved in `prerequisites`, 
+-write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
++After including the dependencies related to the `Prerequisites` in the business project, add the following additional dependencies,
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++Write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
+index 6507f9dbe35..8c769c6b181 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.cn.md
+@@ -15,11 +15,6 @@ ShardingSphere 对 Firebird JDBC Driver 的支持位于可选模块中。
+ 
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-firebird</artifactId>
+@@ -84,7 +79,42 @@ class Solution {
+ 
+ ### 在业务项目创建 ShardingSphere 数据源
+ 
+-在业务项目引入`前提条件`涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
++在业务项目引入`前提条件`涉及的依赖后，额外引入如下依赖，
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件 `demo.yaml`，
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
+index 0a43c01033b..b164bbebbda 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/firebird/_index.en.md
+@@ -15,11 +15,6 @@ the possible Maven dependencies are as follows,
+ 
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-firebird</artifactId>
+@@ -84,8 +79,42 @@ class Solution {
+ 
+ ### Create ShardingSphere data source in business project
+ 
+-After the business project introduces the dependencies involved in the `prerequisites`, 
+-write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
++After including the dependencies related to the `Prerequisites` in the business project, add the following additional dependencies,
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++Write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
+index 78273748cc4..1b1ce7e386c 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.cn.md
+@@ -15,11 +15,6 @@ ShardingSphere 对 HiveServer2 JDBC Driver 的支持位于可选模块中。
+ 
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-hive</artifactId>
+@@ -48,12 +43,7 @@ ShardingSphere 对 HiveServer2 JDBC Driver 的支持位于可选模块中。
+ <dependencies>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-engine-sql-hive</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-hive</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+@@ -93,11 +83,11 @@ services:
+ ### 创建业务表
+ 
+ 通过第三方工具在 HiveServer2 内创建业务库与业务表。
+-以 DBeaver Community 为例，若使用 Ubuntu 22.04.4，可通过 Snapcraft 快速安装，
++以 DBeaver Community 为例，若使用 Ubuntu 24.04，可通过 Snapcraft 快速安装，
+ 
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
+ 
+@@ -113,7 +103,42 @@ CREATE DATABASE demo_ds_2;
+ 
+ ### 在业务项目创建 ShardingSphere 数据源
+ 
+-在业务项目引入`前提条件`涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
++在业务项目引入`前提条件`涉及的依赖后，额外引入如下依赖，
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件 `demo.yaml`，
+ 
+ ```yaml
+ dataSources:
+@@ -222,7 +247,42 @@ CREATE DATABASE demo_ds_1;
+ CREATE DATABASE demo_ds_2;
+ ```
+ 
+-在业务项目引入`前提条件`涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
++在业务项目引入`前提条件`涉及的依赖后，额外引入如下依赖，
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件 `demo.yaml`，
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
+index cf58b89e4eb..74c6d356331 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/hiveserver2/_index.en.md
+@@ -16,11 +16,6 @@ The possible Maven dependencies are as follows.
+ 
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-hive</artifactId>
+@@ -50,12 +45,7 @@ The following is an example of a possible configuration,
+ <dependencies>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-parser-sql-engine-hive</artifactId>
++        <artifactId>shardingsphere-jdbc-dialect-hive</artifactId>
+         <version>${shardingsphere.version}</version>
+     </dependency>
+     <dependency>
+@@ -95,11 +85,11 @@ services:
+ ### Create business tables
+ 
+ Use a third-party tool to create some business databases and business tables in HiveServer2.
+-Taking DBeaver Community as an example, if you use Ubuntu 22.04.4, you can quickly install it through Snapcraft.
++Taking DBeaver Community as an example, if you use Ubuntu 24.04, you can quickly install it through Snapcraft.
+ 
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
+ 
+@@ -116,8 +106,42 @@ CREATE DATABASE demo_ds_2;
+ 
+ ### Create ShardingSphere data source in business projects
+ 
+-After the business project introduces the dependencies involved in `prerequisites`, 
+-write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
++After including the dependencies related to the `Prerequisites` in the business project, add the following additional dependencies,
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++Write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
+ 
+ ```yaml
+ dataSources:
+@@ -226,8 +250,42 @@ CREATE DATABASE demo_ds_1;
+ CREATE DATABASE demo_ds_2;
+ ```
+ 
+-After the business project introduces the dependencies involved in the `prerequisites`,
+-write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
++After including the dependencies related to the `Prerequisites` in the business project, add the following additional dependencies,
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++Write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md
+index ba91bbc1e07..71985bbe10b 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.cn.md
+@@ -15,11 +15,6 @@ ShardingSphere 对 Presto JDBC Driver 的支持位于可选模块中。
+ 
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-presto</artifactId>
+@@ -62,11 +57,11 @@ hive.metastore.catalog.dir=file:/home/iceberg_data
+ ### 创建业务相关的 schema 和表
+ 
+ 通过第三方工具在 Presto 内创建业务相关的 schema 和表。
+-以 DBeaver Community 为例，若使用 Ubuntu 22.04.5，可通过 Snapcraft 快速安装，
++以 DBeaver Community 为例，若使用 Ubuntu 24.04，可通过 Snapcraft 快速安装，
+ 
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
+ 
+@@ -98,7 +93,42 @@ truncate table t_order;
+ 
+ ### 在业务项目创建 ShardingSphere 数据源
+ 
+-在业务项目引入`前提条件`涉及的依赖后，在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件`demo.yaml`，
++在业务项目引入`前提条件`涉及的依赖后，额外引入如下依赖，
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++在业务项目的 classpath 上编写 ShardingSphere 数据源的配置文件 `demo.yaml`，
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md
+index 4dc3bbefbb4..68e59a6d543 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/optional-plugins/presto/_index.en.md
+@@ -15,11 +15,6 @@ Possible Maven dependencies are as follows,
+ 
+ ```xml
+ <dependencies>
+-    <dependency>
+-        <groupId>org.apache.shardingsphere</groupId>
+-        <artifactId>shardingsphere-jdbc</artifactId>
+-        <version>${shardingsphere.version}</version>
+-    </dependency>
+     <dependency>
+         <groupId>org.apache.shardingsphere</groupId>
+         <artifactId>shardingsphere-jdbc-dialect-presto</artifactId>
+@@ -67,7 +62,7 @@ Taking DBeaver Community as an example, if you use Ubuntu 24.04, you can quickly
+ 
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
+ 
+@@ -98,8 +93,42 @@ truncate table t_order;
+ 
+ ### Create ShardingSphere data source in business project
+ 
+-After the business project introduces the dependencies involved in `Prerequisites`, 
+-write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
++After including the dependencies related to the `Prerequisites` in the business project, add the following additional dependencies,
++
++```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++```
++
++Write the ShardingSphere data source configuration file `demo.yaml` on the classpath of the business project.
+ 
+ ```yaml
+ dataSources:
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
+index 318aaa9cbd2..36de4994ed7 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.cn.md
+@@ -16,11 +16,6 @@ ShardingSphere 的 Seata 集成仅在 `apache/incubator-seata:v2.5.0` 或更高
+ ```xml
+ <project>
+     <dependencies>
+-      <dependency>
+-         <groupId>org.apache.shardingsphere</groupId>
+-         <artifactId>shardingsphere-jdbc</artifactId>
+-         <version>${shardingsphere.version}</version>
+-      </dependency>
+       <dependency>
+          <groupId>org.apache.shardingsphere</groupId>
+          <artifactId>shardingsphere-transaction-base-seata-at</artifactId>
+@@ -206,9 +201,39 @@ config {
+ 
+ ### 在业务项目添加 JDBC Driver 和创建 ShardingSphere 配置文件
+ 
+-在业务项目引入前提条件涉及的依赖后，额外添加 MySQL JDBC Driver 的 Maven 依赖，
++在业务项目引入`前提条件`涉及的依赖后，额外引入如下依赖，
+ 
+ ```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
+ <dependency>
+     <groupId>com.mysql</groupId>
+     <artifactId>mysql-connector-j</artifactId>
+@@ -617,4 +642,4 @@ org.apache.seata.common.loader.EnhancedServiceNotFoundException: not found servi
+ ```
+ 
+ 根据 https://github.com/apache/incubator-seata/issues/6886 ，抛出此异常是 Seata Client 的预期行为。
+-用户可通过在业务项目的 classpath 放置 `logback.xml` 对 Seata Client 的日志加以配置。
++若使用 logback 作为 SLF4J 的实现，用户可通过在业务项目的 classpath 放置 `logback.xml` 对 Seata Client 的日志加以配置。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
+index c433bb5f736..52e757f8312 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/special-api/transaction/seata.en.md
+@@ -17,11 +17,6 @@ Introduce Maven dependencies and exclude the outdated Maven dependency of `org.a
+ ```xml
+ <project>
+     <dependencies>
+-      <dependency>
+-         <groupId>org.apache.shardingsphere</groupId>
+-         <artifactId>shardingsphere-jdbc</artifactId>
+-         <version>${shardingsphere.version}</version>
+-      </dependency>
+       <dependency>
+          <groupId>org.apache.shardingsphere</groupId>
+          <artifactId>shardingsphere-transaction-base-seata-at</artifactId>
+@@ -217,10 +212,39 @@ config {
+ 
+ ### Add JDBC Driver to the business project and create ShardingSphere configuration file
+ 
+-After the business project introduces the dependencies involved in the prerequisites, 
+-add the Maven dependency of MySQL JDBC Driver.
++After including the dependencies listed in the `Prerequisites` section in the business project, add the following additional dependencies,
+ 
+ ```xml
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-jdbc</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-data-source-pool-hikari</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-infra-url-classpath</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-standalone-mode-repository-memory</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-sharding-core</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
++<dependency>
++    <groupId>org.apache.shardingsphere</groupId>
++    <artifactId>shardingsphere-authority-simple</artifactId>
++    <version>${shardingsphere.version}</version>
++</dependency>
+ <dependency>
+     <groupId>com.mysql</groupId>
+     <artifactId>mysql-connector-j</artifactId>
+@@ -647,4 +671,4 @@ org.apache.seata.common.loader.EnhancedServiceNotFoundException: not found servi
+ ```
+ 
+ According to https://github.com/apache/incubator-seata/issues/6886 , throwing this exception is the expected behavior of Seata Client.
+-Users can configure the log of Seata Client by placing `logback.xml` in the classpath of the business project.
++If logback is used as the implementation of SLF4J, users can configure the Seata Client's logging by placing `logback.xml` in the classpath of their business project.
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
+index 30ffea5fa2e..c068943dc55 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.cn.md
+@@ -277,11 +277,11 @@ done
+ ### 创建 ShardingSphere 虚拟库
+ 
+ 通过第三方工具在 ShardingSphere Proxy 内创建 ShardingSphere 虚拟库。
+-以 DBeaver Community 为例，若使用 Ubuntu 22.04.4，可通过 Snapcraft 快速安装，
++以 DBeaver Community 为例，若使用 Ubuntu 24.04，可通过 Snapcraft 快速安装，
+ 
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
+index be87a4df265..ed4c7daebbf 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/optional-plugins/seata-at/_index.en.md
+@@ -281,11 +281,11 @@ done
+ ### Create ShardingSphere virtual database
+ 
+ Use third-party tools to create ShardingSphere virtual database in ShardingSphere Proxy. 
+-Taking DBeaver Community as an example, if you use Ubuntu 22.04.4, you can quickly install it through Snapcraft.
++Taking DBeaver Community as an example, if you use Ubuntu 24.04, you can quickly install it through Snapcraft.
+ 
+ ```shell
+ sudo apt update && sudo apt upgrade -y
+-sudo snap install dbeaver-ce
++sudo snap install dbeaver-ce --classic
+ snap run dbeaver-ce
+ ```
  

@@ -11,5 +11,12 @@
   script.setAttribute('data-modal-title', 'Apache ShardingSphere AI');
   script.setAttribute('data-consent-required', 'true');
   script.setAttribute('data-consent-screen-disclaimer', 'By clicking "I agree, let\'s chat", you consent to the use of the AI assistant in accordance with kapa.ai\'s [Privacy Policy](https://www.kapa.ai/content/privacy-policy). This service uses reCAPTCHA, which requires your consent to Google\'s [Privacy Policy](https://policies.google.com/privacy) and [Terms of Service](https://policies.google.com/terms). By proceeding, you explicitly agree to both kapa.ai\'s and Google\'s privacy policies.');
+  script.setAttribute('data-project-color', '#ffffff');
+  script.setAttribute('data-submit-query-button-bg-color', '#f68d23');
+  script.setAttribute('data-button-text-color', '#FF6A13');
+  script.setAttribute('data-button-bg-color', '#ffffff');
+  script.setAttribute('data-button-border', '1px solid #FFBC80');
+  script.setAttribute('data-button-position-bottom', '32%');
+  script.setAttribute('data-button-z-index', '1000');
   document.head.appendChild(script);
 })();

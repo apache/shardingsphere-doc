@@ -19,5 +19,7 @@
   script.setAttribute('data-button-position-bottom', '32%');
   script.setAttribute('data-button-z-index', '1000');
   script.setAttribute('data-modal-z-index', '3000');
+  script.setAttribute('data-deep-thinking-button-active-bg-color', '#f68d23');
+  script.setAttribute('data-deep-thinking-button-active-hover-bg-color', '#f28314');
   document.head.appendChild(script);
 })();

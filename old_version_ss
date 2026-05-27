@@ -1,308 +1,355 @@
-commit 2a41f872534d888c0fff5ca8c953b3b208cb4f30
+commit eea07bc095b040eb7c22a80825acd9a8f1d1560e
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Mon May 25 15:24:31 2026 +0800
+Date:   Tue May 26 22:45:25 2026 +0800
 
-    Refactor mcp module (#38714)
+    Align public contract documentation (#38725)
     
-    * Refactor mcp module
+    * Remove slack because workspace has been disabled
     
-    * Refactor mcp module
+    * Refactor MCPToolClarificationPolicy
     
-    * Refactor mcp module
+    * mcp: Align public contract documentation
     
-    * Refactor mcp module
+    Clarify MCP V1 submit-ready scope in README files and historical design
+    documents. Mark early tool matrices and bare execute_query references as
+    historical context, and point the current contract to descriptor-first
+    resources and database_gateway_* tools.
+    
+    Also align the extension directory wording from ext-lib to plugins.
+    
+    * mcp: Align public contract documentation
+    
+    Clarify MCP V1 submit-ready scope in README files and historical design
+    documents. Mark early tool matrices and bare execute_query references as
+    historical context, and point the current contract to descriptor-first
+    resources and database_gateway_* tools.
+    
+    Also align the extension directory wording from ext-lib to plugins.
+    
+    * for code format
+    
+    * for code format
 
 diff --git a/docs/mcp/ShardingSphere-MCP-Detailed-Design.md b/docs/mcp/ShardingSphere-MCP-Detailed-Design.md
-index 361a2c37f64..500f39bad3b 100644
+index 500f39bad3b..e660e464e53 100644
 --- a/docs/mcp/ShardingSphere-MCP-Detailed-Design.md
 +++ b/docs/mcp/ShardingSphere-MCP-Detailed-Design.md
-@@ -155,7 +155,7 @@ shardingsphere
-   - `session`
-   - `metadata`
+@@ -1,6 +1,9 @@
+ # ShardingSphere MCP 详细设计说明书
+ 
+-> 状态说明：本文档保留早期详细设计背景，不是当前 MCP public surface 契约。当前契约以 `shardingsphere://capabilities`、descriptor、`mcp/README.md` 和 `mcp/README_ZH.md` 为准；不要从本文档推导 `list_databases`、`describe_table` 等早期工具矩阵。
++> 状态说明：本文档保留早期详细设计背景，不是当前 MCP public surface 契约。
++> 当前契约以 `shardingsphere://capabilities`、descriptor、`mcp/README.md` 和 `mcp/README_ZH.md` 为准。
++> 不要从本文档推导 `list_databases`、`describe_table` 等早期工具矩阵。
++> 当前可提交范围是 MCP V1 runtime readiness，不是完整 ShardingSphere governance administration surface。
+ 
+ ## 1. 文档信息
+ - 文档名称：ShardingSphere MCP 详细设计说明书
+@@ -175,7 +178,7 @@ shardingsphere
+     - metadata discovery facade
+     - JDBC metadata discovery and runtime configuration
    - `execute`
--  - `audit`
-+  - `trace`
-   - `config`
-   - `common`
- - 说明：
-@@ -177,8 +177,8 @@ shardingsphere
-   - `execute`
-     - `execute_query` facade
+-    - `execute_query` facade
++    - SQL tool facade
      - `DatabaseRuntime` assembly and JDBC-backed runtime context factory
--  - `audit`
--    - audit facade
-+  - `trace`
-+    - SQL execution trace facade
-   - `config`
-     - MCP 内部配置模型
-   - `common`
-@@ -392,7 +392,7 @@ stateDiagram-v2
-   - 调用 ShardingSphere parse / route / execute
-   - 统一结果映射
-   - 统一错误映射
--  - 审计输出
-+  - SQL execution trace 输出
+   - `trace`
+     - SQL execution trace facade
+@@ -380,10 +383,13 @@ stateDiagram-v2
+   3. 应用部署时覆盖项
+   4. 生成数据库级 capability
  
- ### 10.2 执行阶段
- - 内部固定为 7 个阶段：
-@@ -422,7 +422,7 @@ stateDiagram-v2
-   - `savepoint`
-   - `explain_analyze`
- - `WITH` 只表示 CTE 写法，不单独形成产品 statement class。
--- `statement class` 用于 capability、audit 和执行分支。
-+- `statement class` 用于 capability、SQL execution trace 和执行分支。
- - `statement type` 用于表达更具体的用户可读动作，如 `SELECT`、`UPDATE`、`MERGE`。
+-## 10. `execute_query` 详细设计
++## 10. SQL tool 详细设计
++
++> 本节保留早期 `execute_query` 术语。
++> 当前 MCP public surface 将读查询与变更执行拆分为 `database_gateway_execute_query` 和 `database_gateway_execute_update`。
  
- ### 10.4 统一结果
-@@ -484,23 +484,24 @@ stateDiagram-v2
-   - `driverClassName`
- - schema 采用 strict mapping
-   - unknown key 直接报错
--  - legacy `runtime.*` alias 不再作为专门迁移分支保留
-+  - `runtime.*` alias 不再作为专门迁移分支保留
-   - per-database capability booleans 不再接受为 operator-facing 配置
- - distribution 默认配置提供一段 demo JDBC runtime，确保发行包第一次启动即可验证非空 metadata 与真实执行链路；真实部署需替换为目标环境配置
+ ### 10.1 职责
+-- `execute_query` 负责：
++- 当前 SQL tool facade 负责：
+   - 单语句校验
+   - statement class 归类
+   - request-level schema semantics 解释
+@@ -404,7 +410,7 @@ stateDiagram-v2
+   6. result / error mapping
  
--## 12. 运行边界与审计详细设计
-+## 12. 运行边界与 SQL Execution Trace 详细设计
+ ### 10.2A `database` / `schema` 边界
+-- `database` 是 `execute_query` 的唯一强执行边界。
++- `database` 是当前 SQL tools 的唯一强执行边界。
+ - `schema` 是可选 namespace hint，用于表达未限定对象名的目标命名空间意图。
+ - 当数据库级 capability `schema_execution_semantics = fixed_to_database` 时，
+   request-level `schema` 不被承诺为独立执行命名空间切换器。
+@@ -521,7 +527,7 @@ stateDiagram-v2
+   - capability assembler
+   - transaction matrix registry
+   - session manager
+-  - `execute_query` facade
++  - SQL tool facade
+   - error mapper
  
- ### 12.1 运行边界
- - V1 内置 runtime 聚焦 session 协商、会话状态维护与运行边界校验。
- - follow-up production runtime 路径要求通过 `runtimeDatabases` 显式装配真实 metadata 与执行适配，不再允许空 runtime 作为成功启动兜底。
- - HTTP 端点如需对外暴露，应放在受信网络、上游网关、反向代理或其他网络边界之后。
+ ### 13.3 模块集成测试重点
+@@ -579,7 +585,10 @@ stateDiagram-v2
+ - E. capability 组
+   - capability 与矩阵一致
  
--### 12.2 审计模型
-+### 12.2 SQL execution trace 模型
-+- V1 只生成当前 SQL 执行路径的本地 trace 摘要，不承诺持久化合规日志或全量 MCP 活动记录。
- - 统一输出：
-   - sessionId
-   - database
--  - operationClass
--  - operationDigest
-+  - statementClass
-+  - statementDigest
-   - successOrFailure
-   - errorCode
-   - transactionMarker
+-### 13.8 E2E 最小冒烟场景
++### 13.8 历史 E2E 最小冒烟场景（非当前门禁）
++
++> 本节保留早期 tool matrix。
++> 当前 submit-ready E2E 门禁以 `tools/list`、`resources/read`、`database_gateway_search_metadata`、SQL tool pair、workflow tools、HTTP 和 STDIO runtime 为准。
+ - 至少固定以下 12 个场景：
+   1. 服务级 capability
+   2. 数据库级 capability
+@@ -634,7 +643,7 @@ apache-shardingsphere-mcp-<version>/
+   3. `mcp/core` 的 capability / error / session
+   4. `mcp/bootstrap` 的 HTTP / STDIO transport
+   5. `/mcp` 的 Streamable HTTP endpoint
+-  6. `execute_query` 与 metadata discovery
++  6. SQL tool pair 与 metadata discovery
+   7. `distribution/mcp`
+   8. 单元测试
+   9. 模块集成测试
+@@ -650,7 +659,7 @@ apache-shardingsphere-mcp-<version>/
+   - `DELETE /mcp` 会话关闭行为已定
+   - SDK provider 与 ShardingSphere glue 的职责边界已定
+   - transaction matrix 存储方式已定
+-  - capability / `execute_query` 输入输出边界已定
++  - capability / SQL tool 输入输出边界已定
+ 
+ ### 16.1 AI-Friendly 增量开工前重新取证
+ 
 diff --git a/docs/mcp/ShardingSphere-MCP-PRD.md b/docs/mcp/ShardingSphere-MCP-PRD.md
-index fe717f2a780..60e5f7fd598 100644
+index 60e5f7fd598..8fd1eda91bf 100644
 --- a/docs/mcp/ShardingSphere-MCP-PRD.md
 +++ b/docs/mcp/ShardingSphere-MCP-PRD.md
-@@ -20,7 +20,7 @@
- - 当前数据库接入主要存在以下问题：
- - 不同数据库 MCP 的资源命名、工具定义、返回结构和能力边界不一致。
- - 上层 Agent 需要分别适配多种数据库，接入成本高。
--- 企业希望统一数据库访问的对象暴露、审计、超时和结果限制。
-+- 企业希望统一数据库访问的对象暴露、SQL execution trace、超时和结果限制。
- - 即使同样是列库、查结构、执行 SQL，不同数据库的行为、错误和结果表达也不一致。
- - ShardingSphere 具备统一接入多种数据库的能力，因此适合作为统一 MCP 出口。
+@@ -1,6 +1,9 @@
+ # ShardingSphere MCP PRD
  
-@@ -73,7 +73,7 @@
- - Agent 统一发现多个数据库中的可访问对象。
- - Agent 统一读取表结构、字段、视图等元数据。
- - Agent 在不同数据库下使用同一套工具执行 SQL。
--- 平台统一承接审计、超时和结果限制要求。
-+- 平台统一承接 SQL execution trace、超时和结果限制要求。
- - 数据库结构变化后，Agent 在分钟级看到 MCP 资源更新。
- - MCP 会话内通过事务控制语句管理事务边界。
+-> 状态说明：本文档保留早期 PRD 背景，不是当前 MCP public surface 契约。当前契约以 `shardingsphere://capabilities`、descriptor、`mcp/README.md` 和 `mcp/README_ZH.md` 为准；不要从本文档推导 `list_*`、`describe_*` 等早期工具矩阵。
++> 状态说明：本文档保留早期 PRD 背景，不是当前 MCP public surface 契约。
++> 当前契约以 `shardingsphere://capabilities`、descriptor、`mcp/README.md` 和 `mcp/README_ZH.md` 为准。
++> 不要从本文档推导 `list_*`、`describe_*` 等早期工具矩阵。
++> 当前可提交范围是 MCP V1 runtime readiness：metadata discovery、safe SQL、encrypt/mask workflow、HTTP/STDIO runtime、distribution 与 E2E infrastructure。
  
-@@ -178,11 +178,11 @@
- ### 工具定义
+ ## 文档信息
+ - 产品名称：ShardingSphere MCP
+@@ -120,7 +123,7 @@
+ 
+ ## 10. 对象语义定义
+ - `database`：MCP 对外暴露的一级访问目标，也是每次 SQL 执行必须显式指定的目标。
+-- `schema`：`database` 内部命名空间；在 `execute_query` 中只作为可选 namespace hint，不是第二个强执行边界。
++- `schema`：`database` 内部命名空间；在当前 SQL tools 中只作为可选 namespace hint，不是第二个强执行边界。
+ - `table / view`：通过 `(database, schema, name)` 唯一确定。
+ - `column`：从属于某个表或视图。
+ - `index`：从属于某个表，仅在当前 `database` 支持时暴露。
+@@ -160,7 +163,9 @@
+ - 凡列为 V1 公共对象者，必须在 `resources` 和 / 或 `tools` 中有正式承载路径。
+ - 当当前 `database` 的 `supported_object_types` 不包含 `index` 时，`index` 相关 `resources` 统一返回 `unsupported`。
+ 
+-## 12. V1 公共 Tools
++## 12. 历史 V1 公共 Tools 设想（非当前契约）
++
++> 本节记录早期 PRD 工具拆分设想。当前 public tools 以 `mcp/README.md`、`mcp/README_ZH.md` 和 descriptors 中的 `database_gateway_*` 工具为准。
+ 
+ ### 正式工具清单
  - `list_databases`
- - `list_schemas(database)`
--- `list_tables(database, schema, search?, page_size?, page_token?)`
--- `list_views(database, schema, search?, page_size?, page_token?)`
--- `list_columns(database, schema, object_type, object_name, search?, page_size?, page_token?)`
--- `list_indexes(database, schema, table, search?, page_size?, page_token?)`
--- `search_metadata(database?, schema?, query, object_types?, page_size?, page_token?)`
-+- `list_tables(database, schema, search?)`
-+- `list_views(database, schema, search?)`
-+- `list_columns(database, schema, object_type, object_name, search?)`
-+- `list_indexes(database, schema, table, search?)`
-+- `search_metadata(database?, schema?, query, object_types?)`
- - `describe_table(database, schema, table)`
- - `describe_view(database, schema, view)`
- - `get_capabilities(database?)`
-@@ -210,13 +210,14 @@
- - `get_capabilities(database)` 返回数据库级 `capability`。
- - 当当前 `database` 不支持 `index` 时，`list_indexes` 统一返回 `unsupported`。
+@@ -233,15 +238,18 @@
+ - 该行为不等同于跨 `database` SQL 执行。
+ - 当 `schema` 被指定时，`database` 必须同时指定，否则返回 `invalid_request`。
  
--## 13. 搜索、过滤与分页
-+## 13. 搜索、过滤与收窄
+-## 14. SQL 执行能力
+-- SQL 执行通过 `execute_query` 统一暴露。
++## 14. 历史 SQL 执行能力（非当前契约）
++
++> 本节使用早期 `execute_query` 术语。当前 public tools 使用 `database_gateway_execute_query` 与 `database_gateway_execute_update`。
++
++- SQL 执行通过早期 `execute_query` 设想统一暴露。
+ - 每次 SQL 必须显式指定 `database`。
+ - V1 不支持跨 `database` SQL 执行。
+ - `schema` 不构成第二个强执行边界。
+ - 同一 `database` 内的跨 `schema` SQL 可在数据库能力允许时支持。
+ - 不支持时必须明确返回 `unsupported`。
+ - 事务一旦开始，当前事务绑定单一 `database`。
+-- 事务存续期间若 `execute_query` 指定其他 `database`，统一返回 `conflict`。
++- 事务存续期间若 SQL tool 指定其他 `database`，统一返回 `conflict`。
  
- ### V1 必须支持
- - 列表查询支持关键字搜索。
--- 列表查询支持分页。
-+- 大结果通过 `truncated`、`total_count`、`returned_count` 和收窄提示表达。
- - 元数据搜索支持按对象类型过滤。
--- 分页结果必须返回下一页标识或等价机制。
-+- item-list 响应保留 application-level `has_more` 和 `continuation_mode` 字段；当响应支持 ShardingSphere application-level pagination 时才返回 `next_page_token`。
-+- 上述 structured payload 字段不是 MCP list 方法的 `cursor` 或 `nextCursor`。
- - 不允许客户端通过完整枚举完成大型数据库结构发现。
+ ## 15. V1 允许的 SQL 类型
  
- ### `search_metadata.object_types` 正式支持
-@@ -288,7 +289,7 @@
+@@ -339,7 +347,7 @@
+   但 data-modifying CTE 等场景允许 `statement_class = dml` 且返回 `result_set`。
+ - `CREATE`、`ALTER`、`DROP`、`TRUNCATE`、`GRANT`、`REVOKE`、事务控制语句默认返回 `statement_ack`。
+ - `EXPLAIN ANALYZE` 的返回形态由数据库级 `capability` 决定。
+-- 一次 `execute_query` 只返回一个结果对象。
++- 一次 SQL tool call 只返回一个结果对象。
+ - V1 不支持多结果集返回。
  
- ## 16. MCP 会话与事务语义
- - 每个 MCP 会话对应一个逻辑会话上下文。
--- V1 内置运行时直接使用 `session_id` 作为审计标签。
-+- V1 内置运行时直接使用 `session_id` 作为 SQL execution trace 标签。
- - 会话期间该 `session_id` 保持不变。
- - 会话不支持恢复；会话结束即逻辑上下文结束。
- - 默认执行模式为 `autocommit = true`。
-@@ -394,12 +395,12 @@
- - `index` 是否支持由 `supported_object_types` 明确声明。
- - DDL、DCL、`EXPLAIN ANALYZE` 的事务边界行为必须由数据库级 `capability` 明确声明。
+ ## 18. 统一结果数据类型约束
+@@ -387,7 +395,7 @@
+ ### 19.4 说明
+ - `default_autocommit` 指 ShardingSphere MCP 会话默认行为，不等同于底层数据库原生默认 `autocommit`。
+ - `default_schema_semantics` 解决 metadata/discovery 侧的统一 schema 语义。
+-- `schema_execution_semantics` 解决 `execute_query.schema` 在执行时如何解释。
++- `schema_execution_semantics` 解决 SQL tool request-level `schema` 在执行时如何解释。
+ - 对原生支持事务控制的 `database`，`supports_transaction_control = true`。
+ - 对原生不支持事务控制的 `database`，`supports_transaction_control = false`。
+ - 对原生支持 `savepoint` 的 `database`，`supports_savepoint = true`。
+@@ -459,7 +467,10 @@
+ - 当前 `database` 不支持事务控制时执行事务控制语句，返回 `unsupported`。
+ - 当前 `database` 不支持 `savepoint` 时执行 `savepoint` 语句，返回 `unsupported`。
  
--## 20. 运行边界与审计
-+## 20. 运行边界与 SQL Execution Trace
+-## 25. V1 最低统一能力基线
++## 25. 历史 V1 最低统一能力基线（非当前提交门禁）
++
++> 本节是早期统一数据库入口目标，不是当前 submit-ready MCP V1 的完成门禁。
++> 当前提交门禁以 runtime readiness、distribution、E2E 与当前 descriptor public surface 为准。
+ - V1 正式支持数据库必须统一满足以下最低能力基线：
+ - 统一支持核心对象模型：`database / schema / table / view / column / capability`
+ - 统一支持公共 `tools`：`list_databases / list_schemas / list_tables / list_views / list_columns / search_metadata / describe_table / describe_view / get_capabilities / execute_query`
+@@ -516,7 +527,9 @@
+ - DDL、DCL、`EXPLAIN ANALYZE` 在事务中的行为以数据库级 `capability` 为准。
+ - `index` 相关能力仅在 `supported_object_types` 包含 `index` 时暴露。
  
- ### V1 当前实现
- - 内置 runtime 不拦截调用请求。
- - HTTP 端点如需对外暴露，应放在受信网络、上游网关、反向代理或其他网络边界之后。
--- 元数据读取、工具调用与 SQL 执行都必须纳入审计。
-+- SQL 执行路径生成本地 trace 摘要；V1 不承诺持久化合规日志或全量 MCP 活动记录。
- 
- ### V1 不纳入正式验收
- - 内置对象级可见性裁剪
-@@ -424,13 +425,13 @@
- - 若结构变更通过当前 MCP 会话执行成功，当前会话中应尽快可见。
- - 全局视角仍以 1 分钟内同步为准。
- 
--## 23. 审计基线
-+## 23. SQL Execution Trace 基线
- 
--### 审计记录至少应包含
-+### SQL execution trace 记录至少应包含
- - `session_id`
- - `database`
--- `operation_class`
--- `operation_digest`
-+- `statement_class`
-+- `statement_digest`
- - `success_or_failure`
- - `error_code`
- - `transaction_marker`
-@@ -519,10 +520,10 @@
+-## 30. 压缩版需求清单
++## 30. 历史压缩版需求清单（非当前提交门禁）
++
++> 本清单保留早期目标，不表示当前提交必须完成完整统一治理能力。
  1. 必须提供统一数据库访问与 SQL 执行公共面。
  2. 必须统一 `database / schema / table / view / column / capability` 对象语义。
  3. `index` 必须作为数据库级可选公共对象，通过 `capability` 明确声明。
--4. 必须支持对象发现的搜索、过滤与分页。
-+4. 必须支持对象发现的搜索、过滤和大结果收窄提示。
- 5. 必须提供正式公共工具 `execute_query`。
- 6. 必须支持通用 SQL 执行，但 V1 不包含 `USE`、`SET`、`COPY`、`LOAD`、`CALL` 和各数据库专有高风险元命令。
--7. 必须定义 MCP 会话语义、审计标签和事务语义。
-+7. 必须定义 MCP 会话语义、SQL execution trace 标签和事务语义。
- 8. 必须区分事务控制语义与 `savepoint` 语义。
- 9. 必须提供统一执行结果模型。
- 10. 必须补充服务级 `capability` 与数据库级 `capability` 的正式内容模型。
 diff --git a/docs/mcp/ShardingSphere-MCP-Technical-Design.md b/docs/mcp/ShardingSphere-MCP-Technical-Design.md
-index ce98cfa94c5..0b7ec0ed921 100644
+index 0b7ec0ed921..6c0bc30cb9c 100644
 --- a/docs/mcp/ShardingSphere-MCP-Technical-Design.md
 +++ b/docs/mcp/ShardingSphere-MCP-Technical-Design.md
-@@ -31,7 +31,7 @@
-   - 统一 SQL 执行入口 `execute_query`
+@@ -1,6 +1,9 @@
+ # ShardingSphere MCP 技术设计方案
+ 
+-> 状态说明：本文档保留早期技术设计背景，不是当前 MCP public surface 契约。当前契约以 `shardingsphere://capabilities`、descriptor、`mcp/README.md` 和 `mcp/README_ZH.md` 为准；不要从本文档推导早期工具矩阵或额外兼容层。
++> 状态说明：本文档保留早期技术设计背景，不是当前 MCP public surface 契约。
++> 当前契约以 `shardingsphere://capabilities`、descriptor、`mcp/README.md` 和 `mcp/README_ZH.md` 为准。
++> 不要从本文档推导早期工具矩阵或额外兼容层。
++> 当前可提交范围是 MCP V1 runtime readiness，不是完整 ShardingSphere governance administration surface。
+ 
+ ## 1. 文档信息
+ - 文档名称：ShardingSphere MCP 技术设计方案
+@@ -28,7 +31,7 @@
+ - 根据前期 PRD，ShardingSphere MCP 要解决的不是“把 MCP 跑起来”，而是形成正式的数据库统一 AI/Agent 接入面，覆盖：
+   - 统一 metadata 发现
+   - 统一 capability 声明
+-  - 统一 SQL 执行入口 `execute_query`
++  - 统一 SQL 执行入口的早期设想；当前 public tools 使用 `database_gateway_execute_query` 与 `database_gateway_execute_update`
    - 统一错误模型
    - 统一事务与 `savepoint` 能力边界
--  - 统一审计与治理能力
-+  - 统一 SQL execution trace 与治理可见性
- - 当前仓库和生态事实如下：
-   - 根工程模块结构见 `pom.xml`（line 33）
-   - 根工程 Java 基线为 8，`pom.xml`（line 55）
-@@ -60,7 +60,7 @@
-     - `capability`
-     - `execute_query`
-     - `transaction matrix`
--    - `audit`
-+    - `SQL execution trace`
-     - 统一错误模型
+   - 统一 SQL execution trace 与治理可见性
+@@ -48,7 +51,7 @@
+   - MCP 进入主仓库
+   - 不破坏根工程 Java 8 默认构建
+   - 保持与现有 distribution 结构一致
+-  - 覆盖 PRD 中定义的 `capability / execute_query / transaction semantics`
++  - 覆盖当前 descriptor public surface 中的 capability、SQL execution 与 transaction semantics
  
- ## 5. 非目标
-@@ -216,7 +216,7 @@ shardingsphere
- - tool catalog 与参数归一化
- - 通用 payload / error payload builder
- - error model
--- audit facade
-+- SQL execution trace facade
- - 对 ShardingSphere 内核能力的统一门面
- - runtime service 聚合
- - JDBC runtime 配置模型
-@@ -299,7 +299,7 @@ shardingsphere
+ ## 4. 目标
+ - 本方案目标如下：
+@@ -58,7 +61,8 @@
+   - 形成独立部署、独立运行、独立发布的 MCP 服务。
+   - 支撑 PRD 中定义的：
+     - `capability`
+-    - `execute_query`
++    - `database_gateway_execute_query`
++    - `database_gateway_execute_update`
+     - `transaction matrix`
+     - `SQL execution trace`
+     - 统一错误模型
+@@ -209,7 +213,7 @@ shardingsphere
+ - MCP 公共对象模型
+ - capability 组装
+ - metadata discovery facade
+-- execute_query facade
++- SQL tool facade
+ - session / transaction facade
+ - session lifecycle registry
+ - resource URI resolver
+@@ -298,7 +302,7 @@ shardingsphere
+   - `/mcp` Streamable HTTP 会话初始化与关闭
    - STDIO 本地调试入口
    - metadata discovery
-   - `execute_query`
--  - 审计与变化可见性
-+  - SQL execution trace 与变化可见性
+-  - `execute_query`
++  - SQL tool pair
+   - SQL execution trace 与变化可见性
  
  #### 9.1.4 Rollback Guidance
- - 如需回滚：
-@@ -406,7 +406,7 @@ flowchart TB
-     E --> F["Metadata / Governance / Execution"]
-     F --> G["Underlying Databases"]
+@@ -430,7 +434,7 @@ flowchart TB
+ - 统一提供：
+   - metadata discovery
+   - capability
+-  - execute_query
++  - SQL tool pair
+   - transaction / savepoint handling
  
--    H["Audit / Metrics / Logging"] --> C
-+    H["Trace / Metrics / Logging"] --> C
-     H --> D
- ```
+ #### ShardingSphere Integration Layer
+@@ -481,10 +485,13 @@ flowchart TB
+   - `index` 由数据库级 capability 的 `supported_object_types` 声明
+   - 不支持时 direct API 返回 `unsupported`
  
-@@ -538,7 +538,7 @@ flowchart TB
-   - 当前 database 上下文
-   - 当前事务状态
-   - `savepoint` 状态
--  - 审计使用的 session_id
-+  - SQL execution trace 使用的 session_id
+-## 13. `execute_query` 统一执行入口设计
++## 13. SQL 执行入口设计
++
++> 本节标题和部分正文保留早期 `execute_query` 术语。
++> 当前 MCP public surface 将读查询与变更执行拆分为 `database_gateway_execute_query` 和 `database_gateway_execute_update`。
  
- ### 14.2 HTTP 会话策略
- - 由于 PRD 已定义事务与 `savepoint` 语义，HTTP 路径必须维护逻辑 MCP 会话。
-@@ -581,19 +581,20 @@ flowchart TB
-   - 验收标准的技术来源
-   - 支持矩阵维护的统一资产
+ ### 13.1 设计原则
+-- `execute_query` 是 V1 唯一 SQL 执行入口。
++- 早期 `execute_query` 设计已收敛为当前 descriptor 中的 SQL tool pair。
+ - 它不是 SQL 透传接口，而是统一执行与治理入口。
+ - `database` 是唯一强执行边界。
+ - `schema` 是可选 namespace hint，不是第二个强路由键。
+@@ -620,9 +627,11 @@ flowchart TB
  
--## 15. 运行边界与审计设计
-+## 15. 运行边界与 SQL Execution Trace 设计
+ ### 16.2.1 默认发行包启动面
+ - distribution 默认启动使用 HTTP 配置，STDIO 通过 `conf/mcp-stdio.yaml` 或 `SHARDINGSPHERE_MCP_TRANSPORT=stdio` 显式选择。
+-- 默认 `conf/mcp-http.yaml` 内置一段 demo JDBC runtime，用于首次启动时验证非空 metadata 和真实 `execute_query` 行为。
+-- `conf/mcp-http.yaml` 采用 strict schema：`transport.type`、`transport.http.bindHost`、`transport.http.port`、`transport.http.endpointPath` 以及每个 runtime database 的全部字段都必须使用受支持字段名。
+-- 真实部署需要替换 `runtimeDatabases` 段为目标逻辑库与 JDBC 连接属性；schema 范围与默认 schema 由 JDBC metadata 自动发现，如需额外 JDBC 驱动，可放入发行包根目录下的 `ext-lib/`。
++- 默认 `conf/mcp-http.yaml` 内置一段 demo JDBC runtime，用于首次启动时验证非空 metadata 和真实 SQL tool 行为。
++- `conf/mcp-http.yaml` 采用 strict schema：`transport.type`、`transport.http.bindHost`、`transport.http.port`、
++  `transport.http.endpointPath` 以及每个 runtime database 的全部字段都必须使用受支持字段名。
++- 真实部署需要替换 `runtimeDatabases` 段为目标逻辑库与 JDBC 连接属性；schema 范围与默认 schema 由 JDBC metadata 自动发现。
++  如需额外 JDBC 驱动，可放入发行包根目录下的 `plugins/`。
  
- ### 15.1 运行边界
- - V1 内置 runtime 聚焦 session 协商、会话状态维护与运行边界校验。
- - follow-up production runtime 路径通过 `runtimeDatabases` 显式装配真实 metadata 与执行适配，不再允许默认空 `MetadataCatalog` / 空 `DatabaseRuntime` 作为成功启动路径。
- - HTTP 服务如需对外暴露，应放在受信网络、上游网关、反向代理或其他网络边界之后。
+ ### 16.3 推荐集群拓扑
+ - MCP 服务集群
+@@ -670,7 +679,7 @@ sequenceDiagram
+     participant F as Metadata Facade
+     participant S as ShardingSphere Metadata
  
--### 15.2 审计基线
-+### 15.2 SQL execution trace 基线
-+- V1 只生成 SQL 执行路径的本地 trace 摘要，不承诺持久化合规日志或全量 MCP 活动记录。
- - 统一输出：
-   - session_id
-   - database
--  - operation_class
--  - operation_digest
-+  - statement_class
-+  - statement_digest
-   - success_or_failure
-   - error_code
-   - transaction_marker
-@@ -607,7 +608,7 @@ flowchart TB
-   - 独立进程
-   - 独立容器
-   - 独立配置目录
--  - 独立日志与审计
-+  - 独立日志与 SQL execution trace
-   - 独立版本发布
+-    C->>M: list_tables / list_views / search_metadata
++    C->>M: resources/read or database_gateway_search_metadata
+     M->>F: metadata discovery
+     F->>S: metadata 查询
+     S-->>F: 可访问对象
+@@ -686,7 +695,7 @@ sequenceDiagram
+     participant E as ExecuteQuery Facade
+     participant S as ShardingSphere Core
  
- ### 16.2 调试模型
-@@ -729,7 +730,7 @@ apache-shardingsphere-mcp-<version>/
- - 当前 V1 打包运行时默认具备：
-   - 服务日志目录
-   - `conf/logback.xml` 日志配置
--  - 审计相关代码路径
-+  - SQL execution trace 相关代码路径
- - `readiness / liveness` 属于后续运行时增强项，当前 standalone runtime 未直接提供。
-   - capability 快照
-   - tool 调用统计
-@@ -818,7 +819,7 @@ apache-shardingsphere-mcp-<version>/
+-    C->>M: execute_query(database, schema?, sql)
++    C->>M: database_gateway_execute_query or database_gateway_execute_update
+     M->>E: 执行统一 SQL 请求
+     E->>S: parse / route / execute
+     S-->>E: raw result
+@@ -817,7 +826,7 @@ apache-shardingsphere-mcp-<version>/
+   - 完成 capability 组装链
+   - 完成统一 error model
  - 阶段 3：执行与治理
-   - 完成 `execute_query`
+-  - 完成 `execute_query`
++  - 完成 SQL tool pair
    - 完成事务能力矩阵
--  - 完成 audit 治理链路
-+  - 完成 SQL execution trace 治理可见性链路
+   - 完成 SQL execution trace 治理可见性链路
  - 阶段 4：部署与联调
-   - 完成 HTTP 服务化部署
-   - 完成 STDIO 本地调试
+@@ -832,7 +841,7 @@ apache-shardingsphere-mcp-<version>/
+   - 是否未反向污染主仓库 Java 8 主线
+   - 是否使用官方 SDK 而非自研协议实现
+   - capability 是否实现分层清晰
+-  - `execute_query` 是否成为统一执行入口
++  - 当前 SQL tool pair 是否覆盖查询与变更执行入口
+   - 事务能力矩阵是否显式维护
+   - HTTP 会话与事务语义是否闭合
+   - distribution 是否形成独立运维单元

@@ -1,2856 +1,1310 @@
-commit 275c84a0a024045ec990c3b7f325b2f26d9b25b8
+commit 29c79a75903e148944b626038393ad6a10759b83
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Thu May 28 21:38:43 2026 +0800
+Date:   Fri May 29 12:46:39 2026 +0800
 
-    Migrate MCP README content to official docs (#38747)
+    Refine docs and remove embedded H2 demo (#38749)
     
-    - Add MCP user, reference, developer, and test manuals under docs/document/content
-    - Remove MCP module README files from source and distribution packaging
-    - Point MCP registry metadata to the official documentation site
-    - Replace README-coupled test fixtures with neutral file names
+    * Refine ShardingSphere MCP user manual
+    
+    Clarify MCP Server terminology and Chinese protocol wording.
+    Replace the H2-based quick start path with a ShardingSphere-Proxy logical database example.
+    Simplify startup, session initialization, and troubleshooting instructions in CN/EN docs.
+    
+    * Refine docs and remove embedded H2 demo
+    
+    Refine the ShardingSphere-MCP documentation to clarify MCP Server
+    wording, protocol terminology, startup flow, and the requirement for a
+    user-prepared ShardingSphere-Proxy/MySQL logical database.
+    
+    Remove the embedded H2 demo runtime, including demo SQL, distribution
+    dependency, data directory setup, H2 MCP capability registration, and
+    related test fixtures.
+    
+    Update default MCP configurations and examples to use Proxy/MySQL
+    placeholders instead of project-provided demo data.
 
-diff --git a/docs/community/content/involved/release/shardingsphere.cn.md b/docs/community/content/involved/release/shardingsphere.cn.md
-index c0078c9cdf7..4bcefce45c4 100644
---- a/docs/community/content/involved/release/shardingsphere.cn.md
-+++ b/docs/community/content/involved/release/shardingsphere.cn.md
-@@ -198,7 +198,7 @@ GPG 签名文件和哈希校验文件的下载连接应该使用这个前缀：`
- 
- ### 5. 修改 README 文件
- 
--更新 `README.md` 和 `README_ZH.md` 里的 `${RELEASE.VERSION}` 和 `${NEXT.RELEASE.VERSION}`。
-+更新根目录 `README.md` 和 `README_ZH.md` 里的 `${RELEASE.VERSION}` 和 `${NEXT.RELEASE.VERSION}`。
- 
- ### 6. 修改 ShardingSphereDriver
- 
-diff --git a/docs/community/content/involved/release/shardingsphere.en.md b/docs/community/content/involved/release/shardingsphere.en.md
-index dfe8cdb2aa4..f7442129528 100644
---- a/docs/community/content/involved/release/shardingsphere.en.md
-+++ b/docs/community/content/involved/release/shardingsphere.en.md
-@@ -200,7 +200,7 @@ GPG signatures and hashes (SHA* etc) should be prefixed with `https://downloads.
- 
- ### 5. Update README files
- 
--Update `${RELEASE.VERSION}` and `${NEXT.RELEASE.VERSION}` in README.md and README_ZH.md.
-+Update `${RELEASE.VERSION}` and `${NEXT.RELEASE.VERSION}` in the root README.md and README_ZH.md.
- 
- ### 6. Update ShardingSphereDriver
- 
-diff --git a/docs/document/content/dev-manual/mcp.cn.md b/docs/document/content/dev-manual/mcp.cn.md
-new file mode 100644
-index 00000000000..c436d1747f4
---- /dev/null
-+++ b/docs/document/content/dev-manual/mcp.cn.md
-@@ -0,0 +1,96 @@
-++++
-+pre = "<b>5.10. </b>"
-+title = "MCP"
-+weight = 10
-+chapter = true
-++++
-+
-+本章面向希望扩展 ShardingSphere-MCP 的开发者。
-+用户安装和使用请查看[用户手册](../../user-manual/shardingsphere-mcp/)，协议表面请查看[技术参考](../../reference/mcp/)。
-+
-+## 模块结构
-+
-+MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
-+
-+- `mcp/api`：public tool/resource handler 契约、descriptor 类型、协议 response 和 MCP 协议异常。
-+- `mcp/support`：database metadata、execution、capability、workflow context、模型、facade、SPI 和复用 helper。
-+- `mcp/features/encrypt`：Encrypt MCP feature。
-+- `mcp/features/mask`：Mask MCP feature。
-+- `mcp/core`：handler 发现、registry、request scope、session、SQL execution trace、metadata discovery 和 runtime context。
-+- `mcp/bootstrap`：基于 MCP Java SDK 的 bootstrap、HTTP/STDIO transport、配置加载和生命周期管理。
-+- `distribution/mcp`：独立打包、启动脚本、配置和 Dockerfile。
-+- `test/e2e/mcp`：端到端契约验证。
-+
-+`mcp/bootstrap` 只负责发布聚合后的协议表面，不应硬编码具体 feature 业务。
-+
-+## 新增 Feature Plugin
-+
-+新增 feature 的推荐路径：
-+
-+1. 在 `mcp/features/<feature>` 下创建模块。
-+2. 依赖 `mcp/api`。
-+3. 如果需要 database metadata、SQL execution 或 workflow 支持，依赖 `mcp/support`。
-+4. 只有需要 service 级 handler context 时才依赖 `mcp/core`。
-+5. 不依赖 `mcp/bootstrap`。
-+6. 实现 `MCPHandlerProvider`。
-+7. 通过 `getToolHandlers()` 和 `getResourceHandlers()` 返回 feature 自己暴露的 handlers。
-+8. 如果 feature 拥有 workflow definitions，在同一个 provider 上实现 `MCPWorkflowDefinitionProvider`。
-+9. 在 `src/main/resources/META-INF/services/` 注册 `org.apache.shardingsphere.mcp.api.MCPHandlerProvider`。
-+10. 在 `META-INF/shardingsphere-mcp/mcp-descriptors` 下添加 descriptor。
-+
-+如果 feature 要作为官方默认能力随发行包提供，还需要：
-+
-+- 加入 `mcp/features/pom.xml`。
-+- 加入 `distribution/mcp/pom.xml`。
-+
-+如果 feature 是可选插件，构建后把 jar 放入发行包 `plugins/` 目录。
-+
-+## Handler 与 Descriptor
-+
-+对外新增 tool：
-+
-+- 实现 `MCPToolHandler<T extends MCPHandlerContext>`。
-+- 声明 context type。
-+- 声明 canonical tool name。
-+- 在 descriptor 中维护 input schema、output schema、annotations、相关 resources、follow-up tools 和副作用说明。
-+
-+对外新增 resource：
-+
-+- 实现 `MCPResourceHandler<T extends MCPHandlerContext>`。
-+- 声明 context type。
-+- 声明 canonical URI template。
-+- 在 descriptor 中维护 URI 参数含义、对象范围、MIME type、title、description、annotations 和关系元数据。
-+
-+运行时代码需要 descriptor 时，应使用 canonical tool name 或 resource URI template，通过 `MCPDescriptorCatalogIndex` 从 catalog 解析。
-+不要在 handler 内重复维护 descriptor 字段。
-+
-+## Context 选择
-+
-+- service 级 handler 使用 `MCPServiceHandlerContext`。
-+- database metadata 或 execution handler 使用 `MCPDatabaseHandlerContext`。
-+- workflow handler 使用 `MCPWorkflowHandlerContext`。
-+
-+## 命名与唯一性
-+
-+- Tool name 和 resource URI pattern 必须全局唯一。
-+- 重复 handler 或重复 descriptor 会在启动期校验时被拒绝。
-+- Feature URI 使用 `shardingsphere://features/<feature>/...` 命名空间。
-+- 不要和公共 metadata path 混用。
-+
-+## Descriptor 维护原则
-+
-+Descriptor 应说明模型如何使用协议表面，而不是只重复 tool 名或 URI。
-+
-+维护时应包含：
-+
-+- 清晰的字段描述。
-+- JSON schema 约束。
-+- 输出结构和示例。
-+- 安全 annotations。
-+- 副作用范围。
-+- 相关 resources。
-+- 下一步 actions。
-+- completion target。
-+- workflow 恢复路径。
-+
-+Tool annotations 只是客户端提示，不能替代运行时校验、SQL 安全检查、用户审批或服务端授权。
-diff --git a/docs/document/content/dev-manual/mcp.en.md b/docs/document/content/dev-manual/mcp.en.md
-new file mode 100644
-index 00000000000..bf6834ddb60
---- /dev/null
-+++ b/docs/document/content/dev-manual/mcp.en.md
-@@ -0,0 +1,96 @@
-++++
-+pre = "<b>5.10. </b>"
-+title = "MCP"
-+weight = 10
-+chapter = true
-++++
-+
-+This chapter is for developers who want to extend ShardingSphere-MCP.
-+For installation and usage, see the [User Manual](../../user-manual/shardingsphere-mcp/). For the protocol surface, see the [Reference](../../reference/mcp/).
-+
-+## Module structure
-+
-+The MCP path is organized as `api + support + features + core + bootstrap`:
-+
-+- `mcp/api`: public tool/resource handler contracts, descriptor types, protocol responses, and MCP protocol exceptions.
-+- `mcp/support`: database metadata, execution, capability, workflow contexts, models, facades, SPI, and reusable helpers.
-+- `mcp/features/encrypt`: Encrypt MCP feature.
-+- `mcp/features/mask`: Mask MCP feature.
-+- `mcp/core`: handler discovery, registry, request scope, session, SQL execution trace, metadata discovery, and runtime context.
-+- `mcp/bootstrap`: MCP Java SDK based bootstrap, HTTP/STDIO transport, configuration loading, and lifecycle management.
-+- `distribution/mcp`: standalone packaging, startup scripts, configuration, and Dockerfile.
-+- `test/e2e/mcp`: end-to-end contract validation.
-+
-+`mcp/bootstrap` only publishes the aggregated protocol surface. It should not hard-code concrete feature business logic.
-+
-+## Add a Feature Plugin
-+
-+Recommended path for a new feature:
-+
-+1. Create a module under `mcp/features/<feature>`.
-+2. Depend on `mcp/api`.
-+3. Depend on `mcp/support` when database metadata, SQL execution, or workflow support is needed.
-+4. Depend on `mcp/core` only when service-level handler context is needed.
-+5. Do not depend on `mcp/bootstrap`.
-+6. Implement `MCPHandlerProvider`.
-+7. Return the feature's handlers from `getToolHandlers()` and `getResourceHandlers()`.
-+8. If the feature owns workflow definitions, implement `MCPWorkflowDefinitionProvider` on the same provider.
-+9. Register `org.apache.shardingsphere.mcp.api.MCPHandlerProvider` under `src/main/resources/META-INF/services/`.
-+10. Add descriptors under `META-INF/shardingsphere-mcp/mcp-descriptors`.
-+
-+If the feature should be shipped as an official default capability:
-+
-+- Add it to `mcp/features/pom.xml`.
-+- Add it to `distribution/mcp/pom.xml`.
-+
-+If the feature is optional, place the built jar under the distribution `plugins/` directory.
-+
-+## Handler and Descriptor
-+
-+When adding a public tool:
-+
-+- Implement `MCPToolHandler<T extends MCPHandlerContext>`.
-+- Declare the context type.
-+- Declare the canonical tool name.
-+- Maintain input schema, output schema, annotations, related resources, follow-up tools, and side-effect notes in the descriptor.
-+
-+When adding a public resource:
-+
-+- Implement `MCPResourceHandler<T extends MCPHandlerContext>`.
-+- Declare the context type.
-+- Declare the canonical URI template.
-+- Maintain URI parameter meaning, object scope, MIME type, title, description, annotations, and relationship metadata in the descriptor.
-+
-+When runtime code needs the descriptor for a handler, resolve it from `MCPDescriptorCatalogIndex` by canonical tool name or resource URI template.
-+Do not duplicate descriptor fields inside handlers.
-+
-+## Context selection
-+
-+- Use `MCPServiceHandlerContext` for service-level handlers.
-+- Use `MCPDatabaseHandlerContext` for database metadata or execution handlers.
-+- Use `MCPWorkflowHandlerContext` for workflow handlers.
-+
-+## Naming and uniqueness
-+
-+- Tool names and resource URI patterns must be globally unique.
-+- Duplicate handlers or descriptors are rejected at startup validation.
-+- Feature URIs should use the `shardingsphere://features/<feature>/...` namespace.
-+- Do not mix feature URIs with public metadata paths.
-+
-+## Descriptor maintenance
-+
-+Descriptors should explain how models should use the protocol surface, not merely repeat tool names or URIs.
-+
-+Maintain:
-+
-+- Clear field descriptions.
-+- JSON schema constraints.
-+- Output structure and examples.
-+- Safety annotations.
-+- Side-effect scope.
-+- Related resources.
-+- Next actions.
-+- Completion targets.
-+- Workflow recovery paths.
-+
-+Tool annotations are only client hints. They do not replace runtime validation, SQL safety checks, user approval, or server-side authorization.
-diff --git a/docs/document/content/reference/mcp/_index.cn.md b/docs/document/content/reference/mcp/_index.cn.md
-new file mode 100644
-index 00000000000..1410aa733a4
---- /dev/null
-+++ b/docs/document/content/reference/mcp/_index.cn.md
-@@ -0,0 +1,11 @@
-++++
-+pre = "<b>7.12. </b>"
-+title = "MCP"
-+weight = 12
-+chapter = true
-++++
-+
-+本章记录 ShardingSphere-MCP 的协议表面和模型可见契约。
-+
-+用户完成安装、配置和客户端接入时，请优先阅读[用户手册](../../user-manual/shardingsphere-mcp/)。
-+本章作为 reference，用于查询 public tools、resources、prompts、completions 和协议能力边界。
-diff --git a/docs/document/content/reference/mcp/_index.en.md b/docs/document/content/reference/mcp/_index.en.md
-new file mode 100644
-index 00000000000..e23f8bda565
---- /dev/null
-+++ b/docs/document/content/reference/mcp/_index.en.md
-@@ -0,0 +1,11 @@
-++++
-+pre = "<b>7.12. </b>"
-+title = "MCP"
-+weight = 12
-+chapter = true
-++++
-+
-+This chapter documents the protocol surface and model-facing contract of ShardingSphere-MCP.
-+
-+For installation, configuration, and client integration, read the [User Manual](../../user-manual/shardingsphere-mcp/) first.
-+Use this chapter as a reference for public tools, resources, prompts, completions, and protocol capability boundaries.
-diff --git a/docs/document/content/reference/mcp/protocol-surface.cn.md b/docs/document/content/reference/mcp/protocol-surface.cn.md
-new file mode 100644
-index 00000000000..4b85016806f
---- /dev/null
-+++ b/docs/document/content/reference/mcp/protocol-surface.cn.md
-@@ -0,0 +1,147 @@
-++++
-+title = "协议表面"
-+weight = 1
-++++
-+
-+ShardingSphere-MCP 的 public surface 由 `META-INF/shardingsphere-mcp/mcp-descriptors` 下的 descriptors 定义。
-+MCP runtime 使用这些 descriptors 发布 tools、resources、resource templates、prompts 和 completions。
-+
-+## 协议能力
-+
-+ShardingSphere-MCP 面向 MCP protocol revision `2025-11-25`。
-+
-+已启用：
-+
-+- `resources/list`
-+- `resources/templates/list`
-+- `resources/read`
-+- `tools/list`
-+- `tools/call`
-+- `prompts/list`
-+- `prompts/get`
-+- `completion/complete`
-+
-+未实现或后续范围：
-+
-+- Resource subscriptions。
-+- Resource、tool、prompt list-changed notifications。
-+- ShardingSphere 产品日志通过 `notifications/message` 输出。
-+- `progress`。
-+- `notifications/cancelled`。
-+- task-augmented requests。
-+- MCP `icons` 和 `Tool.execution` 字段，等待 MCP Java SDK 边界支持。
-+
-+`roots` 和 `sampling` 是 client capabilities。
-+ShardingSphere-MCP 不要求 roots，也不会发送 `sampling/createMessage` 请求。
-+
-+## Tools
-+
-+`database_gateway_search_metadata`
-+
-+- 搜索逻辑库 metadata。
-+- 可按 `database`、`schema`、`query`、`object_types` 收窄范围。
-+- `object_types` 支持 `database`、`schema`、`table`、`view`、`column`、`index`、`sequence`。
-+
-+`database_gateway_execute_query`
-+
-+- 执行一个 classifier 允许的 `SELECT` 或 `EXPLAIN ANALYZE`。
-+- 拒绝 DML、DDL、DCL、事务控制、savepoint 和已知有副作用的查询形态。
-+- `max_rows` 范围是 `0..5000`，省略或 `0` 使用服务端默认值 `100`。
-+- `timeout_ms` 范围是 `0..300000`，`0` 表示不设置显式 timeout。
-+
-+`database_gateway_execute_update`
-+
-+- 预览或执行一个支持的有副作用 SQL。
-+- `execution_mode=preview` 只做分类和副作用范围预览。
-+- `execution_mode=execute` 在 review 后执行 SQL。
-+- 多语句和禁用命令会被拒绝。
-+
-+`database_gateway_apply_workflow`
-+
-+- 对当前 session 中已有的 workflow plan 做 preview、执行或导出。
-+- `execution_mode` 支持 `preview`、`review-then-execute`、`manual-only`。
-+- `approved_steps` 只能使用 preview 返回的 approval step。
-+
-+`database_gateway_validate_workflow`
-+
-+- 校验当前 session 中已有的 workflow plan。
-+- 用于 planning review 后或 apply 后确认 runtime 状态。
-+
-+Feature plugin planning tools：
-+
-+- `database_gateway_plan_encrypt_rule`
-+- `database_gateway_plan_mask_rule`
-+
-+## Resources
-+
-+Runtime 与能力：
-+
-+- `shardingsphere://capabilities`
-+- `shardingsphere://runtime`
-+- `shardingsphere://databases`
-+- `shardingsphere://databases/{database}`
-+- `shardingsphere://databases/{database}/capabilities`
-+
-+Metadata：
-+
-+- `shardingsphere://databases/{database}/schemas`
-+- `shardingsphere://databases/{database}/schemas/{schema}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/columns`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/columns/{column}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/indexes`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/indexes/{index}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views/{view}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views/{view}/columns`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views/{view}/columns/{column}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/sequences`
-+- `shardingsphere://databases/{database}/schemas/{schema}/sequences/{sequence}`
-+
-+Workflow：
-+
-+- `shardingsphere://workflows/{plan_id}`
-+
-+Feature resources：
-+
-+- `shardingsphere://features/encrypt/algorithms`
-+- `shardingsphere://features/encrypt/databases/{database}/rules`
-+- `shardingsphere://features/encrypt/databases/{database}/tables/{table}/rules`
-+- `shardingsphere://features/mask/algorithms`
-+- `shardingsphere://features/mask/databases/{database}/rules`
-+- `shardingsphere://features/mask/databases/{database}/tables/{table}/rules`
-+
-+## Prompts
-+
-+- `inspect_metadata`：引导模型读取 metadata，不在用户只要求查看 metadata 时执行 SQL。
-+- `safe_sql_execution`：引导模型区分 read-only query 和 side-effecting SQL。
-+- `recover_workflow`：引导模型从失败或过期 workflow 中恢复。
-+- `plan_encrypt_rule`：引导模型规划 Encrypt feature workflow。
-+- `plan_mask_rule`：引导模型规划 Mask feature workflow。
-+
-+## Completions
-+
-+Completions 用于补全运行时名称、metadata identifier、算法和当前 session 中的 workflow `plan_id`。
-+Client 应在选择不确定的 database、schema、table、column、algorithm 或 `plan_id` 前调用 `completion/complete`，或读取最近的 MCP resource。
-+
-+## 响应与恢复
-+
-+列表型业务 payload 通常包含：
-+
-+- `items`
-+- `count`
-+- `has_more`
-+- `continuation_mode`
-+
-+大结果 payload 会使用：
-+
-+- `truncated`
-+- `total_count`
-+- `returned_count`
-+- `large_result_guidance`
-+
-+可恢复错误 payload 保留 `message`，并增加 `recovery` 提示。
-+常见恢复场景包括缺失参数、不支持的 tool/resource、非法枚举、workflow 状态错误和 SQL tool 选错。
-+
-+JSON-RPC 数字错误码属于 MCP 协议错误契约。
-diff --git a/docs/document/content/reference/mcp/protocol-surface.en.md b/docs/document/content/reference/mcp/protocol-surface.en.md
-new file mode 100644
-index 00000000000..732af9b40d8
---- /dev/null
-+++ b/docs/document/content/reference/mcp/protocol-surface.en.md
-@@ -0,0 +1,147 @@
-++++
-+title = "Protocol Surface"
-+weight = 1
-++++
-+
-+The public surface of ShardingSphere-MCP is defined by descriptors under `META-INF/shardingsphere-mcp/mcp-descriptors`.
-+The MCP runtime uses these descriptors to publish tools, resources, resource templates, prompts, and completions.
-+
-+## Protocol capabilities
-+
-+ShardingSphere-MCP targets MCP protocol revision `2025-11-25`.
-+
-+Enabled:
-+
-+- `resources/list`
-+- `resources/templates/list`
-+- `resources/read`
-+- `tools/list`
-+- `tools/call`
-+- `prompts/list`
-+- `prompts/get`
-+- `completion/complete`
-+
-+Not implemented or future scope:
-+
-+- Resource subscriptions.
-+- Resource, tool, and prompt list-changed notifications.
-+- ShardingSphere product logs through `notifications/message`.
-+- `progress`.
-+- `notifications/cancelled`.
-+- Task-augmented requests.
-+- MCP `icons` and `Tool.execution` fields until the MCP Java SDK boundary exposes them.
-+
-+`roots` and `sampling` are client capabilities.
-+ShardingSphere-MCP does not require roots and does not send `sampling/createMessage` requests.
-+
-+## Tools
-+
-+`database_gateway_search_metadata`
-+
-+- Searches logical database metadata.
-+- Narrows scope by `database`, `schema`, `query`, and `object_types`.
-+- `object_types` supports `database`, `schema`, `table`, `view`, `column`, `index`, and `sequence`.
-+
-+`database_gateway_execute_query`
-+
-+- Executes one classifier-approved `SELECT` or `EXPLAIN ANALYZE`.
-+- Rejects DML, DDL, DCL, transaction control, savepoints, and known side-effecting query forms.
-+- `max_rows` range is `0..5000`; omitted or `0` uses the server default `100`.
-+- `timeout_ms` range is `0..300000`; `0` means no explicit timeout.
-+
-+`database_gateway_execute_update`
-+
-+- Previews or executes one supported side-effecting SQL statement.
-+- `execution_mode=preview` only classifies the SQL and previews the side-effect scope.
-+- `execution_mode=execute` executes the SQL after review.
-+- Multiple statements and banned commands are rejected.
-+
-+`database_gateway_apply_workflow`
-+
-+- Previews, executes, or exports an existing workflow plan in the current session.
-+- `execution_mode` supports `preview`, `review-then-execute`, and `manual-only`.
-+- `approved_steps` must use approval steps returned by preview.
-+
-+`database_gateway_validate_workflow`
-+
-+- Validates an existing workflow plan in the current session.
-+- Use after planning review or after apply to confirm runtime state.
-+
-+Feature plugin planning tools:
-+
-+- `database_gateway_plan_encrypt_rule`
-+- `database_gateway_plan_mask_rule`
-+
-+## Resources
-+
-+Runtime and capability:
-+
-+- `shardingsphere://capabilities`
-+- `shardingsphere://runtime`
-+- `shardingsphere://databases`
-+- `shardingsphere://databases/{database}`
-+- `shardingsphere://databases/{database}/capabilities`
-+
-+Metadata:
-+
-+- `shardingsphere://databases/{database}/schemas`
-+- `shardingsphere://databases/{database}/schemas/{schema}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/columns`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/columns/{column}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/indexes`
-+- `shardingsphere://databases/{database}/schemas/{schema}/tables/{table}/indexes/{index}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views/{view}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views/{view}/columns`
-+- `shardingsphere://databases/{database}/schemas/{schema}/views/{view}/columns/{column}`
-+- `shardingsphere://databases/{database}/schemas/{schema}/sequences`
-+- `shardingsphere://databases/{database}/schemas/{schema}/sequences/{sequence}`
-+
-+Workflow:
-+
-+- `shardingsphere://workflows/{plan_id}`
-+
-+Feature resources:
-+
-+- `shardingsphere://features/encrypt/algorithms`
-+- `shardingsphere://features/encrypt/databases/{database}/rules`
-+- `shardingsphere://features/encrypt/databases/{database}/tables/{table}/rules`
-+- `shardingsphere://features/mask/algorithms`
-+- `shardingsphere://features/mask/databases/{database}/rules`
-+- `shardingsphere://features/mask/databases/{database}/tables/{table}/rules`
-+
-+## Prompts
-+
-+- `inspect_metadata`: guides the model to read metadata and avoid SQL execution when the user only asks for metadata.
-+- `safe_sql_execution`: guides the model to distinguish read-only query from side-effecting SQL.
-+- `recover_workflow`: guides recovery from failed or stale workflows.
-+- `plan_encrypt_rule`: guides Encrypt feature workflow planning.
-+- `plan_mask_rule`: guides Mask feature workflow planning.
-+
-+## Completions
-+
-+Completions suggest runtime names, metadata identifiers, algorithms, and workflow `plan_id` values in the current session.
-+Before choosing uncertain database, schema, table, column, algorithm, or `plan_id` values, clients should call `completion/complete` or read the nearest MCP resource.
-+
-+## Responses and recovery
-+
-+List-shaped business payloads usually contain:
-+
-+- `items`
-+- `count`
-+- `has_more`
-+- `continuation_mode`
-+
-+Large-result payloads use:
-+
-+- `truncated`
-+- `total_count`
-+- `returned_count`
-+- `large_result_guidance`
-+
-+Recoverable error payloads keep `message` and add `recovery` hints.
-+Common recovery cases include missing arguments, unsupported tools or resources, invalid enum values, workflow state errors, and unsafe SQL tool selection.
-+
-+JSON-RPC numeric error codes are the MCP protocol error contract.
-diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
-new file mode 100644
-index 00000000000..cd7f5397003
---- /dev/null
-+++ b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
-@@ -0,0 +1,95 @@
-++++
-+pre = "<b>6.5. </b>"
-+title = "MCP E2E 测试"
-+weight = 5
-+chapter = true
-++++
-+
-+本章说明 ShardingSphere-MCP 的端到端契约验证和 LLM smoke 验证。
-+
-+## 范围
-+
-+`test/e2e/mcp` 覆盖：
-+
-+- 发行包启动和配置。
-+- HTTP runtime。
-+- STDIO runtime。
-+- MCP baseline contract。
-+- Tool/resource/prompt/completion discovery。
-+- 真实模型驱动的 MCP smoke。
-+- Encrypt 和 Mask workflow 可用性验证。
-+
-+## 本地准备
-+
-+先安装 MCP E2E 依赖模块到本地仓库：
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -am install -DskipTests -DskipITs -Dspotless.skip=true -B -ntp
-+```
-+
-+## LLM Runtime
-+
-+MCP LLM lane 默认使用本地 Docker image 承载 OpenAI-compatible endpoint。
-+构建前建议先查看 Docker 占用：
-+
-+```bash
-+docker system df
-+```
-+
-+只校验本机架构选择，不下载模型：
-+
-+```bash
-+sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh --dry-run
-+```
-+
-+构建本地 runtime image：
-+
-+```bash
-+sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh
-+```
-+
-+## 运行 LLM Smoke
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -Pllm-e2e test -DskipITs -Dspotless.skip=true \
-+  -Dtest=LLMSmokeE2ETest \
-+  -Dsurefire.failIfNoSpecifiedTests=true
-+```
-+
-+## 运行 LLM Usability Suite
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -Pllm-e2e test -DskipITs -Dspotless.skip=true \
-+  -Dtest=LLMUsabilitySuiteE2ETest \
-+  -Dsurefire.failIfNoSpecifiedTests=true
-+```
-+
-+## External Debug
-+
-+仅本地调试时，可以连接已经运行的 OpenAI-compatible endpoint：
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -Pllm-e2e test -DskipITs -Dspotless.skip=true \
-+  -Dtest=LLMSmokeE2ETest \
-+  -Dmcp.llm.runtime-mode=external-debug \
-+  -Dmcp.llm.base-url=http://127.0.0.1:8080/v1 \
-+  -Dsurefire.failIfNoSpecifiedTests=true
-+```
-+
-+External debug endpoint 不能作为 score-closing evidence。
-+
-+## 产物
-+
-+LLM artifact 写入：
-+
-+```text
-+test/e2e/mcp/target/llm-e2e/
-+```
-+
-+GitHub Actions 入口：
-+
-+- `.github/workflows/mcp-llm-e2e.yml`
-+- `.github/workflows/mcp-llm-usability-e2e.yml`
-+
-+这两条检查用于提供额外可见性，不应单独配置成 branch protection 或 ruleset 的 required check。
-+如果超大 PR 因 path filter 限制漏触发，可以使用 `workflow_dispatch` 手动补充 evidence。
-diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.en.md b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
-new file mode 100644
-index 00000000000..695fdc81d27
---- /dev/null
-+++ b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
-@@ -0,0 +1,95 @@
-++++
-+pre = "<b>6.5. </b>"
-+title = "MCP E2E Test"
-+weight = 5
-+chapter = true
-++++
-+
-+This chapter describes ShardingSphere-MCP end-to-end contract validation and LLM smoke validation.
-+
-+## Scope
-+
-+`test/e2e/mcp` covers:
-+
-+- Distribution startup and configuration.
-+- HTTP runtime.
-+- STDIO runtime.
-+- MCP baseline contract.
-+- Tool/resource/prompt/completion discovery.
-+- Real-model MCP smoke.
-+- Encrypt and Mask workflow usability validation.
-+
-+## Local preparation
-+
-+Install MCP E2E dependency modules into the local repository first:
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -am install -DskipTests -DskipITs -Dspotless.skip=true -B -ntp
-+```
-+
-+## LLM Runtime
-+
-+The MCP LLM lane uses a local Docker image to host an OpenAI-compatible endpoint.
-+Before building, inspect Docker usage:
-+
-+```bash
-+docker system df
-+```
-+
-+Check host architecture selection without downloading the model:
-+
-+```bash
-+sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh --dry-run
-+```
-+
-+Build the local runtime image:
-+
-+```bash
-+sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh
-+```
-+
-+## Run LLM Smoke
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -Pllm-e2e test -DskipITs -Dspotless.skip=true \
-+  -Dtest=LLMSmokeE2ETest \
-+  -Dsurefire.failIfNoSpecifiedTests=true
-+```
-+
-+## Run LLM Usability Suite
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -Pllm-e2e test -DskipITs -Dspotless.skip=true \
-+  -Dtest=LLMUsabilitySuiteE2ETest \
-+  -Dsurefire.failIfNoSpecifiedTests=true
-+```
-+
-+## External Debug
-+
-+For local debugging only, connect to an already running OpenAI-compatible endpoint:
-+
-+```bash
-+./mvnw -pl test/e2e/mcp -Pllm-e2e test -DskipITs -Dspotless.skip=true \
-+  -Dtest=LLMSmokeE2ETest \
-+  -Dmcp.llm.runtime-mode=external-debug \
-+  -Dmcp.llm.base-url=http://127.0.0.1:8080/v1 \
-+  -Dsurefire.failIfNoSpecifiedTests=true
-+```
-+
-+External debug endpoints cannot be used as score-closing evidence.
-+
-+## Artifacts
-+
-+LLM artifacts are written under:
-+
-+```text
-+test/e2e/mcp/target/llm-e2e/
-+```
-+
-+GitHub Actions entry points:
-+
-+- `.github/workflows/mcp-llm-e2e.yml`
-+- `.github/workflows/mcp-llm-usability-e2e.yml`
-+
-+These checks provide additional visibility and should not be configured as required branch protection or ruleset checks by themselves.
-+If a very large PR misses a path-filter match, use `workflow_dispatch` to add manual evidence.
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/_index.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/_index.cn.md
-new file mode 100644
-index 00000000000..c989a3ec009
---- /dev/null
+index c989a3ec009..ed709b113bd 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/_index.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/_index.cn.md
-@@ -0,0 +1,21 @@
-++++
-+pre = "<b>4.7. </b>"
-+title = "ShardingSphere-MCP"
-+weight = 7
-+chapter = true
-++++
-+
-+ShardingSphere-MCP 是 Apache ShardingSphere 面向 Model Context Protocol 的独立运行时。
-+它通过 MCP tools、resources、prompts 和 completions 暴露逻辑库元数据、安全 SQL 访问能力，以及由插件提供的治理工作流。
-+
-+本章面向使用者，说明如何启动 MCP runtime、连接 MCP client、配置运行时逻辑库、部署官方发行包，并排查通用问题。
-+
-+## 文档结构
-+
-+- 快速开始：使用发行包内置 demo runtime 验证 metadata discovery 和 query。
-+- 配置说明：说明 transport、runtimeDatabases、插件目录和启动参数。
-+- Client 集成：说明 HTTP、STDIO、session header 和 discovery 调用方式。
-+- Workflow 基础：说明插件工作流共享的 plan、apply、validate 机制。
-+- Feature Plugins：说明官方 MCP 插件能力。
-+- 部署说明：说明发行包、OCI 镜像和安全部署建议。
-+- 常见问题：排查 MCP runtime、transport、session 和 SQL tool 的通用问题。
+@@ -5,17 +5,17 @@ weight = 7
+ chapter = true
+ +++
+ 
+-ShardingSphere-MCP 是 Apache ShardingSphere 面向 Model Context Protocol 的独立运行时。
+-它通过 MCP tools、resources、prompts 和 completions 暴露逻辑库元数据、安全 SQL 访问能力，以及由插件提供的治理工作流。
++ShardingSphere-MCP 是 Apache ShardingSphere 的 MCP Server，可以独立启动，并向 MCP 客户端暴露 ShardingSphere 逻辑库的元数据、安全 SQL 访问能力和插件工作流。
++本文将 MCP 协议中的 tools、resources、prompts 和 completions 分别称为工具、资源、提示和补全；协议方法名和 JSON 字段名仍保留英文，例如 `tools/list` 和 `resources/read`。
+ 
+-本章面向使用者，说明如何启动 MCP runtime、连接 MCP client、配置运行时逻辑库、部署官方发行包，并排查通用问题。
++ShardingSphere-MCP 的配置以数据库为核心：先配置 MCP Server 可以连接的 ShardingSphere 逻辑库，再通过 MCP 客户端读取元数据或调用 SQL 工具。
+ 
+ ## 文档结构
+ 
+-- 快速开始：使用发行包内置 demo runtime 验证 metadata discovery 和 query。
+-- 配置说明：说明 transport、runtimeDatabases、插件目录和启动参数。
+-- Client 集成：说明 HTTP、STDIO、session header 和 discovery 调用方式。
+-- Workflow 基础：说明插件工作流共享的 plan、apply、validate 机制。
+-- Feature Plugins：说明官方 MCP 插件能力。
++- 快速开始：构建发行包，配置一个可连接的逻辑库，启动 HTTP MCP Server，并验证元数据读取和只读 SQL 查询。
++- 配置说明：说明传输方式、`runtimeDatabases`、插件目录和启动参数。
++- 客户端集成：说明 HTTP、STDIO、会话响应头和能力发现调用方式。
++- 工作流基础：说明插件工作流共享的规划、执行和校验机制。
++- 功能插件：说明官方 MCP 功能插件能力。
+ - 部署说明：说明发行包、OCI 镜像和安全部署建议。
+-- 常见问题：排查 MCP runtime、transport、session 和 SQL tool 的通用问题。
++- 常见问题：排查 MCP Server、传输方式、会话和 SQL 工具的通用问题。
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/_index.en.md b/docs/document/content/user-manual/shardingsphere-mcp/_index.en.md
-new file mode 100644
-index 00000000000..1a3ce5bcdc7
---- /dev/null
+index 1a3ce5bcdc7..90b8eb64670 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/_index.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/_index.en.md
-@@ -0,0 +1,22 @@
-++++
-+pre = "<b>4.7. </b>"
-+title = "ShardingSphere-MCP"
-+weight = 7
-+chapter = true
-++++
-+
-+ShardingSphere-MCP is the standalone Model Context Protocol runtime for Apache ShardingSphere.
-+It exposes logical database metadata, safe SQL access, and plugin-provided governance workflows through MCP tools, resources, prompts, and completions.
-+
-+This chapter is written for users who need to start the MCP runtime, connect an MCP client, configure logical runtime databases,
-+deploy the official distribution, and troubleshoot common runtime issues.
-+
-+## Structure
-+
-+- Quick Start: verify metadata discovery and query behavior with the packaged demo runtime.
-+- Configuration: configure transport, runtimeDatabases, plugin directories, and launch parameters.
-+- Client Integration: use HTTP, STDIO, session headers, and discovery calls.
-+- Workflow Basics: understand the shared plan, apply, and validate flow used by feature plugins.
-+- Feature Plugins: use official MCP feature plugins.
-+- Deployment: deploy the binary distribution and OCI image safely.
-+- Troubleshooting: diagnose common MCP runtime, transport, session, and SQL tool issues.
+@@ -5,18 +5,17 @@ weight = 7
+ chapter = true
+ +++
+ 
+-ShardingSphere-MCP is the standalone Model Context Protocol runtime for Apache ShardingSphere.
+-It exposes logical database metadata, safe SQL access, and plugin-provided governance workflows through MCP tools, resources, prompts, and completions.
++ShardingSphere-MCP is the MCP Server for Apache ShardingSphere. It can run independently and expose ShardingSphere logical database metadata, safe SQL access, and plugin workflows to MCP clients.
++This manual uses the MCP terms tools, resources, prompts, and completions for the corresponding protocol capabilities. Protocol method names and JSON field names stay in their original form, such as `tools/list` and `resources/read`.
+ 
+-This chapter is written for users who need to start the MCP runtime, connect an MCP client, configure logical runtime databases,
+-deploy the official distribution, and troubleshoot common runtime issues.
++ShardingSphere-MCP configuration starts from databases: configure the ShardingSphere logical databases that the MCP Server can connect to, then read metadata or call SQL tools through an MCP client.
+ 
+ ## Structure
+ 
+-- Quick Start: verify metadata discovery and query behavior with the packaged demo runtime.
+-- Configuration: configure transport, runtimeDatabases, plugin directories, and launch parameters.
+-- Client Integration: use HTTP, STDIO, session headers, and discovery calls.
+-- Workflow Basics: understand the shared plan, apply, and validate flow used by feature plugins.
++- Quick Start: build the distribution, configure a reachable logical database, start the HTTP MCP Server, and verify metadata reads and read-only SQL queries.
++- Configuration: configure transport, `runtimeDatabases`, plugin directories, and launch parameters.
++- Client Integration: use HTTP, STDIO, session response headers, and capability discovery calls.
++- Workflow Basics: understand the shared planning, apply, and validation flow used by feature plugins.
+ - Feature Plugins: use official MCP feature plugins.
+ - Deployment: deploy the binary distribution and OCI image safely.
+-- Troubleshooting: diagnose common MCP runtime, transport, session, and SQL tool issues.
++- Troubleshooting: diagnose common MCP Server, transport, session, and SQL tool issues.
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/client-integration.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/client-integration.cn.md
-new file mode 100644
-index 00000000000..016935e5644
---- /dev/null
+index 016935e5644..a9579dadfe8 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/client-integration.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/client-integration.cn.md
-@@ -0,0 +1,87 @@
-++++
-+title = "Client 集成"
-+weight = 3
-++++
-+
-+MCP client 可以通过 Streamable HTTP 或 STDIO 连接 ShardingSphere-MCP。
-+Client 应优先使用 MCP 官方 discovery 方法发现 public surface，再按任务调用 tools、resources、prompts 或 completions。
-+
-+## HTTP 配置形态
-+
-+```json
-+{
-+  "mcpServers": {
-+    "shardingsphere-http": {
-+      "url": "http://127.0.0.1:18088/mcp"
-+    }
-+  }
-+}
-+```
-+
-+HTTP client 需要先调用 `initialize`，并保存响应 header 中的：
-+
-+- `MCP-Session-Id`
-+- `MCP-Protocol-Version`
-+
-+后续请求必须继续携带这两个 header。
-+关闭 session 后，该 session id 不能继续复用。
-+
-+## STDIO 配置形态
-+
-+```json
-+{
-+  "mcpServers": {
-+    "shardingsphere": {
-+      "command": "/path/to/apache-shardingsphere-mcp/bin/start.sh",
-+      "args": ["conf/mcp-stdio.yaml"]
-+    }
-+  }
-+}
-+```
-+
-+STDIO 模式适合由本地 MCP client 拉起 ShardingSphere-MCP 子进程。
-+它不是面向人工手输请求的交互式 Shell。
-+
-+STDIO 模式下：
-+
-+- stdout 只用于 MCP 协议帧。
-+- 诊断日志写到 stderr 或 `logs/mcp.log`。
-+- client 配置中的 `command` 和 `args` 应指向发行包内的启动脚本和 STDIO 配置文件。
-+
-+## Discovery 顺序
-+
-+建议 client 按下面顺序发现能力：
-+
-+1. `tools/list`
-+2. `resources/list`
-+3. `resources/templates/list`
-+4. `prompts/list`
-+5. `completion/complete`
-+
-+`shardingsphere://capabilities` 是 ShardingSphere 领域目录资源，可作为模型理解可用能力的补充信息，但不替代 MCP 官方 list 方法。
-+
-+## 常用调用
-+
-+读取 runtime 状态：
-+
-+```json
-+{"jsonrpc":"2.0","id":"runtime-1","method":"resources/read","params":{"uri":"shardingsphere://runtime"}}
-+```
-+
-+读取能力目录：
-+
-+```json
-+{"jsonrpc":"2.0","id":"capabilities-1","method":"resources/read","params":{"uri":"shardingsphere://capabilities"}}
-+```
-+
-+搜索 metadata：
-+
-+```json
-+{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"orders","object_types":["table"]}}}
-+```
-+
-+执行只读 SQL：
-+
-+```json
-+{"jsonrpc":"2.0","id":"query-1","method":"tools/call","params":{"name":"database_gateway_execute_query","arguments":{"database":"logic_db","sql":"SELECT * FROM orders","max_rows":100}}}
-+```
+@@ -1,12 +1,12 @@
+ +++
+-title = "Client 集成"
++title = "客户端集成"
+ weight = 3
+ +++
+ 
+-MCP client 可以通过 Streamable HTTP 或 STDIO 连接 ShardingSphere-MCP。
+-Client 应优先使用 MCP 官方 discovery 方法发现 public surface，再按任务调用 tools、resources、prompts 或 completions。
++MCP 客户端可以通过 Streamable HTTP 或 STDIO 连接 ShardingSphere-MCP。
++客户端应优先使用 MCP 官方能力发现方法获取工具、资源、提示和补全列表，再按任务发起调用。
+ 
+-## HTTP 配置形态
++## HTTP 配置
+ 
+ ```json
+ {
+@@ -18,15 +18,15 @@ Client 应优先使用 MCP 官方 discovery 方法发现 public surface，再按
+ }
+ ```
+ 
+-HTTP client 需要先调用 `initialize`，并保存响应 header 中的：
++HTTP 客户端需要先调用 `initialize`，并保存响应头中的：
+ 
+ - `MCP-Session-Id`
+ - `MCP-Protocol-Version`
+ 
+-后续请求必须继续携带这两个 header。
+-关闭 session 后，该 session id 不能继续复用。
++后续请求必须继续携带这两个响应头。
++关闭会话后，该会话 ID 不能继续复用。
+ 
+-## STDIO 配置形态
++## STDIO 配置
+ 
+ ```json
+ {
+@@ -39,18 +39,18 @@ HTTP client 需要先调用 `initialize`，并保存响应 header 中的：
+ }
+ ```
+ 
+-STDIO 模式适合由本地 MCP client 拉起 ShardingSphere-MCP 子进程。
++STDIO 模式适合由本地 MCP 客户端拉起 ShardingSphere-MCP 子进程。
+ 它不是面向人工手输请求的交互式 Shell。
+ 
+ STDIO 模式下：
+ 
+ - stdout 只用于 MCP 协议帧。
+ - 诊断日志写到 stderr 或 `logs/mcp.log`。
+-- client 配置中的 `command` 和 `args` 应指向发行包内的启动脚本和 STDIO 配置文件。
++- 客户端配置中的 `command` 和 `args` 应指向发行包内的启动脚本和 STDIO 配置文件。
+ 
+-## Discovery 顺序
++## 能力发现顺序
+ 
+-建议 client 按下面顺序发现能力：
++建议客户端按下面顺序发现能力：
+ 
+ 1. `tools/list`
+ 2. `resources/list`
+@@ -58,11 +58,11 @@ STDIO 模式下：
+ 4. `prompts/list`
+ 5. `completion/complete`
+ 
+-`shardingsphere://capabilities` 是 ShardingSphere 领域目录资源，可作为模型理解可用能力的补充信息，但不替代 MCP 官方 list 方法。
++`shardingsphere://capabilities` 是 ShardingSphere 领域目录资源，可作为模型理解可用能力的补充信息，但不替代 MCP 官方列表方法。
+ 
+ ## 常用调用
+ 
+-读取 runtime 状态：
++读取服务状态：
+ 
+ ```json
+ {"jsonrpc":"2.0","id":"runtime-1","method":"resources/read","params":{"uri":"shardingsphere://runtime"}}
+@@ -74,14 +74,14 @@ STDIO 模式下：
+ {"jsonrpc":"2.0","id":"capabilities-1","method":"resources/read","params":{"uri":"shardingsphere://capabilities"}}
+ ```
+ 
+-搜索 metadata：
++搜索元数据：
+ 
+ ```json
+-{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"orders","object_types":["table"]}}}
++{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"sample","object_types":["table"]}}}
+ ```
+ 
+ 执行只读 SQL：
+ 
+ ```json
+-{"jsonrpc":"2.0","id":"query-1","method":"tools/call","params":{"name":"database_gateway_execute_query","arguments":{"database":"logic_db","sql":"SELECT * FROM orders","max_rows":100}}}
++{"jsonrpc":"2.0","id":"query-1","method":"tools/call","params":{"name":"database_gateway_execute_query","arguments":{"database":"logic_db","sql":"SELECT * FROM sample_table LIMIT 100","max_rows":100}}}
+ ```
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/client-integration.en.md b/docs/document/content/user-manual/shardingsphere-mcp/client-integration.en.md
-new file mode 100644
-index 00000000000..8d4f424289b
---- /dev/null
+index 8d4f424289b..6aa03521cdb 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/client-integration.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/client-integration.en.md
-@@ -0,0 +1,87 @@
-++++
-+title = "Client Integration"
-+weight = 3
-++++
-+
-+MCP clients can connect to ShardingSphere-MCP through Streamable HTTP or STDIO.
-+Clients should use official MCP discovery methods first, then call tools, resources, prompts, or completions for the target task.
-+
-+## HTTP configuration shape
-+
-+```json
-+{
-+  "mcpServers": {
-+    "shardingsphere-http": {
-+      "url": "http://127.0.0.1:18088/mcp"
-+    }
-+  }
-+}
-+```
-+
-+An HTTP client must call `initialize` first and keep these response headers:
-+
-+- `MCP-Session-Id`
-+- `MCP-Protocol-Version`
-+
-+Later requests must include both headers.
-+After the session is closed, the session id cannot be reused.
-+
-+## STDIO configuration shape
-+
-+```json
-+{
-+  "mcpServers": {
-+    "shardingsphere": {
-+      "command": "/path/to/apache-shardingsphere-mcp/bin/start.sh",
-+      "args": ["conf/mcp-stdio.yaml"]
-+    }
-+  }
-+}
-+```
-+
-+STDIO mode is for local MCP clients that launch ShardingSphere-MCP as a child process.
-+It is not a human-oriented interactive shell.
-+
-+In STDIO mode:
-+
-+- stdout is reserved for MCP protocol frames.
-+- Diagnostics are written to stderr or `logs/mcp.log`.
-+- `command` and `args` in the client configuration should point to the packaged startup script and STDIO config file.
-+
-+## Discovery order
-+
-+Recommended client discovery order:
-+
-+1. `tools/list`
-+2. `resources/list`
-+3. `resources/templates/list`
-+4. `prompts/list`
-+5. `completion/complete`
-+
-+`shardingsphere://capabilities` is a ShardingSphere domain catalog resource. It can help models understand available capabilities, but it does not replace official MCP list methods.
-+
-+## Common calls
-+
-+Read runtime status:
-+
-+```json
-+{"jsonrpc":"2.0","id":"runtime-1","method":"resources/read","params":{"uri":"shardingsphere://runtime"}}
-+```
-+
-+Read the capability catalog:
-+
-+```json
-+{"jsonrpc":"2.0","id":"capabilities-1","method":"resources/read","params":{"uri":"shardingsphere://capabilities"}}
-+```
-+
-+Search metadata:
-+
-+```json
-+{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"orders","object_types":["table"]}}}
-+```
-+
-+Execute read-only SQL:
-+
-+```json
-+{"jsonrpc":"2.0","id":"query-1","method":"tools/call","params":{"name":"database_gateway_execute_query","arguments":{"database":"logic_db","sql":"SELECT * FROM orders","max_rows":100}}}
-+```
+@@ -4,9 +4,9 @@ weight = 3
+ +++
+ 
+ MCP clients can connect to ShardingSphere-MCP through Streamable HTTP or STDIO.
+-Clients should use official MCP discovery methods first, then call tools, resources, prompts, or completions for the target task.
++Clients should use official MCP capability discovery methods first, then call tools, resources, prompts, or completions for the target task.
+ 
+-## HTTP configuration shape
++## HTTP configuration
+ 
+ ```json
+ {
+@@ -26,7 +26,7 @@ An HTTP client must call `initialize` first and keep these response headers:
+ Later requests must include both headers.
+ After the session is closed, the session id cannot be reused.
+ 
+-## STDIO configuration shape
++## STDIO configuration
+ 
+ ```json
+ {
+@@ -48,7 +48,7 @@ In STDIO mode:
+ - Diagnostics are written to stderr or `logs/mcp.log`.
+ - `command` and `args` in the client configuration should point to the packaged startup script and STDIO config file.
+ 
+-## Discovery order
++## Capability discovery order
+ 
+ Recommended client discovery order:
+ 
+@@ -77,11 +77,11 @@ Read the capability catalog:
+ Search metadata:
+ 
+ ```json
+-{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"orders","object_types":["table"]}}}
++{"jsonrpc":"2.0","id":"search-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"sample","object_types":["table"]}}}
+ ```
+ 
+ Execute read-only SQL:
+ 
+ ```json
+-{"jsonrpc":"2.0","id":"query-1","method":"tools/call","params":{"name":"database_gateway_execute_query","arguments":{"database":"logic_db","sql":"SELECT * FROM orders","max_rows":100}}}
++{"jsonrpc":"2.0","id":"query-1","method":"tools/call","params":{"name":"database_gateway_execute_query","arguments":{"database":"logic_db","sql":"SELECT * FROM sample_table LIMIT 100","max_rows":100}}}
+ ```
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
-new file mode 100644
-index 00000000000..22241c5b421
---- /dev/null
+index 22241c5b421..243fa6312bb 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
-@@ -0,0 +1,102 @@
-++++
-+title = "配置说明"
-+weight = 2
-++++
-+
-+ShardingSphere-MCP 使用 YAML 文件配置 transport 和运行时逻辑库。
-+发行包默认读取 `conf/mcp-http.yaml`，也内置 `conf/mcp-stdio.yaml`。
-+
-+## Transport 配置
-+
-+每个 MCP runtime 进程必须且只能选择一种 transport。
-+
-+HTTP 示例：
-+
-+```yaml
-+transport:
-+  type: STREAMABLE_HTTP
-+  http:
-+    bindHost: 127.0.0.1
-+    port: 18088
-+    endpointPath: /mcp
-+```
-+
-+STDIO 示例：
-+
-+```yaml
-+transport:
-+  type: STDIO
-+```
-+
-+说明：
-+
-+- `transport.type` 支持 `STREAMABLE_HTTP` 和 `STDIO`。
-+- `transport.http` 只在 `transport.type` 为 `STREAMABLE_HTTP` 时合法。
-+- HTTP 模式下 `transport.http` 可以省略，默认 `bindHost`、`port`、`endpointPath` 分别是 `127.0.0.1`、`18088`、`/mcp`。
-+- `127.0.0.1`、`localhost`、`::1` 只面向本机。
-+- `0.0.0.0` 或指定内网 IP 会面向对应网络接口。
-+
-+## Runtime Databases
-+
-+`runtimeDatabases` 定义 MCP runtime 可见的 ShardingSphere 逻辑库。
-+每个条目的 key 是 MCP 对外暴露的逻辑库名称。
-+
-+```yaml
-+runtimeDatabases:
-+  logic_db:
-+    databaseType: MySQL
-+    jdbcUrl: "jdbc:mysql://127.0.0.1:3307/logic_db"
-+    username: "root"
-+    password: "root"
-+    driverClassName: "com.mysql.cj.jdbc.Driver"
-+```
-+
-+字段说明：
-+
-+- `databaseType`：必填，声明数据库类型，例如 `MySQL`、`PostgreSQL`、`H2`。
-+- `jdbcUrl`：必填，MCP runtime 连接逻辑库的 JDBC URL。
-+- `username`：必填字段；无用户名时写空字符串 `""`。
-+- `password`：必填字段；无密码时写空字符串 `""`。
-+- `driverClassName`：必填字段；如果 JDBC 4 驱动可自动注册且不需要显式覆盖，写空字符串 `""`。
-+
-+注意事项：
-+
-+- MCP resources 暴露的是 ShardingSphere 逻辑库，不是底层物理存储单元。
-+- 加密和脱敏插件的 workflow 应连接 ShardingSphere-Proxy 暴露的逻辑库。
-+- Schema、table、view、index 和 sequence metadata 依赖目标 JDBC metadata。
-+- 非 H2 数据库通常需要把目标 JDBC driver jar 放入 `plugins/`。
-+
-+## 插件目录
-+
-+发行包默认把官方 MCP 基线 jar 放入 `lib/`，包括 Encrypt 和 Mask feature。
-+如果目标数据库驱动或额外 MCP feature jar 没有随发行包提供，请放入发行包根目录下的 `plugins/`，再启动 runtime。
-+
-+## 自定义配置文件
-+
-+Unix-like 系统：
-+
-+```bash
-+bin/start.sh /path/to/mcp-http.yaml
-+```
-+
-+Windows：
-+
-+```bat
-+bin\start.bat path\to\mcp-http.yaml
-+```
-+
-+Docker 中可以通过 `SHARDINGSPHERE_MCP_CONFIG` 指定容器内的配置文件路径。
-+
-+## JVM 参数
-+
-+Unix-like 系统：
-+
-+```bash
-+JAVA_OPTS="-Xms256m -Xmx256m" bin/start.sh
-+```
-+
-+Windows：
-+
-+```bat
-+set "JAVA_OPTS=-Xms256m -Xmx256m" && bin\start.bat
-+```
+@@ -3,12 +3,12 @@ title = "配置说明"
+ weight = 2
+ +++
+ 
+-ShardingSphere-MCP 使用 YAML 文件配置 transport 和运行时逻辑库。
++ShardingSphere-MCP 使用 YAML 文件配置传输方式和 MCP Server 可以连接的数据库。
+ 发行包默认读取 `conf/mcp-http.yaml`，也内置 `conf/mcp-stdio.yaml`。
+ 
+-## Transport 配置
++## 传输方式
+ 
+-每个 MCP runtime 进程必须且只能选择一种 transport。
++每个 MCP Server 进程必须且只能选择一种传输方式。
+ 
+ HTTP 示例：
+ 
+@@ -36,10 +36,10 @@ transport:
+ - `127.0.0.1`、`localhost`、`::1` 只面向本机。
+ - `0.0.0.0` 或指定内网 IP 会面向对应网络接口。
+ 
+-## Runtime Databases
++## 数据库配置
+ 
+-`runtimeDatabases` 定义 MCP runtime 可见的 ShardingSphere 逻辑库。
+-每个条目的 key 是 MCP 对外暴露的逻辑库名称。
++`runtimeDatabases` 定义 MCP Server 可以连接并对外暴露的数据库。
++每个条目的 key 是 MCP 调用中使用的数据库名称，通常对应 ShardingSphere-Proxy 暴露的逻辑库。
+ 
+ ```yaml
+ runtimeDatabases:
+@@ -53,23 +53,23 @@ runtimeDatabases:
+ 
+ 字段说明：
+ 
+-- `databaseType`：必填，声明数据库类型，例如 `MySQL`、`PostgreSQL`、`H2`。
+-- `jdbcUrl`：必填，MCP runtime 连接逻辑库的 JDBC URL。
++- `databaseType`：必填，声明数据库类型，例如 `MySQL` 或 `PostgreSQL`。
++- `jdbcUrl`：必填，MCP Server 连接数据库的 JDBC URL。
+ - `username`：必填字段；无用户名时写空字符串 `""`。
+ - `password`：必填字段；无密码时写空字符串 `""`。
+ - `driverClassName`：必填字段；如果 JDBC 4 驱动可自动注册且不需要显式覆盖，写空字符串 `""`。
+ 
+ 注意事项：
+ 
+-- MCP resources 暴露的是 ShardingSphere 逻辑库，不是底层物理存储单元。
+-- 加密和脱敏插件的 workflow 应连接 ShardingSphere-Proxy 暴露的逻辑库。
+-- Schema、table、view、index 和 sequence metadata 依赖目标 JDBC metadata。
+-- 非 H2 数据库通常需要把目标 JDBC driver jar 放入 `plugins/`。
++- MCP 资源暴露的是 ShardingSphere 逻辑库，不是底层物理存储单元。
++- 加密和脱敏插件的工作流应连接 ShardingSphere-Proxy 暴露的逻辑库。
++- Schema、table、view、index 和 sequence 等元数据依赖目标数据库的 JDBC 元数据。
++- 如果目标 JDBC 驱动没有随发行包提供，请把驱动 jar 放入 `plugins/`。
+ 
+ ## 插件目录
+ 
+-发行包默认把官方 MCP 基线 jar 放入 `lib/`，包括 Encrypt 和 Mask feature。
+-如果目标数据库驱动或额外 MCP feature jar 没有随发行包提供，请放入发行包根目录下的 `plugins/`，再启动 runtime。
++发行包默认把 MCP Server 依赖和官方功能插件 jar 放入 `lib/`，包括 Encrypt 和 Mask 插件。
++如果目标数据库驱动或额外 MCP 功能插件 jar 没有随发行包提供，请放入发行包根目录下的 `plugins/`，再启动 MCP Server。
+ 
+ ## 自定义配置文件
+ 
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
-new file mode 100644
-index 00000000000..2909e56d294
---- /dev/null
+index 2909e56d294..2b3abd3a58a 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
-@@ -0,0 +1,102 @@
-++++
-+title = "Configuration"
-+weight = 2
-++++
+@@ -3,12 +3,12 @@ title = "Configuration"
+ weight = 2
+ +++
+ 
+-ShardingSphere-MCP uses YAML files to configure the transport and runtime logical databases.
++ShardingSphere-MCP uses YAML files to configure the transport and the databases that the MCP Server can connect to.
+ The packaged distribution reads `conf/mcp-http.yaml` by default and also ships `conf/mcp-stdio.yaml`.
+ 
+ ## Transport configuration
+ 
+-Each MCP runtime process must select exactly one transport.
++Each MCP Server process must select exactly one transport.
+ 
+ HTTP example:
+ 
+@@ -36,10 +36,10 @@ Notes:
+ - `127.0.0.1`, `localhost`, and `::1` are local-only bindings.
+ - `0.0.0.0` or a specific intranet IP exposes the matching network interface.
+ 
+-## Runtime Databases
++## Database configuration
+ 
+-`runtimeDatabases` defines the ShardingSphere logical databases visible to the MCP runtime.
+-Each entry key is the logical database name exposed through MCP.
++`runtimeDatabases` defines the databases that the MCP Server can connect to and expose through MCP.
++Each entry key is the database name used in MCP calls. It usually maps to a logical database exposed by ShardingSphere-Proxy.
+ 
+ ```yaml
+ runtimeDatabases:
+@@ -53,8 +53,8 @@ runtimeDatabases:
+ 
+ Fields:
+ 
+-- `databaseType`: required database type, such as `MySQL`, `PostgreSQL`, or `H2`.
+-- `jdbcUrl`: required JDBC URL used by the MCP runtime to connect to the logical database.
++- `databaseType`: required database type, such as `MySQL` or `PostgreSQL`.
++- `jdbcUrl`: required JDBC URL used by the MCP Server to connect to the database.
+ - `username`: required field; use an empty string `""` when no username is needed.
+ - `password`: required field; use an empty string `""` when no password is needed.
+ - `driverClassName`: required field; use an empty string `""` when a JDBC 4 driver auto-registers and no explicit override is needed.
+@@ -64,12 +64,12 @@ Notes:
+ - MCP resources expose ShardingSphere logical databases, not physical storage units.
+ - Encrypt and Mask plugin workflows should connect to logical databases exposed by ShardingSphere-Proxy.
+ - Schema, table, view, index, and sequence metadata depends on target JDBC metadata.
+-- Non-H2 databases usually require the target JDBC driver jar under `plugins/`.
++- If the target JDBC driver is not packaged, copy the driver jar under `plugins/`.
+ 
+ ## Plugin directory
+ 
+-The packaged distribution keeps the official MCP baseline jars under `lib/`, including Encrypt and Mask features.
+-If your target database driver or an extra MCP feature jar is not packaged, copy it under the distribution `plugins/` directory before starting the runtime.
++The packaged distribution keeps MCP Server dependencies and official feature plugin jars under `lib/`, including Encrypt and Mask plugins.
++If your target database driver or an extra MCP feature plugin jar is not packaged, copy it under the distribution `plugins/` directory before starting the MCP Server.
+ 
+ ## Custom configuration file
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
+index 51df90f0de3..771b8763e36 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
+@@ -16,11 +16,10 @@ ShardingSphere-MCP 可以通过源码构建的独立发行包运行，也可以
+ 发行包目录包含：
+ 
+ - `bin/`：启动脚本。
+-- `conf/`：默认配置、日志配置和 demo SQL。
+-- `lib/`：官方运行时依赖和内置 MCP feature。
+-- `plugins/`：外部 JDBC driver 或额外 MCP feature jar。
++- `conf/`：默认配置和日志配置。
++- `lib/`：MCP Server 依赖和内置 MCP 功能插件。
++- `plugins/`：外部 JDBC 驱动或额外 MCP 功能插件 jar。
+ - `logs/`：运行日志。
+-- `data/`：demo runtime 使用的数据目录。
+ 
+ ## OCI 镜像
+ 
+@@ -56,9 +55,11 @@ docker run --rm -p 18088:18088 \
+   ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
+ ```
+ 
++配置文件中的 `runtimeDatabases` 需要指向用户已准备好的 ShardingSphere-Proxy 逻辑库。
 +
-+ShardingSphere-MCP uses YAML files to configure the transport and runtime logical databases.
-+The packaged distribution reads `conf/mcp-http.yaml` by default and also ships `conf/mcp-stdio.yaml`.
+ ## 安全部署建议
+ 
+-内置 HTTP runtime 不提供认证和授权。
++内置 HTTP Server 不提供认证和授权。
+ 如果需要远程访问，应放在受信网络、反向代理或网关后面，由外层组件处理：
+ 
+ - TLS 终止。
+@@ -71,7 +72,7 @@ HTTP 绑定建议：
+ 
+ - 本地调试使用 `127.0.0.1`。
+ - 容器或内网部署使用受控网络接口。
+-- 面向远程 client 暴露时，避免直接裸露 MCP runtime。
++- 面向远程客户端暴露时，避免直接裸露 MCP Server。
+ 
+ ## 日志
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md b/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
+index 5e5588ce53c..4440fc64bf0 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
+@@ -16,11 +16,10 @@ Build the distribution:
+ The distribution directory contains:
+ 
+ - `bin/`: startup scripts.
+-- `conf/`: default configuration, logging configuration, and demo SQL.
+-- `lib/`: official runtime dependencies and built-in MCP features.
+-- `plugins/`: external JDBC drivers or extra MCP feature jars.
++- `conf/`: default configuration and logging configuration.
++- `lib/`: MCP Server dependencies and built-in MCP feature plugins.
++- `plugins/`: external JDBC drivers or extra MCP feature plugin jars.
+ - `logs/`: runtime logs.
+-- `data/`: data directory used by the demo runtime.
+ 
+ ## OCI image
+ 
+@@ -56,9 +55,11 @@ docker run --rm -p 18088:18088 \
+   ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
+ ```
+ 
++`runtimeDatabases` in the configuration file must point to a ShardingSphere-Proxy logical database prepared by the user.
 +
-+## Transport configuration
+ ## Secure deployment
+ 
+-The built-in HTTP runtime does not provide authentication or authorization.
++The built-in HTTP Server does not provide authentication or authorization.
+ For remote access, place it in a trusted network or behind a reverse proxy or gateway that handles:
+ 
+ - TLS termination.
+@@ -71,7 +72,7 @@ HTTP binding recommendations:
+ 
+ - Use `127.0.0.1` for local debugging.
+ - Use a controlled network interface for container or intranet deployments.
+-- Avoid exposing the MCP runtime directly to remote clients.
++- Avoid exposing the MCP Server directly to remote clients.
+ 
+ ## Logs
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
+index 349d5845f4e..d843dd5d7b1 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
+@@ -1,16 +1,16 @@
+ +++
+-title = "Feature Plugins"
++title = "功能插件"
+ weight = 7
+ chapter = true
+ +++
+ 
+-ShardingSphere-MCP 通过 feature plugin 扩展领域能力。
+-MCP runtime 负责 transport、session、descriptor discovery、metadata 和 workflow 基础设施；feature plugin 负责提供具体 tools、resources 和业务语义。
++ShardingSphere-MCP 通过功能插件扩展领域能力。
++MCP Server 负责传输方式、会话、描述符发现、元数据和工作流基础设施；功能插件负责提供具体工具、资源和业务语义。
+ 
+-发行包默认包含以下官方 MCP feature plugin：
++发行包默认包含以下官方 MCP 功能插件：
+ 
+ - Encrypt：规划、执行和校验数据加密规则。
+ - Mask：规划、执行和校验数据脱敏规则。
+ 
+-新增或第三方 feature plugin 可以通过 `plugins/` 目录加入运行时 classpath。
+-如果 feature plugin 未随发行包提供，启动前需要同时准备它依赖的 ShardingSphere 模块和第三方 jar。
++新增或第三方功能插件可以通过 `plugins/` 目录加入运行时类路径。
++如果功能插件未随发行包提供，启动前需要同时准备它依赖的 ShardingSphere 模块和第三方 jar。
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
+index c86aa3377fa..b43815f369a 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
+@@ -5,7 +5,7 @@ chapter = true
+ +++
+ 
+ ShardingSphere-MCP extends domain capabilities through feature plugins.
+-The MCP runtime provides transport, sessions, descriptor discovery, metadata, and workflow infrastructure. Feature plugins provide concrete tools, resources, and business semantics.
++The MCP Server provides transport, sessions, descriptor discovery, metadata, and workflow infrastructure. Feature plugins provide concrete tools, resources, and business semantics.
+ 
+ The packaged distribution includes these official MCP feature plugins:
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
+index 392fb2969f0..fe7fa99c57d 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
+@@ -3,28 +3,28 @@ title = "Encrypt"
+ weight = 1
+ +++
+ 
+-Encrypt MCP feature 帮助 MCP client 把加密需求规划成 ShardingSphere-Proxy 可执行的 DDL、DistSQL、索引计划和校验步骤。
+-它不在 MCP runtime 内实现加密算法，而是面向 ShardingSphere 逻辑库生成和执行加密规则变更。
++Encrypt MCP 功能插件帮助 MCP 客户端把加密需求规划成 ShardingSphere-Proxy 可执行的 DDL、DistSQL、索引计划和校验步骤。
++它不在 MCP Server 内实现加密算法，而是面向 ShardingSphere 逻辑库生成和执行加密规则变更。
+ 
+ ## 前置条件
+ 
+ - 当前版本只支持连接 ShardingSphere-Proxy 暴露的逻辑库。
+ - `runtimeDatabases` 应指向 Proxy 逻辑库，而不是底层物理存储库。
+-- 目标逻辑表和逻辑列应能通过 JDBC metadata 发现。
+-- 当前 feature 不处理存量数据迁移或回填。
++- 目标逻辑表和逻辑列应能通过 JDBC 元数据发现。
++- 当前功能插件不处理存量数据迁移或回填。
+ 
+-## Public Surface
++## 可调用能力
+ 
+-Planning tool：
++规划工具：
+ 
+ - `database_gateway_plan_encrypt_rule`
+ 
+-通用 workflow tools：
++通用工作流工具：
+ 
+ - `database_gateway_apply_workflow`
+ - `database_gateway_validate_workflow`
+ 
+-Resources：
++资源：
+ 
+ - `shardingsphere://features/encrypt/algorithms`
+ - `shardingsphere://features/encrypt/databases/{database}/rules`
+@@ -82,7 +82,7 @@ Resources：
+ - `index_plan` 可能包含辅助查询索引。
+ 
+ 如果返回 `clarifying`，继续使用同一个 `plan_id` 补齐缺失字段。
+-敏感字段不会明文回显，应通过 secret manager、受保护环境变量或运维控制通道取得后再继续。
++敏感字段不会明文回显，应通过密钥管理系统、受保护环境变量或运维控制通道取得后再继续。
+ 
+ ## 派生列规则
+ 
+@@ -105,7 +105,7 @@ Resources：
+ }
+ ```
+ 
+-确认 artifacts 后执行：
++确认变更产物后执行：
+ 
+ ```json
+ {
+@@ -154,7 +154,7 @@ Resources：
+ }
+ ```
+ 
+-如果同一张表仍有其他加密列，MCP 会生成保留 sibling rules 的 `ALTER ENCRYPT RULE`。
++如果同一张表仍有其他加密列，MCP 会生成保留同表其他规则的 `ALTER ENCRYPT RULE`。
+ 只有目标表不再剩余任何 encrypt 列时，才会生成 `DROP ENCRYPT RULE`。
+ 
+ ## 限制
+@@ -164,4 +164,4 @@ Resources：
+ - `drop` 只删除规则，不自动清理物理派生列和索引。
+ - 不处理存量数据迁移或回填。
+ - 不提供自动回滚能力。
+-- 规划输入只接受标准未加引号的逻辑 identifier。
++- 规划输入只接受标准未加引号的逻辑标识符。
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
+index 96461dce296..6a74863f277 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
+@@ -4,7 +4,7 @@ weight = 1
+ +++
+ 
+ The Encrypt MCP feature helps MCP clients plan encryption requirements into DDL, DistSQL, index plans, and validation steps executable through ShardingSphere-Proxy.
+-It does not implement encryption algorithms inside the MCP runtime. It generates and applies encryption rule changes for ShardingSphere logical databases.
++It does not implement encryption algorithms inside the MCP Server. It generates and applies encryption rule changes for ShardingSphere logical databases.
+ 
+ ## Prerequisites
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
+index 5b37fe7743e..378257a3c07 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
+@@ -3,27 +3,27 @@ title = "Mask"
+ weight = 2
+ +++
+ 
+-Mask MCP feature 帮助 MCP client 把脱敏需求规划成 ShardingSphere-Proxy 可执行的 DistSQL 和校验步骤。
+-脱敏规则直接作用于逻辑列，不生成加密 feature 使用的物理派生列。
++Mask MCP 功能插件帮助 MCP 客户端把脱敏需求规划成 ShardingSphere-Proxy 可执行的 DistSQL 和校验步骤。
++脱敏规则直接作用于逻辑列，不生成加密功能使用的物理派生列。
+ 
+ ## 前置条件
+ 
+ - 当前版本只支持连接 ShardingSphere-Proxy 暴露的逻辑库。
+ - `runtimeDatabases` 应指向 Proxy 逻辑库，而不是底层物理存储库。
+-- 目标逻辑表和逻辑列应能通过 JDBC metadata 发现。
++- 目标逻辑表和逻辑列应能通过 JDBC 元数据发现。
+ 
+-## Public Surface
++## 可调用能力
+ 
+-Planning tool：
++规划工具：
+ 
+ - `database_gateway_plan_mask_rule`
+ 
+-通用 workflow tools：
++通用工作流工具：
+ 
+ - `database_gateway_apply_workflow`
+ - `database_gateway_validate_workflow`
+ 
+-Resources：
++资源：
+ 
+ - `shardingsphere://features/mask/algorithms`
+ - `shardingsphere://features/mask/databases/{database}/rules`
+@@ -98,7 +98,7 @@ Resources：
+ }
+ ```
+ 
+-确认 artifacts 后执行：
++确认变更产物后执行：
+ 
+ ```json
+ {
+@@ -146,7 +146,7 @@ Resources：
+ }
+ ```
+ 
+-如果同一张表仍有其他脱敏列，MCP 会生成保留 sibling rules 的 `ALTER MASK RULE`。
++如果同一张表仍有其他脱敏列，MCP 会生成保留同表其他规则的 `ALTER MASK RULE`。
+ 只有目标表不再剩余任何 mask 列时，才会生成 `DROP MASK RULE`。
+ 
+ ## 限制
+@@ -155,4 +155,4 @@ Resources：
+ - 支持 `create`、`alter`、`drop`。
+ - 不生成物理派生列。
+ - 不提供自动回滚能力。
+-- 规划输入只接受标准未加引号的逻辑 identifier。
++- 规划输入只接受标准未加引号的逻辑标识符。
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/quick-start.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/quick-start.cn.md
+index 2dbbc0cd79e..84754c43d6a 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/quick-start.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/quick-start.cn.md
+@@ -3,74 +3,83 @@ title = "快速开始"
+ weight = 1
+ +++
+ 
+-本节使用发行包内置的 H2 demo runtime 验证 ShardingSphere-MCP 的 HTTP transport、metadata discovery 和只读 SQL 查询。
++本页演示如何从源码构建 ShardingSphere-MCP，连接一个用户已准备好的 ShardingSphere-Proxy 逻辑库，并通过 HTTP 验证元数据读取和只读 SQL 查询。
++文中的 `logic_db`、`sample_table`、用户名和密码都是占位符；运行前请替换为自己的逻辑库、表和账号。
+ 
+ ## 前置条件
+ 
+ - `JAVA_HOME` 或 `PATH` 中可用的 JDK 21。
+-- 仓库根目录下的 Maven Wrapper。
+-- 类 Unix Shell，并包含 `curl`、`find`、`mktemp`、`sed` 和 `tr`。
++- 一个可通过 JDBC 访问的 ShardingSphere-Proxy 逻辑库。
++- `curl`，用于发送 HTTP 请求。
++- 支持 sh/bash 语法的终端。
+ 
+ ## 构建发行包
+ 
++在仓库根目录执行：
 +
-+Each MCP runtime process must select exactly one transport.
-+
-+HTTP example:
-+
-+```yaml
-+transport:
-+  type: STREAMABLE_HTTP
-+  http:
-+    bindHost: 127.0.0.1
-+    port: 18088
-+    endpointPath: /mcp
-+```
-+
-+STDIO example:
-+
-+```yaml
-+transport:
-+  type: STDIO
-+```
-+
-+Notes:
-+
-+- `transport.type` supports `STREAMABLE_HTTP` and `STDIO`.
-+- `transport.http` is valid only when `transport.type` is `STREAMABLE_HTTP`.
-+- In HTTP mode, `transport.http` can be omitted. The default `bindHost`, `port`, and `endpointPath` are `127.0.0.1`, `18088`, and `/mcp`.
-+- `127.0.0.1`, `localhost`, and `::1` are local-only bindings.
-+- `0.0.0.0` or a specific intranet IP exposes the matching network interface.
-+
-+## Runtime Databases
-+
-+`runtimeDatabases` defines the ShardingSphere logical databases visible to the MCP runtime.
-+Each entry key is the logical database name exposed through MCP.
+ ```bash
+ ./mvnw -pl distribution/mcp -am -DskipTests package
+ ```
+ 
+-解析发行包目录：
++进入发行包目录：
+ 
+ ```bash
+-DIST_DIR=$(find distribution/mcp/target -maxdepth 1 -type d -name 'apache-shardingsphere-mcp-*' | sed -n '1p')
+-echo "${DIST_DIR}"
++cd distribution/mcp/target/apache-shardingsphere-mcp-*
+ ```
+ 
+ 预期结果：
+ 
+-- 命令打印一个非空发行包目录。
+-- 该目录包含 `bin/`、`conf/`、`lib/`。
++- 当前目录包含 `bin/`、`conf/`、`lib/`。
+ 
+-## 启动 HTTP runtime
++## 配置数据库
+ 
+-```bash
+-cd "${DIST_DIR}"
+-bin/start.sh
++编辑 `conf/mcp-http.yaml`，将 `runtimeDatabases` 指向已有的 ShardingSphere-Proxy 逻辑库：
 +
 +```yaml
 +runtimeDatabases:
 +  logic_db:
 +    databaseType: MySQL
-+    jdbcUrl: "jdbc:mysql://127.0.0.1:3307/logic_db"
-+    username: "root"
-+    password: "root"
++    jdbcUrl: "jdbc:mysql://127.0.0.1:3307/logic_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
++    username: "proxy_user"
++    password: "proxy_password"
 +    driverClassName: "com.mysql.cj.jdbc.Driver"
-+```
-+
-+Fields:
-+
-+- `databaseType`: required database type, such as `MySQL`, `PostgreSQL`, or `H2`.
-+- `jdbcUrl`: required JDBC URL used by the MCP runtime to connect to the logical database.
-+- `username`: required field; use an empty string `""` when no username is needed.
-+- `password`: required field; use an empty string `""` when no password is needed.
-+- `driverClassName`: required field; use an empty string `""` when a JDBC 4 driver auto-registers and no explicit override is needed.
-+
-+Notes:
-+
-+- MCP resources expose ShardingSphere logical databases, not physical storage units.
-+- Encrypt and Mask plugin workflows should connect to logical databases exposed by ShardingSphere-Proxy.
-+- Schema, table, view, index, and sequence metadata depends on target JDBC metadata.
-+- Non-H2 databases usually require the target JDBC driver jar under `plugins/`.
-+
-+## Plugin directory
-+
-+The packaged distribution keeps the official MCP baseline jars under `lib/`, including Encrypt and Mask features.
-+If your target database driver or an extra MCP feature jar is not packaged, copy it under the distribution `plugins/` directory before starting the runtime.
-+
-+## Custom configuration file
-+
-+Unix-like systems:
+ ```
+ 
+-Windows 使用：
++如果目标数据库驱动没有随发行包提供，请在启动前把对应 JDBC 驱动 jar 放入 `plugins/`。
+ 
+-```bat
+-cd /d "%DIST_DIR%"
+-bin\start.bat
++## 启动 HTTP MCP Server
 +
 +```bash
-+bin/start.sh /path/to/mcp-http.yaml
-+```
++bin/start.sh > logs/mcp-http.log 2>&1 &
++MCP_PID=$!
+ ```
+ 
+ 默认配置文件是 `conf/mcp-http.yaml`，默认端点是 `http://127.0.0.1:18088/mcp`。
+-进程以前台方式运行，日志写入 `logs/` 目录。
+-请保持当前终端不退出，并在第二个终端执行后续 `curl` 命令。
++上面的命令会在当前终端后台启动 MCP Server，并把进程号保存到 `MCP_PID`，方便最后停止服务。
+ 
+-发行包内置 demo runtime 暴露两个逻辑库：`orders` 和 `billing`。
+-它们使用发行包自带 H2 驱动和 `data/` 下的种子数据。
+-
+-## 初始化 MCP session
++## 初始化 MCP 会话
+ 
+ ```bash
+-INIT_HEADERS=$(mktemp)
+-curl -sS -D "${INIT_HEADERS}" -o /dev/null http://127.0.0.1:18088/mcp \
++curl -i -sS http://127.0.0.1:18088/mcp \
+   -H 'Content-Type: application/json' \
+   -H 'Accept: application/json, text/event-stream' \
+-  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"curl-demo","version":"1.0.0"}}}'
+-SESSION_ID=$(sed -n 's/^[Mm][Cc][Pp]-[Ss]ession-[Ii][Dd]: //p' "${INIT_HEADERS}" | tr -d '\r')
+-PROTOCOL_VERSION=$(sed -n 's/^[Mm][Cc][Pp]-[Pp]rotocol-[Vv]ersion: //p' "${INIT_HEADERS}" | tr -d '\r')
+-rm -f "${INIT_HEADERS}"
+-printf 'SESSION_ID=%s\nPROTOCOL_VERSION=%s\n' "${SESSION_ID}" "${PROTOCOL_VERSION}"
++  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"curl-client","version":"1.0.0"}}}'
+ ```
+ 
+ 预期结果：
+ 
+-- `SESSION_ID` 非空。
+-- `PROTOCOL_VERSION` 非空。
+-- 后续 HTTP 请求必须携带这两个 header。
++- 响应头包含 `MCP-Session-Id`。
++- 响应头包含 `MCP-Protocol-Version`。
++- 后续 HTTP 请求必须携带这两个响应头。
 +
-+Windows:
-+
-+```bat
-+bin\start.bat path\to\mcp-http.yaml
-+```
-+
-+For Docker, set `SHARDINGSPHERE_MCP_CONFIG` to an absolute config path inside the container.
-+
-+## JVM options
-+
-+Unix-like systems:
-+
-+```bash
-+JAVA_OPTS="-Xms256m -Xmx256m" bin/start.sh
-+```
-+
-+Windows:
-+
-+```bat
-+set "JAVA_OPTS=-Xms256m -Xmx256m" && bin\start.bat
-+```
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
-new file mode 100644
-index 00000000000..51df90f0de3
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
-@@ -0,0 +1,79 @@
-++++
-+title = "部署说明"
-+weight = 5
-++++
-+
-+ShardingSphere-MCP 可以通过源码构建的独立发行包运行，也可以通过官方 OCI 镜像运行。
-+
-+## 独立发行包
-+
-+构建发行包：
-+
-+```bash
-+./mvnw -pl distribution/mcp -am -DskipTests package
-+```
-+
-+发行包目录包含：
-+
-+- `bin/`：启动脚本。
-+- `conf/`：默认配置、日志配置和 demo SQL。
-+- `lib/`：官方运行时依赖和内置 MCP feature。
-+- `plugins/`：外部 JDBC driver 或额外 MCP feature jar。
-+- `logs/`：运行日志。
-+- `data/`：demo runtime 使用的数据目录。
-+
-+## OCI 镜像
-+
-+官方 MCP Registry 元数据位于 `mcp/server.json`。
-+公开 server name 是 `io.github.apache/shardingsphere-mcp`。
-+OCI image 形态是：
-+
-+```text
-+ghcr.io/apache/shardingsphere-mcp:<version>
-+```
-+
-+以 HTTP 模式运行：
++从响应头复制取值，并在当前终端设置变量：
 +
 +```bash
-+docker run --rm -p 18088:18088 ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
++export SESSION_ID="<MCP-Session-Id value>"
++export PROTOCOL_VERSION="<MCP-Protocol-Version value>"
 +```
-+
-+以 STDIO 模式运行：
-+
-+```bash
-+docker run --rm -i \
-+  -e SHARDINGSPHERE_MCP_TRANSPORT=stdio \
-+  ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
-+```
-+
-+使用自定义配置文件：
-+
-+```bash
-+docker run --rm -p 18088:18088 \
-+  -e SHARDINGSPHERE_MCP_CONFIG=/opt/shardingsphere-mcp/conf/custom-mcp-http.yaml \
-+  -v /path/to/mcp-http.yaml:/opt/shardingsphere-mcp/conf/custom-mcp-http.yaml:ro \
-+  -v /path/to/plugins:/opt/shardingsphere-mcp/plugins:ro \
-+  ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
-+```
-+
-+## 安全部署建议
-+
-+内置 HTTP runtime 不提供认证和授权。
-+如果需要远程访问，应放在受信网络、反向代理或网关后面，由外层组件处理：
-+
-+- TLS 终止。
-+- 身份认证。
-+- 授权策略。
-+- 网络访问控制。
-+- 审计日志。
-+
-+HTTP 绑定建议：
-+
-+- 本地调试使用 `127.0.0.1`。
-+- 容器或内网部署使用受控网络接口。
-+- 面向远程 client 暴露时，避免直接裸露 MCP runtime。
-+
-+## 日志
-+
-+- HTTP 模式：查看启动终端和 `logs/mcp.log`。
-+- STDIO 模式：stdout 专用于 MCP 协议帧，诊断信息查看 stderr 或 `logs/mcp.log`。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md b/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
-new file mode 100644
-index 00000000000..5e5588ce53c
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
-@@ -0,0 +1,79 @@
-++++
-+title = "Deployment"
-+weight = 5
-++++
-+
-+ShardingSphere-MCP can run from the standalone distribution built from source or from the official OCI image.
-+
-+## Standalone distribution
-+
-+Build the distribution:
-+
-+```bash
-+./mvnw -pl distribution/mcp -am -DskipTests package
-+```
-+
-+The distribution directory contains:
-+
-+- `bin/`: startup scripts.
-+- `conf/`: default configuration, logging configuration, and demo SQL.
-+- `lib/`: official runtime dependencies and built-in MCP features.
-+- `plugins/`: external JDBC drivers or extra MCP feature jars.
-+- `logs/`: runtime logs.
-+- `data/`: data directory used by the demo runtime.
-+
-+## OCI image
-+
-+Official MCP Registry metadata lives in `mcp/server.json`.
-+The published server name is `io.github.apache/shardingsphere-mcp`.
-+The OCI image shape is:
-+
-+```text
-+ghcr.io/apache/shardingsphere-mcp:<version>
-+```
-+
-+Run in HTTP mode:
-+
-+```bash
-+docker run --rm -p 18088:18088 ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
-+```
-+
-+Run in STDIO mode:
-+
-+```bash
-+docker run --rm -i \
-+  -e SHARDINGSPHERE_MCP_TRANSPORT=stdio \
-+  ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
-+```
-+
-+Use a custom configuration file:
-+
-+```bash
-+docker run --rm -p 18088:18088 \
-+  -e SHARDINGSPHERE_MCP_CONFIG=/opt/shardingsphere-mcp/conf/custom-mcp-http.yaml \
-+  -v /path/to/mcp-http.yaml:/opt/shardingsphere-mcp/conf/custom-mcp-http.yaml:ro \
-+  -v /path/to/plugins:/opt/shardingsphere-mcp/plugins:ro \
-+  ghcr.io/apache/shardingsphere-mcp:${latest.release.version}
-+```
-+
-+## Secure deployment
-+
-+The built-in HTTP runtime does not provide authentication or authorization.
-+For remote access, place it in a trusted network or behind a reverse proxy or gateway that handles:
-+
-+- TLS termination.
-+- Authentication.
-+- Authorization policy.
-+- Network access control.
-+- Audit logs.
-+
-+HTTP binding recommendations:
-+
-+- Use `127.0.0.1` for local debugging.
-+- Use a controlled network interface for container or intranet deployments.
-+- Avoid exposing the MCP runtime directly to remote clients.
-+
-+## Logs
-+
-+- HTTP mode: inspect the startup terminal and `logs/mcp.log`.
-+- STDIO mode: stdout is reserved for MCP protocol frames; inspect stderr or `logs/mcp.log` for diagnostics.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
-new file mode 100644
-index 00000000000..349d5845f4e
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
-@@ -0,0 +1,16 @@
-++++
-+title = "Feature Plugins"
-+weight = 7
-+chapter = true
-++++
-+
-+ShardingSphere-MCP 通过 feature plugin 扩展领域能力。
-+MCP runtime 负责 transport、session、descriptor discovery、metadata 和 workflow 基础设施；feature plugin 负责提供具体 tools、resources 和业务语义。
-+
-+发行包默认包含以下官方 MCP feature plugin：
-+
-+- Encrypt：规划、执行和校验数据加密规则。
-+- Mask：规划、执行和校验数据脱敏规则。
-+
-+新增或第三方 feature plugin 可以通过 `plugins/` 目录加入运行时 classpath。
-+如果 feature plugin 未随发行包提供，启动前需要同时准备它依赖的 ShardingSphere 模块和第三方 jar。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
-new file mode 100644
-index 00000000000..c86aa3377fa
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
-@@ -0,0 +1,16 @@
-++++
-+title = "Feature Plugins"
-+weight = 7
-+chapter = true
-++++
-+
-+ShardingSphere-MCP extends domain capabilities through feature plugins.
-+The MCP runtime provides transport, sessions, descriptor discovery, metadata, and workflow infrastructure. Feature plugins provide concrete tools, resources, and business semantics.
-+
-+The packaged distribution includes these official MCP feature plugins:
-+
-+- Encrypt: plan, apply, and validate data encryption rules.
-+- Mask: plan, apply, and validate data masking rules.
-+
-+Additional or third-party feature plugins can be added to the runtime classpath through the `plugins/` directory.
-+If a feature plugin is not packaged by default, prepare its required ShardingSphere modules and third-party jars before startup.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
-new file mode 100644
-index 00000000000..392fb2969f0
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
-@@ -0,0 +1,167 @@
-++++
-+title = "Encrypt"
-+weight = 1
-++++
-+
-+Encrypt MCP feature 帮助 MCP client 把加密需求规划成 ShardingSphere-Proxy 可执行的 DDL、DistSQL、索引计划和校验步骤。
-+它不在 MCP runtime 内实现加密算法，而是面向 ShardingSphere 逻辑库生成和执行加密规则变更。
-+
-+## 前置条件
-+
-+- 当前版本只支持连接 ShardingSphere-Proxy 暴露的逻辑库。
-+- `runtimeDatabases` 应指向 Proxy 逻辑库，而不是底层物理存储库。
-+- 目标逻辑表和逻辑列应能通过 JDBC metadata 发现。
-+- 当前 feature 不处理存量数据迁移或回填。
-+
-+## Public Surface
-+
-+Planning tool：
-+
-+- `database_gateway_plan_encrypt_rule`
-+
-+通用 workflow tools：
-+
-+- `database_gateway_apply_workflow`
-+- `database_gateway_validate_workflow`
-+
-+Resources：
-+
-+- `shardingsphere://features/encrypt/algorithms`
-+- `shardingsphere://features/encrypt/databases/{database}/rules`
-+- `shardingsphere://features/encrypt/databases/{database}/tables/{table}/rules`
-+
-+## 最小输入
-+
-+创建或修改加密规则时，推荐至少提供：
-+
-+- `database`
-+- `table`
-+- `column`
-+- `natural_language_intent`，或显式 `operation_type=create|alter`
-+- `algorithm_type`，如果希望 MCP 推荐算法可以先省略
-+- `primary_algorithm_properties`
-+- `schema`，多 schema 逻辑库建议显式提供
-+
-+删除加密规则时，最小输入是：
-+
-+- `database`
-+- `table`
-+- `column`
-+- `operation_type=drop`
-+
-+## 规划加密规则
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "encrypt-plan-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_encrypt_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "status",
-+      "natural_language_intent": "给 status 做可逆加密，需要等值查询，不需要模糊查询",
-+      "algorithm_type": "AES",
-+      "primary_algorithm_properties": {
-+        "aes-key-value": "${AES_KEY_VALUE}"
-+      }
-+    }
-+  }
-+}
-+```
-+
-+典型结果：
-+
-+- 返回 `plan_id`。
-+- `status` 为 `planned` 或 `clarifying`。
-+- `derived_column_plan` 说明派生列命名。
-+- `ddl_artifacts` 可能包含物理列 DDL。
-+- `distsql_artifacts` 包含 `CREATE/ALTER ENCRYPT RULE`。
-+- `index_plan` 可能包含辅助查询索引。
-+
-+如果返回 `clarifying`，继续使用同一个 `plan_id` 补齐缺失字段。
-+敏感字段不会明文回显，应通过 secret manager、受保护环境变量或运维控制通道取得后再继续。
-+
-+## 派生列规则
-+
-+- 默认生成 `*_cipher` 派生列。
-+- 如果需要等值查询，会生成 `*_assisted_query` 及相应索引计划。
-+- 如果需要模糊查询，会生成 `*_like_query`。
-+- 如果默认列名冲突，系统会追加数字后缀，并把最终命名写回 `derived_column_plan`。
-+
-+## 执行与校验
-+
-+执行前先预览：
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "preview"
-+  }
-+}
-+```
-+
-+确认 artifacts 后执行：
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "review-then-execute"
-+  }
-+}
-+```
-+
-+校验：
-+
-+```json
-+{
-+  "name": "database_gateway_validate_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}"
-+  }
-+}
-+```
-+
-+校验重点：
-+
-+- `ddl_validation`
-+- `rule_validation`
-+- `logical_metadata_validation`
-+- `sql_executability_validation`
-+
-+## 删除加密规则
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "encrypt-drop-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_encrypt_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "status",
-+      "operation_type": "drop"
-+    }
-+  }
-+}
-+```
-+
-+如果同一张表仍有其他加密列，MCP 会生成保留 sibling rules 的 `ALTER ENCRYPT RULE`。
-+只有目标表不再剩余任何 encrypt 列时，才会生成 `DROP ENCRYPT RULE`。
-+
-+## 限制
-+
-+- 仅支持 ShardingSphere-Proxy 逻辑库。
-+- 支持 `create`、`alter`、`drop`。
-+- `drop` 只删除规则，不自动清理物理派生列和索引。
-+- 不处理存量数据迁移或回填。
-+- 不提供自动回滚能力。
-+- 规划输入只接受标准未加引号的逻辑 identifier。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
-new file mode 100644
-index 00000000000..96461dce296
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
-@@ -0,0 +1,167 @@
-++++
-+title = "Encrypt"
-+weight = 1
-++++
-+
-+The Encrypt MCP feature helps MCP clients plan encryption requirements into DDL, DistSQL, index plans, and validation steps executable through ShardingSphere-Proxy.
-+It does not implement encryption algorithms inside the MCP runtime. It generates and applies encryption rule changes for ShardingSphere logical databases.
-+
-+## Prerequisites
-+
-+- The current version supports logical databases exposed by ShardingSphere-Proxy only.
-+- `runtimeDatabases` should point to Proxy logical databases, not physical storage databases.
-+- The target logical table and column should be discoverable through JDBC metadata.
-+- This feature does not handle existing data migration or backfill.
-+
-+## Public Surface
-+
-+Planning tool:
-+
-+- `database_gateway_plan_encrypt_rule`
-+
-+Common workflow tools:
-+
-+- `database_gateway_apply_workflow`
-+- `database_gateway_validate_workflow`
-+
-+Resources:
-+
-+- `shardingsphere://features/encrypt/algorithms`
-+- `shardingsphere://features/encrypt/databases/{database}/rules`
-+- `shardingsphere://features/encrypt/databases/{database}/tables/{table}/rules`
-+
-+## Minimum input
-+
-+For creating or altering an encryption rule, provide at least:
-+
-+- `database`
-+- `table`
-+- `column`
-+- `natural_language_intent`, or explicit `operation_type=create|alter`
-+- `algorithm_type`, unless you want MCP to recommend one
-+- `primary_algorithm_properties`
-+- `schema`, recommended for multi-schema logical databases
-+
-+For dropping an encryption rule, the minimum input is:
-+
-+- `database`
-+- `table`
-+- `column`
-+- `operation_type=drop`
-+
-+## Plan an encryption rule
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "encrypt-plan-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_encrypt_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "status",
-+      "natural_language_intent": "Encrypt status reversibly with equality query support and without LIKE query support",
-+      "algorithm_type": "AES",
-+      "primary_algorithm_properties": {
-+        "aes-key-value": "${AES_KEY_VALUE}"
-+      }
-+    }
-+  }
-+}
-+```
-+
-+Typical result:
-+
-+- Returns `plan_id`.
-+- `status` is `planned` or `clarifying`.
-+- `derived_column_plan` describes derived column names.
-+- `ddl_artifacts` may contain physical column DDL.
-+- `distsql_artifacts` contains `CREATE/ALTER ENCRYPT RULE`.
-+- `index_plan` may contain assisted-query indexes.
-+
-+If the response returns `clarifying`, continue with the same `plan_id`.
-+Secret fields are not echoed in plain text. Obtain them through a secret manager, protected environment variable, or controlled operations channel before continuing.
-+
-+## Derived column rules
-+
-+- `*_cipher` is generated by default.
-+- If equality query is required, `*_assisted_query` and its index plan are generated.
-+- If LIKE query is required, `*_like_query` is generated.
-+- If a default column name conflicts, the system appends a numeric suffix and returns the final name in `derived_column_plan`.
-+
-+## Apply and validate
-+
-+Preview first:
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "preview"
-+  }
-+}
-+```
-+
-+Execute after reviewing artifacts:
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "review-then-execute"
-+  }
-+}
-+```
-+
-+Validate:
-+
-+```json
-+{
-+  "name": "database_gateway_validate_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}"
-+  }
-+}
-+```
-+
-+Validation focuses on:
-+
-+- `ddl_validation`
-+- `rule_validation`
-+- `logical_metadata_validation`
-+- `sql_executability_validation`
-+
-+## Drop an encryption rule
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "encrypt-drop-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_encrypt_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "status",
-+      "operation_type": "drop"
-+    }
-+  }
-+}
-+```
-+
-+If sibling encryption columns still exist on the same table, MCP generates `ALTER ENCRYPT RULE` and keeps the sibling rules.
-+It generates `DROP ENCRYPT RULE` only when no encryption column remains on the target table.
-+
-+## Limitations
-+
-+- Supports ShardingSphere-Proxy logical databases only.
-+- Supports `create`, `alter`, and `drop`.
-+- `drop` removes rules only; physical derived columns and indexes still require manual cleanup.
-+- Does not handle existing data migration or backfill.
-+- Does not provide automatic rollback.
-+- Planning input accepts only standard unquoted logical identifiers.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
-new file mode 100644
-index 00000000000..5b37fe7743e
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
-@@ -0,0 +1,158 @@
-++++
-+title = "Mask"
-+weight = 2
-++++
-+
-+Mask MCP feature 帮助 MCP client 把脱敏需求规划成 ShardingSphere-Proxy 可执行的 DistSQL 和校验步骤。
-+脱敏规则直接作用于逻辑列，不生成加密 feature 使用的物理派生列。
-+
-+## 前置条件
-+
-+- 当前版本只支持连接 ShardingSphere-Proxy 暴露的逻辑库。
-+- `runtimeDatabases` 应指向 Proxy 逻辑库，而不是底层物理存储库。
-+- 目标逻辑表和逻辑列应能通过 JDBC metadata 发现。
-+
-+## Public Surface
-+
-+Planning tool：
-+
-+- `database_gateway_plan_mask_rule`
-+
-+通用 workflow tools：
-+
-+- `database_gateway_apply_workflow`
-+- `database_gateway_validate_workflow`
-+
-+Resources：
-+
-+- `shardingsphere://features/mask/algorithms`
-+- `shardingsphere://features/mask/databases/{database}/rules`
-+- `shardingsphere://features/mask/databases/{database}/tables/{table}/rules`
-+
-+## 最小输入
-+
-+创建或修改脱敏规则时，推荐至少提供：
-+
-+- `database`
-+- `table`
-+- `column`
-+- `natural_language_intent`，或显式 `operation_type=create|alter`
-+- `algorithm_type`，如果希望 MCP 推荐算法可以先省略
-+- `primary_algorithm_properties`
-+- `schema`，多 schema 逻辑库建议显式提供
-+
-+删除脱敏规则时，最小输入是：
-+
-+- `database`
-+- `table`
-+- `column`
-+- `operation_type=drop`
-+
-+## 规划脱敏规则
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "mask-plan-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_mask_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "phone",
-+      "natural_language_intent": "把 phone 当作手机号做脱敏，保留前3后4",
-+      "algorithm_type": "KEEP_FIRST_N_LAST_M",
-+      "primary_algorithm_properties": {
-+        "first-n": "3",
-+        "last-m": "4",
-+        "replace-char": "*"
-+      }
-+    }
-+  }
-+}
-+```
-+
-+典型结果：
-+
-+- 返回 `plan_id`。
-+- `status` 为 `planned` 或 `clarifying`。
-+- `distsql_artifacts` 包含 `CREATE/ALTER MASK RULE`。
-+- `ddl_artifacts` 通常为空。
-+- `index_plan` 通常为空。
-+
-+如果自然语言没有说清算法或缺少算法属性，MCP 会返回 `clarifying`。
-+此时应继续使用同一个 `plan_id` 补齐 `clarification_questions` 中要求的字段。
-+
-+## 执行与校验
-+
-+执行前先预览：
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "preview"
-+  }
-+}
-+```
-+
-+确认 artifacts 后执行：
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "review-then-execute"
-+  }
-+}
-+```
-+
-+校验：
-+
-+```json
-+{
-+  "name": "database_gateway_validate_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}"
-+  }
-+}
-+```
-+
-+校验重点：
-+
-+- `rule_validation`
-+- `logical_metadata_validation`
-+- `sql_executability_validation`
-+
-+## 删除脱敏规则
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "mask-drop-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_mask_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "phone",
-+      "operation_type": "drop"
-+    }
-+  }
-+}
-+```
-+
-+如果同一张表仍有其他脱敏列，MCP 会生成保留 sibling rules 的 `ALTER MASK RULE`。
-+只有目标表不再剩余任何 mask 列时，才会生成 `DROP MASK RULE`。
-+
-+## 限制
-+
-+- 仅支持 ShardingSphere-Proxy 逻辑库。
-+- 支持 `create`、`alter`、`drop`。
-+- 不生成物理派生列。
-+- 不提供自动回滚能力。
-+- 规划输入只接受标准未加引号的逻辑 identifier。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.en.md
-new file mode 100644
-index 00000000000..f795afe3f06
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.en.md
-@@ -0,0 +1,158 @@
-++++
-+title = "Mask"
-+weight = 2
-++++
-+
-+The Mask MCP feature helps MCP clients plan masking requirements into DistSQL and validation steps executable through ShardingSphere-Proxy.
-+Mask rules apply directly to logical columns and do not generate physical derived columns used by the Encrypt feature.
-+
-+## Prerequisites
-+
-+- The current version supports logical databases exposed by ShardingSphere-Proxy only.
-+- `runtimeDatabases` should point to Proxy logical databases, not physical storage databases.
-+- The target logical table and column should be discoverable through JDBC metadata.
-+
-+## Public Surface
-+
-+Planning tool:
-+
-+- `database_gateway_plan_mask_rule`
-+
-+Common workflow tools:
-+
-+- `database_gateway_apply_workflow`
-+- `database_gateway_validate_workflow`
-+
-+Resources:
-+
-+- `shardingsphere://features/mask/algorithms`
-+- `shardingsphere://features/mask/databases/{database}/rules`
-+- `shardingsphere://features/mask/databases/{database}/tables/{table}/rules`
-+
-+## Minimum input
-+
-+For creating or altering a mask rule, provide at least:
-+
-+- `database`
-+- `table`
-+- `column`
-+- `natural_language_intent`, or explicit `operation_type=create|alter`
-+- `algorithm_type`, unless you want MCP to recommend one
-+- `primary_algorithm_properties`
-+- `schema`, recommended for multi-schema logical databases
-+
-+For dropping a mask rule, the minimum input is:
-+
-+- `database`
-+- `table`
-+- `column`
-+- `operation_type=drop`
-+
-+## Plan a mask rule
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "mask-plan-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_mask_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "phone",
-+      "natural_language_intent": "Mask phone as a phone number and keep the first 3 and last 4 characters",
-+      "algorithm_type": "KEEP_FIRST_N_LAST_M",
-+      "primary_algorithm_properties": {
-+        "first-n": "3",
-+        "last-m": "4",
-+        "replace-char": "*"
-+      }
-+    }
-+  }
-+}
-+```
-+
-+Typical result:
-+
-+- Returns `plan_id`.
-+- `status` is `planned` or `clarifying`.
-+- `distsql_artifacts` contains `CREATE/ALTER MASK RULE`.
-+- `ddl_artifacts` is normally empty.
-+- `index_plan` is normally empty.
-+
-+If the natural language input does not identify the algorithm clearly or required algorithm properties are missing, MCP returns `clarifying`.
-+Continue with the same `plan_id` and provide fields requested by `clarification_questions`.
-+
-+## Apply and validate
-+
-+Preview first:
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "preview"
-+  }
-+}
-+```
-+
-+Execute after reviewing artifacts:
-+
-+```json
-+{
-+  "name": "database_gateway_apply_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}",
-+    "execution_mode": "review-then-execute"
-+  }
-+}
-+```
-+
-+Validate:
-+
-+```json
-+{
-+  "name": "database_gateway_validate_workflow",
-+  "arguments": {
-+    "plan_id": "${PLAN_ID}"
-+  }
-+}
-+```
-+
-+Validation focuses on:
-+
-+- `rule_validation`
-+- `logical_metadata_validation`
-+- `sql_executability_validation`
-+
-+## Drop a mask rule
-+
-+```json
-+{
-+  "jsonrpc": "2.0",
-+  "id": "mask-drop-1",
-+  "method": "tools/call",
-+  "params": {
-+    "name": "database_gateway_plan_mask_rule",
-+    "arguments": {
-+      "database": "logic_db",
-+      "table": "orders",
-+      "column": "phone",
-+      "operation_type": "drop"
-+    }
-+  }
-+}
-+```
-+
-+If sibling mask columns still exist on the same table, MCP generates `ALTER MASK RULE` and keeps the sibling rules.
-+It generates `DROP MASK RULE` only when no mask column remains on the target table.
-+
-+## Limitations
-+
-+- Supports ShardingSphere-Proxy logical databases only.
-+- Supports `create`, `alter`, and `drop`.
-+- Does not generate physical derived columns.
-+- Does not provide automatic rollback.
-+- Planning input accepts only standard unquoted logical identifiers.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/quick-start.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/quick-start.cn.md
-new file mode 100644
-index 00000000000..2dbbc0cd79e
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/quick-start.cn.md
-@@ -0,0 +1,147 @@
-++++
-+title = "快速开始"
-+weight = 1
-++++
-+
-+本节使用发行包内置的 H2 demo runtime 验证 ShardingSphere-MCP 的 HTTP transport、metadata discovery 和只读 SQL 查询。
-+
-+## 前置条件
-+
-+- `JAVA_HOME` 或 `PATH` 中可用的 JDK 21。
-+- 仓库根目录下的 Maven Wrapper。
-+- 类 Unix Shell，并包含 `curl`、`find`、`mktemp`、`sed` 和 `tr`。
-+
-+## 构建发行包
-+
-+```bash
-+./mvnw -pl distribution/mcp -am -DskipTests package
-+```
-+
-+解析发行包目录：
-+
-+```bash
-+DIST_DIR=$(find distribution/mcp/target -maxdepth 1 -type d -name 'apache-shardingsphere-mcp-*' | sed -n '1p')
-+echo "${DIST_DIR}"
-+```
-+
-+预期结果：
-+
-+- 命令打印一个非空发行包目录。
-+- 该目录包含 `bin/`、`conf/`、`lib/`。
-+
-+## 启动 HTTP runtime
-+
-+```bash
-+cd "${DIST_DIR}"
-+bin/start.sh
-+```
-+
-+Windows 使用：
-+
-+```bat
-+cd /d "%DIST_DIR%"
-+bin\start.bat
-+```
-+
-+默认配置文件是 `conf/mcp-http.yaml`，默认端点是 `http://127.0.0.1:18088/mcp`。
-+进程以前台方式运行，日志写入 `logs/` 目录。
-+请保持当前终端不退出，并在第二个终端执行后续 `curl` 命令。
-+
-+发行包内置 demo runtime 暴露两个逻辑库：`orders` 和 `billing`。
-+它们使用发行包自带 H2 驱动和 `data/` 下的种子数据。
-+
-+## 初始化 MCP session
-+
-+```bash
-+INIT_HEADERS=$(mktemp)
-+curl -sS -D "${INIT_HEADERS}" -o /dev/null http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"curl-demo","version":"1.0.0"}}}'
-+SESSION_ID=$(sed -n 's/^[Mm][Cc][Pp]-[Ss]ession-[Ii][Dd]: //p' "${INIT_HEADERS}" | tr -d '\r')
-+PROTOCOL_VERSION=$(sed -n 's/^[Mm][Cc][Pp]-[Pp]rotocol-[Vv]ersion: //p' "${INIT_HEADERS}" | tr -d '\r')
-+rm -f "${INIT_HEADERS}"
-+printf 'SESSION_ID=%s\nPROTOCOL_VERSION=%s\n' "${SESSION_ID}" "${PROTOCOL_VERSION}"
-+```
-+
-+预期结果：
-+
-+- `SESSION_ID` 非空。
-+- `PROTOCOL_VERSION` 非空。
-+- 后续 HTTP 请求必须携带这两个 header。
-+
-+## 读取 metadata resource
-+
-+```bash
-+curl -sS http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
-+  --data '{"jsonrpc":"2.0","id":"resource-1","method":"resources/read","params":{"uri":"shardingsphere://databases/orders/schemas/public/tables"}}'
-+```
-+
-+预期结果：
-+
-+- 响应类型是 `text/event-stream`。
-+- JSON payload 位于 `data:` 行。
-+- 返回内容包含 `orders`、`order_items`、`active_orders`。
-+
-+## 搜索 metadata
-+
-+```bash
-+curl -sS http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
-+  --data '{"jsonrpc":"2.0","id":"tool-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"orders","query":"order","object_types":["table","view"]}}}'
-+```
-+
-+预期结果：
-+
-+- JSON payload 包含匹配到的表或视图。
-+- 结果项会携带可继续读取的 resource hint。
-+
-+## 执行只读查询
-+
-+```bash
-+curl -sS http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
-+  --data '{
-+    "jsonrpc":"2.0",
-+    "id":"tool-2",
-+    "method":"tools/call",
-+    "params":{
-+      "name":"database_gateway_execute_query",
-+      "arguments":{
-+        "database":"orders",
-+        "schema":"public",
-+        "sql":"SELECT status FROM orders ORDER BY order_id",
-+        "max_rows":10
-+      }
-+    }
-+  }'
-+```
-+
-+预期结果：
-+
-+- `result_kind` 为 `result_set`。
-+- `statement_class` 为 `query`。
-+- payload 包含 `columns`、`rows` 或 `row_objects`。
-+
-+## 关闭 session
-+
-+```bash
-+curl -sS -D - -o /dev/null \
-+  -X DELETE http://127.0.0.1:18088/mcp \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}"
-+```
-+
-+预期结果：
-+
-+- HTTP 状态码是 `200`。
+ 
+-## 读取 metadata resource
++## 读取元数据资源
+ 
+ ```bash
+ curl -sS http://127.0.0.1:18088/mcp \
+@@ -78,16 +87,16 @@ curl -sS http://127.0.0.1:18088/mcp \
+   -H 'Accept: application/json, text/event-stream' \
+   -H "MCP-Session-Id: ${SESSION_ID}" \
+   -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+-  --data '{"jsonrpc":"2.0","id":"resource-1","method":"resources/read","params":{"uri":"shardingsphere://databases/orders/schemas/public/tables"}}'
++  --data '{"jsonrpc":"2.0","id":"resource-1","method":"resources/read","params":{"uri":"shardingsphere://databases"}}'
+ ```
+ 
+ 预期结果：
+ 
+ - 响应类型是 `text/event-stream`。
+-- JSON payload 位于 `data:` 行。
+-- 返回内容包含 `orders`、`order_items`、`active_orders`。
++- JSON 负载位于 `data:` 行。
++- 返回内容包含 `logic_db`。
+ 
+-## 搜索 metadata
++## 搜索元数据
+ 
+ ```bash
+ curl -sS http://127.0.0.1:18088/mcp \
+@@ -95,13 +104,13 @@ curl -sS http://127.0.0.1:18088/mcp \
+   -H 'Accept: application/json, text/event-stream' \
+   -H "MCP-Session-Id: ${SESSION_ID}" \
+   -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+-  --data '{"jsonrpc":"2.0","id":"tool-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"orders","query":"order","object_types":["table","view"]}}}'
++  --data '{"jsonrpc":"2.0","id":"tool-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"sample","object_types":["table","view"]}}}'
+ ```
+ 
+ 预期结果：
+ 
+-- JSON payload 包含匹配到的表或视图。
+-- 结果项会携带可继续读取的 resource hint。
++- JSON 负载包含匹配到的表或视图。
++- 结果项可包含后续读取用的资源提示。
+ 
+ ## 执行只读查询
+ 
+@@ -118,9 +127,8 @@ curl -sS http://127.0.0.1:18088/mcp \
+     "params":{
+       "name":"database_gateway_execute_query",
+       "arguments":{
+-        "database":"orders",
+-        "schema":"public",
+-        "sql":"SELECT status FROM orders ORDER BY order_id",
++        "database":"logic_db",
++        "sql":"SELECT * FROM sample_table LIMIT 10",
+         "max_rows":10
+       }
+     }
+@@ -131,15 +139,16 @@ curl -sS http://127.0.0.1:18088/mcp \
+ 
+ - `result_kind` 为 `result_set`。
+ - `statement_class` 为 `query`。
+-- payload 包含 `columns`、`rows` 或 `row_objects`。
++- 负载包含 `columns`、`rows` 或 `row_objects`。
+ 
+-## 关闭 session
++## 关闭会话并停止服务
+ 
+ ```bash
+ curl -sS -D - -o /dev/null \
+   -X DELETE http://127.0.0.1:18088/mcp \
+   -H "MCP-Session-Id: ${SESSION_ID}" \
+   -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}"
++kill "${MCP_PID}"
+ ```
+ 
+ 预期结果：
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/quick-start.en.md b/docs/document/content/user-manual/shardingsphere-mcp/quick-start.en.md
-new file mode 100644
-index 00000000000..8ee24ecd8c3
---- /dev/null
+index 8ee24ecd8c3..b7a13b81313 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/quick-start.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/quick-start.en.md
-@@ -0,0 +1,147 @@
-++++
-+title = "Quick Start"
-+weight = 1
-++++
+@@ -3,72 +3,81 @@ title = "Quick Start"
+ weight = 1
+ +++
+ 
+-This section uses the packaged H2 demo runtime to verify the ShardingSphere-MCP HTTP transport, metadata discovery, and read-only SQL query behavior.
++This page shows how to build ShardingSphere-MCP from source, connect to a ShardingSphere-Proxy logical database prepared by the user, and verify metadata reads and read-only SQL queries over HTTP.
++`logic_db`, `sample_table`, username, and password are placeholders. Replace them with your own logical database, table, and account before running the commands.
+ 
+ ## Prerequisites
+ 
+ - JDK 21 available from `JAVA_HOME` or `PATH`.
+-- Maven Wrapper from the repository root.
+-- A Unix-like shell with `curl`, `find`, `mktemp`, `sed`, and `tr`.
++- A ShardingSphere-Proxy logical database reachable through JDBC.
++- `curl` for HTTP requests.
++- A terminal that supports sh/bash syntax.
+ 
+ ## Build the distribution
+ 
++Run from the repository root:
 +
-+This section uses the packaged H2 demo runtime to verify the ShardingSphere-MCP HTTP transport, metadata discovery, and read-only SQL query behavior.
+ ```bash
+ ./mvnw -pl distribution/mcp -am -DskipTests package
+ ```
+ 
+-Resolve the distribution directory:
++Enter the distribution directory:
+ 
+ ```bash
+-DIST_DIR=$(find distribution/mcp/target -maxdepth 1 -type d -name 'apache-shardingsphere-mcp-*' | sed -n '1p')
+-echo "${DIST_DIR}"
++cd distribution/mcp/target/apache-shardingsphere-mcp-*
+ ```
+ 
+ Expected result:
+ 
+-- The command prints a non-empty distribution directory.
+-- The directory contains `bin/`, `conf/`, and `lib/`.
++- The current directory contains `bin/`, `conf/`, and `lib/`.
+ 
+-## Start the HTTP runtime
++## Configure the database
+ 
+-```bash
+-cd "${DIST_DIR}"
+-bin/start.sh
++Edit `conf/mcp-http.yaml` and point `runtimeDatabases` to an existing ShardingSphere-Proxy logical database:
 +
-+## Prerequisites
-+
-+- JDK 21 available from `JAVA_HOME` or `PATH`.
-+- Maven Wrapper from the repository root.
-+- A Unix-like shell with `curl`, `find`, `mktemp`, `sed`, and `tr`.
-+
-+## Build the distribution
-+
-+```bash
-+./mvnw -pl distribution/mcp -am -DskipTests package
-+```
-+
-+Resolve the distribution directory:
-+
-+```bash
-+DIST_DIR=$(find distribution/mcp/target -maxdepth 1 -type d -name 'apache-shardingsphere-mcp-*' | sed -n '1p')
-+echo "${DIST_DIR}"
-+```
-+
-+Expected result:
-+
-+- The command prints a non-empty distribution directory.
-+- The directory contains `bin/`, `conf/`, and `lib/`.
-+
-+## Start the HTTP runtime
-+
-+```bash
-+cd "${DIST_DIR}"
-+bin/start.sh
-+```
-+
-+On Windows:
-+
-+```bat
-+cd /d "%DIST_DIR%"
-+bin\start.bat
-+```
-+
-+The default configuration file is `conf/mcp-http.yaml`, and the default endpoint is `http://127.0.0.1:18088/mcp`.
-+The process runs in the foreground and writes logs under `logs/`.
-+Keep this terminal open, and run the following `curl` commands in a second terminal.
-+
-+The packaged demo runtime exposes two logical databases: `orders` and `billing`.
-+They use the packaged H2 driver and seed data under `data/`.
-+
-+## Initialize an MCP session
-+
-+```bash
-+INIT_HEADERS=$(mktemp)
-+curl -sS -D "${INIT_HEADERS}" -o /dev/null http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"curl-demo","version":"1.0.0"}}}'
-+SESSION_ID=$(sed -n 's/^[Mm][Cc][Pp]-[Ss]ession-[Ii][Dd]: //p' "${INIT_HEADERS}" | tr -d '\r')
-+PROTOCOL_VERSION=$(sed -n 's/^[Mm][Cc][Pp]-[Pp]rotocol-[Vv]ersion: //p' "${INIT_HEADERS}" | tr -d '\r')
-+rm -f "${INIT_HEADERS}"
-+printf 'SESSION_ID=%s\nPROTOCOL_VERSION=%s\n' "${SESSION_ID}" "${PROTOCOL_VERSION}"
-+```
-+
-+Expected result:
-+
-+- `SESSION_ID` is not empty.
-+- `PROTOCOL_VERSION` is not empty.
-+- Later HTTP requests must include both headers.
-+
-+## Read a metadata resource
++```yaml
++runtimeDatabases:
++  logic_db:
++    databaseType: MySQL
++    jdbcUrl: "jdbc:mysql://127.0.0.1:3307/logic_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
++    username: "proxy_user"
++    password: "proxy_password"
++    driverClassName: "com.mysql.cj.jdbc.Driver"
+ ```
+ 
+-On Windows:
++If the target database driver is not packaged, copy the corresponding JDBC driver jar to `plugins/` before startup.
+ 
+-```bat
+-cd /d "%DIST_DIR%"
+-bin\start.bat
++## Start the HTTP MCP Server
 +
 +```bash
-+curl -sS http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
-+  --data '{"jsonrpc":"2.0","id":"resource-1","method":"resources/read","params":{"uri":"shardingsphere://databases/orders/schemas/public/tables"}}'
-+```
++bin/start.sh > logs/mcp-http.log 2>&1 &
++MCP_PID=$!
+ ```
+ 
+ The default configuration file is `conf/mcp-http.yaml`, and the default endpoint is `http://127.0.0.1:18088/mcp`.
+-The process runs in the foreground and writes logs under `logs/`.
+-Keep this terminal open, and run the following `curl` commands in a second terminal.
+-
+-The packaged demo runtime exposes two logical databases: `orders` and `billing`.
+-They use the packaged H2 driver and seed data under `data/`.
++The command above starts the MCP Server in the background and stores the process id in `MCP_PID` so it can be stopped at the end.
+ 
+ ## Initialize an MCP session
+ 
+ ```bash
+-INIT_HEADERS=$(mktemp)
+-curl -sS -D "${INIT_HEADERS}" -o /dev/null http://127.0.0.1:18088/mcp \
++curl -i -sS http://127.0.0.1:18088/mcp \
+   -H 'Content-Type: application/json' \
+   -H 'Accept: application/json, text/event-stream' \
+-  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"curl-demo","version":"1.0.0"}}}'
+-SESSION_ID=$(sed -n 's/^[Mm][Cc][Pp]-[Ss]ession-[Ii][Dd]: //p' "${INIT_HEADERS}" | tr -d '\r')
+-PROTOCOL_VERSION=$(sed -n 's/^[Mm][Cc][Pp]-[Pp]rotocol-[Vv]ersion: //p' "${INIT_HEADERS}" | tr -d '\r')
+-rm -f "${INIT_HEADERS}"
+-printf 'SESSION_ID=%s\nPROTOCOL_VERSION=%s\n' "${SESSION_ID}" "${PROTOCOL_VERSION}"
++  --data '{"jsonrpc":"2.0","id":"init-1","method":"initialize","params":{"capabilities":{},"clientInfo":{"name":"curl-client","version":"1.0.0"}}}'
+ ```
+ 
+ Expected result:
+ 
+-- `SESSION_ID` is not empty.
+-- `PROTOCOL_VERSION` is not empty.
+-- Later HTTP requests must include both headers.
++- The response headers include `MCP-Session-Id`.
++- The response headers include `MCP-Protocol-Version`.
++- Later HTTP requests must include both response headers.
 +
-+Expected result:
-+
-+- The response type is `text/event-stream`.
-+- The JSON payload is in the `data:` line.
-+- The payload contains `orders`, `order_items`, and `active_orders`.
-+
-+## Search metadata
-+
-+```bash
-+curl -sS http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
-+  --data '{"jsonrpc":"2.0","id":"tool-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"orders","query":"order","object_types":["table","view"]}}}'
-+```
-+
-+Expected result:
-+
-+- The JSON payload contains matched tables or views.
-+- Each result item may include resource hints for follow-up reads.
-+
-+## Execute a read-only query
-+
-+```bash
-+curl -sS http://127.0.0.1:18088/mcp \
-+  -H 'Content-Type: application/json' \
-+  -H 'Accept: application/json, text/event-stream' \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
-+  --data '{
-+    "jsonrpc":"2.0",
-+    "id":"tool-2",
-+    "method":"tools/call",
-+    "params":{
-+      "name":"database_gateway_execute_query",
-+      "arguments":{
-+        "database":"orders",
-+        "schema":"public",
-+        "sql":"SELECT status FROM orders ORDER BY order_id",
-+        "max_rows":10
-+      }
-+    }
-+  }'
-+```
-+
-+Expected result:
-+
-+- `result_kind` is `result_set`.
-+- `statement_class` is `query`.
-+- The payload contains `columns`, `rows`, or `row_objects`.
-+
-+## Close the session
++Copy the values from the response headers and set them in the current terminal:
 +
 +```bash
-+curl -sS -D - -o /dev/null \
-+  -X DELETE http://127.0.0.1:18088/mcp \
-+  -H "MCP-Session-Id: ${SESSION_ID}" \
-+  -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}"
++export SESSION_ID="<MCP-Session-Id value>"
++export PROTOCOL_VERSION="<MCP-Protocol-Version value>"
 +```
-+
-+Expected result:
-+
-+- The HTTP status code is `200`.
+ 
+ ## Read a metadata resource
+ 
+@@ -78,14 +87,14 @@ curl -sS http://127.0.0.1:18088/mcp \
+   -H 'Accept: application/json, text/event-stream' \
+   -H "MCP-Session-Id: ${SESSION_ID}" \
+   -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+-  --data '{"jsonrpc":"2.0","id":"resource-1","method":"resources/read","params":{"uri":"shardingsphere://databases/orders/schemas/public/tables"}}'
++  --data '{"jsonrpc":"2.0","id":"resource-1","method":"resources/read","params":{"uri":"shardingsphere://databases"}}'
+ ```
+ 
+ Expected result:
+ 
+ - The response type is `text/event-stream`.
+ - The JSON payload is in the `data:` line.
+-- The payload contains `orders`, `order_items`, and `active_orders`.
++- The payload contains `logic_db`.
+ 
+ ## Search metadata
+ 
+@@ -95,7 +104,7 @@ curl -sS http://127.0.0.1:18088/mcp \
+   -H 'Accept: application/json, text/event-stream' \
+   -H "MCP-Session-Id: ${SESSION_ID}" \
+   -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}" \
+-  --data '{"jsonrpc":"2.0","id":"tool-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"orders","query":"order","object_types":["table","view"]}}}'
++  --data '{"jsonrpc":"2.0","id":"tool-1","method":"tools/call","params":{"name":"database_gateway_search_metadata","arguments":{"database":"logic_db","query":"sample","object_types":["table","view"]}}}'
+ ```
+ 
+ Expected result:
+@@ -118,9 +127,8 @@ curl -sS http://127.0.0.1:18088/mcp \
+     "params":{
+       "name":"database_gateway_execute_query",
+       "arguments":{
+-        "database":"orders",
+-        "schema":"public",
+-        "sql":"SELECT status FROM orders ORDER BY order_id",
++        "database":"logic_db",
++        "sql":"SELECT * FROM sample_table LIMIT 10",
+         "max_rows":10
+       }
+     }
+@@ -133,13 +141,14 @@ Expected result:
+ - `statement_class` is `query`.
+ - The payload contains `columns`, `rows`, or `row_objects`.
+ 
+-## Close the session
++## Close the session and stop the server
+ 
+ ```bash
+ curl -sS -D - -o /dev/null \
+   -X DELETE http://127.0.0.1:18088/mcp \
+   -H "MCP-Session-Id: ${SESSION_ID}" \
+   -H "MCP-Protocol-Version: ${PROTOCOL_VERSION}"
++kill "${MCP_PID}"
+ ```
+ 
+ Expected result:
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md
-new file mode 100644
-index 00000000000..71f7969e0dc
---- /dev/null
+index 71f7969e0dc..ec000a43142 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md
-@@ -0,0 +1,136 @@
-++++
-+title = "常见问题"
-+weight = 6
-++++
-+
-+本节只覆盖 MCP runtime、transport、session、SQL tool 和 workflow 机制的通用问题。
-+插件业务问题请查看对应 feature plugin 文档。
-+
-+## 启动失败
-+
-+优先检查：
-+
-+- JDK 版本是否为 JDK 21。
-+- 配置文件路径是否正确。
-+- `conf/mcp-http.yaml` 或 `conf/mcp-stdio.yaml` 是否存在。
-+- YAML 是否包含不受支持字段。
-+- `runtimeDatabases` 是否缺失或为空。
-+- `username`、`password`、`driverClassName` 是否显式写出；不需要值时写空字符串 `""`。
-+
-+启动失败时，先查看终端错误和 `logs/mcp.log`。
-+
-+## HTTP 连接失败
-+
-+检查：
-+
-+- 默认端点是否为 `http://127.0.0.1:18088/mcp`。
-+- 端口是否被占用。
-+- `transport.type` 是否为 `STREAMABLE_HTTP`。
-+- `transport.http.endpointPath` 是否和 client URL 一致。
-+- 绑定 `127.0.0.1` 时，远程机器无法直接访问。
-+- 绑定 `0.0.0.0` 时，应由外层网关处理鉴权和网络访问控制。
-+
-+## HTTP 返回 403
-+
-+Origin 校验规则：
-+
-+- loopback 绑定下，如果请求带 `Origin`，该 Origin 也必须是 loopback。
-+- 非 loopback 绑定下，缺失 `Origin` 的非浏览器请求会被接受。
-+- 非 loopback 绑定下，任何显式 `Origin` 都会被拒绝。
-+
-+可选处理方式：
-+
-+- 调整 client 的 Origin 策略。
-+- 使用本机 loopback 访问。
-+- 通过受控网关转发请求。
-+
-+## Session 或协议头问题
-+
-+HTTP client 调用 `initialize` 后，必须保存：
-+
-+- `MCP-Session-Id`
-+- `MCP-Protocol-Version`
-+
-+后续请求都要携带这两个 header。
-+session 关闭后不能继续复用。
-+Workflow 的 `plan_id` 也只在当前 session 内有效。
-+
-+## STDIO 模式没有响应
-+
-+STDIO 是给 MCP client 拉起子进程使用的，不是人工交互 shell。
-+
-+检查：
-+
-+- client 配置里的 `command` 是否指向 `bin/start.sh` 或 `bin\start.bat`。
-+- `args` 是否包含 `conf/mcp-stdio.yaml`。
-+- stdout 是否被日志污染。
-+- 诊断信息应查看 stderr 或 `logs/mcp.log`。
-+
-+## 找不到逻辑库或元数据为空
-+
-+检查：
-+
-+- `runtimeDatabases` 是否配置了目标逻辑库。
-+- MCP 暴露的是 ShardingSphere 逻辑库，不是底层物理存储单元。
-+- `databaseType` 和 `jdbcUrl` 是否匹配目标逻辑库。
-+- 目标 JDBC driver jar 是否位于 `plugins/`。
-+- 连接用户是否有读取 JDBC metadata 的权限。
-+
-+## JDBC driver 错误
-+
-+发行包只内置有限的 JDBC driver。
-+如果目标数据库 driver 缺失，请把对应 jar 放入 `plugins/`。
-+
-+如果以嵌入方式使用 `shardingsphere-mcp-bootstrap`，需要把 driver 加到运行时 classpath。
-+
-+`driverClassName` 字段必须显式存在。
-+当 driver 可自动注册且不需要显式覆盖时，写 `""`。
-+
-+## SQL tool 调用失败
-+
-+`database_gateway_execute_query` 只用于：
-+
-+- `SELECT`
-+- `EXPLAIN ANALYZE`
-+
-+DML、DDL、DCL、事务控制、savepoint 和其他有副作用 SQL 应使用 `database_gateway_execute_update`。
-+
-+有副作用 SQL 建议先使用：
-+
-+```json
-+{"execution_mode":"preview"}
-+```
-+
-+再在确认后使用：
-+
-+```json
-+{"execution_mode":"execute"}
-+```
-+
-+其他限制：
-+
-+- 多语句会被拒绝。
-+- `max_rows` 范围是 `0..5000`。
-+- `timeout_ms` 范围是 `0..300000`。
-+
-+## Workflow 通用问题
-+
-+检查：
-+
-+- 是否丢失 `plan_id`。
-+- 是否换了 `MCP-Session-Id` 后继续 apply 或 validate。
-+- `database_gateway_apply_workflow` 是否传入 `execution_mode`。
-+- 使用 `manual-only` 后，是否已经人工执行返回的 SQL 或 DistSQL。
-+- `approved_steps` 是否来自 preview 返回的 `preview_artifacts[].approval_step`。
-+
-+## 收集诊断信息
-+
-+报告问题时建议提供：
-+
-+- 启动命令。
-+- MCP 配置文件，注意移除密码和密钥。
-+- transport 类型和 endpoint。
-+- `MCP-Session-Id` 是否已初始化，注意不要公开真实敏感 header。
-+- tool 或 resource 请求体。
-+- JSON-RPC error payload。
-+- `logs/mcp.log` 中相关错误。
+@@ -3,8 +3,8 @@ title = "常见问题"
+ weight = 6
+ +++
+ 
+-本节只覆盖 MCP runtime、transport、session、SQL tool 和 workflow 机制的通用问题。
+-插件业务问题请查看对应 feature plugin 文档。
++这里汇总 MCP Server、传输方式、会话、SQL 工具和工作流机制的常见问题。
++插件业务问题请查看对应功能插件文档。
+ 
+ ## 启动失败
+ 
+@@ -14,7 +14,6 @@ weight = 6
+ - 配置文件路径是否正确。
+ - `conf/mcp-http.yaml` 或 `conf/mcp-stdio.yaml` 是否存在。
+ - YAML 是否包含不受支持字段。
+-- `runtimeDatabases` 是否缺失或为空。
+ - `username`、`password`、`driverClassName` 是否显式写出；不需要值时写空字符串 `""`。
+ 
+ 启动失败时，先查看终端错误和 `logs/mcp.log`。
+@@ -26,7 +25,7 @@ weight = 6
+ - 默认端点是否为 `http://127.0.0.1:18088/mcp`。
+ - 端口是否被占用。
+ - `transport.type` 是否为 `STREAMABLE_HTTP`。
+-- `transport.http.endpointPath` 是否和 client URL 一致。
++- `transport.http.endpointPath` 是否和客户端 URL 一致。
+ - 绑定 `127.0.0.1` 时，远程机器无法直接访问。
+ - 绑定 `0.0.0.0` 时，应由外层网关处理鉴权和网络访问控制。
+ 
+@@ -34,34 +33,34 @@ weight = 6
+ 
+ Origin 校验规则：
+ 
+-- loopback 绑定下，如果请求带 `Origin`，该 Origin 也必须是 loopback。
+-- 非 loopback 绑定下，缺失 `Origin` 的非浏览器请求会被接受。
+-- 非 loopback 绑定下，任何显式 `Origin` 都会被拒绝。
++- 回环地址绑定下，如果请求带 `Origin`，该 Origin 也必须是回环地址。
++- 非回环地址绑定下，缺失 `Origin` 的非浏览器请求会被接受。
++- 非回环地址绑定下，任何显式 `Origin` 都会被拒绝。
+ 
+ 可选处理方式：
+ 
+-- 调整 client 的 Origin 策略。
+-- 使用本机 loopback 访问。
++- 调整客户端的 Origin 策略。
++- 使用本机回环地址访问。
+ - 通过受控网关转发请求。
+ 
+-## Session 或协议头问题
++## 会话或协议头问题
+ 
+-HTTP client 调用 `initialize` 后，必须保存：
++HTTP 客户端调用 `initialize` 后，必须保存：
+ 
+ - `MCP-Session-Id`
+ - `MCP-Protocol-Version`
+ 
+-后续请求都要携带这两个 header。
+-session 关闭后不能继续复用。
+-Workflow 的 `plan_id` 也只在当前 session 内有效。
++后续请求都要携带这两个响应头。
++会话关闭后不能继续复用。
++工作流的 `plan_id` 也只在当前会话内有效。
+ 
+ ## STDIO 模式没有响应
+ 
+-STDIO 是给 MCP client 拉起子进程使用的，不是人工交互 shell。
++STDIO 是给 MCP 客户端拉起子进程使用的，不是人工交互 shell。
+ 
+ 检查：
+ 
+-- client 配置里的 `command` 是否指向 `bin/start.sh` 或 `bin\start.bat`。
++- 客户端配置里的 `command` 是否指向 `bin/start.sh` 或 `bin\start.bat`。
+ - `args` 是否包含 `conf/mcp-stdio.yaml`。
+ - stdout 是否被日志污染。
+ - 诊断信息应查看 stderr 或 `logs/mcp.log`。
+@@ -73,20 +72,20 @@ STDIO 是给 MCP client 拉起子进程使用的，不是人工交互 shell。
+ - `runtimeDatabases` 是否配置了目标逻辑库。
+ - MCP 暴露的是 ShardingSphere 逻辑库，不是底层物理存储单元。
+ - `databaseType` 和 `jdbcUrl` 是否匹配目标逻辑库。
+-- 目标 JDBC driver jar 是否位于 `plugins/`。
+-- 连接用户是否有读取 JDBC metadata 的权限。
++- 目标 JDBC 驱动 jar 是否位于 `plugins/`。
++- 连接用户是否有读取 JDBC 元数据的权限。
+ 
+-## JDBC driver 错误
++## JDBC 驱动错误
+ 
+-发行包只内置有限的 JDBC driver。
+-如果目标数据库 driver 缺失，请把对应 jar 放入 `plugins/`。
++发行包只内置有限的 JDBC 驱动。
++如果目标数据库驱动缺失，请把对应 jar 放入 `plugins/`。
+ 
+-如果以嵌入方式使用 `shardingsphere-mcp-bootstrap`，需要把 driver 加到运行时 classpath。
++如果以嵌入方式使用 `shardingsphere-mcp-bootstrap`，需要把驱动加到运行时类路径。
+ 
+ `driverClassName` 字段必须显式存在。
+-当 driver 可自动注册且不需要显式覆盖时，写 `""`。
++当驱动可自动注册且不需要显式覆盖时，写 `""`。
+ 
+-## SQL tool 调用失败
++## SQL 工具调用失败
+ 
+ `database_gateway_execute_query` 只用于：
+ 
+@@ -113,15 +112,15 @@ DML、DDL、DCL、事务控制、savepoint 和其他有副作用 SQL 应使用 `
+ - `max_rows` 范围是 `0..5000`。
+ - `timeout_ms` 范围是 `0..300000`。
+ 
+-## Workflow 通用问题
++## 工作流通用问题
+ 
+ 检查：
+ 
+ - 是否丢失 `plan_id`。
+-- 是否换了 `MCP-Session-Id` 后继续 apply 或 validate。
++- 是否换了 `MCP-Session-Id` 后继续执行或校验。
+ - `database_gateway_apply_workflow` 是否传入 `execution_mode`。
+ - 使用 `manual-only` 后，是否已经人工执行返回的 SQL 或 DistSQL。
+-- `approved_steps` 是否来自 preview 返回的 `preview_artifacts[].approval_step`。
++- `approved_steps` 是否来自预览结果返回的 `preview_artifacts[].approval_step`。
+ 
+ ## 收集诊断信息
+ 
+@@ -129,8 +128,8 @@ DML、DDL、DCL、事务控制、savepoint 和其他有副作用 SQL 应使用 `
+ 
+ - 启动命令。
+ - MCP 配置文件，注意移除密码和密钥。
+-- transport 类型和 endpoint。
+-- `MCP-Session-Id` 是否已初始化，注意不要公开真实敏感 header。
+-- tool 或 resource 请求体。
+-- JSON-RPC error payload。
++- 传输方式和端点。
++- `MCP-Session-Id` 是否已初始化，注意不要公开真实敏感响应头。
++- 工具或资源请求体。
++- JSON-RPC 错误负载。
+ - `logs/mcp.log` 中相关错误。
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md
-new file mode 100644
-index 00000000000..b030b4f3948
---- /dev/null
+index b030b4f3948..333fc66dc8c 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md
-@@ -0,0 +1,136 @@
-++++
-+title = "Troubleshooting"
-+weight = 6
-++++
-+
-+This section covers common MCP runtime, transport, session, SQL tool, and workflow mechanism issues.
-+For plugin-specific business issues, see the corresponding feature plugin documentation.
-+
-+## Startup failure
-+
-+Check:
-+
-+- JDK version is JDK 21.
-+- The configuration file path is correct.
-+- `conf/mcp-http.yaml` or `conf/mcp-stdio.yaml` exists.
-+- The YAML file does not contain unsupported fields.
-+- `runtimeDatabases` is present and not empty.
-+- `username`, `password`, and `driverClassName` are explicitly declared; use an empty string `""` when no value is needed.
-+
-+When startup fails, inspect the terminal error and `logs/mcp.log` first.
-+
-+## HTTP connection failure
-+
-+Check:
-+
-+- The default endpoint is `http://127.0.0.1:18088/mcp`.
-+- The port is not occupied.
-+- `transport.type` is `STREAMABLE_HTTP`.
-+- `transport.http.endpointPath` matches the client URL.
-+- Remote machines cannot access a runtime bound to `127.0.0.1` directly.
-+- When binding to `0.0.0.0`, authentication and network access control should be handled by an upstream gateway.
-+
-+## HTTP 403 response
-+
-+Origin validation rules:
-+
-+- For loopback bindings, if the request carries `Origin`, the Origin must also be loopback.
-+- For non-loopback bindings, non-browser requests without `Origin` are accepted.
-+- For non-loopback bindings, any explicit `Origin` is rejected.
-+
-+Possible actions:
-+
-+- Adjust the client Origin behavior.
-+- Use local loopback access.
-+- Forward requests through a controlled gateway.
-+
-+## Session or protocol header issues
-+
-+After an HTTP client calls `initialize`, it must keep:
-+
-+- `MCP-Session-Id`
-+- `MCP-Protocol-Version`
-+
-+Later requests must include both headers.
-+After the session is closed, it cannot be reused.
-+Workflow `plan_id` values are valid only in the current session.
-+
-+## No response in STDIO mode
-+
-+STDIO is for MCP clients that launch the runtime as a child process. It is not an interactive shell.
-+
-+Check:
-+
-+- `command` points to `bin/start.sh` or `bin\start.bat`.
-+- `args` includes `conf/mcp-stdio.yaml`.
-+- stdout is not polluted by logs.
-+- Diagnostics are read from stderr or `logs/mcp.log`.
-+
-+## Logical database not found or metadata is empty
-+
-+Check:
-+
-+- `runtimeDatabases` contains the target logical database.
-+- MCP exposes ShardingSphere logical databases, not physical storage units.
-+- `databaseType` and `jdbcUrl` match the target logical database.
-+- The target JDBC driver jar is under `plugins/`.
-+- The connection user has permission to read JDBC metadata.
-+
-+## JDBC driver errors
-+
-+The distribution only packages a limited set of JDBC drivers.
-+If the target database driver is missing, place the driver jar under `plugins/`.
-+
-+If embedding `shardingsphere-mcp-bootstrap` directly, add the driver to the runtime classpath.
-+
-+The `driverClassName` field must be explicitly present.
-+When the driver auto-registers and no explicit override is needed, set it to `""`.
-+
-+## SQL tool call failure
-+
-+`database_gateway_execute_query` is for:
-+
-+- `SELECT`
-+- `EXPLAIN ANALYZE`
-+
-+Use `database_gateway_execute_update` for DML, DDL, DCL, transaction control, savepoints, and other side-effecting SQL.
-+
-+For side-effecting SQL, preview first:
-+
-+```json
-+{"execution_mode":"preview"}
-+```
-+
-+Then execute after review:
-+
-+```json
-+{"execution_mode":"execute"}
-+```
-+
-+Other limits:
-+
-+- Multiple statements are rejected.
-+- `max_rows` range is `0..5000`.
-+- `timeout_ms` range is `0..300000`.
-+
-+## Common workflow issues
-+
-+Check:
-+
-+- `plan_id` was not lost.
-+- The same `MCP-Session-Id` is used for apply and validate.
-+- `database_gateway_apply_workflow` includes `execution_mode`.
-+- After `manual-only`, the returned SQL or DistSQL artifacts have been executed manually.
-+- `approved_steps` values come from `preview_artifacts[].approval_step`.
-+
-+## Collect diagnostics
-+
-+When reporting an issue, provide:
-+
-+- Startup command.
-+- MCP configuration file, with passwords and keys removed.
-+- Transport type and endpoint.
-+- Whether `MCP-Session-Id` was initialized. Do not publish sensitive real headers.
-+- Tool or resource request body.
-+- JSON-RPC error payload.
-+- Relevant errors from `logs/mcp.log`.
+@@ -3,7 +3,7 @@ title = "Troubleshooting"
+ weight = 6
+ +++
+ 
+-This section covers common MCP runtime, transport, session, SQL tool, and workflow mechanism issues.
++This page covers common MCP Server, transport, session, SQL tool, and workflow mechanism issues.
+ For plugin-specific business issues, see the corresponding feature plugin documentation.
+ 
+ ## Startup failure
+@@ -14,7 +14,6 @@ Check:
+ - The configuration file path is correct.
+ - `conf/mcp-http.yaml` or `conf/mcp-stdio.yaml` exists.
+ - The YAML file does not contain unsupported fields.
+-- `runtimeDatabases` is present and not empty.
+ - `username`, `password`, and `driverClassName` are explicitly declared; use an empty string `""` when no value is needed.
+ 
+ When startup fails, inspect the terminal error and `logs/mcp.log` first.
+@@ -27,7 +26,7 @@ Check:
+ - The port is not occupied.
+ - `transport.type` is `STREAMABLE_HTTP`.
+ - `transport.http.endpointPath` matches the client URL.
+-- Remote machines cannot access a runtime bound to `127.0.0.1` directly.
++- Remote machines cannot access an MCP Server bound to `127.0.0.1` directly.
+ - When binding to `0.0.0.0`, authentication and network access control should be handled by an upstream gateway.
+ 
+ ## HTTP 403 response
+@@ -57,7 +56,7 @@ Workflow `plan_id` values are valid only in the current session.
+ 
+ ## No response in STDIO mode
+ 
+-STDIO is for MCP clients that launch the runtime as a child process. It is not an interactive shell.
++STDIO is for MCP clients that launch the MCP Server as a child process. It is not an interactive shell.
+ 
+ Check:
+ 
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.cn.md
-new file mode 100644
-index 00000000000..fadb5fc3e42
---- /dev/null
+index fadb5fc3e42..715c8069bdc 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.cn.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.cn.md
-@@ -0,0 +1,63 @@
-++++
-+title = "Workflow 基础"
-+weight = 4
-++++
-+
-+ShardingSphere-MCP 的 feature plugin 可以通过共享 workflow 机制实现复杂治理任务。
-+Workflow 基础机制由 MCP runtime 提供，具体业务语义由插件提供。
-+
-+## 基本阶段
-+
-+一个典型 workflow 包含：
-+
-+1. 调用插件自己的 planning tool，生成计划并返回 `plan_id`。
-+2. 如果返回 `status = clarifying`，按 `clarification_questions` 补齐缺失输入。
-+3. 如果返回 `status = planned`，审查生成的 artifacts。
-+4. 调用 `database_gateway_apply_workflow` 并先使用 `execution_mode=preview`。
-+5. 审查 preview 后，使用 `execution_mode=review-then-execute` 执行，或使用 `manual-only` 导出人工执行包。
-+6. 调用 `database_gateway_validate_workflow` 校验最终状态。
-+
-+## Session 与 plan_id
-+
-+- `plan_id` 是当前 workflow 的句柄。
-+- `plan_id` 只在当前 MCP session 内有效。
-+- `plan`、`apply`、`validate` 必须使用同一个 `MCP-Session-Id`。
-+- 第一次 planning 调用不需要传 `plan_id`。
-+- 后续补问、执行和校验必须继续传同一个 `plan_id`。
-+
-+## 常见状态
-+
-+- `clarifying`：信息不足，需要补齐参数。
-+- `planned`：计划已生成，可以 review artifacts。
-+- `completed`：apply 已执行完成。
-+- `awaiting-manual-execution`：选择了 `manual-only`，需要人工执行返回的 artifacts。
-+- `validated`：validate 已通过。
-+- `failed`：当前阶段失败，应查看 `issues`、`mismatches` 和 `recovery_guidance`。
-+
-+## 执行模式
-+
-+`database_gateway_apply_workflow` 必须显式传入 `execution_mode`：
-+
-+- `preview`：只预览 artifacts 和副作用范围，不修改 runtime。
-+- `review-then-execute`：在 review 后执行 artifacts。
-+- `manual-only`：不自动执行，返回人工执行包。
-+
-+如果使用 `approved_steps` 分步执行，只能使用 preview 返回的 `preview_artifacts[].approval_step` 值。
-+未知 step 会被拒绝。
-+
-+## 敏感输入
-+
-+插件可能要求补充 secret 字段，例如密钥或凭证。
-+带有 `secret: true`、`input_type: "secret"`，或字段名包含 password、token、key、secret、credential 的补问，不应通过普通表单明文回传。
-+
-+推荐处理方式：
-+
-+- 保留 `plan_id`。
-+- 通过 secret manager、受保护环境变量或运维控制通道取得值。
-+- 用同一个 `plan_id` 再次调用原 planning tool。
-+
-+## 通用工具
-+
-+`database_gateway_apply_workflow` 和 `database_gateway_validate_workflow` 是通用 workflow 工具。
-+它们不决定业务语义，只处理当前 session 中已存在的 workflow plan。
-+具体 planning tool 由 feature plugin 提供。
+@@ -1,63 +1,63 @@
+ +++
+-title = "Workflow 基础"
++title = "工作流基础"
+ weight = 4
+ +++
+ 
+-ShardingSphere-MCP 的 feature plugin 可以通过共享 workflow 机制实现复杂治理任务。
+-Workflow 基础机制由 MCP runtime 提供，具体业务语义由插件提供。
++ShardingSphere-MCP 的功能插件可以通过共享工作流机制实现复杂治理任务。
++MCP Server 提供通用工作流机制，插件提供具体业务语义。
+ 
+ ## 基本阶段
+ 
+-一个典型 workflow 包含：
++一个典型工作流包含：
+ 
+-1. 调用插件自己的 planning tool，生成计划并返回 `plan_id`。
++1. 调用插件自己的规划工具，生成计划并返回 `plan_id`。
+ 2. 如果返回 `status = clarifying`，按 `clarification_questions` 补齐缺失输入。
+-3. 如果返回 `status = planned`，审查生成的 artifacts。
++3. 如果返回 `status = planned`，审查生成的变更产物。
+ 4. 调用 `database_gateway_apply_workflow` 并先使用 `execution_mode=preview`。
+-5. 审查 preview 后，使用 `execution_mode=review-then-execute` 执行，或使用 `manual-only` 导出人工执行包。
++5. 审查预览结果后，使用 `execution_mode=review-then-execute` 执行，或使用 `manual-only` 导出人工执行包。
+ 6. 调用 `database_gateway_validate_workflow` 校验最终状态。
+ 
+-## Session 与 plan_id
++## 会话与 plan_id
+ 
+-- `plan_id` 是当前 workflow 的句柄。
+-- `plan_id` 只在当前 MCP session 内有效。
++- `plan_id` 是当前工作流的句柄。
++- `plan_id` 只在当前 MCP 会话内有效。
+ - `plan`、`apply`、`validate` 必须使用同一个 `MCP-Session-Id`。
+-- 第一次 planning 调用不需要传 `plan_id`。
++- 第一次规划调用不需要传 `plan_id`。
+ - 后续补问、执行和校验必须继续传同一个 `plan_id`。
+ 
+ ## 常见状态
+ 
+ - `clarifying`：信息不足，需要补齐参数。
+-- `planned`：计划已生成，可以 review artifacts。
+-- `completed`：apply 已执行完成。
+-- `awaiting-manual-execution`：选择了 `manual-only`，需要人工执行返回的 artifacts。
+-- `validated`：validate 已通过。
++- `planned`：计划已生成，可以审查变更产物。
++- `completed`：已执行完成。
++- `awaiting-manual-execution`：选择了 `manual-only`，需要人工执行返回的变更产物。
++- `validated`：校验已通过。
+ - `failed`：当前阶段失败，应查看 `issues`、`mismatches` 和 `recovery_guidance`。
+ 
+ ## 执行模式
+ 
+ `database_gateway_apply_workflow` 必须显式传入 `execution_mode`：
+ 
+-- `preview`：只预览 artifacts 和副作用范围，不修改 runtime。
+-- `review-then-execute`：在 review 后执行 artifacts。
++- `preview`：只预览变更产物和副作用范围，不修改服务状态。
++- `review-then-execute`：在审查后执行变更产物。
+ - `manual-only`：不自动执行，返回人工执行包。
+ 
+-如果使用 `approved_steps` 分步执行，只能使用 preview 返回的 `preview_artifacts[].approval_step` 值。
+-未知 step 会被拒绝。
++如果使用 `approved_steps` 分步执行，只能使用预览结果返回的 `preview_artifacts[].approval_step` 值。
++未知步骤会被拒绝。
+ 
+ ## 敏感输入
+ 
+-插件可能要求补充 secret 字段，例如密钥或凭证。
++插件可能要求补充敏感字段，例如密钥或凭证。
+ 带有 `secret: true`、`input_type: "secret"`，或字段名包含 password、token、key、secret、credential 的补问，不应通过普通表单明文回传。
+ 
+ 推荐处理方式：
+ 
+ - 保留 `plan_id`。
+-- 通过 secret manager、受保护环境变量或运维控制通道取得值。
+-- 用同一个 `plan_id` 再次调用原 planning tool。
++- 通过密钥管理系统、受保护环境变量或运维控制通道取得值。
++- 用同一个 `plan_id` 再次调用原规划工具。
+ 
+ ## 通用工具
+ 
+-`database_gateway_apply_workflow` 和 `database_gateway_validate_workflow` 是通用 workflow 工具。
+-它们不决定业务语义，只处理当前 session 中已存在的 workflow plan。
+-具体 planning tool 由 feature plugin 提供。
++`database_gateway_apply_workflow` 和 `database_gateway_validate_workflow` 是通用工作流工具。
++它们不决定业务语义，只处理当前会话中已存在的工作流计划。
++具体规划工具由功能插件提供。
 diff --git a/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.en.md b/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.en.md
-new file mode 100644
-index 00000000000..31fd4579a24
---- /dev/null
+index 31fd4579a24..7f58ea2b988 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.en.md
 +++ b/docs/document/content/user-manual/shardingsphere-mcp/workflow-basics.en.md
-@@ -0,0 +1,63 @@
-++++
-+title = "Workflow Basics"
-+weight = 4
-++++
-+
-+ShardingSphere-MCP feature plugins can use the shared workflow mechanism to implement complex governance tasks.
-+The MCP runtime provides the common workflow mechanism, while each plugin provides its own business semantics.
-+
-+## Basic phases
-+
-+A typical workflow contains:
-+
-+1. Call the plugin planning tool to create a plan and return `plan_id`.
-+2. If the response returns `status = clarifying`, provide the missing inputs from `clarification_questions`.
-+3. If the response returns `status = planned`, review the generated artifacts.
-+4. Call `database_gateway_apply_workflow` with `execution_mode=preview` first.
-+5. After reviewing the preview, call with `execution_mode=review-then-execute`, or use `manual-only` to export an artifact package.
-+6. Call `database_gateway_validate_workflow` to validate the final state.
-+
-+## Session and plan_id
-+
-+- `plan_id` is the handle for the current workflow.
-+- `plan_id` is valid only in the current MCP session.
-+- `plan`, `apply`, and `validate` must use the same `MCP-Session-Id`.
-+- The first planning call does not need `plan_id`.
-+- Follow-up clarification, apply, and validate calls must reuse the same `plan_id`.
-+
-+## Common statuses
-+
-+- `clarifying`: more input is required.
-+- `planned`: the plan is ready and artifacts should be reviewed.
-+- `completed`: apply has completed.
-+- `awaiting-manual-execution`: `manual-only` was selected; execute the returned artifacts manually.
-+- `validated`: validation passed.
-+- `failed`: the current phase failed; inspect `issues`, `mismatches`, and `recovery_guidance`.
-+
-+## Execution modes
-+
-+`database_gateway_apply_workflow` requires an explicit `execution_mode`:
-+
-+- `preview`: preview artifacts and side-effect scope without changing runtime state.
-+- `review-then-execute`: execute artifacts after review.
-+- `manual-only`: export a manual artifact package without automatic execution.
-+
-+When using `approved_steps` for partial execution, pass only values returned by `preview_artifacts[].approval_step`.
-+Unknown steps are rejected.
-+
-+## Sensitive inputs
-+
-+Plugins may ask for secret fields, such as keys or credentials.
-+Questions with `secret: true`, `input_type: "secret"`, or field names containing password, token, key, secret, or credential should not be returned in plain text through ordinary forms.
-+
-+Recommended handling:
-+
-+- Keep the `plan_id`.
-+- Obtain the value through a secret manager, protected environment variable, or controlled operations channel.
-+- Call the original planning tool again with the same `plan_id`.
-+
-+## Common tools
-+
-+`database_gateway_apply_workflow` and `database_gateway_validate_workflow` are common workflow tools.
-+They do not define business semantics; they operate on workflow plans that already exist in the current session.
-+Feature plugins provide the concrete planning tools.
+@@ -4,7 +4,7 @@ weight = 4
+ +++
+ 
+ ShardingSphere-MCP feature plugins can use the shared workflow mechanism to implement complex governance tasks.
+-The MCP runtime provides the common workflow mechanism, while each plugin provides its own business semantics.
++The MCP Server provides the common workflow mechanism, while each plugin provides its own business semantics.
+ 
+ ## Basic phases
+ 
+@@ -12,9 +12,9 @@ A typical workflow contains:
+ 
+ 1. Call the plugin planning tool to create a plan and return `plan_id`.
+ 2. If the response returns `status = clarifying`, provide the missing inputs from `clarification_questions`.
+-3. If the response returns `status = planned`, review the generated artifacts.
++3. If the response returns `status = planned`, review the generated change artifacts.
+ 4. Call `database_gateway_apply_workflow` with `execution_mode=preview` first.
+-5. After reviewing the preview, call with `execution_mode=review-then-execute`, or use `manual-only` to export an artifact package.
++5. After reviewing the preview, call with `execution_mode=review-then-execute`, or use `manual-only` to export a manual execution package.
+ 6. Call `database_gateway_validate_workflow` to validate the final state.
+ 
+ ## Session and plan_id
+@@ -28,9 +28,9 @@ A typical workflow contains:
+ ## Common statuses
+ 
+ - `clarifying`: more input is required.
+-- `planned`: the plan is ready and artifacts should be reviewed.
++- `planned`: the plan is ready and change artifacts should be reviewed.
+ - `completed`: apply has completed.
+-- `awaiting-manual-execution`: `manual-only` was selected; execute the returned artifacts manually.
++- `awaiting-manual-execution`: `manual-only` was selected; execute the returned change artifacts manually.
+ - `validated`: validation passed.
+ - `failed`: the current phase failed; inspect `issues`, `mismatches`, and `recovery_guidance`.
+ 
+@@ -38,8 +38,8 @@ A typical workflow contains:
+ 
+ `database_gateway_apply_workflow` requires an explicit `execution_mode`:
+ 
+-- `preview`: preview artifacts and side-effect scope without changing runtime state.
+-- `review-then-execute`: execute artifacts after review.
++- `preview`: preview change artifacts and side-effect scope without changing server state.
++- `review-then-execute`: execute change artifacts after review.
+ - `manual-only`: export a manual artifact package without automatic execution.
+ 
+ When using `approved_steps` for partial execution, pass only values returned by `preview_artifacts[].approval_step`.

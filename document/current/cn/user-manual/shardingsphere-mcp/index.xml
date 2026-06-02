@@ -26,9 +26,12 @@ runtimeDatabases: &amp;#34;&amp;lt;logic-database&amp;gt;&amp;#34;: databaseType
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-mcp/capabilities/</guid>
-      <description>本页说明 ShardingSphere-MCP 的核心能力，以及协议方法、资源 URI、工具和提示之间的关系。 文档用于解释能力语义；客户端应通过 MCP 列表方法和 shardingsphere://capabilities 读取当前 MCP Server 实际暴露的内容。
-能力发现 下面列出的是 MCP 协议方法和 ShardingSphere-MCP 资源 URI。 tools/list、resources/list、resources/read、prompts/list 和 completion/complete 是 MCP JSON-RPC 方法名。 shardingsphere://... 是 ShardingSphere-MCP 资源 URI 前缀。 方法名、工具名和提示名不加 URI 前缀；只有资源 URI 和资源模板使用该前缀。
-   方法或资源 类型 用途     tools/list MCP 协议方法 列出可调用工具。   tools/call MCP 协议方法 按工具名调用一个工具。   resources/list MCP 协议方法 列出不需要参数即可读取的资源描述；它不返回资源内容。   resources/templates/list MCP 协议方法 列出带参数的资源 URI 模板；客户端需要先填充模板。   resources/read MCP 协议方法 读取一个具体资源 URI 的内容；读取 shardingsphere://capabilities 可获得 ShardingSphere 领域能力目录。   prompts/list MCP 协议方法 列出可用提示。   prompts/get MCP 协议方法 读取一个提示内容，并按提示参数生成消息。   completion/complete MCP 协议方法 获取资源、提示或参数的补全候选。   shardingsphere://capabilities ShardingSphere-MCP 资源 URI 读取 ShardingSphere 领域能力目录。    能力发现返回的是当前 MCP Server 的协议表面；实际能否使用某项能力，还取决于 runtimeDatabases 连接的是 ShardingSphere-Proxy 还是普通数据库。 客户端应先读取 shardingsphere://runtime 和 shardingsphere://databases/{database}/capabilities，再决定要读取哪些资源或调用哪些工具。</description>
+      <description>本页从用户任务角度说明 ShardingSphere-MCP 可以读取哪些信息、执行哪些动作，以及不同连接目标下的使用边界。 客户端会自动发现当前 MCP Server 实际可用的能力；用户通常只需要在客户端中描述要完成的数据库任务。
+能力发现 能力发现用于让客户端确认当前 MCP Server 可以访问哪些数据库、支持哪些任务，以及哪些任务可能产生副作用。
+   发现内容 用途 用户侧效果     基础能力列表 确认当前 MCP Server 可读取的信息和可执行的动作。 客户端可以判断是否支持元数据查看、SQL 查询或治理变更。   ShardingSphere 能力摘要 汇总运行时数据库、连接目标、功能插件和副作用边界。 用户可以询问“这个逻辑库支持哪些治理任务？”   数据库能力摘要 确认某个运行时数据库支持的 SQL、事务、schema 和元数据对象能力。 用户可以询问“这个库支持只读查询和规则规划吗？”    能力发现结果代表当前 MCP Server 实际对外可用的内容；实际能否使用某项能力，还取决于 runtimeDatabases 连接的是 ShardingSphere-Proxy 还是普通数据库。 客户端会根据连接目标选择可用能力。
+连接 ShardingSphere-Proxy 适合查看 ShardingSphere 逻辑库结构、读取治理规则状态、执行受控 SQL，或通过功能插件生成可审查的治理变更计划。 此模式下，逻辑元数据、逻辑 SQL、DistSQL、规则状态、算法插件和插件工作流可以被 MCP 能力使用。
+使用限制：
+ 物理元数据以 Proxy 暴露结果为准，不能等同于每个底层物理库的完整元数据。 依赖 ShardingSphere 规则、算法或 DistSQL 的功能只适用于 Proxy 连接。 规划类能力生成的是可审查计划，执行前仍需确认业务影响。  直接连接数据库 适合把 MCP Server 作为普通数据库的受控访问通路，用于读取 JDBC 元数据、搜索对象、辅助生成查询，或执行受限 SQL。 此模式下，通用数据库元数据和 SQL 工具可用。</description>
     </item>
     
     <item>
@@ -50,10 +53,12 @@ transport: type: STDIO    配置项 说明     transport.type 传输方式，支
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       
       <guid>https://shardingsphere.apache.org/document/current/cn/user-manual/shardingsphere-mcp/client-integration/</guid>
-      <description>客户端集成用于把这条受控数据库访问通路接入桌面客户端、IDE 插件、Agent 平台或自研 LLM 应用。 接入后，大模型不是直接连接数据库，而是通过 MCP 客户端调用 ShardingSphere-MCP 暴露的资源、工具、提示和补全能力。 它不是快速开始中 curl 手工验证流程的替代说明，也不是让用户手工拼 JSON-RPC 的操作手册。 客户端负责连接配置、会话头、补全和调用编排。 用户只需要表达要完成的元数据查询、只读 SQL 查询或数据库治理任务。
+      <description>客户端集成用于把 ShardingSphere-MCP 接入支持 MCP 的桌面客户端、IDE 插件、Agent 平台或自研应用。 配置完成后，用户可以在客户端中通过自然语言查看元数据、执行受控 SQL 查询，或发起数据库治理任务。
 适合使用客户端集成的场景：
- 在支持 MCP 的模型客户端、IDE 插件或 Agent 平台中接入 ShardingSphere。 让模型基于 ShardingSphere 元数据完成查询辅助、结构理解、问题诊断或治理规划。 为团队提供受控数据库访问通路，而不是把数据库连接信息直接交给模型。 为自研 Agent 平台集成 ShardingSphere 元数据、安全 SQL 和治理插件能力。  完整的资源、工具、提示和补全说明见能力清单。
-选择传输方式  HTTP 适合 MCP Server 独立启动，客户端通过固定端点访问的场景。客户端需要完成会话初始化，并在后续请求中携带会话响应头。 STDIO 适合本地 MCP 客户端拉起 ShardingSphere-MCP 子进程的场景。客户端负责进程生命周期，stdout 只传输 MCP 协议帧。  HTTP 配置 将下面片段写入 MCP 客户端的 server 配置；具体文件位置由客户端决定。 url 指向已经启动的 HTTP MCP Server。</description>
+ 在支持 MCP 的客户端、IDE 插件或 Agent 平台中接入 ShardingSphere。 基于 ShardingSphere 元数据完成查询辅助、结构理解、问题诊断或治理规划。 为团队提供统一的受控数据库访问通路。 为自研 Agent 平台集成 ShardingSphere 元数据、安全 SQL 和治理插件能力。  可完成的任务和使用边界见能力清单。
+选择传输方式  HTTP 适合 MCP Server 独立启动，客户端通过固定端点访问的场景。 STDIO 适合本地客户端拉起 ShardingSphere-MCP 子进程的场景。  HTTP 配置 将下面片段写入 MCP 客户端的 server 配置；具体文件位置由客户端决定。 url 指向已经启动的 HTTP MCP Server。
+{ &amp;#34;mcpServers&amp;#34;: { &amp;#34;shardingsphere-http&amp;#34;: { &amp;#34;url&amp;#34;: &amp;#34;http://127.0.0.1:18088/mcp&amp;#34; } } } 不同客户端的配置文件位置和字段名称可能不同，请以客户端自身文档为准。
+STDIO 配置 将下面片段写入 MCP 客户端的 server 配置；具体文件位置由客户端决定。 command 指向发行包内的启动脚本，args 指向 STDIO 配置文件。</description>
     </item>
     
     <item>

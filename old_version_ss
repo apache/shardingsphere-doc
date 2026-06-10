@@ -1,684 +1,208 @@
-commit 0c04936a28773cf97d589606c3e437af52a95c47
+commit c22b9997437800901569b0bc2702e0964530edc6
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Sat Jun 6 12:20:17 2026 +0800
+Date:   Wed Jun 10 00:57:18 2026 +0800
 
-    Add DistSQL-only rule workflow plugins (#38818)
+    Refine encrypt feature as workflow template (#38836)
     
-    * Add DistSQL-only rule workflow plugins
+    * Refine encrypt feature as workflow template
     
-    Add MCP feature plugins for sharding, readwrite-splitting, shadow, and broadcast rule workflows, aligned with the existing encrypt and mask plugin model.
+    Refine the MCP encrypt feature as the template for feature workflows.
     
-    Centralize rule DistSQL-only workflow response assembly in MCP support, add feature-specific resources and planning guidance, update MCP distribution wiring, docs, specs, and E2E contract coverage.
+    - keep encrypt planning, apply, and validation rule-DistSQL-only
+    - harden descriptor, prompt, resource guidance, and secret redaction contracts
+    - centralize encrypt algorithm capability metadata
+    - update docs, unit tests, and E2E coverage for template acceptance
     
-    Keep the scope limited to DistSQL access and rule metadata inspection without DDL, storage unit, migration, or physical database operations.
+    * Refine encrypt feature as workflow template
     
-    * Add DistSQL-only rule workflow plugins
+    Refine the MCP encrypt feature as the template for feature workflows.
     
-    Add MCP feature plugins for sharding, readwrite-splitting, shadow, and broadcast rule workflows, aligned with the existing encrypt and mask plugin model.
+    - keep encrypt planning, apply, and validation rule-DistSQL-only
+    - harden descriptor, prompt, resource guidance, and secret redaction contracts
+    - centralize encrypt algorithm capability metadata
+    - update docs, unit tests, and E2E coverage for template acceptance
     
-    Centralize rule DistSQL-only workflow response assembly in MCP support, add feature-specific resources and planning guidance, update MCP distribution wiring, docs, specs, and E2E contract coverage.
+    * Refine encrypt feature as workflow template
     
-    Keep the scope limited to DistSQL access and rule metadata inspection without DDL, storage unit, migration, or physical database operations.
+    Refine the MCP encrypt feature as the template for feature workflows.
     
-    * Add DistSQL-only rule workflow plugins
-    
-    Add MCP feature plugins for sharding, readwrite-splitting, shadow, and broadcast rule workflows, aligned with the existing encrypt and mask plugin model.
-    
-    Centralize rule DistSQL-only workflow response assembly in MCP support, add feature-specific resources and planning guidance, update MCP distribution wiring, docs, specs, and E2E contract coverage.
-    
-    Keep the scope limited to DistSQL access and rule metadata inspection without DDL, storage unit, migration, or physical database operations.
-    
-    * Add DistSQL-only rule workflow plugins
-    
-    Add MCP feature plugins for sharding, readwrite-splitting, shadow, and broadcast rule workflows, aligned with the existing encrypt and mask plugin model.
-    
-    Centralize rule DistSQL-only workflow response assembly in MCP support, add feature-specific resources and planning guidance, update MCP distribution wiring, docs, specs, and E2E contract coverage.
-    
-    Keep the scope limited to DistSQL access and rule metadata inspection without DDL, storage unit, migration, or physical database operations.
+    - keep encrypt planning, apply, and validation rule-DistSQL-only
+    - harden descriptor, prompt, resource guidance, and secret redaction contracts
+    - centralize encrypt algorithm capability metadata
+    - update docs, unit tests, and E2E coverage for template acceptance
 
-diff --git a/docs/document/content/reference/mcp/protocol-surface.cn.md b/docs/document/content/reference/mcp/protocol-surface.cn.md
-index ae8952199d8..15ff3f751dd 100644
---- a/docs/document/content/reference/mcp/protocol-surface.cn.md
-+++ b/docs/document/content/reference/mcp/protocol-surface.cn.md
-@@ -79,6 +79,18 @@ Feature plugin planning tools：
+diff --git a/docs/document/content/dev-manual/mcp.cn.md b/docs/document/content/dev-manual/mcp.cn.md
+index c436d1747f4..39fbccc344b 100644
+--- a/docs/document/content/dev-manual/mcp.cn.md
++++ b/docs/document/content/dev-manual/mcp.cn.md
+@@ -45,6 +45,21 @@ MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
  
- - `database_gateway_plan_encrypt_rule`
- - `database_gateway_plan_mask_rule`
-+- `database_gateway_plan_broadcast_rule`
-+- `database_gateway_plan_readwrite_splitting_rule`
-+- `database_gateway_plan_readwrite_splitting_status`
-+- `database_gateway_plan_shadow_rule`
-+- `database_gateway_plan_default_shadow_algorithm`
-+- `database_gateway_plan_shadow_algorithm_cleanup`
-+- `database_gateway_plan_sharding_table_rule`
-+- `database_gateway_plan_sharding_table_reference_rule`
-+- `database_gateway_plan_sharding_default_strategy`
-+- `database_gateway_plan_sharding_key_generator`
-+- `database_gateway_plan_sharding_key_generate_strategy`
-+- `database_gateway_plan_sharding_rule_component_cleanup`
+ 如果 feature 是可选插件，构建后把 jar 放入发行包 `plugins/` 目录。
  
- ## Resources
++## Feature Workflow 模板
++
++需要规划、预览、执行和校验规则变更的 feature，应以数据加密 MCP feature 的规则 workflow 作为模板。
++模板实现应满足：
++
++- Feature 业务逻辑保留在 `mcp/features/<feature>`；`mcp/support` 和 `mcp/core` 只承载通用 workflow、执行、redaction、descriptor 和 runtime 契约。
++- Handler 声明 canonical tool name、context type 和 workflow definition；descriptor 和 prompt 维护模型可见契约，handler 不重复维护描述字段。
++- 规划前先读取 feature 自有 resources，例如算法、规则或现有配置资源，再生成可审查的 DistSQL artifact。
++- 输出 schema 只暴露当前 feature 支持的 artifact；不要保留不支持的字段作为占位，也不要让模型依赖真实物理表结构。
++- 有副作用的执行必须先 preview，再根据用户明确批准的 `approved_steps` 执行。
++- 敏感参数在模型可见的计划、预览、执行、校验、恢复和错误输出中必须掩码；执行路径使用受控上下文中的原始值。
++- 校验逻辑应读取 Proxy 可见的规则状态或 feature 状态，避免把不属于当前 feature 的物理操作作为验收条件。
++- Descriptor 启动期校验应覆盖 tool/resource/prompt 名称唯一性、schema 字段、side-effect annotations、related resources、follow-up tools、
++  completion target 和 workflow recovery path。
++
+ ## Handler 与 Descriptor
  
-@@ -119,6 +131,44 @@ Feature resources：
- - `shardingsphere://features/mask/algorithms`
- - `shardingsphere://features/mask/databases/{database}/rules`
- - `shardingsphere://features/mask/databases/{database}/tables/{table}/rules`
-+- `shardingsphere://features/broadcast/databases/{database}/rules`
-+- `shardingsphere://features/broadcast/databases/{database}/rule-count`
-+- `shardingsphere://features/readwrite-splitting/load-balance-algorithm-plugins`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rules`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rules/{rule}`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/status`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rules/{rule}/status`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rule-count`
-+- `shardingsphere://features/shadow/algorithm-plugins`
-+- `shardingsphere://features/shadow/databases/{database}/rules`
-+- `shardingsphere://features/shadow/databases/{database}/rules/{rule}`
-+- `shardingsphere://features/shadow/databases/{database}/table-rules`
-+- `shardingsphere://features/shadow/databases/{database}/tables/{table}/rules`
-+- `shardingsphere://features/shadow/databases/{database}/algorithms`
-+- `shardingsphere://features/shadow/databases/{database}/default-algorithm`
-+- `shardingsphere://features/shadow/databases/{database}/rule-count`
-+- `shardingsphere://features/sharding/algorithm-plugins`
-+- `shardingsphere://features/sharding/key-generate-algorithm-plugins`
-+- `shardingsphere://features/sharding/databases/{database}/algorithms`
-+- `shardingsphere://features/sharding/databases/{database}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/tables/{table}/table-rule`
-+- `shardingsphere://features/sharding/databases/{database}/table-nodes`
-+- `shardingsphere://features/sharding/databases/{database}/tables/{table}/nodes`
-+- `shardingsphere://features/sharding/databases/{database}/table-reference-rules`
-+- `shardingsphere://features/sharding/databases/{database}/table-reference-rules/{rule}`
-+- `shardingsphere://features/sharding/databases/{database}/default-strategy`
-+- `shardingsphere://features/sharding/databases/{database}/key-generators`
-+- `shardingsphere://features/sharding/databases/{database}/key-generators/{keyGenerator}`
-+- `shardingsphere://features/sharding/databases/{database}/key-generate-strategies`
-+- `shardingsphere://features/sharding/databases/{database}/key-generate-strategies/{strategy}`
-+- `shardingsphere://features/sharding/databases/{database}/auditors`
-+- `shardingsphere://features/sharding/databases/{database}/unused-algorithms`
-+- `shardingsphere://features/sharding/databases/{database}/unused-key-generators`
-+- `shardingsphere://features/sharding/databases/{database}/unused-auditors`
-+- `shardingsphere://features/sharding/databases/{database}/algorithms/{algorithm}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/key-generators/{keyGenerator}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/auditors/{auditor}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/rule-count`
+ 对外新增 tool：
+diff --git a/docs/document/content/dev-manual/mcp.en.md b/docs/document/content/dev-manual/mcp.en.md
+index bf6834ddb60..100bd4226a0 100644
+--- a/docs/document/content/dev-manual/mcp.en.md
++++ b/docs/document/content/dev-manual/mcp.en.md
+@@ -45,6 +45,21 @@ If the feature should be shipped as an official default capability:
  
- ## Prompts
+ If the feature is optional, place the built jar under the distribution `plugins/` directory.
  
-@@ -127,6 +177,18 @@ Feature resources：
- - `recover_workflow`：引导模型从失败或过期 workflow 中恢复。
- - `plan_encrypt_rule`：引导模型规划 Encrypt feature workflow。
- - `plan_mask_rule`：引导模型规划 Mask feature workflow。
-+- `plan_broadcast_rule`：引导模型规划 Broadcast feature workflow。
-+- `plan_readwrite_splitting_rule`：引导模型规划 Readwrite-Splitting 规则 workflow。
-+- `plan_readwrite_splitting_status`：引导模型规划 Readwrite-Splitting 状态 workflow。
-+- `plan_shadow_rule`：引导模型规划 Shadow 规则 workflow。
-+- `plan_default_shadow_algorithm`：引导模型规划默认 Shadow 算法 workflow。
-+- `plan_shadow_algorithm_cleanup`：引导模型规划未使用 Shadow 算法清理 workflow。
-+- `plan_sharding_table_rule`：引导模型规划 Sharding 表规则 workflow。
-+- `plan_sharding_table_reference_rule`：引导模型规划 Sharding 绑定规则 workflow。
-+- `plan_sharding_default_strategy`：引导模型规划默认 Sharding 策略 workflow。
-+- `plan_sharding_key_generator`：引导模型规划 Sharding 键生成器 workflow。
-+- `plan_sharding_key_generate_strategy`：引导模型规划 Sharding 键生成策略 workflow。
-+- `plan_sharding_rule_component_cleanup`：引导模型规划未使用 Sharding 算法、键生成器或审计器清理 workflow。
++## Feature workflow template
++
++Features that plan, preview, apply, and validate rule changes should use the Data Encryption MCP feature's rule workflow as the template.
++The template implementation should satisfy:
++
++- Keep feature business logic under `mcp/features/<feature>`; `mcp/support` and `mcp/core` should only host generic workflow, execution, redaction, descriptor, and runtime contracts.
++- Handlers declare canonical tool names, context types, and workflow definitions; descriptors and prompts own the model-facing contract, and handlers should not duplicate descriptive fields.
++- Read feature-owned resources, such as algorithms, rules, or existing configuration resources, before planning reviewable DistSQL artifacts.
++- Expose only artifacts supported by the current feature in the output schema; do not keep unsupported fields as placeholders or make models depend on real physical table structure.
++- Side-effecting execution must run preview first, then execute only user-approved `approved_steps`.
++- Sensitive properties must be masked in model-facing plan, preview, execution, validation, recovery, and error outputs; the execution path uses original values from the controlled context.
++- Validation should read Proxy-visible rule state or feature state, and should not use physical operations outside the current feature as acceptance conditions.
++- Startup descriptor validation should cover tool/resource/prompt name uniqueness, schema fields, side-effect annotations, related resources,
++  follow-up tools, completion targets, and workflow recovery paths.
++
+ ## Handler and Descriptor
  
- ## Completions
+ When adding a public tool:
+diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
+index b4e099eb7d4..89866159f36 100644
+--- a/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
++++ b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
+@@ -19,6 +19,24 @@ chapter = true
+ - 真实模型驱动的 MCP usability。
+ - Encrypt 和 Mask workflow 可用性验证。
  
-diff --git a/docs/document/content/reference/mcp/protocol-surface.en.md b/docs/document/content/reference/mcp/protocol-surface.en.md
-index 54a1e0d8371..14b780dab75 100644
---- a/docs/document/content/reference/mcp/protocol-surface.en.md
-+++ b/docs/document/content/reference/mcp/protocol-surface.en.md
-@@ -79,6 +79,18 @@ Feature plugin planning tools:
++## Feature 模板验收
++
++当某个 MCP feature 被作为 workflow 模板时，E2E 测试应覆盖协议可发现性、模型可用性和负向契约。
++以 Encrypt workflow 为例，模板级验收至少包括：
++
++- Completion 能返回 feature 可用的算法或候选值。
++- Plan 输出只包含当前 feature 支持的 DistSQL artifact。
++- Plan 输出不包含不支持的物理 DDL、索引、迁移、回填或清理 artifact。
++- `resources_to_read` 指向 feature 自有算法、规则或配置资源，而不是不属于该 feature 的物理元数据资源。
++- Descriptor output schema 不暴露当前 feature 不支持的输出字段。
++- 计划、workflow resource、preview、apply、validate、recovery 和 trace 可见输出不泄露敏感参数。
++- 自定义或能力未知的算法应被标记为未确认，而不是被当作已知能力处理。
++- Drop 场景应验证规则删除语义，不把物理清理作为成功条件。
++- 不支持的 alter 扩展应返回清晰限制，而不是生成不完整 workflow。
++- Apply 必须经过 preview，并校验用户批准的步骤。
++
++测试复用应保留在 `test/e2e/mcp` 内的本地 helper 中；不要为了模板验收新增测试 jar 或跨模块测试支撑模块。
++
+ ## 本地准备
  
- - `database_gateway_plan_encrypt_rule`
- - `database_gateway_plan_mask_rule`
-+- `database_gateway_plan_broadcast_rule`
-+- `database_gateway_plan_readwrite_splitting_rule`
-+- `database_gateway_plan_readwrite_splitting_status`
-+- `database_gateway_plan_shadow_rule`
-+- `database_gateway_plan_default_shadow_algorithm`
-+- `database_gateway_plan_shadow_algorithm_cleanup`
-+- `database_gateway_plan_sharding_table_rule`
-+- `database_gateway_plan_sharding_table_reference_rule`
-+- `database_gateway_plan_sharding_default_strategy`
-+- `database_gateway_plan_sharding_key_generator`
-+- `database_gateway_plan_sharding_key_generate_strategy`
-+- `database_gateway_plan_sharding_rule_component_cleanup`
+ 先安装 MCP E2E 依赖模块到本地仓库：
+diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.en.md b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
+index c7661e40b2c..4212fc3ea41 100644
+--- a/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
++++ b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
+@@ -19,6 +19,24 @@ This chapter describes ShardingSphere-MCP end-to-end contract validation and LLM
+ - Real-model MCP usability.
+ - Encrypt and Mask workflow usability validation.
  
- ## Resources
++## Feature template acceptance
++
++When an MCP feature is used as a workflow template, E2E tests should cover protocol discoverability, model usability, and negative contracts.
++For the Encrypt workflow, template-level acceptance should include at least:
++
++- Completion returns feature-available algorithms or candidate values.
++- Plan output contains only DistSQL artifacts supported by the current feature.
++- Plan output does not contain unsupported physical DDL, index, migration, backfill, or cleanup artifacts.
++- `resources_to_read` points to feature-owned algorithm, rule, or configuration resources, not physical metadata resources outside the feature.
++- Descriptor output schema does not expose output fields unsupported by the current feature.
++- Plan, workflow resource, preview, apply, validate, recovery, and trace-visible outputs do not leak sensitive properties.
++- Custom algorithms or algorithms with unknown capabilities are marked as unconfirmed instead of being treated as known-capability algorithms.
++- Drop scenarios validate rule removal semantics and do not use physical cleanup as a success condition.
++- Unsupported alter expansion returns a clear limitation instead of generating an incomplete workflow.
++- Apply must be preceded by preview and must validate user-approved steps.
++
++Test reuse should stay in local helpers under `test/e2e/mcp`; do not add a test jar or a cross-module test-support module for template acceptance.
++
+ ## Local preparation
  
-@@ -119,6 +131,44 @@ Feature resources:
- - `shardingsphere://features/mask/algorithms`
- - `shardingsphere://features/mask/databases/{database}/rules`
- - `shardingsphere://features/mask/databases/{database}/tables/{table}/rules`
-+- `shardingsphere://features/broadcast/databases/{database}/rules`
-+- `shardingsphere://features/broadcast/databases/{database}/rule-count`
-+- `shardingsphere://features/readwrite-splitting/load-balance-algorithm-plugins`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rules`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rules/{rule}`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/status`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rules/{rule}/status`
-+- `shardingsphere://features/readwrite-splitting/databases/{database}/rule-count`
-+- `shardingsphere://features/shadow/algorithm-plugins`
-+- `shardingsphere://features/shadow/databases/{database}/rules`
-+- `shardingsphere://features/shadow/databases/{database}/rules/{rule}`
-+- `shardingsphere://features/shadow/databases/{database}/table-rules`
-+- `shardingsphere://features/shadow/databases/{database}/tables/{table}/rules`
-+- `shardingsphere://features/shadow/databases/{database}/algorithms`
-+- `shardingsphere://features/shadow/databases/{database}/default-algorithm`
-+- `shardingsphere://features/shadow/databases/{database}/rule-count`
-+- `shardingsphere://features/sharding/algorithm-plugins`
-+- `shardingsphere://features/sharding/key-generate-algorithm-plugins`
-+- `shardingsphere://features/sharding/databases/{database}/algorithms`
-+- `shardingsphere://features/sharding/databases/{database}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/tables/{table}/table-rule`
-+- `shardingsphere://features/sharding/databases/{database}/table-nodes`
-+- `shardingsphere://features/sharding/databases/{database}/tables/{table}/nodes`
-+- `shardingsphere://features/sharding/databases/{database}/table-reference-rules`
-+- `shardingsphere://features/sharding/databases/{database}/table-reference-rules/{rule}`
-+- `shardingsphere://features/sharding/databases/{database}/default-strategy`
-+- `shardingsphere://features/sharding/databases/{database}/key-generators`
-+- `shardingsphere://features/sharding/databases/{database}/key-generators/{keyGenerator}`
-+- `shardingsphere://features/sharding/databases/{database}/key-generate-strategies`
-+- `shardingsphere://features/sharding/databases/{database}/key-generate-strategies/{strategy}`
-+- `shardingsphere://features/sharding/databases/{database}/auditors`
-+- `shardingsphere://features/sharding/databases/{database}/unused-algorithms`
-+- `shardingsphere://features/sharding/databases/{database}/unused-key-generators`
-+- `shardingsphere://features/sharding/databases/{database}/unused-auditors`
-+- `shardingsphere://features/sharding/databases/{database}/algorithms/{algorithm}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/key-generators/{keyGenerator}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/auditors/{auditor}/table-rules`
-+- `shardingsphere://features/sharding/databases/{database}/rule-count`
+ Install MCP E2E dependency modules into the local repository first:
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
+index e8be3684a64..f1c3dcb4b37 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
+@@ -59,6 +59,16 @@ weight = 2
+ - 密钥、凭证等敏感参数是否只以占位符或受保护方式传递。
+ - 是否会影响查询能力、运行时规则或已有业务 SQL。
  
- ## Prompts
++## 敏感参数处理
++
++加密算法可能需要密钥、盐值或其他敏感参数。
++用户应通过受保护渠道提供这些值，并在执行前确认参数来源和使用范围。
++
++ShardingSphere-MCP 面向模型返回计划、workflow resource、预览、执行、校验、恢复和错误信息时，会对已识别的敏感参数做掩码处理。
++内置算法和已在算法属性模板中标记为敏感的自定义算法参数，可以被稳定识别并掩码。
++未声明的自定义参数不应以明文写入普通对话、日志或工单描述。
++执行阶段仍使用受控上下文中的原始参数值生成规则变更语句，用户不应把明文密钥写入对话总结、日志或工单描述。
++
+ ## 审查规则列名
  
-@@ -127,6 +177,18 @@ Feature resources:
- - `recover_workflow`: guides recovery from failed or stale workflows.
- - `plan_encrypt_rule`: guides Encrypt feature workflow planning.
- - `plan_mask_rule`: guides Mask feature workflow planning.
-+- `plan_broadcast_rule`: guides Broadcast feature workflow planning.
-+- `plan_readwrite_splitting_rule`: guides Readwrite-Splitting rule workflow planning.
-+- `plan_readwrite_splitting_status`: guides Readwrite-Splitting status workflow planning.
-+- `plan_shadow_rule`: guides Shadow rule workflow planning.
-+- `plan_default_shadow_algorithm`: guides default Shadow algorithm workflow planning.
-+- `plan_shadow_algorithm_cleanup`: guides unused Shadow algorithm cleanup workflow planning.
-+- `plan_sharding_table_rule`: guides Sharding table rule workflow planning.
-+- `plan_sharding_table_reference_rule`: guides Sharding table reference rule workflow planning.
-+- `plan_sharding_default_strategy`: guides default Sharding strategy workflow planning.
-+- `plan_sharding_key_generator`: guides Sharding key generator workflow planning.
-+- `plan_sharding_key_generate_strategy`: guides Sharding key generate strategy workflow planning.
-+- `plan_sharding_rule_component_cleanup`: guides unused Sharding algorithm, key generator, or auditor cleanup workflow planning.
+ 加密规则可能引用密文列、辅助查询列或模糊查询列。
+@@ -101,10 +111,6 @@ weight = 2
+ - ShardingSphere-MCP 根据 Proxy 可见的规则和算法状态规划规则 DistSQL；规划阶段不会读取或推断真实物理表结构。
+ - 如果规则引用的物理列尚不存在，用户应在 ShardingSphere-MCP 之外完成 DDL 和数据处理。
  
- ## Completions
+-### ShardingSphere 能力边界
+-
+-- 不处理已有数据迁移、回填或洗数。
+-
+ ### 对象名处理边界
  
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/capabilities.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/capabilities.cn.md
-index 081b38ddcba..d2515507a4f 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/capabilities.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/capabilities.cn.md
-@@ -17,7 +17,7 @@ weight = 2
- - 搜索表、视图、列、索引等元数据对象。
- - 执行只读 SQL 查询。
- - 预览可能修改数据、元数据或规则的 SQL。
--- 规划、审查、执行和校验数据加密或数据脱敏规则变更。
-+- 规划、审查、执行和校验数据加密、数据脱敏、广播表、读写分离、影子库和分片等官方 DistSQL-only 规则变更。
+ - ShardingSphere-MCP 会处理带引号、大小写敏感、关键字、空格和 Unicode 对象名。为保证生成的 SQL 或规则变更语句可审查，对象名内容不能包含反引号、NUL、回车或换行。
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
+index d0a6be11c00..a59941031ac 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
+@@ -59,6 +59,17 @@ After a plan is generated, review:
+ - Whether keys, credentials, or other sensitive parameters are passed only through placeholders or protected channels.
+ - Whether query capability, runtime rules, or existing business SQL may be affected.
  
- 使用限制：
++## Sensitive parameter handling
++
++Encryption algorithms may require keys, salts, or other sensitive properties.
++Users should provide these values through protected channels and confirm the source and scope before execution.
++
++When ShardingSphere-MCP returns model-facing plans, workflow resources, previews, execution results, validation results, recovery data, and error messages, recognized sensitive properties are masked.
++Built-in algorithms and custom algorithm properties marked as secret in algorithm property templates can be recognized and masked consistently.
++Undeclared custom properties should not be written in plaintext in normal conversations, logs, or ticket descriptions.
++Execution still uses the original property values from the controlled context to generate rule change statements.
++Users should not put plaintext keys into conversation summaries, logs, or ticket descriptions.
++
+ ## Review Rule Column Names
  
-@@ -40,7 +40,7 @@ weight = 2
- 使用限制：
+ Encryption rules may reference cipher, assisted query, or LIKE query columns.
+@@ -101,10 +112,6 @@ For the general review flow of rule changes, see [Rule Change Flow](../plugin-wo
+ - ShardingSphere-MCP plans rule DistSQL from Proxy-visible rule and algorithm state. Planning does not read or infer the real physical table structure.
+ - If a physical column referenced by the rule does not exist, users should handle DDL and data processing outside ShardingSphere-MCP.
  
- - 不提供 ShardingSphere 规则状态。
--- 不适用于数据加密、数据脱敏等依赖 ShardingSphere 规则的功能插件。
-+- 不适用于数据加密、数据脱敏、广播表、读写分离、影子库和分片等依赖 ShardingSphere 规则的功能插件。
- - 返回的是目标数据库自身元数据，不代表 ShardingSphere 逻辑规则视图。
+-### ShardingSphere capability boundaries
+-
+-- Existing data migration, backfill, or data cleansing is not handled.
+-
+ ### Identifier handling boundaries
  
- ## 元数据查看
-@@ -85,8 +85,12 @@ weight = 2
- | 检查已有规则   | “检查 `orders.phone` 当前是否已有脱敏规则。”               | 仅 Proxy | 规则状态来自 ShardingSphere-Proxy。 |
- | 规划数据加密规则 | “为 `orders.status` 规划可逆加密，先预览不要执行。”           | 仅 Proxy | 审查生成的规则 DistSQL、算法、参数和规则列名。  |
- | 规划数据脱敏规则 | “为 `orders.phone` 规划手机号脱敏，保留前 3 后 4，先预览不要执行。” | 仅 Proxy | 审查脱敏算法、参数和影响范围。              |
-+| 规划广播表规则  | “把 `config_region` 规划为广播表，先预览不要执行。”          | 仅 Proxy | 审查逻辑表名和广播表规则 DistSQL。        |
-+| 规划读写分离规则 | “规划读写分离规则，写存储单元是 `write_ds`，读存储单元是 `read_ds_0, read_ds_1`。” | 仅 Proxy | 审查已有存储单元、负载均衡算法和状态计划。       |
-+| 规划影子规则   | “为 `t_order` 规划影子规则，源存储单元是 `ds_0`，影子存储单元是 `ds_shadow`。” | 仅 Proxy | 审查已有存储单元、算法参数和清理证据。         |
-+| 规划分片规则   | “为 `t_order` 规划分片表规则，使用明确的数据节点和标准分片策略。” | 仅 Proxy | 审查数据节点、策略、键生成和未使用组件证据。      |
- | 调整规则计划   | “把刚才的计划改成使用 AES 算法。”                          | 仅 Proxy | 修改后应重新预览。                    |
- | 执行规则变更   | “确认执行刚才的规则变更计划。”                              | 仅 Proxy | 有副作用，执行前应完成审查。               |
- | 校验规则变更   | “校验刚才的脱敏规则是否生效。”                              | 仅 Proxy | 查看规则状态和 workflow 执行结果。       |
- 
--数据加密和数据脱敏的详细用法见[数据加密](../features/encrypt/)和[数据脱敏](../features/mask/)。
-+详细用法见[数据加密](../features/encrypt/)、[数据脱敏](../features/mask/)、[广播表](../features/broadcast/)、[读写分离](../features/readwrite-splitting/)、[影子库](../features/shadow/)和[分片](../features/sharding/)。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/capabilities.en.md b/docs/document/content/user-manual/shardingsphere-mcp/capabilities.en.md
-index 8789bdd33b2..50dd25a833e 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/capabilities.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/capabilities.en.md
-@@ -17,7 +17,7 @@ Available tasks include:
- - Searching metadata objects such as tables, views, columns, and indexes.
- - Running read-only SQL queries.
- - Previewing SQL that may change data, metadata, or rules.
--- Planning, reviewing, applying, and validating data encryption or data masking rule changes.
-+- Planning, reviewing, applying, and validating official DistSQL-only rule changes for data encryption, data masking, broadcast, readwrite-splitting, shadow, and sharding.
- 
- Usage boundaries:
- 
-@@ -40,7 +40,7 @@ Available tasks include:
- Usage boundaries:
- 
- - ShardingSphere rule state is not available.
--- Feature plugins that depend on ShardingSphere rules, such as data encryption and data masking, do not apply.
-+- Feature plugins that depend on ShardingSphere rules, such as data encryption, data masking, broadcast, readwrite-splitting, shadow, and sharding, do not apply.
- - Returned metadata comes from the target database itself and does not represent a ShardingSphere logical rule view.
- 
- ## Metadata Inspection
-@@ -85,8 +85,12 @@ Usage boundaries:
- | Check existing rules        | "Check whether `orders.phone` already has a masking rule."                                                                | Proxy only        | Rule state comes from ShardingSphere-Proxy.                             |
- | Plan a data encryption rule | "Plan reversible encryption for `orders.status` and preview it without execution."                                        | Proxy only        | Review the rule DistSQL, algorithms, properties, and rule column names. |
- | Plan a data masking rule    | "Plan phone-number masking for `orders.phone`, keep the first 3 and last 4 characters, and preview it without execution." | Proxy only        | Review the masking algorithm, properties, and impact scope.             |
-+| Plan a broadcast rule       | "Plan `config_region` as a broadcast table and preview it without execution."                                             | Proxy only        | Review logical table names and broadcast rule DistSQL.                  |
-+| Plan a readwrite rule       | "Plan a readwrite-splitting rule with write storage unit `write_ds` and read storage units `read_ds_0, read_ds_1`."       | Proxy only        | Review existing storage units, load-balance algorithm, and status plan. |
-+| Plan a shadow rule          | "Plan a shadow rule for `t_order` using source storage unit `ds_0` and shadow storage unit `ds_shadow`."                  | Proxy only        | Review existing storage units, algorithm properties, and cleanup proof. |
-+| Plan a sharding rule        | "Plan a sharding table rule for `t_order` with explicit data nodes and a standard strategy."                             | Proxy only        | Review data nodes, strategy, key generation, and unused component proof. |
- | Adjust a rule plan          | "Change the previous plan to use AES."                                                                                    | Proxy only        | Preview again after changing the plan.                                  |
- | Apply a rule change         | "Confirm and execute the previous rule change plan."                                                                      | Proxy only        | Side-effecting; review must be completed before execution.              |
- | Validate a rule change      | "Validate whether the previous masking rule has taken effect."                                                            | Proxy only        | Check rule state and workflow execution result.                         |
- 
--For detailed usage, see [Data Encryption](../features/encrypt/) and [Data Masking](../features/mask/).
-+For detailed usage, see [Data Encryption](../features/encrypt/), [Data Masking](../features/mask/), [Broadcast](../features/broadcast/), [Readwrite-Splitting](../features/readwrite-splitting/), [Shadow](../features/shadow/), and [Sharding](../features/sharding/).
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
-index 989bbd2776e..2b7a3bd38fe 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.cn.md
-@@ -11,5 +11,9 @@ ShardingSphere-MCP 通过功能插件扩展领域能力。
- 
- - 数据加密：规划、审查、执行和校验数据加密规则。
- - 数据脱敏：规划、审查、执行和校验数据脱敏规则。
-+- 广播表：规划、审查、执行和校验广播表规则。
-+- 读写分离：规划、审查、执行和校验读写分离规则及状态变更。
-+- 影子库：规划、审查、执行和校验影子规则、默认影子算法和未使用算法清理。
-+- 分片：规划、审查、执行和校验分片表规则、绑定规则、默认策略、键生成以及未使用组件清理。
- 
- 如果使用额外功能插件，请按插件提供方说明准备对应 jar 和依赖，并在启动前放入发行包 `plugins/` 目录。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
-index 2109e640be7..683c28a9ef1 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/_index.en.md
-@@ -11,5 +11,9 @@ The packaged distribution includes these official MCP feature plugins:
- 
- - Data Encryption: plan, review, apply, and validate data encryption rules.
- - Data Masking: plan, review, apply, and validate data masking rules.
-+- Broadcast: plan, review, apply, and validate broadcast table rules.
-+- Readwrite-Splitting: plan, review, apply, and validate readwrite-splitting rules and status changes.
-+- Shadow: plan, review, apply, and validate shadow rules, default shadow algorithms, and unused algorithm cleanup.
-+- Sharding: plan, review, apply, and validate sharding table rules, reference rules, default strategies, key generation, and unused component cleanup.
- 
- When using additional feature plugins, follow the plugin provider's instructions, prepare the required jars and dependencies, and place them under the distribution `plugins/` directory before startup.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/broadcast.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/broadcast.cn.md
-new file mode 100644
-index 00000000000..3823bfcfca2
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/broadcast.cn.md
-@@ -0,0 +1,34 @@
-++++
-+title = "广播表"
-+weight = 4
-++++
-+
-+广播表 MCP 功能插件帮助用户为 ShardingSphere-Proxy 逻辑库规划、审查、执行和校验广播表规则变更。
-+本功能只生成广播表规则 DistSQL，不生成物理表 DDL、索引 DDL、数据迁移、回填、数据探测、物理元数据探测或存储单元变更任务。
-+
-+## 前置条件
-+
-+- 目标 `runtimeDatabases` 应连接到 ShardingSphere-Proxy。
-+- 用户应提供逻辑库和广播表名。
-+- 已有规则状态来自 Proxy 可见的 DistSQL 资源。
-+
-+## 自然语言示例
-+
-+- 查看 `<logic-database>` 当前有哪些广播表规则。
-+- 为 `config_region` 和 `config_feature` 规划广播表规则，先预览不要执行。
-+- 删除 `config_region` 的广播表规则，并校验结果。
-+
-+## 审查重点
-+
-+- 确认计划语句是 `CREATE BROADCAST TABLE RULE` 或 `DROP BROADCAST TABLE RULE`。
-+- 确认所有表名都是逻辑表名。
-+- 执行前先预览 workflow，执行后校验 Proxy 可见规则状态。
-+
-+规则变更的通用审查流程见[规则变更流程](../plugin-workflow/)。
-+
-+## 限制
-+
-+- 仅支持 ShardingSphere-Proxy 逻辑库。
-+- 不创建、修改或探测物理表。
-+- 不注册、修改、注销或修复存储单元。
-+- 对象名内容不能包含反引号、NUL、回车或换行。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/broadcast.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/broadcast.en.md
-new file mode 100644
-index 00000000000..211c7669e49
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/broadcast.en.md
-@@ -0,0 +1,34 @@
-++++
-+title = "Broadcast"
-+weight = 4
-++++
-+
-+The Broadcast MCP feature plugin helps users plan, review, apply, and validate broadcast table rule changes for ShardingSphere-Proxy logical databases.
-+It generates broadcast rule DistSQL only. It does not generate physical table DDL, index DDL, data migration, backfill, data probes, physical metadata probes, or storage unit mutation tasks.
-+
-+## Prerequisites
-+
-+- The target `runtimeDatabases` entry should connect to ShardingSphere-Proxy.
-+- The user should provide the logical database and broadcast table names.
-+- Existing rule state is read from Proxy-visible DistSQL resources.
-+
-+## Natural language examples
-+
-+- List current broadcast table rules in `<logic-database>`.
-+- Plan a broadcast rule for `config_region` and `config_feature`, then preview it without execution.
-+- Drop the broadcast rule for `config_region` and validate the result.
-+
-+## Review checklist
-+
-+- Confirm that the planned statement is `CREATE BROADCAST TABLE RULE` or `DROP BROADCAST TABLE RULE`.
-+- Confirm that all table names are logical table names.
-+- Preview the workflow before execution and validate Proxy-visible rule state after execution.
-+
-+For the general review flow of rule changes, see [Rule Change Flow](../plugin-workflow/).
-+
-+## Limitations
-+
-+- Supports ShardingSphere-Proxy logical databases only.
-+- Does not create, alter, or inspect physical tables.
-+- Does not register, alter, unregister, or repair storage units.
-+- Object name content must not contain backticks, NUL, carriage returns, or line feeds.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md
-index d9fd222e872..4bf83a0c96e 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md
-@@ -3,8 +3,8 @@ title = "规则变更流程"
- weight = 1
- +++
- 
--规则变更流程用于数据加密、数据脱敏等功能生成可审查的数据库治理变更时，引导用户完成需求确认、预览、执行和校验。
--它不是一个独立业务功能；用户通常会在具体的数据加密或数据脱敏任务中进入这个流程。
-+规则变更流程用于官方 DistSQL-only 功能生成可审查的数据库治理变更时，引导用户完成需求确认、预览、执行和校验。
-+它不是一个独立业务功能；用户通常会在具体的数据加密、数据脱敏、广播表、读写分离、影子库或分片任务中进入这个流程。
- 
- ## 适用场景
- 
-@@ -50,7 +50,7 @@ ShardingSphere-MCP 不直接读取密钥管理系统。
- 
- - 待执行语句是否符合预期规则变更。
- - 变更产物是否符合当前功能插件的能力边界。
--- 对数据加密和数据脱敏，ShardingSphere-MCP 只生成规则 DistSQL，不生成物理 DDL、索引、洗数或 SQL 可执行性探测。
-+- 官方功能插件只在各自文档边界内生成规则 DistSQL，不生成物理 DDL、索引、迁移、回填、洗数、物理元数据探测或存储单元变更任务。
- - 是否会修改运行时规则、元数据或数据。
- - 是否需要人工执行、备份、回滚预案或业务审批。
- - 校验结果是否符合对应功能插件声明的规则状态或 workflow 执行结果边界。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md
-index 6d590f0b823..3d0f1e8f6b8 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md
-@@ -3,8 +3,8 @@ title = "Rule Change Flow"
- weight = 1
- +++
- 
--The rule change flow guides users through requirement confirmation, preview, apply, and validation when features such as data encryption or data masking create reviewable database governance changes.
--It is not a standalone business feature. Users usually enter this flow from a concrete data encryption or data masking task.
-+The rule change flow guides users through requirement confirmation, preview, apply, and validation when official DistSQL-only features create reviewable database governance changes.
-+It is not a standalone business feature. Users usually enter this flow from a concrete data encryption, data masking, broadcast, readwrite-splitting, shadow, or sharding task.
- 
- ## When to Use
- 
-@@ -50,7 +50,7 @@ When using a manual package, placeholders can remain in the statements and be re
- 
- - Whether the statements match the expected rule change.
- - Whether change artifacts match the current feature plugin's capability boundary.
--- For data encryption and data masking, ShardingSphere-MCP only generates rule DistSQL and does not generate physical DDL, indexes, data cleansing, or SQL executability probes.
-+- Official feature plugins only generate rule DistSQL within their documented boundary and do not generate physical DDL, indexes, migration, backfill, data cleansing, physical metadata probes, or storage unit mutation tasks.
- - Whether runtime rules, metadata, or data may be changed.
- - Whether manual execution, backup, rollback planning, or business approval is required.
- - Whether validation matches the rule-state or workflow-result boundary documented by the corresponding feature plugin.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/readwrite-splitting.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/readwrite-splitting.cn.md
-new file mode 100644
-index 00000000000..7c9c087efaa
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/readwrite-splitting.cn.md
-@@ -0,0 +1,34 @@
-++++
-+title = "读写分离"
-+weight = 5
-++++
-+
-+读写分离 MCP 功能插件帮助用户为 ShardingSphere-Proxy 逻辑库规划、审查、执行和校验读写分离规则及状态变更。
-+本功能只生成读写分离 DistSQL，不生成存储单元注册、物理 DDL、索引 DDL、迁移、回填、数据探测或物理元数据探测。
-+
-+## 前置条件
-+
-+- 目标 `runtimeDatabases` 应连接到 ShardingSphere-Proxy。
-+- 写存储单元和读存储单元必须已经存在于 ShardingSphere-Proxy。
-+- 规划规则时，用户应提供逻辑库、规则名、写存储单元、读存储单元和负载均衡算法意图。
-+
-+## 自然语言示例
-+
-+- 查看 `<logic-database>` 的读写分离规则和负载均衡算法插件。
-+- 规划名为 `rw_ds` 的读写分离规则，写存储单元是 `write_ds`，读存储单元是 `read_ds_0, read_ds_1`。
-+- 禁用规则 `rw_ds` 中的读存储单元 `read_ds_1`，然后校验状态。
-+
-+## 审查重点
-+
-+- 确认规则计划使用 `CREATE`、`ALTER` 或 `DROP READWRITE_SPLITTING RULE`。
-+- 确认状态计划使用 `ALTER READWRITE_SPLITTING RULE ... ENABLE` 或 `DISABLE`。
-+- 确认存储单元名是已有逻辑存储单元，workflow 不会创建它们。
-+
-+规则变更的通用审查流程见[规则变更流程](../plugin-workflow/)。
-+
-+## 限制
-+
-+- 仅支持 ShardingSphere-Proxy 逻辑库。
-+- 不创建或修复存储单元。
-+- 不探测物理数据源元数据。
-+- 对象名内容不能包含反引号、NUL、回车或换行。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/readwrite-splitting.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/readwrite-splitting.en.md
-new file mode 100644
-index 00000000000..0ecf9711a98
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/readwrite-splitting.en.md
-@@ -0,0 +1,34 @@
-++++
-+title = "Readwrite-Splitting"
-+weight = 5
-++++
-+
-+The Readwrite-Splitting MCP feature plugin helps users plan, review, apply, and validate readwrite-splitting rule changes and status changes for ShardingSphere-Proxy logical databases.
-+It generates readwrite-splitting DistSQL only. It does not generate storage unit registration, physical DDL, index DDL, migration, backfill, data probes, or physical metadata probes.
-+
-+## Prerequisites
-+
-+- The target `runtimeDatabases` entry should connect to ShardingSphere-Proxy.
-+- The write and read storage unit names must already exist in ShardingSphere-Proxy.
-+- The user should provide the logical database, rule name, write storage unit, read storage units, and load-balance algorithm intent when planning a rule.
-+
-+## Natural language examples
-+
-+- List readwrite-splitting rules and load-balance algorithm plugins in `<logic-database>`.
-+- Plan a readwrite-splitting rule named `rw_ds` with write storage unit `write_ds` and read storage units `read_ds_0, read_ds_1`.
-+- Disable read storage unit `read_ds_1` for rule `rw_ds`, then validate the status.
-+
-+## Review checklist
-+
-+- Confirm that rule plans use `CREATE`, `ALTER`, or `DROP READWRITE_SPLITTING RULE`.
-+- Confirm that status plans use `ALTER READWRITE_SPLITTING RULE ... ENABLE` or `DISABLE`.
-+- Confirm that storage unit names are existing logical storage units and are not created by the workflow.
-+
-+For the general review flow of rule changes, see [Rule Change Flow](../plugin-workflow/).
-+
-+## Limitations
-+
-+- Supports ShardingSphere-Proxy logical databases only.
-+- Does not create or repair storage units.
-+- Does not inspect physical datasource metadata.
-+- Object name content must not contain backticks, NUL, carriage returns, or line feeds.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/shadow.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/shadow.cn.md
-new file mode 100644
-index 00000000000..9520803a760
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/shadow.cn.md
-@@ -0,0 +1,34 @@
-++++
-+title = "影子库"
-+weight = 6
-++++
-+
-+影子库 MCP 功能插件帮助用户规划、审查、执行和校验影子规则、默认影子算法，以及安全清理未使用的影子算法。
-+本功能只生成影子规则 DistSQL，不创建影子数据库或物理表，也不生成物理 DDL、索引 DDL、迁移、回填、数据探测、物理元数据探测或存储单元变更任务。
-+
-+## 前置条件
-+
-+- 目标 `runtimeDatabases` 应连接到 ShardingSphere-Proxy。
-+- 源存储单元和影子存储单元必须已经存在。
-+- 清理计划会先读取 Proxy 可见的规则、表规则、默认算法和已配置算法状态，再生成 `DROP SHADOW ALGORITHM`。
-+
-+## 自然语言示例
-+
-+- 查看 `<logic-database>` 已配置的影子规则和影子算法插件。
-+- 为表 `t_order` 规划影子规则，源存储单元是 `ds_0`，影子存储单元是 `ds_shadow`，算法使用列匹配策略。
-+- 只有在 Proxy 可见状态证明 `shadow_by_user_id` 未被使用时，才删除这个影子算法。
-+
-+## 审查重点
-+
-+- 确认规则计划使用影子 DistSQL，并引用已有存储单元。
-+- 确认默认算法计划只修改默认影子算法。
-+- 确认清理计划包含目标算法未被使用的证据。
-+
-+规则变更的通用审查流程见[规则变更流程](../plugin-workflow/)。
-+
-+## 限制
-+
-+- 仅支持 ShardingSphere-Proxy 逻辑库。
-+- 不创建影子数据库、物理表或存储单元。
-+- 清理能力仅限 DistSQL 可见的未使用影子算法。
-+- 对象名内容不能包含反引号、NUL、回车或换行。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/shadow.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/shadow.en.md
-new file mode 100644
-index 00000000000..4f68fcf5f8d
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/shadow.en.md
-@@ -0,0 +1,34 @@
-++++
-+title = "Shadow"
-+weight = 6
-++++
-+
-+The Shadow MCP feature plugin helps users plan, review, apply, and validate shadow rules, default shadow algorithms, and safe cleanup of unused shadow algorithms.
-+It generates shadow rule DistSQL only. It does not create shadow databases or physical tables, and it does not generate physical DDL, index DDL, migration, backfill, data probes, physical metadata probes, or storage unit mutation tasks.
-+
-+## Prerequisites
-+
-+- The target `runtimeDatabases` entry should connect to ShardingSphere-Proxy.
-+- Source and shadow storage units must already exist.
-+- Cleanup planning reads Proxy-visible rule, table-rule, default-algorithm, and configured-algorithm state before generating `DROP SHADOW ALGORITHM`.
-+
-+## Natural language examples
-+
-+- List configured shadow rules and shadow algorithm plugins in `<logic-database>`.
-+- Plan a shadow rule for table `t_order` using source storage unit `ds_0`, shadow storage unit `ds_shadow`, and a column-match algorithm.
-+- Drop unused shadow algorithm `shadow_by_user_id` only if Proxy-visible state proves it is unused.
-+
-+## Review checklist
-+
-+- Confirm that rule plans use shadow DistSQL and reference existing storage units.
-+- Confirm that default algorithm plans update only the default shadow algorithm.
-+- Confirm cleanup plans include evidence that the target algorithm is unused.
-+
-+For the general review flow of rule changes, see [Rule Change Flow](../plugin-workflow/).
-+
-+## Limitations
-+
-+- Supports ShardingSphere-Proxy logical databases only.
-+- Does not create shadow databases, physical tables, or storage units.
-+- Cleanup is limited to DistSQL-visible unused shadow algorithms.
-+- Object name content must not contain backticks, NUL, carriage returns, or line feeds.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/sharding.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/sharding.cn.md
-new file mode 100644
-index 00000000000..17f529c7f60
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/sharding.cn.md
-@@ -0,0 +1,36 @@
-++++
-+title = "分片"
-+weight = 7
-++++
-+
-+分片 MCP 功能插件帮助用户规划、审查、执行和校验分片表规则、绑定规则、默认分片策略、键生成器、键生成策略，以及安全清理未使用的分片组件。
-+本功能只生成分片规则 DistSQL，不生成物理 DDL、索引 DDL、迁移、回填、数据探测、物理元数据探测或存储单元变更任务。
-+
-+## 前置条件
-+
-+- 目标 `runtimeDatabases` 应连接到 ShardingSphere-Proxy。
-+- 必要时应明确提供数据节点、存储单元、分片列、算法类型、键生成器、审计器和规则名。
-+- 清理计划会先读取未使用和 used-by DistSQL 资源，再生成 `DROP SHARDING ALGORITHM`、`DROP SHARDING KEY GENERATOR` 或 `DROP SHARDING AUDITOR`。
-+
-+## 自然语言示例
-+
-+- 查看 `<logic-database>` 的分片表规则、表节点、算法、键生成器、审计器和未使用组件。
-+- 为 `t_order` 规划分片表规则，使用明确的数据节点和标准分片策略。
-+- 规划默认表分片策略，使用算法 `t_order_inline`。
-+- 只有在 Proxy 可见状态证明 `t_order_inline` 未被使用时，才删除这个分片算法。
-+
-+## 审查重点
-+
-+- 确认表规则计划只使用分片规则 DistSQL 和逻辑对象名。
-+- 确认键生成器和键生成策略计划不会把键生成器属性与分片算法属性混用。
-+- 确认清理计划包含 unused-state 和 used-by 检查。
-+- 执行前先预览 workflow，执行后校验 Proxy 可见规则状态。
-+
-+规则变更的通用审查流程见[规则变更流程](../plugin-workflow/)。
-+
-+## 限制
-+
-+- 仅支持 ShardingSphere-Proxy 逻辑库。
-+- 不创建物理表、索引或存储单元。
-+- 不迁移或回填已有数据。
-+- 对象名内容不能包含反引号、NUL、回车或换行。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/sharding.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/sharding.en.md
-new file mode 100644
-index 00000000000..f56270013fa
---- /dev/null
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/sharding.en.md
-@@ -0,0 +1,36 @@
-++++
-+title = "Sharding"
-+weight = 7
-++++
-+
-+The Sharding MCP feature plugin helps users plan, review, apply, and validate sharding table rules, table reference rules, default sharding strategies, key generators, key generate strategies, and safe cleanup of unused sharding components.
-+It generates sharding rule DistSQL only. It does not generate physical DDL, index DDL, migration, backfill, data probes, physical metadata probes, or storage unit mutation tasks.
-+
-+## Prerequisites
-+
-+- The target `runtimeDatabases` entry should connect to ShardingSphere-Proxy.
-+- Data nodes, storage units, sharding columns, algorithm types, key generators, auditors, and rule names should be supplied explicitly when required.
-+- Cleanup planning reads unused and used-by DistSQL resources before generating `DROP SHARDING ALGORITHM`, `DROP SHARDING KEY GENERATOR`, or `DROP SHARDING AUDITOR`.
-+
-+## Natural language examples
-+
-+- List sharding table rules, table nodes, algorithms, key generators, auditors, and unused components in `<logic-database>`.
-+- Plan a sharding table rule for `t_order` with explicit data nodes and a standard sharding strategy.
-+- Plan a default table sharding strategy using algorithm `t_order_inline`.
-+- Drop unused sharding algorithm `t_order_inline` only if Proxy-visible state proves it is unused.
-+
-+## Review checklist
-+
-+- Confirm that table rule plans use only sharding rule DistSQL and logical identifiers.
-+- Confirm that key generator and key generate strategy plans keep generator properties separate from sharding algorithm properties.
-+- Confirm cleanup plans include unused-state and used-by checks.
-+- Preview the workflow before execution and validate Proxy-visible rule state after execution.
-+
-+For the general review flow of rule changes, see [Rule Change Flow](../plugin-workflow/).
-+
-+## Limitations
-+
-+- Supports ShardingSphere-Proxy logical databases only.
-+- Does not create physical tables, indexes, or storage units.
-+- Does not migrate or backfill existing data.
-+- Object name content must not contain backticks, NUL, carriage returns, or line feeds.
+ - ShardingSphere-MCP handles quoted, case-sensitive, keyword, whitespace, and Unicode object names. To keep generated SQL or rule change statements reviewable, object name content must not contain backticks, NUL, carriage returns, or line feeds.

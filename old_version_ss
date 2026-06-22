@@ -1,317 +1,137 @@
-commit 96b8227550c0c350785596a8186feccc3bfcc9b5
-Author: Liang Zhang <zhangliang@apache.org>
-Date:   Wed Jun 17 22:44:59 2026 +0800
+commit 68c4600f080acf97f233fece980bc5d839b337ed
+Author: Hengqian Ling <linghengqian@outlook.com>
+Date:   Sun Jun 21 15:43:59 2026 +0800
 
-    Protect secret placeholders in workflow artifacts (#38861)
-    
-    * Protect secret placeholders in workflow artifacts
-    
-    - Treat secret_ref as a protected placeholder input slot instead of a resolver-backed reference
-    - Emit only masked values or neutral placeholders in plan, preview, validation, and manual artifacts
-    - Stop automatic apply before side effects when placeholders still require manual replacement
-    
-    * Protect secret placeholders in workflow artifacts
-    
-    - Treat secret_ref as a protected placeholder input slot instead of a resolver-backed reference
-    - Emit only masked values or neutral placeholders in plan, preview, validation, and manual artifacts
-    - Stop automatic apply before side effects when placeholders still require manual replacement
+    Stabilize Ubuntu nativeTest CI under GraalVM Native Image (#38880)
 
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
-index b7dc840fb0e..4c6352fad51 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
-@@ -95,6 +95,32 @@ runtimeDatabases:
- - 模式、表、视图、索引和序列等元数据依赖连接目标的 JDBC 元数据；Proxy 和数据库直连的可见结果可能不同。
- - 如果目标 JDBC 驱动没有随发行包提供，请把驱动 jar 放入 `plugins/`。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
+index 3454172fe95..481481ba127 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.cn.md
+@@ -222,47 +222,6 @@ cd ./shardingsphere/
  
-+## 敏感值占位符
-+
-+规则变更工具可能需要算法密钥、令牌或替换字符等敏感参数。
-+不要把真实敏感值写入模型可见的工具入参、普通文档、聊天记录或日志。
-+可以在工具入参的算法属性中传递敏感值占位符对象；MCP Server 只负责规划、预览和生成安全的人工执行包，不会读取或解析真实值。
-+规划、预览和人工执行包只返回中性占位符或 `******`，不会返回 `secret_ref` 或真实敏感值。
-+
-+算法属性中的引用对象示例：
-+
-+```json
-+{
-+  "primary_algorithm_properties": {
-+    "aes-key-value": {
-+      "secret_ref": "placeholder://secret-value-1"
-+    }
-+  }
-+}
-+```
-+
-+注意事项：
-+
-+- MCP Server 只记录需要人工替换的敏感值槽位，不会从外部系统获取真实敏感值。
-+- 带敏感值占位符的自动执行会在产生副作用前停止，并返回 `secret_reference_manual_execution_required`。
-+- 使用人工执行包时，执行人员应在 MCP 和 AI 应用之外的受控环境中把中性占位符替换为真实值，再执行 DistSQL 或 YAML。
-+- 文档和示例只使用中性占位符，避免在模型上下文中暴露真实密钥、路径或内部系统信息。
-+
- ## 连接目标选择
+ ## 已知限制
  
- `runtimeDatabases` 可以配置任意可连接的 JDBC URL。用户能看到的数据库对象和可执行的治理任务取决于连接目标。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
-index 9e2b9a7585a..586ff7d8d74 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
-@@ -95,6 +95,32 @@ Notes:
- - Schema, table, view, index, and sequence metadata depends on JDBC metadata from the connection target. Proxy-visible metadata and direct-connection metadata may differ.
- - If the target JDBC driver is not packaged, copy the driver jar under `plugins/`.
- 
-+## Secret Placeholders
-+
-+Rule-change tools may require sensitive algorithm parameters such as keys, tokens, or replacement characters.
-+Do not put real sensitive values into model-visible tool input, ordinary documents, chat records, or logs.
-+Tool input can pass a secret placeholder object inside algorithm properties. The MCP Server only plans, previews, and generates safe manual execution packages; it does not read or resolve real values.
-+Planning, preview, and manual artifact packages return only neutral placeholders or `******`; they do not return `secret_ref` or real sensitive values.
-+
-+Example reference object in algorithm properties:
-+
-+```json
-+{
-+  "primary_algorithm_properties": {
-+    "aes-key-value": {
-+      "secret_ref": "placeholder://secret-value-1"
-+    }
-+  }
-+}
-+```
-+
-+Notes:
-+
-+- MCP Server only records the sensitive slot that requires manual replacement; it does not fetch real sensitive values from external systems.
-+- Automatic execution with sensitive placeholders stops before side effects and returns `secret_reference_manual_execution_required`.
-+- When using a manual execution package, operators replace neutral placeholders with real values outside MCP and the AI application, then execute the DistSQL or YAML.
-+- Documentation and examples use neutral placeholders only to avoid exposing real keys, paths, or internal system details to model context.
-+
- ## Choose a Connection Target
- 
- `runtimeDatabases` can use any reachable JDBC URL. The database objects users can see and the governance tasks they can perform depend on the connection target.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
-index f1c3dcb4b37..fe36f7fba7b 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.cn.md
-@@ -62,12 +62,25 @@ weight = 2
- ## 敏感参数处理
- 
- 加密算法可能需要密钥、盐值或其他敏感参数。
--用户应通过受保护渠道提供这些值，并在执行前确认参数来源和使用范围。
-+用户可以通过敏感值引用对象提供这些值，并在执行前确认参数来源和使用范围。
-+
-+示例：
-+
-+```json
-+{
-+  "primary_algorithm_properties": {
-+    "aes-key-value": {
-+      "secret_ref": "placeholder://secret-value-1"
-+    }
-+  }
-+}
-+```
- 
- ShardingSphere-MCP 面向模型返回计划、workflow resource、预览、执行、校验、恢复和错误信息时，会对已识别的敏感参数做掩码处理。
- 内置算法和已在算法属性模板中标记为敏感的自定义算法参数，可以被稳定识别并掩码。
-+占位符对象中的 `secret_ref` 只表示需要人工替换的敏感值槽位；规划、预览、执行结果和校验输出不会回显 `secret_ref` 或真实敏感值。
- 未声明的自定义参数不应以明文写入普通对话、日志或工单描述。
--执行阶段仍使用受控上下文中的原始参数值生成规则变更语句，用户不应把明文密钥写入对话总结、日志或工单描述。
-+如果规则变更仍包含敏感值占位符，自动执行会在产生副作用前返回 `secret_reference_manual_execution_required`；执行人员应在 MCP 和 AI 应用之外替换真实值后手工执行。
- 
- ## 审查规则列名
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
-index a59941031ac..30ab840bf6e 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/encrypt.en.md
-@@ -62,13 +62,25 @@ After a plan is generated, review:
- ## Sensitive parameter handling
- 
- Encryption algorithms may require keys, salts, or other sensitive properties.
--Users should provide these values through protected channels and confirm the source and scope before execution.
-+Users can provide these values through secret reference objects and confirm the source and scope before execution.
-+
-+Example:
-+
-+```json
-+{
-+  "primary_algorithm_properties": {
-+    "aes-key-value": {
-+      "secret_ref": "placeholder://secret-value-1"
-+    }
-+  }
-+}
-+```
- 
- When ShardingSphere-MCP returns model-facing plans, workflow resources, previews, execution results, validation results, recovery data, and error messages, recognized sensitive properties are masked.
- Built-in algorithms and custom algorithm properties marked as secret in algorithm property templates can be recognized and masked consistently.
-+The `secret_ref` in a placeholder object only marks a sensitive slot for manual replacement. Planning, preview, execution results, and validation output do not echo `secret_ref` or real sensitive values.
- Undeclared custom properties should not be written in plaintext in normal conversations, logs, or ticket descriptions.
--Execution still uses the original property values from the controlled context to generate rule change statements.
--Users should not put plaintext keys into conversation summaries, logs, or ticket descriptions.
-+If a rule change still contains sensitive placeholders, automatic execution returns `secret_reference_manual_execution_required` before side effects. Operators should replace real values outside MCP and the AI application, then execute manually.
- 
- ## Review Rule Column Names
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
-index a11f5791a5c..1fb38dff8f4 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.cn.md
-@@ -58,6 +58,25 @@ weight = 3
- - 是否会影响运行时规则或已有业务 SQL。
- - 是否确认不需要 ShardingSphere-MCP 生成额外 DDL、索引、数据处理或 SQL 可执行性探测。
- 
-+## 敏感参数处理
-+
-+部分脱敏算法参数可能需要由运维侧受控提供，例如替换字符或自定义算法参数。
-+可以在算法属性中使用敏感值引用对象：
-+
-+```json
-+{
-+  "primary_algorithm_properties": {
-+    "replace-char": {
-+      "secret_ref": "placeholder://secret-value-1"
-+    }
-+  }
-+}
-+```
-+
-+占位符对象中的 `secret_ref` 只表示需要人工替换的敏感值槽位。
-+规划、预览、执行结果和校验输出只显示中性占位符或 `******`，不会回显 `secret_ref` 或真实敏感值。
-+如果规则变更仍包含敏感值占位符，自动执行会在产生副作用前返回 `secret_reference_manual_execution_required`；执行人员应在 MCP 和 AI 应用之外替换真实值后手工执行。
-+
- ## 执行与校验
- 
- 建议先预览，确认待执行规则 DistSQL 和副作用范围后再执行。
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.en.md
-index 7bc77f529cd..02459b23a41 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/mask.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/mask.en.md
-@@ -58,6 +58,25 @@ After a plan is generated, review:
- - Whether runtime rules or existing business SQL may be affected.
- - Whether no extra DDL, index, data processing, or SQL executability probing task is expected from ShardingSphere-MCP.
- 
-+## Sensitive parameter handling
-+
-+Some masking algorithm parameters may need to be supplied by operators in a controlled way, such as replacement characters or custom algorithm properties.
-+Use a secret reference object in algorithm properties:
-+
-+```json
-+{
-+  "primary_algorithm_properties": {
-+    "replace-char": {
-+      "secret_ref": "placeholder://secret-value-1"
-+    }
-+  }
-+}
-+```
-+
-+The `secret_ref` in a placeholder object only marks a sensitive slot for manual replacement.
-+Planning, preview, execution results, and validation output show only neutral placeholders or `******`; they do not echo `secret_ref` or real sensitive values.
-+If a rule change still contains sensitive placeholders, automatic execution returns `secret_reference_manual_execution_required` before side effects. Operators should replace real values outside MCP and the AI application, then execute manually.
-+
- ## Apply and validate
- 
- Preview first, then review rule DistSQL and side-effect scope before execution.
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md
-index 0828a898a3c..9a143fae23e 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.cn.md
-@@ -52,12 +52,12 @@ weight = 1
- 
- 推荐处理方式：
- 
--- 在计划中保留占位符。
--- 由 AI 应用或运维侧通过密钥管理系统、受保护环境变量或运维控制通道取得真实值。
--- 在受控环境中替换占位符并执行。
-+- 在算法属性中使用敏感值占位符对象，例如 `{"secret_ref": "placeholder://secret-value-1"}`。
-+- 先通过 `execution_mode=preview` 审查规则 DistSQL；预览响应只显示中性占位符或 `******`。
-+- 如果工作流仍包含敏感值占位符，自动执行会在产生副作用前停止，并返回 `secret_reference_manual_execution_required`。
-+- 使用人工执行包时，执行人员在 MCP 和 AI 应用之外的受控环境中替换真实值后再执行。
- 
--ShardingSphere-MCP 不直接读取密钥管理系统。
--使用人工执行包时，可以在待执行语句中保留占位符，由执行人员在受控环境替换。
-+ShardingSphere-MCP 只记录需要人工替换的敏感值槽位，不会从外部系统获取真实敏感值。
- 
- ## 审查重点
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md
-index acf6c478275..649c635c04c 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/features/plugin-workflow.en.md
-@@ -52,12 +52,12 @@ These values should not be written into ordinary documents, chat records, or log
- 
- Recommended handling:
- 
--- Keep placeholders in the plan.
--- Let the AI application or operator obtain real values through a secret manager, protected environment variable, or controlled operations channel.
--- Replace placeholders and execute in a controlled environment.
-+- Use a secret placeholder object in algorithm properties, for example `{"secret_ref": "placeholder://secret-value-1"}`.
-+- Review rule DistSQL with `execution_mode=preview`; preview responses show only neutral placeholders or `******`.
-+- If the workflow still contains sensitive placeholders, automatic execution stops before side effects and returns `secret_reference_manual_execution_required`.
-+- When using a manual execution package, operators replace real values outside MCP and the AI application before executing it.
- 
--ShardingSphere-MCP does not read secret managers directly.
--When using a manual package, placeholders can remain in the statements and be replaced by the operator in a controlled environment.
-+ShardingSphere-MCP only records the sensitive slot that requires manual replacement; it does not fetch real sensitive values from external systems.
- 
- ## Review Checklist
- 
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md
-index 073a3760d5a..e2e86db7a27 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.cn.md
-@@ -29,7 +29,7 @@ weight = 7
- - `runtimeDatabases` 是启动必填项，至少需要配置一项运行时数据库。
- - 查询默认最多返回 100 行，单次查询最多可请求 5000 行；查询超时最大可请求 300000 毫秒。
- - 人工执行包中的密钥占位符应由执行人员在受控环境替换。
--- ShardingSphere-MCP 不直接读取密钥管理系统；如果规则变更需要密钥或凭证，应通过 AI 应用、运维流程或受保护的执行环境传递。
-+- ShardingSphere-MCP 不获取真实敏感值，真实敏感值也不应进入 AI 应用；如果规则变更需要密钥或凭证，应在 MCP 和 AI 应用之外的受控环境中替换人工执行包里的中性占位符。
- - 开发者需要排查协议请求时，可参考[自研集成附录](../developer-appendix/)。
- 
- ## 连接错误分类
-@@ -56,14 +56,6 @@ weight = 7
- | 工具调用次数 | 当前 MCP 会话达到工具调用次数保护限制时，会返回 `tool_call_limit_exceeded`。 | 结束当前会话并重新创建 MCP 会话。           |
- | 副作用执行  | 修改数据、结构、规则、权限或事务状态前需要预览和确认。                            | 先审查预览内容，再决定是否执行。              |
- 
--## 后续代码改进项
+-### `reachability-metadata.json` 限制
 -
--以下内容记录当前文档已明确但仍需要后续源码演进的点。代码完成前，用户仍以现有工具名、错误分类和运行时行为为准。
+-受 https://github.com/apache/shardingsphere/issues/33206 影响，
+-开发者执行 `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy` 后，
+-`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/reachability-metadata.json` 会生成不必要的包含绝对路径的 JSON 条目，
 -
--| 改进项         | 原因                                                                                           | 建议                                                                                                                    |
--|-------------|----------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
--| 敏感值引用机制     | 规则变更可能需要密钥或凭证，目前由外部受控通道传递。                                                                   | 后续如需内置支持，应设计密钥引用或解析机制，而不是让 MCP Server 直接暴露敏感值。                                                                        |
+-对于 Ubuntu，类似如下，
 -
- ## 提供给管理员或排障人员的信息
+-```json
+-{
+-  "resources": [
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql/"
+-    },
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql//global.yaml"
+-    },
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/"
+-    },
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml"
+-    }
+-  ]
+-}
+-```
+-
+-需要为 ShardingSphere 提交 PR 的贡献者应始终手动删除这些包含绝对路径的 JSON 条目，并等待 https://github.com/oracle/graal/issues/8417 被解决。
+-
+ ### 单元测试库限制
  
- 报告问题时建议提供：
-diff --git a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md
-index 9b9932bdf15..87668e2d9a2 100644
---- a/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-mcp/troubleshooting.en.md
-@@ -29,7 +29,7 @@ Additional notes:
- - `runtimeDatabases` is required at startup and must contain at least one runtime database.
- - Queries return at most 100 rows by default. A single query can request at most 5000 rows, and the maximum requested query timeout is 300000 milliseconds.
- - Secret placeholders in manual packages should be replaced by operators in a controlled environment.
--- ShardingSphere-MCP does not read key management systems directly. If a rule change needs keys or credentials, pass them through the AI application, operations workflow, or protected execution environment.
-+- ShardingSphere-MCP does not fetch real sensitive values; real sensitive values must stay outside the AI application. If a rule change needs keys or credentials, replace the neutral placeholders in the manual execution package outside MCP and the AI application in a controlled environment.
- - For protocol request debugging, see the [Custom Integration Appendix](../developer-appendix/).
+ 对于 `shardingsphere-test-native` 的 Maven Module，
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
+index af258665021..c393a605e36 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/graalvm-native-image/development/_index.en.md
+@@ -229,48 +229,6 @@ developer should place it in the classpath of the `shardingsphere-test-native` s
  
- ## Connection Failure Categories
-@@ -56,14 +56,6 @@ When a runtime database or ShardingSphere-Proxy connection fails, MCP responses
- | Tool-call quota       | When the current MCP session reaches the tool-call protection limit, MCP returns `tool_call_limit_exceeded`.   | Close the current session and create a new MCP session.                                         |
- | Side-effect execution | Data, schema, rule, privilege, or transaction-state changes require preview and confirmation before execution. | Review the preview before deciding whether to execute.                                          |
+ ## Known limitations
  
--## Future Code Improvements
+-### `reachability-metadata.json` limitations
 -
--The following items are documented as known follow-up code improvements. Until the code changes are completed, users should rely on the current tool names, error categories, and runtime behavior.
+-Affected by https://github.com/apache/shardingsphere/issues/33206,
+-after developers execute `./mvnw -PgenerateMetadata -T 1C -e clean test native:metadata-copy`,
+-`infra/reachability-metadata/src/main/resources/META-INF/native-image/org.apache.shardingsphere/generated-reachability-metadata/reachability-metadata.json` will generate unnecessary JSON entries containing absolute paths.
 -
--| Improvement                          | Reason                                                                                                                                                                                                        | Recommendation                                                                                                                                                                                                                               |
--|--------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
--| Secret reference mechanism           | Rule changes may require keys or credentials, which are currently passed through external protected channels.                                                                                                 | If built-in support is required later, design a secret reference or resolver mechanism instead of exposing sensitive values through the MCP Server.                                                                                          |
+-For Ubuntu, it is similar to the following,
 -
- ## Information for Administrators or Troubleshooters
+-```json
+-{
+-  "resources": [
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql/"
+-    },
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/mysql//global.yaml"
+-    },
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql/"
+-    },
+-    {
+-      "condition": {
+-        "typeReached": "org.apache.shardingsphere.proxy.backend.config.ProxyConfigurationLoader"
+-      },
+-      "glob": "home/runner/work/shardingsphere/shardingsphere/test/native/src/test/resources/test-native/yaml/proxy/databases/postgresql//global.yaml"
+-    }
+-  ]
+-}
+-```
+-
+-Contributors who need to submit PRs for ShardingSphere should always manually remove these JSON entries containing absolute paths
+-and wait for https://github.com/oracle/graal/issues/8417 to be resolved.
+-
+ ### Unit test library limitations
  
- When reporting an issue, provide:
+ For the Maven Module of `shardingsphere-test-native`,
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
+index e452542fb8c..561ef354f82 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.cn.md
+@@ -185,7 +185,7 @@ vfox install java@21.0.7-ms
+ vfox use --global java@21.0.7-ms
+ ```
+ 
+-当 Windows 弹出窗口，要求允许类似 `C:\users\lingh\.version-fox\cache\java\v-21.0.7-ms\java-21.0.7-ms\bin\java.exe` 路径的应用通过 Windows 防火墙时，
++当 Windows 弹出窗口，要求允许类似 `C:\users\shard\.version-fox\cache\java\v-21.0.7-ms\java-21.0.7-ms\bin\java.exe` 路径的应用通过 Windows 防火墙时，
+ 应当批准。 
+ 背景参考 https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c 。
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
+index 7b5d8f49636..2a99d9db186 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/startup/graalvm-native-image.en.md
+@@ -189,7 +189,7 @@ vfox install java@21.0.7-ms
+ vfox use --global java@21.0.7-ms
+ ```
+ 
+-When Windows pops up a window asking you to allow an application with a path like `C:\users\lingh\.version-fox\cache\java\v-21.0.7-ms\java-21.0.7-ms\bin\java.exe` to pass through Windows Firewall,
++When Windows pops up a window asking you to allow an application with a path like `C:\users\shard\.version-fox\cache\java\v-21.0.7-ms\java-21.0.7-ms\bin\java.exe` to pass through Windows Firewall,
+ you should approve it.
+ Background reference https://support.microsoft.com/en-us/windows/risks-of-allowing-apps-through-windows-firewall-654559af-3f54-3dcf-349f-71ccd90bcc5c .
+ 

@@ -1,62 +1,96 @@
-commit cb50781bc2a08ba20d7b9a66ec5e017fc2bf17c5
+commit f604c7ad5e5255f0c24323c8bb3fb1d6fada0faa
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Thu Jul 16 05:07:58 2026 +0800
+Date:   Sat Jul 18 01:53:22 2026 +0800
 
-    Refactor MCP request context hierarchy (#39142)
+    Refactor MCP request context session identity (#39173)
     
-    - replace database and workflow contexts with MCPFeatureRequestContext
-    - rename the core implementation to MCPFeatureRuntimeRequestContext
-    - migrate handlers, providers, tests, and documentation
+    * Refactor MCP request context session identity
+    
+    * Refactor MCP request context session identity
 
 diff --git a/docs/document/content/dev-manual/mcp.cn.md b/docs/document/content/dev-manual/mcp.cn.md
-index 8ccb19678df..9f15dcdc50b 100644
+index 9f15dcdc50b..46d13d61408 100644
 --- a/docs/document/content/dev-manual/mcp.cn.md
 +++ b/docs/document/content/dev-manual/mcp.cn.md
-@@ -16,7 +16,7 @@ MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
- - `mcp/support`：database metadata、execution、capability、workflow context、模型、facade、SPI 和复用 helper。
- - `mcp/features/encrypt`：Encrypt MCP feature。
- - `mcp/features/mask`：Mask MCP feature。
--- `mcp/core`：handler 发现、registry、request scope、session、SQL execution trace、metadata discovery 和 runtime context。
-+- `mcp/core`：handler 发现、registry、request context、session、SQL execution trace、metadata discovery 和 runtime context。
- - `mcp/bootstrap`：基于 MCP Java SDK 的 bootstrap、HTTP/STDIO transport、配置加载和生命周期管理。
- - `distribution/mcp`：独立打包、启动脚本、配置和 Dockerfile。
- - `test/e2e/mcp`：端到端契约验证。
-@@ -83,10 +83,9 @@ MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
+@@ -82,9 +82,11 @@ MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
+ 
  ## Context 选择
  
- - 只需要 session ID、当前 transport 或 session identity 的 handler 使用 `MCPRequestContext`。
--- database metadata 或 execution handler 使用 `MCPDatabaseRequestContext`。
--- workflow handler 使用 `MCPWorkflowRequestContext`。
-+- 需要 database metadata、execution 或 workflow 能力的 handler 和 completion provider 使用 `MCPFeatureRequestContext`。
+-- 只需要 session ID、当前 transport 或 session identity 的 handler 使用 `MCPRequestContext`。
++- 只需要 session identity 或当前 transport 的 handler 使用 `MCPRequestContext`。该接口只暴露 `getSessionIdentity()` 和 `getActiveTransport()`。
+ - 需要 database metadata、execution 或 workflow 能力的 handler 和 completion provider 使用 `MCPFeatureRequestContext`。
  
--`MCPRequestScope` 是 runtime 管理的单次请求实现，名称表达的是生命周期；handler 只依赖自身所需的最小 context 接口。
-+`MCPFeatureRuntimeRequestContext` 是 runtime 管理的单次请求实现。Handler 和 completion provider 只依赖 context 接口，不依赖 core 实现类。
++`MCPSessionIdentity` 将不透明的 session ID 与可选的可信 `subject`、`source` 和 `attributes` 拉平到一个对象中；通过 `getSessionIdentity().getSessionId()` 读取 session ID。归属信息只描述会话来源，不代表认证或授权结果。
++
+ `MCPFeatureRuntimeRequestContext` 是 runtime 管理的单次请求实现。Handler 和 completion provider 只依赖 context 接口，不依赖 core 实现类。
  
  Completion 请求按 session 使用 60 秒固定窗口限流，默认每分钟 600 次，可通过 Java 系统属性
- `shardingsphere.mcp.maxCompletionRequestsPerMinute` 调整。
 diff --git a/docs/document/content/dev-manual/mcp.en.md b/docs/document/content/dev-manual/mcp.en.md
-index d1f247865c9..c5ebba811e8 100644
+index c5ebba811e8..35c24ee0088 100644
 --- a/docs/document/content/dev-manual/mcp.en.md
 +++ b/docs/document/content/dev-manual/mcp.en.md
-@@ -16,7 +16,7 @@ The MCP path is organized as `api + support + features + core + bootstrap`:
- - `mcp/support`: database metadata, execution, capability, workflow contexts, models, facades, SPI, and reusable helpers.
- - `mcp/features/encrypt`: Encrypt MCP feature.
- - `mcp/features/mask`: Mask MCP feature.
--- `mcp/core`: handler discovery, registry, request scope, session, SQL execution trace, metadata discovery, and runtime context.
-+- `mcp/core`: handler discovery, registry, request context, session, SQL execution trace, metadata discovery, and runtime context.
- - `mcp/bootstrap`: MCP Java SDK based bootstrap, HTTP/STDIO transport, configuration loading, and lifecycle management.
- - `distribution/mcp`: standalone packaging, startup scripts, configuration, and Dockerfile.
- - `test/e2e/mcp`: end-to-end contract validation.
-@@ -83,10 +83,9 @@ Do not duplicate descriptor fields inside handlers.
+@@ -82,9 +82,11 @@ Do not duplicate descriptor fields inside handlers.
+ 
  ## Context selection
  
- - Use `MCPRequestContext` when a handler only needs the session ID, active transport, or session identity.
--- Use `MCPDatabaseRequestContext` for database metadata or execution handlers.
--- Use `MCPWorkflowRequestContext` for workflow handlers.
-+- Use `MCPFeatureRequestContext` when a handler or completion provider needs database metadata, execution, or workflow capabilities.
+-- Use `MCPRequestContext` when a handler only needs the session ID, active transport, or session identity.
++- Use `MCPRequestContext` when a handler only needs the session identity or active transport. It exposes exactly `getSessionIdentity()` and `getActiveTransport()`.
+ - Use `MCPFeatureRequestContext` when a handler or completion provider needs database metadata, execution, or workflow capabilities.
  
--`MCPRequestScope` is the runtime-owned, per-request implementation of these capabilities. Its name describes its lifecycle; handlers depend on the smallest context interface they need.
-+`MCPFeatureRuntimeRequestContext` is the runtime-owned, per-request implementation. Handlers and completion providers depend only on context interfaces, not on the core implementation class.
++`MCPSessionIdentity` contains the opaque session ID together with optional trusted `subject`, `source`, and `attributes`; read the ID through `getSessionIdentity().getSessionId()`. Attribution describes where a session came from and is not an authentication or authorization result.
++
+ `MCPFeatureRuntimeRequestContext` is the runtime-owned, per-request implementation. Handlers and completion providers depend only on context interfaces, not on the core implementation class.
  
  Completion requests use a per-session 60-second fixed-window rate limit. The default is 600 requests per minute and can be changed with the
- `shardingsphere.mcp.maxCompletionRequestsPerMinute` Java system property.
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
+index 1b0102804ff..4a5d0dc4b83 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
+@@ -59,6 +59,7 @@ transport:
+ | `transport.http.sessionAttributionSource.attributeHeaderPrefix` | 自定义归属属性的请求头前缀。           |
+ 
+ 只有确认客户端不能直接伪造这些请求头时，才应启用该配置。
++同一个 MCP 会话的后续 HTTP 请求必须提供一致的 subject、source 和 attributes。
+ 
+ ## 数据库配置
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
+index 815da3d2506..087702535d0 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
+@@ -59,6 +59,7 @@ transport:
+ | `transport.http.sessionAttributionSource.attributeHeaderPrefix` | Header prefix for custom attribution attributes.                                 |
+ 
+ Enable this only when clients cannot forge these headers directly.
++Subsequent HTTP requests for the same MCP session must provide consistent subject, source, and attributes.
+ 
+ ## Database configuration
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
+index c7f438cdc3c..be24ee57837 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/deployment.cn.md
+@@ -179,6 +179,9 @@ location /mcp {
+ - `subjectHeader` 表示外部主体，例如试用账号、正式客户标识或内部调用身份。
+ - `sourceHeader` 表示请求来源，例如 `gateway-nginx`、`internal-alb` 或其他受信入口名称。
+ - `attributeHeaderPrefix` 可用于注入少量非敏感上下文，例如环境、区域或接入渠道；不要通过这些请求头传递密码、密钥或令牌。
++- 初始化会话时，`subject`、`source` 和 attributes 会与 session ID 一起固化。该会话的后续请求必须携带完全一致的归属快照；缺少、新增或修改任何值都会被拒绝。
++- 归属字段只能使用在整个会话期间保持稳定的值。不要把 request ID、trace ID、时间戳或其他单次请求值映射为归属属性。
++- 会话归属只用于描述和诊断上下文，不代表已经完成认证或授权；两者仍须由受信网关执行。
+ - 如果当前部署不需要把请求归属绑定到会话上下文，可以省略 `sessionAttributionSource` 配置。
+ 
+ 完成接线后，继续按照下文的健康检查步骤确认：
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md b/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
+index 8ec2ac51a97..ddafb5fb581 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/deployment.en.md
+@@ -179,6 +179,9 @@ Follow these rules when wiring attribution:
+ - `subjectHeader` represents the external subject, such as a trial user, a commercial customer identifier, or an internal caller identity.
+ - `sourceHeader` identifies the request source, such as `gateway-nginx`, `internal-alb`, or another trusted ingress name.
+ - `attributeHeaderPrefix` can carry a small amount of non-sensitive context such as environment, region, or integration channel; do not pass passwords, keys, or tokens through these headers.
++- The subject, source, and attributes are captured with the session ID when the session is initialized. Every later request for that session must carry the same attribution snapshot; missing, added, or changed values are rejected.
++- Use only values that remain stable for the entire session. Do not map request IDs, trace IDs, timestamps, or other per-request values into attribution attributes.
++- Session attribution is diagnostic context, not proof of authentication or authorization. Continue to enforce both at the trusted gateway.
+ - If the deployment does not need to bind request attribution into the session context, omit `sessionAttributionSource`.
+ 
+ After wiring the gateway, continue with the health checks below to confirm that:

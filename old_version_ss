@@ -1,282 +1,43 @@
-commit 8dc7c4ad1f41af4068b61ad8acb36e3a78eb9a18
+commit 5256488f62fb2b7d712b90c3762d994c84178f66
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Sun Jul 19 18:08:53 2026 +0800
+Date:   Mon Jul 20 17:28:00 2026 +0800
 
-    Enhance MCP protocol contracts and E2E quality gates (#39183)
+    Improve MCP contract validation and E2E coverage (#39190)
     
-    * For code format for StandardPipelineTableMetaDataLoader
-    
-    * Enhance MCP protocol contracts and E2E quality gates
-    
-    * Enhance MCP protocol contracts and E2E quality gates
+    - validate nested tool schema descriptions and planner annotations
+    - broaden workflow, runtime, and performance regression coverage
+    - discover read-only MCP tools dynamically
+    - split LLM E2E suites and clarify runtime connector requirements
 
-diff --git a/docs/document/content/dev-manual/mcp.cn.md b/docs/document/content/dev-manual/mcp.cn.md
-index ded753fd162..7315e22ea45 100644
---- a/docs/document/content/dev-manual/mcp.cn.md
-+++ b/docs/document/content/dev-manual/mcp.cn.md
-@@ -16,12 +16,18 @@ MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
- - `mcp/support`：database metadata、execution、capability、workflow context、模型、facade、database/workflow SPI 和复用 helper。
- - `mcp/features/encrypt`：Encrypt MCP feature。
- - `mcp/features/mask`：Mask MCP feature。
-+- `mcp/features/broadcast`：Broadcast MCP feature。
-+- `mcp/features/readwrite-splitting`：Readwrite-Splitting MCP feature。
-+- `mcp/features/shadow`：Shadow MCP feature。
-+- `mcp/features/sharding`：Sharding MCP feature。
- - `mcp/core`：handler 发现、registry、request context、session、SQL execution trace、metadata discovery 和 runtime context。
- - `mcp/bootstrap`：基于 MCP Java SDK 的 bootstrap、HTTP/STDIO transport、配置加载和生命周期管理。
-+- `mcp/registry`：隔离的发行元数据校验工具，不依赖 MCP runtime 模块。
- - `distribution/mcp`：独立打包、启动脚本、配置和 Dockerfile。
- - `test/e2e/mcp`：端到端契约验证。
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
+index c4a59d43c38..373d13d92b8 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.cn.md
+@@ -124,7 +124,10 @@ runtimeDatabases:
  
--`mcp/bootstrap` 只负责发布聚合后的协议表面，不应硬编码具体 feature 业务。
-+生产依赖方向固定为 `api <- support <- core <- bootstrap` 和 `api <- support <- feature`。
-+Feature 模块不依赖 core、bootstrap、registry 或其他 feature；`mcp/bootstrap` 只负责发布聚合后的协议表面，不硬编码具体 feature 业务。
+ ## 连接目标选择
  
- 公开的 server capability 契约按 `org.apache.shardingsphere.mcp.api.capability.<capability>` 组织，ServiceLoader 入口接口位于
- `org.apache.shardingsphere.mcp.spi`。Request context、session、transport、payload 和 exception 是跨 capability 或基础协议契约，不归入 capability 包。
-@@ -59,6 +65,8 @@ MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
- - 有副作用的执行必须先 preview，再根据用户明确批准的 `approved_steps` 执行。
- - 敏感参数在模型可见的计划、预览、执行、校验、恢复和错误输出中必须掩码；执行路径使用受控上下文中的原始值。
- - 校验逻辑应读取 Proxy 可见的规则状态或 feature 状态，避免把不属于当前 feature 的物理操作作为验收条件。
-+- Encrypt、Mask 和 Sharding 的 ALTER 扩展、物理 DDL、数据迁移和回填属于商业版本能力，不作为开源 MCP workflow 的验收条件。
-+  这项排除不影响 Readwrite-Splitting、Shadow 等其他 feature 已支持的 ALTER 生命周期验收。
- - Descriptor 启动期校验应覆盖 tool/resource/prompt 名称唯一性、schema 字段、side-effect annotations、related resources、follow-up tools、
-   completion target 和 workflow recovery path。
+-`runtimeDatabases` 可以配置任意可连接的 JDBC URL。用户能看到的数据库对象和可执行的治理任务取决于连接目标。
++只有当前发行包同时包含匹配的 ShardingSphere 数据库类型连接器和 JDBC 驱动时，`runtimeDatabases` 才能使用对应的可连接 JDBC URL。
++默认发行包包含 MySQL、PostgreSQL、Oracle、SQL Server 和 openGauss 数据库类型连接器，以及 MySQL、PostgreSQL 和 openGauss JDBC 驱动。
++Oracle、SQL Server 或其他未随包提供 JDBC 驱动的目标，需要把匹配的驱动 jar 放入 `plugins/`；只添加驱动并不能支持一个尚无数据库类型连接器的目标。
++用户能看到的数据库对象和可执行的治理任务取决于连接目标。
  
-diff --git a/docs/document/content/dev-manual/mcp.en.md b/docs/document/content/dev-manual/mcp.en.md
-index 83de0ed3745..8fab77d6d84 100644
---- a/docs/document/content/dev-manual/mcp.en.md
-+++ b/docs/document/content/dev-manual/mcp.en.md
-@@ -16,12 +16,18 @@ The MCP path is organized as `api + support + features + core + bootstrap`:
- - `mcp/support`: database metadata, execution, capability, workflow contexts, models, facades, database/workflow SPIs, and reusable helpers.
- - `mcp/features/encrypt`: Encrypt MCP feature.
- - `mcp/features/mask`: Mask MCP feature.
-+- `mcp/features/broadcast`: Broadcast MCP feature.
-+- `mcp/features/readwrite-splitting`: Readwrite-Splitting MCP feature.
-+- `mcp/features/shadow`: Shadow MCP feature.
-+- `mcp/features/sharding`: Sharding MCP feature.
- - `mcp/core`: handler discovery, registry, request context, session, SQL execution trace, metadata discovery, and runtime context.
- - `mcp/bootstrap`: MCP Java SDK based bootstrap, HTTP/STDIO transport, configuration loading, and lifecycle management.
-+- `mcp/registry`: isolated distribution metadata validation tooling; it does not depend on MCP runtime modules.
- - `distribution/mcp`: standalone packaging, startup scripts, configuration, and Dockerfile.
- - `test/e2e/mcp`: end-to-end contract validation.
+ ### 连接 ShardingSphere-Proxy 逻辑库
  
--`mcp/bootstrap` only publishes the aggregated protocol surface. It should not hard-code concrete feature business logic.
-+The production dependency direction is `api <- support <- core <- bootstrap` and `api <- support <- feature`.
-+Feature modules do not depend on core, bootstrap, registry, or one another. `mcp/bootstrap` only publishes the aggregated protocol surface and does not hard-code concrete feature business logic.
+diff --git a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
+index 435b8230a24..9dc01c7bc1d 100644
+--- a/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
++++ b/docs/document/content/user-manual/shardingsphere-mcp/configuration.en.md
+@@ -124,7 +124,10 @@ Notes:
  
- Public server capability contracts are organized under `org.apache.shardingsphere.mcp.api.capability.<capability>`, while ServiceLoader entry interfaces live in
- `org.apache.shardingsphere.mcp.spi`. Request contexts, sessions, transports, payloads, and exceptions are cross-capability or base-protocol contracts and stay outside capability packages.
-@@ -59,6 +65,8 @@ The template implementation should satisfy:
- - Side-effecting execution must run preview first, then execute only user-approved `approved_steps`.
- - Sensitive properties must be masked in model-facing plan, preview, execution, validation, recovery, and error outputs; the execution path uses original values from the controlled context.
- - Validation should read Proxy-visible rule state or feature state, and should not use physical operations outside the current feature as acceptance conditions.
-+- Encrypt, Mask, and Sharding ALTER expansion, physical DDL, data migration, and backfill are commercial-edition capabilities and are not open-source MCP workflow acceptance conditions.
-+  This exclusion does not remove supported ALTER lifecycle coverage for other features such as Readwrite-Splitting and Shadow.
- - Startup descriptor validation should cover tool/resource/prompt name uniqueness, schema fields, side-effect annotations, related resources,
-   follow-up tools, completion targets, and workflow recovery paths.
+ ## Choose a Connection Target
  
-diff --git a/docs/document/content/reference/mcp/protocol-surface.cn.md b/docs/document/content/reference/mcp/protocol-surface.cn.md
-index b620e1e3b56..6601b6278f5 100644
---- a/docs/document/content/reference/mcp/protocol-surface.cn.md
-+++ b/docs/document/content/reference/mcp/protocol-surface.cn.md
-@@ -8,7 +8,8 @@ MCP runtime 使用这些 descriptors 发布 tools、resources、resource templat
+-`runtimeDatabases` can use any reachable JDBC URL. The database objects users can see and the governance tasks they can perform depend on the connection target.
++`runtimeDatabases` can use a reachable JDBC URL only when the running distribution contains both the matching ShardingSphere database-type connector and JDBC driver.
++The default distribution includes MySQL, PostgreSQL, Oracle, SQL Server, and openGauss database-type connectors, plus MySQL, PostgreSQL, and openGauss JDBC drivers.
++For Oracle, SQL Server, or another target whose JDBC driver is not packaged, add the matching driver jar under `plugins/`; a driver alone does not add an unsupported database type.
++The database objects users can see and the governance tasks they can perform depend on the connection target.
  
- ## 协议能力
+ ### Connecting to a ShardingSphere-Proxy logical database
  
--ShardingSphere-MCP 面向 MCP protocol revision `2025-11-25`。
-+ShardingSphere-MCP 固定使用 MCP Java SDK `1.1.2`，并且只暴露 MCP protocol revision `2025-11-25`。
-+SDK 和 protocol revision 是本实现固定的兼容性边界，不作为依赖升级或多版本兼容目标。
- 
- 已启用：
- 
-@@ -29,7 +30,9 @@ ShardingSphere-MCP 面向 MCP protocol revision `2025-11-25`。
- - `progress`。
- - `notifications/cancelled`。
- - task-augmented requests。
--- MCP `icons` 和 `Tool.execution` 字段，等待 MCP Java SDK 边界支持。
-+- 固定 MCP Java SDK `1.1.2` 边界未暴露的 `Tool.execution`。
-+
-+MCP `icons` 在当前服务中没有消费场景，因此是明确的非目标。
- 
- `roots` 和 `sampling` 是 client capabilities。
- ShardingSphere-MCP 不要求 roots，也不会发送 `sampling/createMessage` 请求。
-@@ -39,8 +42,9 @@ ShardingSphere-MCP 不要求 roots，也不会发送 `sampling/createMessage` 
- `database_gateway_search_metadata`
- 
- - 搜索逻辑库 metadata。
--- 可按 `database`、`schema`、`query`、`object_types` 收窄范围。
-+- 可按 `database`、`schema`、`query`、`object_types` 收窄范围，再通过 `offset` 和 `limit` 返回确定性排序的分页结果。
- - `object_types` 支持 `database`、`schema`、`storage_unit`、`table`、`view`、`column`、`index`、`sequence`。
-+- `limit` 默认值为 `100`，范围是 `1..100`；`offset` 默认值为 `0`。当 `has_more=true` 时，应保持相同搜索范围并使用返回的 `next_offset` 继续查询。
- 
- `database_gateway_validate_runtime_database`
- 
-diff --git a/docs/document/content/reference/mcp/protocol-surface.en.md b/docs/document/content/reference/mcp/protocol-surface.en.md
-index d7d34277a2a..018e34dc8da 100644
---- a/docs/document/content/reference/mcp/protocol-surface.en.md
-+++ b/docs/document/content/reference/mcp/protocol-surface.en.md
-@@ -8,7 +8,8 @@ The MCP runtime uses these descriptors to publish tools, resources, resource tem
- 
- ## Protocol capabilities
- 
--ShardingSphere-MCP targets MCP protocol revision `2025-11-25`.
-+ShardingSphere-MCP uses MCP Java SDK `1.1.2` and exposes only MCP protocol revision `2025-11-25`.
-+The SDK and protocol revision are fixed compatibility boundaries for this implementation, not dependency-upgrade or multi-version compatibility targets.
- 
- Enabled:
- 
-@@ -29,7 +30,9 @@ Not implemented or future scope:
- - `progress`.
- - `notifications/cancelled`.
- - Task-augmented requests.
--- MCP `icons` and `Tool.execution` fields until the MCP Java SDK boundary exposes them.
-+- `Tool.execution`, which is not exposed through the fixed MCP Java SDK `1.1.2` boundary.
-+
-+MCP `icons` are an intentional non-goal because this server has no product scenario that consumes them.
- 
- `roots` and `sampling` are client capabilities.
- ShardingSphere-MCP does not require roots and does not send `sampling/createMessage` requests.
-@@ -39,8 +42,9 @@ ShardingSphere-MCP does not require roots and does not send `sampling/createMess
- `database_gateway_search_metadata`
- 
- - Searches logical database metadata.
--- Narrows scope by `database`, `schema`, `query`, and `object_types`.
-+- Narrows scope by `database`, `schema`, `query`, and `object_types`, then returns a deterministically ordered page selected by `offset` and `limit`.
- - `object_types` supports `database`, `schema`, `storage_unit`, `table`, `view`, `column`, `index`, and `sequence`.
-+- `limit` defaults to `100` and supports `1..100`; `offset` defaults to `0`. When `has_more=true`, continue with the returned `next_offset` and the same search scope.
- 
- `database_gateway_validate_runtime_database`
- 
-diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
-index 89866159f36..725a8f2eabb 100644
---- a/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
-+++ b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
-@@ -16,8 +16,10 @@ chapter = true
- - STDIO runtime。
- - MCP baseline contract。
- - Tool/resource/prompt/completion discovery。
-+- 适用于当前 server capability 的官方 MCP conformance 场景。
- - 真实模型驱动的 MCP usability。
--- Encrypt 和 Mask workflow 可用性验证。
-+- 基于实时元数据和数据的 10 题自主 MCP Builder 评测。
-+- Encrypt、Mask、Broadcast、Readwrite-Splitting、Shadow 和 Sharding workflow 验收。
- 
- ## Feature 模板验收
- 
-@@ -32,7 +34,7 @@ chapter = true
- - 计划、workflow resource、preview、apply、validate、recovery 和 trace 可见输出不泄露敏感参数。
- - 自定义或能力未知的算法应被标记为未确认，而不是被当作已知能力处理。
- - Drop 场景应验证规则删除语义，不把物理清理作为成功条件。
--- 不支持的 alter 扩展应返回清晰限制，而不是生成不完整 workflow。
-+- Encrypt、Mask 和 Sharding 的 ALTER 扩展、物理 DDL、迁移和回填仍是排除在外的商业版本能力。
- - Apply 必须经过 preview，并校验用户批准的步骤。
- 
- 测试复用应保留在 `test/e2e/mcp` 内的本地 helper 中；不要为了模板验收新增测试 jar 或跨模块测试支撑模块。
-@@ -95,6 +97,24 @@ MCP E2E 运行配置集中在 `test/e2e/mcp/src/test/resources/env/e2e-env.prope
-   -De2e.run.type=DOCKER
- ```
- 
-+## 运行自主 MCP Builder 评测
-+
-+评测从 `llm/evaluation/mcp-builder-evaluation.xml` 加载 10 个相互独立的只读问题。
-+每个问题都创建新的 MCP session，从实时 `tools/list` response 派生模型 function definitions，保留模型原始 response 和 MCP structured response，并且不注入纠错提示或期望答案，只对最终答案做精确比较。
-+用于闭合评分的运行显式使用 32768 token context window。选中 `llm-e2e` lane 后，如果 Docker、模型、数据库或 MCP 基础设施缺失，测试直接失败，不把评分失败转换成 skip。
-+
-+```bash
-+./mvnw -pl test/e2e/mcp test -DskipITs -Dspotless.skip=true \
-+  -Dtest=MCPBuilderEvaluationE2ETest \
-+  -Dsurefire.failIfNoSpecifiedTests=true \
-+  -De2e.run.type=DOCKER
-+```
-+
-+## 官方 MCP Conformance
-+
-+CI conformance lane 将 `modelcontextprotocol/conformance` 固定在 commit `21a9a2febd7100d7c17ac1021ee7f2ed9f66a1e0`，传入 protocol version `2025-11-25`，并且只运行
-+`test/e2e/mcp/src/test/resources/conformance/server-scenarios.txt` 中列出的通用 server 场景。上游固定使用 `test_*` tool/resource 的产品无关调用不适用于本项目，产品能力继续由确定性 E2E 覆盖。
-+
- ## External Debug
- 
- 仅本地调试时，可以连接已经运行的 OpenAI-compatible endpoint：
-@@ -112,12 +132,14 @@ External debug endpoint 不能作为 score-closing evidence。
- 
- ## 产物
- 
--LLM artifact 写入：
-+LLM usability 和 MCP Builder evaluation artifact 写入：
- 
- ```text
- test/e2e/mcp/target/llm-e2e/
- ```
- 
-+每个自主评测 case 都记录问题、期望与实际答案、原始模型 response、MCP interaction trace、实时 tool definitions、runtime evidence 和 assertion report。Artifact 写入会脱敏 secret-shaped 值；如果发现未脱敏 secret pattern 或已知模型 API key，评分运行直接失败。
-+
- GitHub Actions 入口：
- 
- - `.github/workflows/e2e-mcp.yml`
-diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.en.md b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
-index 4212fc3ea41..f394a30dae5 100644
---- a/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
-+++ b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
-@@ -16,8 +16,10 @@ This chapter describes ShardingSphere-MCP end-to-end contract validation and LLM
- - STDIO runtime.
- - MCP baseline contract.
- - Tool/resource/prompt/completion discovery.
-+- Official MCP conformance scenarios applicable to the published server capabilities.
- - Real-model MCP usability.
--- Encrypt and Mask workflow usability validation.
-+- Autonomous 10-question MCP Builder evaluation against live metadata and data.
-+- Encrypt, Mask, Broadcast, Readwrite-Splitting, Shadow, and Sharding workflow validation.
- 
- ## Feature template acceptance
- 
-@@ -32,7 +34,7 @@ For the Encrypt workflow, template-level acceptance should include at least:
- - Plan, workflow resource, preview, apply, validate, recovery, and trace-visible outputs do not leak sensitive properties.
- - Custom algorithms or algorithms with unknown capabilities are marked as unconfirmed instead of being treated as known-capability algorithms.
- - Drop scenarios validate rule removal semantics and do not use physical cleanup as a success condition.
--- Unsupported alter expansion returns a clear limitation instead of generating an incomplete workflow.
-+- Encrypt, Mask, and Sharding ALTER expansion, physical DDL, migration, and backfill remain excluded commercial-edition capabilities.
- - Apply must be preceded by preview and must validate user-approved steps.
- 
- Test reuse should stay in local helpers under `test/e2e/mcp`; do not add a test jar or a cross-module test-support module for template acceptance.
-@@ -95,6 +97,24 @@ For local runs, edit that file or override the same keys with `-D` system proper
-   -De2e.run.type=DOCKER
- ```
- 
-+## Run Autonomous MCP Builder Evaluation
-+
-+The evaluation loads ten independent read-only questions from `llm/evaluation/mcp-builder-evaluation.xml`.
-+Each question starts a fresh MCP session, derives model function definitions from the live `tools/list` response, preserves raw model responses and structured MCP responses, and compares the final answer exactly without correction prompts or expected-answer injection.
-+Score-closing runs use an explicit 32768-token context window. Missing Docker, model, database, or MCP infrastructure fails the selected `llm-e2e` lane instead of converting a score failure into a skipped case.
-+
-+```bash
-+./mvnw -pl test/e2e/mcp test -DskipITs -Dspotless.skip=true \
-+  -Dtest=MCPBuilderEvaluationE2ETest \
-+  -Dsurefire.failIfNoSpecifiedTests=true \
-+  -De2e.run.type=DOCKER
-+```
-+
-+## Official MCP Conformance
-+
-+The CI conformance lane pins `modelcontextprotocol/conformance` to commit `21a9a2febd7100d7c17ac1021ee7f2ed9f66a1e0`, passes protocol version `2025-11-25`, and executes only the generic server scenarios listed in
-+`test/e2e/mcp/src/test/resources/conformance/server-scenarios.txt`. Product-specific calls remain covered by deterministic E2E tests because the upstream fixtures use `test_*` tools and resources that this server does not publish.
-+
- ## External Debug
- 
- For local debugging only, connect to an already running OpenAI-compatible endpoint:
-@@ -112,12 +132,14 @@ External debug endpoints cannot be used as score-closing evidence.
- 
- ## Artifacts
- 
--LLM artifacts are written under:
-+LLM usability and MCP Builder evaluation artifacts are written under:
- 
- ```text
- test/e2e/mcp/target/llm-e2e/
- ```
- 
-+Each autonomous evaluation case records the question, expected and actual answer, raw model response, MCP interaction trace, live tool definitions, runtime evidence, and assertion report. Artifact writing redacts secret-shaped values, and scoring runs fail if an unredacted secret pattern or the known model API key is present.
-+
- GitHub Actions entry points:
- 
- - `.github/workflows/e2e-mcp.yml`

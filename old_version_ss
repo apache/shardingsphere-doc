@@ -1,58 +1,46 @@
-commit bd59caecba0e8c5e8493aef751383f7b4a1b04b4
+commit 56b4594a3812351b7736a5a3b8ca82ddba0b446e
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Thu Jul 23 19:22:58 2026 +0800
+Date:   Fri Jul 24 18:35:17 2026 +0800
 
-    Refactor MCP workflow boundaries and strengthen E2E provenance (#39220)
+    Refactor MCP contracts and E2E runtime setup (#39235)
     
-    * Refactor MCP workflow boundaries and strengthen E2E provenance
+    * Refactor MCP contracts and E2E runtime setup
     
-    * Refactor MCP workflow boundaries and strengthen E2E provenance
+    - centralize descriptor-driven metadata and simplify runtime configuration
+    - preserve algorithm discovery confidence across compatibility fallbacks
+    - remove unused runtime metadata and legacy test wrappers
+    - discover packaged and Docker E2E ports at runtime
+    
+    * Refactor MCP contracts and E2E runtime setup
+    
+    - centralize descriptor-driven metadata and simplify runtime configuration
+    - preserve algorithm discovery confidence across compatibility fallbacks
+    - remove unused runtime metadata and legacy test wrappers
+    - discover packaged and Docker E2E ports at runtime
 
-diff --git a/docs/document/content/dev-manual/mcp.cn.md b/docs/document/content/dev-manual/mcp.cn.md
-index 13e90180641..f1349df8425 100644
---- a/docs/document/content/dev-manual/mcp.cn.md
-+++ b/docs/document/content/dev-manual/mcp.cn.md
-@@ -29,8 +29,8 @@ MCP 子链路按 `api + support + features + core + bootstrap` 分层组织：
- 生产依赖方向固定为 `api <- support <- core <- bootstrap` 和 `api <- support <- feature`。
- Feature 模块不依赖 core、bootstrap、registry 或其他 feature；`mcp/bootstrap` 只负责发布聚合后的协议表面，不硬编码具体 feature 业务。
+diff --git a/docs/document/content/reference/mcp/protocol-surface.cn.md b/docs/document/content/reference/mcp/protocol-surface.cn.md
+index 6601b6278f5..f3a9aa0d490 100644
+--- a/docs/document/content/reference/mcp/protocol-surface.cn.md
++++ b/docs/document/content/reference/mcp/protocol-surface.cn.md
+@@ -223,7 +223,7 @@ Client 应在选择不确定的 database、schema、table、column、storage uni
+ - `items`
+ - `count`
+ - `continuation_mode`
+-- 存在后续结果时的 `next_page_token`
++- 支持偏移量续页时的 `has_more` 和 `next_offset`
  
--公开的 server capability 契约按 `org.apache.shardingsphere.mcp.api.capability.<capability>` 组织，ServiceLoader 入口接口位于
--`org.apache.shardingsphere.mcp.spi`。Request context、session、transport、payload 和 exception 是跨 capability 或基础协议契约，不归入 capability 包。
-+公开的 server capability 契约按 `org.apache.shardingsphere.mcp.api.capability.<capability>` 组织，ServiceLoader 入口接口是
-+`org.apache.shardingsphere.mcp.api.MCPHandlerProvider`。Request context、session、transport、payload 和 exception 是跨 capability 或基础协议契约，不归入 capability 包。
+ 大结果 payload 会使用：
  
- ## 新增 Feature Plugin
+diff --git a/docs/document/content/reference/mcp/protocol-surface.en.md b/docs/document/content/reference/mcp/protocol-surface.en.md
+index 018e34dc8da..d50c0b24e5a 100644
+--- a/docs/document/content/reference/mcp/protocol-surface.en.md
++++ b/docs/document/content/reference/mcp/protocol-surface.en.md
+@@ -223,7 +223,7 @@ List-shaped business payloads usually contain:
+ - `items`
+ - `count`
+ - `continuation_mode`
+-- `next_page_token` when continuation is available
++- `has_more` and `next_offset` when offset continuation is available
  
-@@ -43,7 +43,7 @@ Feature 模块不依赖 core、bootstrap、registry 或其他 feature；`mcp/boo
- 5. 实现 `MCPHandlerProvider`。
- 6. 通过 `getToolHandlers()` 和 `getResourceHandlers()` 返回 feature 自己暴露的 handlers。
- 7. 如果 feature 拥有 workflow definitions，在同一个 provider 上实现 `MCPWorkflowDefinitionProvider`。
--8. 在 `src/main/resources/META-INF/services/` 注册 `org.apache.shardingsphere.mcp.spi.MCPHandlerProvider`。
-+8. 在 `src/main/resources/META-INF/services/` 注册 `org.apache.shardingsphere.mcp.api.MCPHandlerProvider`。
- 9. 在 `META-INF/shardingsphere-mcp/mcp-descriptors` 下添加 descriptor。
+ Large-result payloads use:
  
- 如果 feature 要作为官方默认能力随发行包提供，还需要：
-diff --git a/docs/document/content/dev-manual/mcp.en.md b/docs/document/content/dev-manual/mcp.en.md
-index 5d77f3a0bdf..e1a1fc53c75 100644
---- a/docs/document/content/dev-manual/mcp.en.md
-+++ b/docs/document/content/dev-manual/mcp.en.md
-@@ -29,8 +29,8 @@ The MCP path is organized as `api + support + features + core + bootstrap`:
- The production dependency direction is `api <- support <- core <- bootstrap` and `api <- support <- feature`.
- Feature modules do not depend on core, bootstrap, registry, or one another. `mcp/bootstrap` only publishes the aggregated protocol surface and does not hard-code concrete feature business logic.
- 
--Public server capability contracts are organized under `org.apache.shardingsphere.mcp.api.capability.<capability>`, while ServiceLoader entry interfaces live in
--`org.apache.shardingsphere.mcp.spi`. Request contexts, sessions, transports, payloads, and exceptions are cross-capability or base-protocol contracts and stay outside capability packages.
-+Public server capability contracts are organized under `org.apache.shardingsphere.mcp.api.capability.<capability>`, while the ServiceLoader entry interface is
-+`org.apache.shardingsphere.mcp.api.MCPHandlerProvider`. Request contexts, sessions, transports, payloads, and exceptions are cross-capability or base-protocol contracts and stay outside capability packages.
- 
- ## Add a Feature Plugin
- 
-@@ -43,7 +43,7 @@ Recommended path for a new feature:
- 5. Implement `MCPHandlerProvider`.
- 6. Return the feature's handlers from `getToolHandlers()` and `getResourceHandlers()`.
- 7. If the feature owns workflow definitions, implement `MCPWorkflowDefinitionProvider` on the same provider.
--8. Register `org.apache.shardingsphere.mcp.spi.MCPHandlerProvider` under `src/main/resources/META-INF/services/`.
-+8. Register `org.apache.shardingsphere.mcp.api.MCPHandlerProvider` under `src/main/resources/META-INF/services/`.
- 9. Add descriptors under `META-INF/shardingsphere-mcp/mcp-descriptors`.
- 
- If the feature should be shipped as an official default capability:

@@ -1,76 +1,30 @@
-commit 9d7a10d933b16cf5b8569314d38961df62dbf11e
+commit a78522c59c59a9fea32da0439065d02ecc320442
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Fri Jul 31 14:50:19 2026 +0800
+Date:   Wed Aug 5 12:08:04 2026 +0800
 
-    Fix PostgreSQL transactional DDL error handling (#39288)
-    
-    Map rejected metadata-changing DDL statements to SQLSTATE 0A000 for PostgreSQL and openGauss, and document the transaction limitation.
+    Handle unavailable read data sources in readwrite-splitting (#39343)
 
-diff --git a/docs/document/content/features/transaction/appendix.cn.md b/docs/document/content/features/transaction/appendix.cn.md
-index 3eba19e6f8c..f98200bc24b 100644
---- a/docs/document/content/features/transaction/appendix.cn.md
-+++ b/docs/document/content/features/transaction/appendix.cn.md
-@@ -6,7 +6,7 @@ weight = 3
- 不支持的 SQL：
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+index bb0cf35bb08..62dce0de3ee 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
+@@ -213,6 +213,7 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+ | 20203       | 42S02     | Can not find readwrite-splitting [READ/WRITE] data source '%s' in %s.       |
+ | 20204       | 42S01     | Readwrite-splitting [READ/WRITE] data source '%s' is duplicated in %s.      |
+ | 20205       | 44000     | Readwrite-splitting [READ/WRITE] data source inline expression error in %s. |
++| 20206       | 42S02     | No available read data source in readwrite-splitting data source rule '%s'. |
  
- - 事务中使用 DistSQL 里的 RAL、RDL 操作；
--- XA 事务中使用 DDL 语句。
-+- XA 事务中的 DDL 支持取决于数据库方言；PostgreSQL 和 openGauss 仅支持不改变元数据的 DDL 语句。
+ ### SQL 方言转换
  
- XA 事务所需的权限：
+diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+index 7d35fa94657..13b63c224d7 100644
+--- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
++++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
+@@ -213,6 +213,7 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ | 20203       | 42S02     | Can not find readwrite-splitting [READ/WRITE] data source '%s' in %s.       |
+ | 20204       | 42S01     | Readwrite-splitting [READ/WRITE] data source '%s' is duplicated in %s.      |
+ | 20205       | 44000     | Readwrite-splitting [READ/WRITE] data source inline expression error in %s. |
++| 20206       | 42S02     | No available read data source in readwrite-splitting data source rule '%s'. |
  
-diff --git a/docs/document/content/features/transaction/appendix.en.md b/docs/document/content/features/transaction/appendix.en.md
-index 0b1de2f797f..81521f7b1a2 100644
---- a/docs/document/content/features/transaction/appendix.en.md
-+++ b/docs/document/content/features/transaction/appendix.en.md
-@@ -6,7 +6,7 @@ weight = 3
- Unsupported SQL：
- 
- - RAL and RDL operations of DistSQL that are used in transactions.
--- DDL statements that are used in XA transactions.
-+- DDL support in XA transactions depends on the database dialect. PostgreSQL and openGauss permit only DDL statements that do not change metadata.
- 
- Privileges required for XA transactions:
- 
-diff --git a/docs/document/content/features/transaction/limitations.cn.md b/docs/document/content/features/transaction/limitations.cn.md
-index ffdc64af2c0..4d23a897160 100644
---- a/docs/document/content/features/transaction/limitations.cn.md
-+++ b/docs/document/content/features/transaction/limitations.cn.md
-@@ -11,6 +11,8 @@ Apache ShardingSphere 希望能够将分布式事务的选择权交给使用者
- ### 不支持项
- 
- * 不支持因网络、硬件异常导致的跨库事务。例如：同一事务中，跨两个库更新，更新完毕后、未提交之前，第一个库宕机，则只有第二个库数据提交，且无法回滚。
-+* ShardingSphere-Proxy 使用 PostgreSQL 或 openGauss 时，不支持在事务中执行会改变元数据的 DDL 语句（如 `CREATE`、`ALTER` 和 `DROP`）。
-+  此类语句会在执行前以 SQLSTATE `0A000` 拒绝，避免事务回滚后存储数据库与 ShardingSphere 元数据不一致。
- 
- ## XA 事务
- 
-@@ -19,6 +21,7 @@ Apache ShardingSphere 希望能够将分布式事务的选择权交给使用者
- * 服务宕机后，在其它机器上恢复提交/回滚中的数据；
- * MySQL 事务块内，SQL 执行出现异常，执行 `Commit`，数据保持一致；
- * 配置 XA 事务后，存储单元名称最大长度不超过45个字符。
-+* PostgreSQL 和 openGauss 同样受 LOCAL 事务中所述的元数据变更 DDL 限制。
- 
- ## BASE 事务
- 
-diff --git a/docs/document/content/features/transaction/limitations.en.md b/docs/document/content/features/transaction/limitations.en.md
-index 7d45b2f90ea..a7186f8c809 100644
---- a/docs/document/content/features/transaction/limitations.en.md
-+++ b/docs/document/content/features/transaction/limitations.en.md
-@@ -12,6 +12,8 @@ The Apache ShardingSphere community chose instead to give the users the ability
- ### Unsupported
- 
- * Does not support the cross-database transactions caused by network or hardware crash. For example, when updating two databases in transaction, if one database crashes before commit, then only the data of the other database can commit.
-+* When ShardingSphere-Proxy uses PostgreSQL or openGauss, metadata-changing DDL statements such as `CREATE`, `ALTER`, and `DROP` are not supported in transactions.
-+  Such statements are rejected before execution with SQLSTATE `0A000` to prevent inconsistencies between storage and ShardingSphere metadata after a transaction rollback.
- 
- ## XA Transaction
- 
-@@ -20,6 +22,7 @@ The Apache ShardingSphere community chose instead to give the users the ability
- * Recover committing and rolling back in other machines after the service is down.
- * MySQL, in the transaction block, the SQL execution is abnormal, and run `Commit`, and data remains consistent.
- * After XA transactions are configured, the maximum length of the storage unit name cannot exceed 45 characters.
-+* PostgreSQL and openGauss have the same metadata-changing DDL restriction described for LOCAL transactions.
- 
- ## BASE Transaction
+ ### SQL Dialect Translator
  

@@ -1,34 +1,124 @@
-commit c87252791f88992aabe04ab0bfe76876629219cb
+commit 66b9b5d02695f2d644dd9370425c798e346ae312
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Sun Oct 4 22:55:58 2026 +0800
+Date:   Tue Oct 6 13:27:05 2026 +0800
 
-    Move encrypt table name uniqueness checks to Bean Validation (#40054)
+    Add XML-driven JDBC DistSQL E2E coverage and bilingual documentation (#40064)
     
-    * Align DistSQL executor tests with production SPIs
+    * Merge PR and nightly native test workflows
     
-    * Move encrypt table name uniqueness checks to Bean Validation
+    * Rename graalvm.yml to ci-graalvm.yml
+    
+    * Unify Agent E2E job timeouts
+    
+    * Add XML-driven JDBC DistSQL E2E coverage and bilingual documentation
 
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.cn.md b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-index 8957f63747b..aa93f19a1fd 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.cn.md
-@@ -230,7 +230,6 @@ SQL 错误码以标准的 SQL State，Vendor Code 和详细错误信息提供，
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md
+index 4ebfa8bb457..1f91469f052 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md
+@@ -66,3 +66,36 @@ try (
+     }
+ }
+ ```
++
++### 执行 DistSQL
++
++ShardingSphere-JDBC 支持通过 JDBC `Statement` 执行 DistSQL，也支持不含参数占位符的 `PreparedStatement`。
++以下示例适用于 `5.5.4-SNAPSHOT` 开发版本，使用 `Statement` 注册存储单元、创建分片规则并查询规则。
++运行示例前，请确保类路径中包含 ShardingSphere-JDBC 及 H2 JDBC 驱动。
++
++`ShardingSphereDataSourceFactory.createDataSource(databaseName, null)` 创建不含存储单元和业务规则的逻辑库。
++运行模式为 `null` 时，默认使用 Standalone 模式和 Memory 元数据仓库，配置不会在应用重启后保留。
++
++```java
++DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource("jdbc_distsql_demo", null);
++try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
++    statement.executeUpdate("REGISTER STORAGE UNIT ds_0 (URL='jdbc:h2:mem:jdbc_distsql_demo;MODE=MySQL',USER='sa',PASSWORD='',"
++            + "PROPERTIES('driverClassName'='org.h2.Driver'))");
++    statement.executeUpdate("CREATE SHARDING TABLE RULE t_order (STORAGE_UNITS(ds_0),"
++            + "SHARDING_COLUMN=user_id,TYPE(NAME='MOD',PROPERTIES('sharding-count'='1')),"
++            + "KEY_GENERATE_STRATEGY(COLUMN=order_id,TYPE(NAME='SNOWFLAKE')))");
++    try (ResultSet resultSet = statement.executeQuery("SHOW SHARDING TABLE RULES")) {
++        while (resultSet.next()) {
++            System.out.println(resultSet.getString("table"));
++        }
++    }
++} finally {
++    ((AutoCloseable) dataSource).close();
++}
++```
++
++使用 `executeUpdate` 执行非查询 DistSQL，使用 `executeQuery` 执行返回结果集的 DistSQL，也可以使用 `execute` 判断是否返回结果集。
++非查询 DistSQL 不能在事务中执行，应使用自动提交的连接执行此类语句。
++具体语句的可用性取决于类路径中的 DistSQL 执行器和运行模式。
++ShardingSphere-JDBC 的默认依赖不包含数据迁移和 CDC 所需的数据管道执行器。
++详细语法请参见 [DistSQL 参考](/cn/user-manual/shardingsphere-proxy/distsql/)。
+diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md
+index 36145a4435c..f380b1a36a8 100644
+--- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md
+@@ -67,3 +67,36 @@ try (
+     }
+ }
+ ```
++
++### Execute DistSQL
++
++ShardingSphere-JDBC supports executing DistSQL through JDBC `Statement` and through `PreparedStatement` using complete SQL strings without parameter placeholders.
++The following example applies to the `5.5.4-SNAPSHOT` development version and uses a `Statement` to register a storage unit, create a sharding rule, and query the rule.
++Ensure that ShardingSphere-JDBC and the H2 JDBC driver are on the classpath before running the example.
++
++`ShardingSphereDataSourceFactory.createDataSource(databaseName, null)` creates a logical database without storage units or business rules.
++When the mode configuration is `null`, Standalone mode with a Memory metadata repository is used by default, and configuration is not retained after the application restarts.
++
++```java
++DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource("jdbc_distsql_demo", null);
++try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
++    statement.executeUpdate("REGISTER STORAGE UNIT ds_0 (URL='jdbc:h2:mem:jdbc_distsql_demo;MODE=MySQL',USER='sa',PASSWORD='',"
++            + "PROPERTIES('driverClassName'='org.h2.Driver'))");
++    statement.executeUpdate("CREATE SHARDING TABLE RULE t_order (STORAGE_UNITS(ds_0),"
++            + "SHARDING_COLUMN=user_id,TYPE(NAME='MOD',PROPERTIES('sharding-count'='1')),"
++            + "KEY_GENERATE_STRATEGY(COLUMN=order_id,TYPE(NAME='SNOWFLAKE')))");
++    try (ResultSet resultSet = statement.executeQuery("SHOW SHARDING TABLE RULES")) {
++        while (resultSet.next()) {
++            System.out.println(resultSet.getString("table"));
++        }
++    }
++} finally {
++    ((AutoCloseable) dataSource).close();
++}
++```
++
++Use `executeUpdate` for non-query DistSQL and `executeQuery` for DistSQL that returns a result set, or use `execute` to determine whether a result set is returned.
++Non-query DistSQL cannot execute within a transaction; use a connection with auto-commit enabled for these statements.
++The availability of each statement depends on the DistSQL executors on the classpath and the running mode.
++The default ShardingSphere-JDBC dependencies do not include the data pipeline executors required for migration and CDC.
++For detailed syntax, see the [DistSQL Reference](/en/user-manual/shardingsphere-proxy/distsql/).
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md
+index dc961258b02..b5693466589 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md
+@@ -64,7 +64,8 @@ Resource & Rule Utility Language，负责 SQL 解析、SQL 格式化、执行计
  
- | Vendor Code | SQL State | 错误信息                                                                                         |
- |-------------|-----------|----------------------------------------------------------------------------------------------|
--| 21000       | 42S02     | %s column is required in %s.                                                                 |
- | 21001       | 42S02     | Can not find encrypt table '%s'.                                                             |
- | 21002       | 42S02     | Can not find logic encrypt column by '%s'.                                                   |
- | 21003       | 42S02     | Can not find encrypt column '%s' from table '%s'.                                            |
-diff --git a/docs/document/content/user-manual/error-code/sql-error-code.en.md b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-index 7fbf94c6617..e8d16b584da 100644
---- a/docs/document/content/user-manual/error-code/sql-error-code.en.md
-+++ b/docs/document/content/user-manual/error-code/sql-error-code.en.md
-@@ -230,7 +230,6 @@ SQL error codes provide by standard `SQL State`, `Vendor Code` and `Reason`, whi
+ ## 使用限制
  
- | Vendor Code | SQL State | Reason                                                                                       |
- |-------------|-----------|----------------------------------------------------------------------------------------------|
--| 21000       | 42S02     | %s column is required in %s.                                                                 |
- | 21001       | 42S02     | Can not find encrypt table '%s'.                                                             |
- | 21002       | 42S02     | Can not find logic encrypt column by '%s'.                                                   |
- | 21003       | 42S02     | Can not find encrypt column '%s' from table '%s'.                                            |
+-DistSQL 只能用于 ShardingSphere-Proxy，ShardingSphere-JDBC 暂不提供。
++DistSQL 可用于 ShardingSphere-Proxy 和 ShardingSphere-JDBC。
++ShardingSphere-JDBC 的执行方式和使用限制请参见 [Java API：执行 DistSQL](/cn/user-manual/shardingsphere-jdbc/java-api/)。
+ 
+ ## 原理介绍
+ 
+diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md
+index 8b52145983c..bd8979e6dde 100644
+--- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md
++++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md
+@@ -64,7 +64,8 @@ Now, the user experience has been greatly improved:
+ 
+ ## Limitations
+ 
+-DistSQL can be used only with ShardingSphere-Proxy, not with ShardingSphere-JDBC for now.
++DistSQL can be used with ShardingSphere-Proxy and ShardingSphere-JDBC.
++For JDBC execution and limitations, see [Java API: Execute DistSQL](/en/user-manual/shardingsphere-jdbc/java-api/).
+ 
+ ## How it works
+ 

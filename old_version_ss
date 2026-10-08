@@ -1,124 +1,140 @@
-commit 66b9b5d02695f2d644dd9370425c798e346ae312
+commit ccf56990d75830c7804cc6063963a6f0b37c19e7
 Author: Liang Zhang <zhangliang@apache.org>
-Date:   Tue Oct 6 13:27:05 2026 +0800
+Date:   Wed Oct 7 17:13:55 2026 +0800
 
-    Add XML-driven JDBC DistSQL E2E coverage and bilingual documentation (#40064)
+    Clarify MCP metadata discovery before update previews (#40093)
     
-    * Merge PR and nightly native test workflows
+    * Refactor DataSourcePoolCreatorTest
     
-    * Rename graalvm.yml to ci-graalvm.yml
+    * Skip cancellation of closed Statements during proxy cleanup
     
-    * Unify Agent E2E job timeouts
+    * Remove obsolete Wagon HTTP options from workflows
     
-    * Add XML-driven JDBC DistSQL E2E coverage and bilingual documentation
+    * Fix RAL E2E lifecycle exception handling
+    
+    * Clarify MCP metadata discovery before update previews
 
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md
-index 4ebfa8bb457..1f91469f052 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.cn.md
-@@ -66,3 +66,36 @@ try (
-     }
- }
+diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
+index 37e0f67ed36..8807e52b76c 100644
+--- a/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
++++ b/docs/document/content/test-manual/mcp-e2e-test/_index.cn.md
+@@ -51,23 +51,28 @@ docker build --platform "$(docker version --format '{{.Server.Os}}/{{.Server.Arc
+ 
+ ## LLM Runtime
+ 
+-MCP LLM lane 默认使用本地 Docker image 承载 OpenAI-compatible endpoint。
+-构建前建议先查看 Docker 占用：
++按 [Docker 官方说明](https://docs.docker.com/ai/model-runner/get-started/)安装 Docker Model Runner。
++Docker Desktop 启用主机 TCP 访问：
+ 
+ ```bash
+-docker system df
++docker desktop enable model-runner --tcp 12434
  ```
-+
-+### 执行 DistSQL
-+
-+ShardingSphere-JDBC 支持通过 JDBC `Statement` 执行 DistSQL，也支持不含参数占位符的 `PreparedStatement`。
-+以下示例适用于 `5.5.4-SNAPSHOT` 开发版本，使用 `Statement` 注册存储单元、创建分片规则并查询规则。
-+运行示例前，请确保类路径中包含 ShardingSphere-JDBC 及 H2 JDBC 驱动。
-+
-+`ShardingSphereDataSourceFactory.createDataSource(databaseName, null)` 创建不含存储单元和业务规则的逻辑库。
-+运行模式为 `null` 时，默认使用 Standalone 模式和 Memory 元数据仓库，配置不会在应用重启后保留。
-+
-+```java
-+DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource("jdbc_distsql_demo", null);
-+try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-+    statement.executeUpdate("REGISTER STORAGE UNIT ds_0 (URL='jdbc:h2:mem:jdbc_distsql_demo;MODE=MySQL',USER='sa',PASSWORD='',"
-+            + "PROPERTIES('driverClassName'='org.h2.Driver'))");
-+    statement.executeUpdate("CREATE SHARDING TABLE RULE t_order (STORAGE_UNITS(ds_0),"
-+            + "SHARDING_COLUMN=user_id,TYPE(NAME='MOD',PROPERTIES('sharding-count'='1')),"
-+            + "KEY_GENERATE_STRATEGY(COLUMN=order_id,TYPE(NAME='SNOWFLAKE')))");
-+    try (ResultSet resultSet = statement.executeQuery("SHOW SHARDING TABLE RULES")) {
-+        while (resultSet.next()) {
-+            System.out.println(resultSet.getString("table"));
-+        }
-+    }
-+} finally {
-+    ((AutoCloseable) dataSource).close();
-+}
-+```
-+
-+使用 `executeUpdate` 执行非查询 DistSQL，使用 `executeQuery` 执行返回结果集的 DistSQL，也可以使用 `execute` 判断是否返回结果集。
-+非查询 DistSQL 不能在事务中执行，应使用自动提交的连接执行此类语句。
-+具体语句的可用性取决于类路径中的 DistSQL 执行器和运行模式。
-+ShardingSphere-JDBC 的默认依赖不包含数据迁移和 CDC 所需的数据管道执行器。
-+详细语法请参见 [DistSQL 参考](/cn/user-manual/shardingsphere-proxy/distsql/)。
-diff --git a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md
-index 36145a4435c..f380b1a36a8 100644
---- a/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-jdbc/java-api/_index.en.md
-@@ -67,3 +67,36 @@ try (
-     }
- }
+ 
+-只校验本机架构选择，不下载模型：
++Docker Engine 安装并启动 CPU runner：
+ 
+ ```bash
+-sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh --dry-run
++MODEL_RUNNER_CONTROLLER_VERSION=v1.2.8@sha256:5bdc2bac71c1b70453f7dec5b527031bc6d8d99b8d1b2a10a8bcca073ae257a3 \
++MODEL_RUNNER_CONTROLLER_VARIANT=cpu docker model install-runner --gpu none
  ```
-+
-+### Execute DistSQL
-+
-+ShardingSphere-JDBC supports executing DistSQL through JDBC `Statement` and through `PreparedStatement` using complete SQL strings without parameter placeholders.
-+The following example applies to the `5.5.4-SNAPSHOT` development version and uses a `Statement` to register a storage unit, create a sharding rule, and query the rule.
-+Ensure that ShardingSphere-JDBC and the H2 JDBC driver are on the classpath before running the example.
-+
-+`ShardingSphereDataSourceFactory.createDataSource(databaseName, null)` creates a logical database without storage units or business rules.
-+When the mode configuration is `null`, Standalone mode with a Memory metadata repository is used by default, and configuration is not retained after the application restarts.
-+
-+```java
-+DataSource dataSource = ShardingSphereDataSourceFactory.createDataSource("jdbc_distsql_demo", null);
-+try (Connection connection = dataSource.getConnection(); Statement statement = connection.createStatement()) {
-+    statement.executeUpdate("REGISTER STORAGE UNIT ds_0 (URL='jdbc:h2:mem:jdbc_distsql_demo;MODE=MySQL',USER='sa',PASSWORD='',"
-+            + "PROPERTIES('driverClassName'='org.h2.Driver'))");
-+    statement.executeUpdate("CREATE SHARDING TABLE RULE t_order (STORAGE_UNITS(ds_0),"
-+            + "SHARDING_COLUMN=user_id,TYPE(NAME='MOD',PROPERTIES('sharding-count'='1')),"
-+            + "KEY_GENERATE_STRATEGY(COLUMN=order_id,TYPE(NAME='SNOWFLAKE')))");
-+    try (ResultSet resultSet = statement.executeQuery("SHOW SHARDING TABLE RULES")) {
-+        while (resultSet.next()) {
-+            System.out.println(resultSet.getString("table"));
-+        }
-+    }
-+} finally {
-+    ((AutoCloseable) dataSource).close();
-+}
-+```
-+
-+Use `executeUpdate` for non-query DistSQL and `executeQuery` for DistSQL that returns a result set, or use `execute` to determine whether a result set is returned.
-+Non-query DistSQL cannot execute within a transaction; use a connection with auto-commit enabled for these statements.
-+The availability of each statement depends on the DistSQL executors on the classpath and the running mode.
-+The default ShardingSphere-JDBC dependencies do not include the data pipeline executors required for migration and CDC.
-+For detailed syntax, see the [DistSQL Reference](/en/user-manual/shardingsphere-proxy/distsql/).
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md
-index dc961258b02..b5693466589 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.cn.md
-@@ -64,7 +64,8 @@ Resource & Rule Utility Language，负责 SQL 解析、SQL 格式化、执行计
  
- ## 使用限制
+-构建本地 runtime image：
++拉取、配置并启动模型：
  
--DistSQL 只能用于 ShardingSphere-Proxy，ShardingSphere-JDBC 暂不提供。
-+DistSQL 可用于 ShardingSphere-Proxy 和 ShardingSphere-JDBC。
-+ShardingSphere-JDBC 的执行方式和使用限制请参见 [Java API：执行 DistSQL](/cn/user-manual/shardingsphere-jdbc/java-api/)。
+ ```bash
+-sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh
++docker model pull ai/qwen3.5:9b-q4_K_XL
++docker model configure --context-size 8192 ai/qwen3.5:9b-q4_K_XL -- \
++  --jinja --reasoning-budget 0 --reasoning-format deepseek --chat-template-kwargs '{"enable_thinking":false}' \
++  --parallel 1 -b 256 -ub 128 --cache-ram 0 --no-cache-prompt
++docker model run --detach ai/qwen3.5:9b-q4_K_XL
+ ```
  
- ## 原理介绍
+ ## 运行 MCP Functionality E2E
+@@ -106,10 +111,10 @@ CI conformance lane 将 `modelcontextprotocol/conformance` 固定在 commit `21a
+ 仅本地调试时，可以连接已经运行的 OpenAI-compatible endpoint：
  
-diff --git a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md
-index 8b52145983c..bd8979e6dde 100644
---- a/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md
-+++ b/docs/document/content/user-manual/shardingsphere-proxy/distsql/_index.en.md
-@@ -64,7 +64,8 @@ Now, the user experience has been greatly improved:
+ ```bash
+-./mvnw -pl test/e2e/mcp verify -Pe2e.mcp.llm -De2e.run.type=DOCKER -Dit.test=LLMHttpE2EIT -Dmcp.llm.runtime-mode=external-debug -Dmcp.llm.base-url=http://127.0.0.1:8080/v1
++./mvnw -pl test/e2e/mcp verify -Pe2e.mcp.llm -De2e.run.type=DOCKER -Dit.test=LLMHttpE2EIT -Dmcp.llm.runtime-mode=external-debug -Dmcp.llm.base-url=http://127.0.0.1:12434/engines/v1
+ ```
  
- ## Limitations
+-External debug endpoint 不能作为 score-closing evidence。
++External debug endpoint 仅用于本地调试；正式 `LLMHttpE2EIT` 场景要求 Docker 和已经准备好的 Docker Model Runner。
  
--DistSQL can be used only with ShardingSphere-Proxy, not with ShardingSphere-JDBC for now.
-+DistSQL can be used with ShardingSphere-Proxy and ShardingSphere-JDBC.
-+For JDBC execution and limitations, see [Java API: Execute DistSQL](/en/user-manual/shardingsphere-jdbc/java-api/).
+ ## 产物
  
- ## How it works
+@@ -119,7 +124,7 @@ MCP LLM E2E artifact 写入：
+ test/e2e/mcp/target/llm-e2e/
+ ```
+ 
+-每个场景都记录问题、实际答案、原始模型 response、MCP interaction trace、实时 tool definitions、runtime evidence 和 assertion report。Artifact 写入会脱敏 secret-shaped 值；如果发现未脱敏 secret pattern 或已知模型 API key，测试直接失败。
++每个场景都记录问题、实际答案、原始模型 response、MCP interaction trace、实时 tool definitions 和 assertion report。Artifact 写入会脱敏 secret-shaped 值；如果发现未脱敏 secret pattern 或已知模型 API key，测试直接失败。
+ 
+ GitHub Actions 入口：
+ 
+diff --git a/docs/document/content/test-manual/mcp-e2e-test/_index.en.md b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
+index 6063098463f..611f48ef7e9 100644
+--- a/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
++++ b/docs/document/content/test-manual/mcp-e2e-test/_index.en.md
+@@ -51,23 +51,28 @@ docker build --platform "$(docker version --format '{{.Server.Os}}/{{.Server.Arc
+ 
+ ## LLM Runtime
+ 
+-The MCP LLM lane uses a local Docker image to host an OpenAI-compatible endpoint.
+-Before building, inspect Docker usage:
++Install Docker Model Runner following the [official Docker instructions](https://docs.docker.com/ai/model-runner/get-started/).
++For Docker Desktop, enable host TCP access:
+ 
+ ```bash
+-docker system df
++docker desktop enable model-runner --tcp 12434
+ ```
+ 
+-Check host architecture selection without downloading the model:
++For Docker Engine, install and start the CPU runner:
+ 
+ ```bash
+-sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh --dry-run
++MODEL_RUNNER_CONTROLLER_VERSION=v1.2.8@sha256:5bdc2bac71c1b70453f7dec5b527031bc6d8d99b8d1b2a10a8bcca073ae257a3 \
++MODEL_RUNNER_CONTROLLER_VARIANT=cpu docker model install-runner --gpu none
+ ```
+ 
+-Build the local runtime image:
++Pull, configure, and start the model:
+ 
+ ```bash
+-sh test/e2e/mcp/src/test/resources/docker/llm-runtime/build-local.sh
++docker model pull ai/qwen3.5:9b-q4_K_XL
++docker model configure --context-size 8192 ai/qwen3.5:9b-q4_K_XL -- \
++  --jinja --reasoning-budget 0 --reasoning-format deepseek --chat-template-kwargs '{"enable_thinking":false}' \
++  --parallel 1 -b 256 -ub 128 --cache-ram 0 --no-cache-prompt
++docker model run --detach ai/qwen3.5:9b-q4_K_XL
+ ```
+ 
+ ## Run MCP Functionality E2E
+@@ -106,10 +111,10 @@ The packaged server runs with its loopback HTTP configuration so the DNS rebindi
+ For local debugging only, connect to an already running OpenAI-compatible endpoint:
+ 
+ ```bash
+-./mvnw -pl test/e2e/mcp verify -Pe2e.mcp.llm -De2e.run.type=DOCKER -Dit.test=LLMHttpE2EIT -Dmcp.llm.runtime-mode=external-debug -Dmcp.llm.base-url=http://127.0.0.1:8080/v1
++./mvnw -pl test/e2e/mcp verify -Pe2e.mcp.llm -De2e.run.type=DOCKER -Dit.test=LLMHttpE2EIT -Dmcp.llm.runtime-mode=external-debug -Dmcp.llm.base-url=http://127.0.0.1:12434/engines/v1
+ ```
+ 
+-External debug endpoints cannot be used as score-closing evidence.
++External debug endpoints are only for local debugging; formal `LLMHttpE2EIT` scenarios require Docker and a prepared Docker Model Runner.
+ 
+ ## Artifacts
+ 
+@@ -119,7 +124,7 @@ MCP LLM E2E artifacts are written under:
+ test/e2e/mcp/target/llm-e2e/
+ ```
+ 
+-Each scenario records the question, actual answer, raw model response, MCP interaction trace, live tool definitions, runtime evidence, and assertion report. Artifact writing redacts secret-shaped values, and the test fails if an unredacted secret pattern or the known model API key is present.
++Each scenario records the question, actual answer, raw model response, MCP interaction trace, live tool definitions, and assertion report. Artifact writing redacts secret-shaped values, and the test fails if an unredacted secret pattern or the known model API key is present.
+ 
+ GitHub Actions entry points:
  

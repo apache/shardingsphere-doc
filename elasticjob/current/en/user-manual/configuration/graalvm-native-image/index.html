@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <meta name="generator" content="Hugo 0.83.1" />
     <meta name="description" content="">
-    <meta name="buildDate" content="2026-09-30 08:32:57">
+    <meta name="buildDate" content="2026-10-11 08:36:13">
 
 
     <link rel="shortcut icon" href="https://shardingsphere.apache.org/elasticjob/images/favicon.png" type="image/x-icon" />
@@ -13,19 +13,19 @@
     <title>GraalVM Native Image :: ElasticJob</title>
     
     
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1790728377" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1790728377" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1790728377" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1790728377" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1790728377" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1790728377" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1790728377" rel="stylesheet">
-    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1790728377" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/nucleus.css?1791678973" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/font-awesome.min.css?1791678973" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hybrid.css?1791678973" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/featherlight.min.css?1791678973" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/perfect-scrollbar.min.css?1791678973" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/auto-complete.css?1791678973" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme.css?1791678973" rel="stylesheet">
+    <link href="https://shardingsphere.apache.org/elasticjob/current/css/hugo-theme.css?1791678973" rel="stylesheet">
     
-      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-white.css?1790728377" rel="stylesheet">
+      <link href="https://shardingsphere.apache.org/elasticjob/current/css/theme-white.css?1791678973" rel="stylesheet">
     
 
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1790728377"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery-2.x.min.js?1791678973"></script>
     
     <script>
       var _hmt = _hmt || [];
@@ -165,14 +165,14 @@
     <span data-search-clear=""><i class="fa fa-close"></i></span>
 </div>
 
-<script type="text/javascript" src="https://shardingsphere.apache.org/elasticjob/current/js/lunr.min.js?1790728377"></script>
-<script type="text/javascript" src="https://shardingsphere.apache.org/elasticjob/current/js/auto-complete.js?1790728377"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/elasticjob/current/js/lunr.min.js?1791678973"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/elasticjob/current/js/auto-complete.js?1791678973"></script>
 <script type="text/javascript">
     
         var baseurl = "\/en";
     
 </script>
-<script type="text/javascript" src="https://shardingsphere.apache.org/elasticjob/current/js/search.js?1790728377"></script>
+<script type="text/javascript" src="https://shardingsphere.apache.org/elasticjob/current/js/search.js?1791678973"></script>
 
     
   </div>
@@ -1861,6 +1861,15 @@ ElasticJob does not set CI for GraalVM CE versions that have stopped maintenance
 <p>Users need to actively use the GraalVM Reachability Metadata Central Repository.
 The following configuration is for reference. To configure additional Maven Profiles for the project,
 refer to the documentation of GraalVM Native Build Tools.</p>
+<p>When the application classpath contains both the Nacos client and Logback, the shaded Netty classes used by
+<code>grpc-netty-shaded</code> initialize Logback loggers during the image build and the build fails with
+<code>ch.qos.logback.classic.Logger was found in the image heap</code>. Pass
+<code>--initialize-at-run-time=io.grpc.netty.shaded.io.netty</code> as a build argument to defer the whole shaded
+Netty tree to run time.</p>
+<p>The metadata repository bundled with <code>native-maven-plugin</code> 1.1.14 marks the Netty <code>5.0.0.Alpha2</code> metadata as the
+latest one for <code>io.netty:netty-common</code> and <code>io.netty:netty-transport</code>. Applying that metadata to Netty 4.1.x makes
+the gRPC client hang during protocol negotiation, so pin these artifacts, as well as <code>io.netty:netty-codec</code>,
+to the last Netty 4.x metadata through <code>metadataRepository</code>.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#f92672">&lt;project&gt;</span>
     <span style="color:#f92672">&lt;dependencies&gt;</span>
         <span style="color:#f92672">&lt;dependency&gt;</span>
@@ -1875,8 +1884,33 @@ refer to the documentation of GraalVM Native Build Tools.</p>
             <span style="color:#f92672">&lt;plugin&gt;</span>
                 <span style="color:#f92672">&lt;groupId&gt;</span>org.graalvm.buildtools<span style="color:#f92672">&lt;/groupId&gt;</span>
                 <span style="color:#f92672">&lt;artifactId&gt;</span>native-maven-plugin<span style="color:#f92672">&lt;/artifactId&gt;</span>
-                <span style="color:#f92672">&lt;version&gt;</span>1.1.3<span style="color:#f92672">&lt;/version&gt;</span>
+                <span style="color:#f92672">&lt;version&gt;</span>1.1.14<span style="color:#f92672">&lt;/version&gt;</span>
                 <span style="color:#f92672">&lt;extensions&gt;</span>true<span style="color:#f92672">&lt;/extensions&gt;</span>
+                <span style="color:#f92672">&lt;configuration&gt;</span>
+                    <span style="color:#f92672">&lt;buildArgs&gt;</span>
+                        <span style="color:#f92672">&lt;arg&gt;</span>--initialize-at-run-time=io.grpc.netty.shaded.io.netty<span style="color:#f92672">&lt;/arg&gt;</span>
+                    <span style="color:#f92672">&lt;/buildArgs&gt;</span>
+                    <span style="color:#f92672">&lt;metadataRepository&gt;</span>
+                        <span style="color:#f92672">&lt;enabled&gt;</span>true<span style="color:#f92672">&lt;/enabled&gt;</span>
+                        <span style="color:#f92672">&lt;dependencies&gt;</span>
+                            <span style="color:#f92672">&lt;dependency&gt;</span>
+                                <span style="color:#f92672">&lt;groupId&gt;</span>io.netty<span style="color:#f92672">&lt;/groupId&gt;</span>
+                                <span style="color:#f92672">&lt;artifactId&gt;</span>netty-common<span style="color:#f92672">&lt;/artifactId&gt;</span>
+                                <span style="color:#f92672">&lt;metadataVersion&gt;</span>4.1.115.Final<span style="color:#f92672">&lt;/metadataVersion&gt;</span>
+                            <span style="color:#f92672">&lt;/dependency&gt;</span>
+                            <span style="color:#f92672">&lt;dependency&gt;</span>
+                                <span style="color:#f92672">&lt;groupId&gt;</span>io.netty<span style="color:#f92672">&lt;/groupId&gt;</span>
+                                <span style="color:#f92672">&lt;artifactId&gt;</span>netty-transport<span style="color:#f92672">&lt;/artifactId&gt;</span>
+                                <span style="color:#f92672">&lt;metadataVersion&gt;</span>4.1.115.Final<span style="color:#f92672">&lt;/metadataVersion&gt;</span>
+                            <span style="color:#f92672">&lt;/dependency&gt;</span>
+                            <span style="color:#f92672">&lt;dependency&gt;</span>
+                                <span style="color:#f92672">&lt;groupId&gt;</span>io.netty<span style="color:#f92672">&lt;/groupId&gt;</span>
+                                <span style="color:#f92672">&lt;artifactId&gt;</span>netty-codec<span style="color:#f92672">&lt;/artifactId&gt;</span>
+                                <span style="color:#f92672">&lt;metadataVersion&gt;</span>4.1.42.Final<span style="color:#f92672">&lt;/metadataVersion&gt;</span>
+                            <span style="color:#f92672">&lt;/dependency&gt;</span>
+                        <span style="color:#f92672">&lt;/dependencies&gt;</span>
+                    <span style="color:#f92672">&lt;/metadataRepository&gt;</span>
+                <span style="color:#f92672">&lt;/configuration&gt;</span>
                 <span style="color:#f92672">&lt;executions&gt;</span>
                     <span style="color:#f92672">&lt;execution&gt;</span>
                         <span style="color:#f92672">&lt;id&gt;</span>build-native<span style="color:#f92672">&lt;/id&gt;</span>
@@ -1902,25 +1936,39 @@ refer to the documentation of GraalVM Native Build Tools.</p>
 The following configuration is for reference. To configure additional Gradle Tasks for the project, refer to the documentation of GraalVM Native Build Tools.
 Due to the limitations of <a href="https://github.com/gradle/gradle/issues/17559,">https://github.com/gradle/gradle/issues/17559,</a> users need to introduce the Metadata Repository JSON file in the form of Maven dependencies.
 Refer to <a href="https://github.com/graalvm/native-build-tools/issues/572">https://github.com/graalvm/native-build-tools/issues/572</a>.</p>
+<p>When the application classpath contains both the Nacos client and Logback, add
+<code>--initialize-at-run-time=io.grpc.netty.shaded.io.netty</code> to the build arguments to defer the shaded Netty tree
+to run time. When the metadata repository search of the plugin is enabled instead of the bundled ZIP file, pin
+the Netty metadata versions through <code>moduleToConfigVersion</code> so that the Netty <code>5.0.0.Alpha2</code> metadata is not
+applied to Netty 4.1.x.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-groovy" data-lang="groovy">plugins <span style="color:#f92672">{</span>
-   id <span style="color:#e6db74">&#39;org.graalvm.buildtools.native&#39;</span> version <span style="color:#e6db74">&#39;1.1.3&#39;</span>
+   id <span style="color:#e6db74">&#39;org.graalvm.buildtools.native&#39;</span> version <span style="color:#e6db74">&#39;1.1.14&#39;</span>
 <span style="color:#f92672">}</span>
 
 dependencies <span style="color:#f92672">{</span>
    implementation <span style="color:#e6db74">&#39;org.apache.shardingsphere.elasticjob:elasticjob-bootstrap:${elasticjob.version}&#39;</span>
-   implementation<span style="color:#f92672">(</span>group: <span style="color:#e6db74">&#39;org.graalvm.buildtools&#39;</span><span style="color:#f92672">,</span> name: <span style="color:#e6db74">&#39;graalvm-reachability-metadata&#39;</span><span style="color:#f92672">,</span> version: <span style="color:#e6db74">&#39;1.1.3&#39;</span><span style="color:#f92672">,</span> classifier: <span style="color:#e6db74">&#39;repository&#39;</span><span style="color:#f92672">,</span> ext: <span style="color:#e6db74">&#39;zip&#39;</span><span style="color:#f92672">)</span>
+   implementation<span style="color:#f92672">(</span>group: <span style="color:#e6db74">&#39;org.graalvm.buildtools&#39;</span><span style="color:#f92672">,</span> name: <span style="color:#e6db74">&#39;graalvm-reachability-metadata&#39;</span><span style="color:#f92672">,</span> version: <span style="color:#e6db74">&#39;1.1.14&#39;</span><span style="color:#f92672">,</span> classifier: <span style="color:#e6db74">&#39;repository&#39;</span><span style="color:#f92672">,</span> ext: <span style="color:#e6db74">&#39;zip&#39;</span><span style="color:#f92672">)</span>
 <span style="color:#f92672">}</span>
 
 graalvmNative <span style="color:#f92672">{</span>
+   binaries<span style="color:#f92672">.</span><span style="color:#a6e22e">all</span> <span style="color:#f92672">{</span>
+       buildArgs<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#39;--initialize-at-run-time=io.grpc.netty.shaded.io.netty&#39;</span><span style="color:#f92672">)</span>
+   <span style="color:#f92672">}</span>
    metadataRepository <span style="color:#f92672">{</span>
         enabled<span style="color:#f92672">.</span><span style="color:#a6e22e">set</span><span style="color:#f92672">(</span><span style="color:#66d9ef">false</span><span style="color:#f92672">)</span>
-   <span style="color:#f92672">}</span>
+        <span style="color:#75715e">// When the metadata repository search is enabled instead, pin the Netty metadata versions:
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// moduleToConfigVersion.put(&#34;io.netty:netty-common&#34;, &#34;4.1.115.Final&#34;)
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// moduleToConfigVersion.put(&#34;io.netty:netty-transport&#34;, &#34;4.1.115.Final&#34;)
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// moduleToConfigVersion.put(&#34;io.netty:netty-codec&#34;, &#34;4.1.42.Final&#34;)
+</span><span style="color:#75715e"></span>   <span style="color:#f92672">}</span>
 <span style="color:#f92672">}</span>
 </code></pre></div><h2 id="using-elasticjobs-spring-boot-starter">Using ElasticJob&rsquo;s Spring Boot Starter</h2>
 <h3 id="maven-ecosystem-1">Maven Ecosystem</h3>
 <p>Users need to actively use the GraalVM Reachability Metadata Central Repository.
 The following configuration is for reference.
-To configure additional Maven Profiles for the project, refer to the documentation of GraalVM Native Build Tools.</p>
+To configure additional Maven Profiles for the project, refer to the documentation of GraalVM Native Build Tools.
+The <code>buildArgs</code> and <code>metadataRepository</code> configuration is required for the same reasons as described in the
+&ldquo;Using ElasticJob&rsquo;s Java API&rdquo; section.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#f92672">&lt;project&gt;</span>
     <span style="color:#f92672">&lt;dependencies&gt;</span>
         <span style="color:#f92672">&lt;dependency&gt;</span>
@@ -1946,8 +1994,33 @@ To configure additional Maven Profiles for the project, refer to the documentati
             <span style="color:#f92672">&lt;plugin&gt;</span>
                 <span style="color:#f92672">&lt;groupId&gt;</span>org.graalvm.buildtools<span style="color:#f92672">&lt;/groupId&gt;</span>
                 <span style="color:#f92672">&lt;artifactId&gt;</span>native-maven-plugin<span style="color:#f92672">&lt;/artifactId&gt;</span>
-                <span style="color:#f92672">&lt;version&gt;</span>1.1.3<span style="color:#f92672">&lt;/version&gt;</span>
+                <span style="color:#f92672">&lt;version&gt;</span>1.1.14<span style="color:#f92672">&lt;/version&gt;</span>
                 <span style="color:#f92672">&lt;extensions&gt;</span>true<span style="color:#f92672">&lt;/extensions&gt;</span>
+                <span style="color:#f92672">&lt;configuration&gt;</span>
+                    <span style="color:#f92672">&lt;buildArgs&gt;</span>
+                        <span style="color:#f92672">&lt;arg&gt;</span>--initialize-at-run-time=io.grpc.netty.shaded.io.netty<span style="color:#f92672">&lt;/arg&gt;</span>
+                    <span style="color:#f92672">&lt;/buildArgs&gt;</span>
+                    <span style="color:#f92672">&lt;metadataRepository&gt;</span>
+                        <span style="color:#f92672">&lt;enabled&gt;</span>true<span style="color:#f92672">&lt;/enabled&gt;</span>
+                        <span style="color:#f92672">&lt;dependencies&gt;</span>
+                            <span style="color:#f92672">&lt;dependency&gt;</span>
+                                <span style="color:#f92672">&lt;groupId&gt;</span>io.netty<span style="color:#f92672">&lt;/groupId&gt;</span>
+                                <span style="color:#f92672">&lt;artifactId&gt;</span>netty-common<span style="color:#f92672">&lt;/artifactId&gt;</span>
+                                <span style="color:#f92672">&lt;metadataVersion&gt;</span>4.1.115.Final<span style="color:#f92672">&lt;/metadataVersion&gt;</span>
+                            <span style="color:#f92672">&lt;/dependency&gt;</span>
+                            <span style="color:#f92672">&lt;dependency&gt;</span>
+                                <span style="color:#f92672">&lt;groupId&gt;</span>io.netty<span style="color:#f92672">&lt;/groupId&gt;</span>
+                                <span style="color:#f92672">&lt;artifactId&gt;</span>netty-transport<span style="color:#f92672">&lt;/artifactId&gt;</span>
+                                <span style="color:#f92672">&lt;metadataVersion&gt;</span>4.1.115.Final<span style="color:#f92672">&lt;/metadataVersion&gt;</span>
+                            <span style="color:#f92672">&lt;/dependency&gt;</span>
+                            <span style="color:#f92672">&lt;dependency&gt;</span>
+                                <span style="color:#f92672">&lt;groupId&gt;</span>io.netty<span style="color:#f92672">&lt;/groupId&gt;</span>
+                                <span style="color:#f92672">&lt;artifactId&gt;</span>netty-codec<span style="color:#f92672">&lt;/artifactId&gt;</span>
+                                <span style="color:#f92672">&lt;metadataVersion&gt;</span>4.1.42.Final<span style="color:#f92672">&lt;/metadataVersion&gt;</span>
+                            <span style="color:#f92672">&lt;/dependency&gt;</span>
+                        <span style="color:#f92672">&lt;/dependencies&gt;</span>
+                    <span style="color:#f92672">&lt;/metadataRepository&gt;</span>
+                <span style="color:#f92672">&lt;/configuration&gt;</span>
                 <span style="color:#f92672">&lt;executions&gt;</span>
                     <span style="color:#f92672">&lt;execution&gt;</span>
                         <span style="color:#f92672">&lt;id&gt;</span>build-native<span style="color:#f92672">&lt;/id&gt;</span>
@@ -1985,11 +2058,13 @@ To configure additional Maven Profiles for the project, refer to the documentati
 <p>Users need to actively use the GraalVM Reachability Metadata Central Repository.
 The following configuration is for reference. To configure additional Gradle Tasks for the project, refer to the documentation of GraalVM Native Build Tools.
 Due to the limitations of <a href="https://github.com/gradle/gradle/issues/17559,">https://github.com/gradle/gradle/issues/17559,</a> users need to introduce the Metadata Repository JSON file in the form of Maven dependencies.
-Refer to <a href="https://github.com/graalvm/native-build-tools/issues/572">https://github.com/graalvm/native-build-tools/issues/572</a> .</p>
+Refer to <a href="https://github.com/graalvm/native-build-tools/issues/572">https://github.com/graalvm/native-build-tools/issues/572</a> .
+The <code>buildArgs</code> and <code>moduleToConfigVersion</code> configuration is required for the same reasons as described in the
+&ldquo;Using ElasticJob&rsquo;s Java API&rdquo; section.</p>
 <div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-groovy" data-lang="groovy">plugins <span style="color:#f92672">{</span>
     id <span style="color:#e6db74">&#39;org.springframework.boot&#39;</span> version <span style="color:#e6db74">&#39;3.5.16&#39;</span>
     id <span style="color:#e6db74">&#39;io.spring.dependency-management&#39;</span> version <span style="color:#e6db74">&#39;1.1.7&#39;</span>
-    id <span style="color:#e6db74">&#39;org.graalvm.buildtools.native&#39;</span> version <span style="color:#e6db74">&#39;1.1.3&#39;</span>
+    id <span style="color:#e6db74">&#39;org.graalvm.buildtools.native&#39;</span> version <span style="color:#e6db74">&#39;1.1.14&#39;</span>
 <span style="color:#f92672">}</span>
 
 dependencies <span style="color:#f92672">{</span>
@@ -1997,13 +2072,20 @@ dependencies <span style="color:#f92672">{</span>
     testImplementation <span style="color:#e6db74">&#39;org.springframework.boot:spring-boot-starter-test&#39;</span>
     testRuntimeOnly <span style="color:#e6db74">&#39;org.junit.platform:junit-platform-launcher&#39;</span>
     implementation <span style="color:#e6db74">&#39;org.apache.shardingsphere.elasticjob:elasticjob-spring-boot-starter:${elasticjob.version}&#39;</span>
-    implementation<span style="color:#f92672">(</span>group: <span style="color:#e6db74">&#39;org.graalvm.buildtools&#39;</span><span style="color:#f92672">,</span> name: <span style="color:#e6db74">&#39;graalvm-reachability-metadata&#39;</span><span style="color:#f92672">,</span> version: <span style="color:#e6db74">&#39;1.1.3&#39;</span><span style="color:#f92672">,</span> classifier: <span style="color:#e6db74">&#39;repository&#39;</span><span style="color:#f92672">,</span> ext: <span style="color:#e6db74">&#39;zip&#39;</span><span style="color:#f92672">)</span>
+    implementation<span style="color:#f92672">(</span>group: <span style="color:#e6db74">&#39;org.graalvm.buildtools&#39;</span><span style="color:#f92672">,</span> name: <span style="color:#e6db74">&#39;graalvm-reachability-metadata&#39;</span><span style="color:#f92672">,</span> version: <span style="color:#e6db74">&#39;1.1.14&#39;</span><span style="color:#f92672">,</span> classifier: <span style="color:#e6db74">&#39;repository&#39;</span><span style="color:#f92672">,</span> ext: <span style="color:#e6db74">&#39;zip&#39;</span><span style="color:#f92672">)</span>
 <span style="color:#f92672">}</span>
 
 graalvmNative <span style="color:#f92672">{</span>
+    binaries<span style="color:#f92672">.</span><span style="color:#a6e22e">all</span> <span style="color:#f92672">{</span>
+        buildArgs<span style="color:#f92672">.</span><span style="color:#a6e22e">add</span><span style="color:#f92672">(</span><span style="color:#e6db74">&#39;--initialize-at-run-time=io.grpc.netty.shaded.io.netty&#39;</span><span style="color:#f92672">)</span>
+    <span style="color:#f92672">}</span>
     metadataRepository <span style="color:#f92672">{</span>
         enabled<span style="color:#f92672">.</span><span style="color:#a6e22e">set</span><span style="color:#f92672">(</span><span style="color:#66d9ef">false</span><span style="color:#f92672">)</span>
-    <span style="color:#f92672">}</span>
+        <span style="color:#75715e">// When the metadata repository search is enabled instead, pin the Netty metadata versions:
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// moduleToConfigVersion.put(&#34;io.netty:netty-common&#34;, &#34;4.1.115.Final&#34;)
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// moduleToConfigVersion.put(&#34;io.netty:netty-transport&#34;, &#34;4.1.115.Final&#34;)
+</span><span style="color:#75715e"></span>        <span style="color:#75715e">// moduleToConfigVersion.put(&#34;io.netty:netty-codec&#34;, &#34;4.1.42.Final&#34;)
+</span><span style="color:#75715e"></span>    <span style="color:#f92672">}</span>
 <span style="color:#f92672">}</span>
 </code></pre></div><h2 id="for-build-tools-such-as-sbt-that-are-not-supported-by-graalvm-native-build-tools">For build tools such as sbt that are not supported by GraalVM Native Build Tools</h2>
 <p>Such requirements require opening additional issues at <a href="https://github.com/graalvm/native-build-tools">https://github.com/graalvm/native-build-tools</a> and providing plugin implementations for the corresponding build tools.</p>
@@ -3078,17 +3160,17 @@ cd ./shardingsphere/
     <div style="left: -1000px; overflow: scroll; position: absolute; top: -1000px; border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;">
       <div style="border: none; box-sizing: content-box; height: 200px; margin: 0px; padding: 0px; width: 200px;"></div>
     </div>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1790728377"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/clipboard.min.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.min.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/perfect-scrollbar.jquery.min.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/jquery.sticky.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/featherlight.min.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/html5shiv-printshiv.min.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/highlight.pack.js?1791678973"></script>
     <script>hljs.initHighlightingOnLoad();</script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1790728377"></script>
-    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1790728377"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/modernizr.custom.71422.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/learn.js?1791678973"></script>
+    <script src="https://shardingsphere.apache.org/elasticjob/current/js/hugo-learn.js?1791678973"></script>
 
     
 

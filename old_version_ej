@@ -1,109 +1,118 @@
-commit cb85b434cdd89951f7810421895349e4d73a4205
-Author: Hengqian Ling <linghengqian@outlook.com>
-Date:   Mon Oct 12 14:00:51 2026 +0800
+commit 6697fd0e87f8c15c63872b55cd59bc4da7d4f00e
+Author: conellimo <conellimo@gmail.com>
+Date:   Tue Oct 13 07:14:16 2026 +0300
 
-    Rename `ZookeeperProperties` to `RegistryCenterProperties` (#2554)
+    Fix indefinite blocking in sharding, leader election, and distributed-once listener wait loops (#2546)
 
+diff --git a/docs/content/user-manual/configuration/_index.cn.md b/docs/content/user-manual/configuration/_index.cn.md
+index ea5517611..e77f04ceb 100644
+--- a/docs/content/user-manual/configuration/_index.cn.md
++++ b/docs/content/user-manual/configuration/_index.cn.md
+@@ -63,6 +63,7 @@ ElasticJob 支持多种注册中心类型，详细配置请参见[注册中心
+ | props                             | Properties |                | 作业属性配置信息             |
+ | disabled                          | boolean    | false          | 作业是否禁止启动             |
+ | overwrite                         | boolean    | false          | 本地配置是否可覆盖注册中心配置      |
++| maxWaitMillis                     | long       | 60000          | 分片、主节点选举等协调等待循环放弃等待前的最长阻塞时间（毫秒） |
+ 
+ ### 核心配置项说明
+ 
+@@ -118,6 +119,10 @@ ElasticJob 支持多种注册中心类型，详细配置请参见[注册中心
+ 
+ 如果可覆盖，每次启动作业都以本地配置为准。
+ 
++**maxWaitMillis:**
++
++分片、主节点选举等协调等待循环在等待注册中心状态变化时的最长阻塞时间，单位毫秒，每次等待单独计算。超时或等待线程被中断后，将停止等待，并通过作业错误处理器上报，作业继续执行。默认值为 `60000`。
++
+ ## 作业监听器配置项
+ 
+ ### 常规监听器配置项
+diff --git a/docs/content/user-manual/configuration/_index.en.md b/docs/content/user-manual/configuration/_index.en.md
+index 16f648894..3c00535aa 100644
+--- a/docs/content/user-manual/configuration/_index.en.md
++++ b/docs/content/user-manual/configuration/_index.en.md
+@@ -62,6 +62,7 @@ Include IP and port, multiple addresses are separated by commas.
+ | props                             | Properties |                | Job properties                                                                      |
+ | disabled                          | boolean    | false          | Enable or disable start the job                                                     |
+ | overwrite                         | boolean    | false          | Enable or disable local configuration override registry center configuration        |
++| maxWaitMillis                     | long       | 60000          | Maximum time in milliseconds that the sharding and leader election wait loops block before giving up |
+ 
+ ### Core Configuration Description
+ 
+@@ -117,6 +118,10 @@ It can be used for deployment, forbid jobs to start, and then start them uniform
+ 
+ If the value is `true`, local configuration override registry center configuration every time the job is started.
+ 
++**maxWaitMillis:**
++
++The maximum time in milliseconds that the sharding and leader election wait loops block while waiting for the registry center state to change. The limit applies to each wait separately. When it elapses, or the waiting thread is interrupted, the wait stops, the situation is reported to the job error handler, and the job continues. Defaults to `60000`.
++
+ ## Job Listener Configuration
+ 
+ ### Common Listener Configuration
+diff --git a/docs/content/user-manual/configuration/java-api.cn.md b/docs/content/user-manual/configuration/java-api.cn.md
+index 5e1af30db..8e4943ca5 100644
+--- a/docs/content/user-manual/configuration/java-api.cn.md
++++ b/docs/content/user-manual/configuration/java-api.cn.md
+@@ -64,3 +64,4 @@ ElasticJob 支持 `ZooKeeper`（默认）、`etcd`、`Nacos` 和内存注册中
+ | props                             | 否     |
+ | disabled                          | 否     |
+ | overwrite                         | 否     |
++| maxWaitMillis                     | 否     |
+diff --git a/docs/content/user-manual/configuration/java-api.en.md b/docs/content/user-manual/configuration/java-api.en.md
+index 7ad0c7a4d..1f389d773 100644
+--- a/docs/content/user-manual/configuration/java-api.en.md
++++ b/docs/content/user-manual/configuration/java-api.en.md
+@@ -65,3 +65,4 @@ Configuration:
+ | props                             | No                    |
+ | disabled                          | No                    |
+ | overwrite                         | No                    |
++| maxWaitMillis                     | No                    |
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.cn.md b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-index 332702eac..dd7a250d4 100644
+index dd7a250d4..0e3b92fc9 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.cn.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-@@ -18,33 +18,32 @@ chapter = true
+@@ -74,6 +74,7 @@ elasticjob.reg-center.namespace=elasticjob-springboot
+ | props                             | 否    |
+ | disabled                          | 否    |
+ | overwrite                         | 否    |
++| max-wait-millis                   | 否    |
  
- 配置前缀：`elasticjob.reg-center`
+ **elasticJobClass 与 elasticJobType 互斥，每项作业只能有一种类型**
  
-+`type` 指定注册中心类型，目前仅支持 `zookeeper`（默认）。
-+
- 可配置属性：
- 
--| 属性名                             | 是否必填 |
--|---------------------------------|:-----|
--| server-lists                    | 是    |
--| namespace                       | 是    |
--| base-sleep-time-milliseconds    | 否    |
--| max-sleep-time-milliseconds     | 否    |
--| max-retries                     | 否    |
--| session-timeout-milliseconds    | 否    |
--| connection-timeout-milliseconds | 否    |
--| digest                          | 否    |
-+| 属性名        | 是否必填 |
-+|-------------|:---------|
-+| type        | 否       |
-+| server-lists | 是       |
-+| namespace   | 是       |
- 
- 配置格式参考：
- 
- **YAML**
- ```yaml
- elasticjob:
--  regCenter:
--    serverLists: localhost:6181
-+  reg-center:
-+    type: zookeeper
-+    server-lists: localhost:6181
-     namespace: elasticjob-springboot
- ```
- 
- **Properties**
- ```
--elasticjob.reg-center.namespace=elasticjob-springboot
-+elasticjob.reg-center.type=zookeeper
- elasticjob.reg-center.server-lists=localhost:6181
-+elasticjob.reg-center.namespace=elasticjob-springboot
- ```
- 
- ## 作业配置
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.en.md b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-index a50f584d5..854c23b95 100644
+index 854c23b95..5b764aaab 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.en.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-@@ -18,33 +18,32 @@ To use the Spring boot, user need to add the dependency of the `elasticjob-sprin
+@@ -74,6 +74,7 @@ Configuration:
+ | props                             | No       |
+ | disabled                          | No       |
+ | overwrite                         | No       |
++| max-wait-millis                   | No       |
  
- Prefix: `elasticjob.reg-center`
+ **"elasticJobClass" and "elasticJobType" are mutually exclusive.**
  
--Configuration: 
--
--| Property name                   | Required |
--|---------------------------------|:---------|
--| server-lists                    | Yes      |
--| namespace                       | Yes      |
--| base-sleep-time-milliseconds    | No       |
--| max-sleep-time-milliseconds     | No       |
--| max-retries                     | No       |
--| session-timeout-milliseconds    | No       |
--| connection-timeout-milliseconds | No       |
--| digest                          | No       |
-+`type` selects the registry center, currently only `zookeeper` (default).
+diff --git a/docs/content/user-manual/configuration/spring-namespace.cn.md b/docs/content/user-manual/configuration/spring-namespace.cn.md
+index 874464502..901587c84 100644
+--- a/docs/content/user-manual/configuration/spring-namespace.cn.md
++++ b/docs/content/user-manual/configuration/spring-namespace.cn.md
+@@ -65,6 +65,7 @@ chapter = true
+ | props                             | 否    |
+ | disabled                          | 否    |
+ | overwrite                         | 否    |
++| max-wait-millis                   | 否    |
  
--Reference: 
-+Configuration:
-+
-+| Property name | Required |
-+|---------------|:---------|
-+| type          | No       |
-+| server-lists  | Yes      |
-+| namespace     | Yes      |
-+
-+Reference:
+ ## 事件追踪配置
  
- **YAML**
- ```yaml
- elasticjob:
--  regCenter:
--    serverLists: localhost:6181
-+  reg-center:
-+    type: zookeeper
-+    server-lists: localhost:6181
-     namespace: elasticjob-springboot
- ```
+diff --git a/docs/content/user-manual/configuration/spring-namespace.en.md b/docs/content/user-manual/configuration/spring-namespace.en.md
+index 28e91b4dd..1d35a0736 100644
+--- a/docs/content/user-manual/configuration/spring-namespace.en.md
++++ b/docs/content/user-manual/configuration/spring-namespace.en.md
+@@ -64,6 +64,7 @@ Configuration:
+ | props                             | No       |
+ | disabled                          | No       |
+ | overwrite                         | No       |
++| max-wait-millis                   | No       |
  
- **Properties**
- ```
--elasticjob.reg-center.namespace=elasticjob-springboot
-+elasticjob.reg-center.type=zookeeper
- elasticjob.reg-center.server-lists=localhost:6181
-+elasticjob.reg-center.namespace=elasticjob-springboot
- ```
+ ## Event Tracing Configuration
  
- ## Job Configuration

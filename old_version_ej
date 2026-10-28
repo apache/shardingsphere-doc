@@ -1,118 +1,424 @@
-commit 6697fd0e87f8c15c63872b55cd59bc4da7d4f00e
-Author: conellimo <conellimo@gmail.com>
-Date:   Tue Oct 13 07:14:16 2026 +0300
+commit f150157de0086e7d87d7d61828bbade54dd0f676
+Author: Hengqian Ling <linghengqian@outlook.com>
+Date:   Tue Oct 27 11:25:20 2026 +0800
 
-    Fix indefinite blocking in sharding, leader election, and distributed-once listener wait loops (#2546)
+    Complete Annotation Job support (#2556)
+    
+    * Complete Annotation Job support
+    
+    * Adapt to metadata changes
 
-diff --git a/docs/content/user-manual/configuration/_index.cn.md b/docs/content/user-manual/configuration/_index.cn.md
-index ea5517611..e77f04ceb 100644
---- a/docs/content/user-manual/configuration/_index.cn.md
-+++ b/docs/content/user-manual/configuration/_index.cn.md
-@@ -63,6 +63,7 @@ ElasticJob 支持多种注册中心类型，详细配置请参见[注册中心
- | props                             | Properties |                | 作业属性配置信息             |
- | disabled                          | boolean    | false          | 作业是否禁止启动             |
- | overwrite                         | boolean    | false          | 本地配置是否可覆盖注册中心配置      |
-+| maxWaitMillis                     | long       | 60000          | 分片、主节点选举等协调等待循环放弃等待前的最长阻塞时间（毫秒） |
- 
- ### 核心配置项说明
- 
-@@ -118,6 +119,10 @@ ElasticJob 支持多种注册中心类型，详细配置请参见[注册中心
- 
- 如果可覆盖，每次启动作业都以本地配置为准。
- 
-+**maxWaitMillis:**
-+
-+分片、主节点选举等协调等待循环在等待注册中心状态变化时的最长阻塞时间，单位毫秒，每次等待单独计算。超时或等待线程被中断后，将停止等待，并通过作业错误处理器上报，作业继续执行。默认值为 `60000`。
-+
- ## 作业监听器配置项
- 
- ### 常规监听器配置项
-diff --git a/docs/content/user-manual/configuration/_index.en.md b/docs/content/user-manual/configuration/_index.en.md
-index 16f648894..3c00535aa 100644
---- a/docs/content/user-manual/configuration/_index.en.md
-+++ b/docs/content/user-manual/configuration/_index.en.md
-@@ -62,6 +62,7 @@ Include IP and port, multiple addresses are separated by commas.
- | props                             | Properties |                | Job properties                                                                      |
- | disabled                          | boolean    | false          | Enable or disable start the job                                                     |
- | overwrite                         | boolean    | false          | Enable or disable local configuration override registry center configuration        |
-+| maxWaitMillis                     | long       | 60000          | Maximum time in milliseconds that the sharding and leader election wait loops block before giving up |
- 
- ### Core Configuration Description
- 
-@@ -117,6 +118,10 @@ It can be used for deployment, forbid jobs to start, and then start them uniform
- 
- If the value is `true`, local configuration override registry center configuration every time the job is started.
- 
-+**maxWaitMillis:**
-+
-+The maximum time in milliseconds that the sharding and leader election wait loops block while waiting for the registry center state to change. The limit applies to each wait separately. When it elapses, or the waiting thread is interrupted, the wait stops, the situation is reported to the job error handler, and the job continues. Defaults to `60000`.
-+
- ## Job Listener Configuration
- 
- ### Common Listener Configuration
-diff --git a/docs/content/user-manual/configuration/java-api.cn.md b/docs/content/user-manual/configuration/java-api.cn.md
-index 5e1af30db..8e4943ca5 100644
---- a/docs/content/user-manual/configuration/java-api.cn.md
-+++ b/docs/content/user-manual/configuration/java-api.cn.md
-@@ -64,3 +64,4 @@ ElasticJob 支持 `ZooKeeper`（默认）、`etcd`、`Nacos` 和内存注册中
- | props                             | 否     |
- | disabled                          | 否     |
- | overwrite                         | 否     |
-+| maxWaitMillis                     | 否     |
-diff --git a/docs/content/user-manual/configuration/java-api.en.md b/docs/content/user-manual/configuration/java-api.en.md
-index 7ad0c7a4d..1f389d773 100644
---- a/docs/content/user-manual/configuration/java-api.en.md
-+++ b/docs/content/user-manual/configuration/java-api.en.md
-@@ -65,3 +65,4 @@ Configuration:
- | props                             | No                    |
- | disabled                          | No                    |
- | overwrite                         | No                    |
-+| maxWaitMillis                     | No                    |
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.cn.md b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-index dd7a250d4..0e3b92fc9 100644
+index 0e3b92fc9..43effd25f 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.cn.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-@@ -74,6 +74,7 @@ elasticjob.reg-center.namespace=elasticjob-springboot
+@@ -74,6 +74,8 @@ elasticjob.reg-center.namespace=elasticjob-springboot
  | props                             | 否    |
  | disabled                          | 否    |
  | overwrite                         | 否    |
-+| max-wait-millis                   | 否    |
++| label                             | 否    |
++| static-sharding                   | 否    |
+ | max-wait-millis                   | 否    |
  
  **elasticJobClass 与 elasticJobType 互斥，每项作业只能有一种类型**
- 
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.en.md b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-index 854c23b95..5b764aaab 100644
+index 5b764aaab..8d9603a91 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.en.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-@@ -74,6 +74,7 @@ Configuration:
+@@ -74,6 +74,8 @@ Configuration:
  | props                             | No       |
  | disabled                          | No       |
  | overwrite                         | No       |
-+| max-wait-millis                   | No       |
++| label                             | No       |
++| static-sharding                   | No       |
+ | max-wait-millis                   | No       |
  
  **"elasticJobClass" and "elasticJobType" are mutually exclusive.**
- 
 diff --git a/docs/content/user-manual/configuration/spring-namespace.cn.md b/docs/content/user-manual/configuration/spring-namespace.cn.md
-index 874464502..901587c84 100644
+index 901587c84..57874fbf0 100644
 --- a/docs/content/user-manual/configuration/spring-namespace.cn.md
 +++ b/docs/content/user-manual/configuration/spring-namespace.cn.md
-@@ -65,6 +65,7 @@ chapter = true
+@@ -65,8 +65,30 @@ chapter = true
  | props                             | 否    |
  | disabled                          | 否    |
  | overwrite                         | 否    |
-+| max-wait-millis                   | 否    |
++| label                             | 否    |
++| static-sharding                   | 否    |
+ | max-wait-millis                   | 否    |
  
++## 作业扫描配置
++
++\<elasticjob:job-scanner />
++
++通过 `@ElasticJobConfiguration` 声明作业配置后，可用作业扫描按包自动注册定时或一次性作业。
++`cron` 非空创建 `ScheduleJobBootstrap` 并自动调度，`cron` 为空创建 `OneOffJobBootstrap` 需手动触发。
++
++可配置属性：
++
++| 属性名        | 是否必填 | 说明                              |
++|------------|:-----|:--------------------------------|
++| id         | 是    | 扫描配置 Bean 主键                    |
++| base-package | 是    | 待扫描的包，支持单个包或逗号分隔的多个包        |
++
++配置参考：
++
++```xml
++<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
++```
++
  ## 事件追踪配置
  
+ \<elasticjob:rdb-tracing />
 diff --git a/docs/content/user-manual/configuration/spring-namespace.en.md b/docs/content/user-manual/configuration/spring-namespace.en.md
-index 28e91b4dd..1d35a0736 100644
+index 1d35a0736..903dff051 100644
 --- a/docs/content/user-manual/configuration/spring-namespace.en.md
 +++ b/docs/content/user-manual/configuration/spring-namespace.en.md
-@@ -64,6 +64,7 @@ Configuration:
+@@ -60,12 +60,37 @@ Configuration:
+ | job-sharding-strategy-type        | No       |
+ | job-executor-service-handler-type | No       |
+ | job-error-handler-type            | No       |
++| job-listener-types                | No       |
+ | description                       | No       |
  | props                             | No       |
  | disabled                          | No       |
  | overwrite                         | No       |
-+| max-wait-millis                   | No       |
++| label                             | No       |
++| static-sharding                   | No       |
+ | max-wait-millis                   | No       |
  
++## Job Scanner Configuration
++
++\<elasticjob:job-scanner />
++
++After declaring job configuration with `@ElasticJobConfiguration`, use the job scanner to register
++schedule or one-off jobs by base package automatically.
++A non-empty `cron` creates a `ScheduleJobBootstrap` which is scheduled automatically;
++an empty `cron` creates a `OneOffJobBootstrap` which must be triggered manually.
++
++Configuration:
++
++| Name         | Required | Description                                       |
++|--------------|:---------|:--------------------------------------------------|
++| id           | Yes      | Identify of the scanner in the Spring container   |
++| base-package | Yes      | Base package to scan, single or comma-separated   |
++
++Reference:
++
++```xml
++<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
++```
++
  ## Event Tracing Configuration
  
+ \<elasticjob:rdb-tracing />
+diff --git a/docs/content/user-manual/usage/job-api/java-api.cn.md b/docs/content/user-manual/usage/job-api/java-api.cn.md
+index 87f6ebd9f..9d9e90334 100644
+--- a/docs/content/user-manual/usage/job-api/java-api.cn.md
++++ b/docs/content/user-manual/usage/job-api/java-api.cn.md
+@@ -13,6 +13,53 @@ ElasticJob 采用构建器模式创建作业配置对象。
+     JobConfiguration jobConfig = JobConfiguration.newBuilder("myJob", 3).cron("0/5 * * * * ?").shardingItemParameters("0=Beijing,1=Shanghai,2=Guangzhou").build();
+ ```
+ 
++## 使用注解简化作业配置
++
++在作业类上使用 `@ElasticJobConfiguration` 声明作业配置，再通过 `JobAnnotationBuilder` 生成 `JobConfiguration`，
++或让 `JobBootstrap` 自动从注解解析配置。
++
++```java
++@ElasticJobConfiguration(
++        jobName = "myJob",
++        cron = "0/5 * * * * ?",
++        shardingTotalCount = 3,
++        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou",
++        description = "my job")
++public class MyJob implements SimpleJob {
++    
++    @Override
++    public void execute(final ShardingContext shardingContext) {
++        // do something
++    }
++}
++```
++
++显式生成 `JobConfiguration`：
++
++```java
++JobConfiguration jobConfig = JobAnnotationBuilder.generateJobConfiguration(MyJob.class);
++new ScheduleJobBootstrap(createRegistryCenter(), new MyJob(), jobConfig).schedule();
++```
++
++也可以省略 `JobConfiguration` 参数，让 Bootstrap 自动从注解解析。
++`cron` 为空表示一次性作业：
++
++```java
++// 定时作业，cron 不能为空
++new ScheduleJobBootstrap(createRegistryCenter(), new MyJob()).schedule();
++
++// 一次性作业，cron 必须为空
++new OneOffJobBootstrap(createRegistryCenter(), new MyOneOffJob()).execute();
++```
++
++常用注解属性与 `JobConfiguration` 一一对应：
++`jobName`、`cron`、`timeZone`、`shardingTotalCount`、`shardingItemParameters`、`jobParameter`、
++`monitorExecution`、`failover`、`misfire`、`maxTimeDiffSeconds`、`reconcileIntervalMinutes`、
++`jobShardingStrategyType`、`jobExecutorThreadPoolSizeProviderType`、`jobErrorHandlerType`、
++`jobListenerTypes`、`extraConfigurations`、`description`、`props`、`disabled`、`overwrite`、
++`label`、`staticSharding`、`maxWaitMillis`。
++其中 `registryCenter` 仅用于 Spring 扫描时选择注册中心 Bean，会被 `JobAnnotationBuilder` 忽略。
++
+ ## 作业启动
+ 
+ ElasticJob 调度器分为定时调度和一次性调度两种类型。
+diff --git a/docs/content/user-manual/usage/job-api/java-api.en.md b/docs/content/user-manual/usage/job-api/java-api.en.md
+index 416863bb0..9d93984c1 100644
+--- a/docs/content/user-manual/usage/job-api/java-api.en.md
++++ b/docs/content/user-manual/usage/job-api/java-api.en.md
+@@ -13,6 +13,53 @@ The code example is as follows:
+     JobConfiguration jobConfig = JobConfiguration.newBuilder("myJob", 3).cron("0/5 * * * * ?").shardingItemParameters("0=Beijing,1=Shanghai,2=Guangzhou").build();
+ ```
+ 
++## Use annotation to simplify job configuration
++
++Declare job configuration with `@ElasticJobConfiguration` on the job class, then build the `JobConfiguration` via `JobAnnotationBuilder`
++or let the `JobBootstrap` resolve it from the annotation automatically.
++
++```java
++@ElasticJobConfiguration(
++        jobName = "myJob",
++        cron = "0/5 * * * * ?",
++        shardingTotalCount = 3,
++        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou",
++        description = "my job")
++public class MyJob implements SimpleJob {
++    
++    @Override
++    public void execute(final ShardingContext shardingContext) {
++        // do something
++    }
++}
++```
++
++Generate `JobConfiguration` explicitly:
++
++```java
++JobConfiguration jobConfig = JobAnnotationBuilder.generateJobConfiguration(MyJob.class);
++new ScheduleJobBootstrap(createRegistryCenter(), new MyJob(), jobConfig).schedule();
++```
++
++Or omit the `JobConfiguration` parameter and let the bootstrap resolve it from the annotation.
++An empty `cron` means a one-off job:
++
++```java
++// Schedule job, cron must not be empty
++new ScheduleJobBootstrap(createRegistryCenter(), new MyJob()).schedule();
++
++// One-off job, cron must be empty
++new OneOffJobBootstrap(createRegistryCenter(), new MyOneOffJob()).execute();
++```
++
++Common annotation attributes map one-to-one to `JobConfiguration`:
++`jobName`, `cron`, `timeZone`, `shardingTotalCount`, `shardingItemParameters`, `jobParameter`,
++`monitorExecution`, `failover`, `misfire`, `maxTimeDiffSeconds`, `reconcileIntervalMinutes`,
++`jobShardingStrategyType`, `jobExecutorThreadPoolSizeProviderType`, `jobErrorHandlerType`,
++`jobListenerTypes`, `extraConfigurations`, `description`, `props`, `disabled`, `overwrite`,
++`label`, `staticSharding`, `maxWaitMillis`.
++`registryCenter` is only used by Spring scanning to select the registry center bean and is ignored by `JobAnnotationBuilder`.
++
+ ## Job start
+ 
+ ElasticJob scheduler is divided into two types: timed scheduling and one-time scheduling.
+diff --git a/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md b/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
+index 73576879b..c833d59db 100644
+--- a/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
++++ b/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
+@@ -66,6 +66,49 @@ elasticjob:
+         script.command.line: "echo SCRIPT Job: "
+ ```
+ 
++### 使用注解配置作业
++
++除了 `elasticjob.jobs` 配置，还可以用 `@ElasticJobConfiguration` 声明作业配置，
++并用 `@ElasticJobScan` 开启扫描。扫描器会根据 `cron` 是否为空自动创建
++`ScheduleJobBootstrap`（`cron` 非空）或 `OneOffJobBootstrap`（`cron` 为空）。
++
++```java
++@Component
++@ElasticJobConfiguration(
++        jobName = "annotationSimpleJob",
++        cron = "0/5 * * * * ?",
++        shardingTotalCount = 3,
++        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou")
++public class AnnotationSimpleJob implements SimpleJob {
++    
++    @Override
++    public void execute(final ShardingContext shardingContext) {
++        // 处理作业
++    }
++}
++```
++
++开启扫描，`value` 与 `basePackages` 均可指定待扫描的包：
++
++```java
++@Configuration
++@ElasticJobScan(basePackages = "org.example.job")
++public class ElasticJobConfig {
++}
++```
++
++说明：
++
++- Bootstrap Bean 名称默认为 `jobName`，且必须与被扫描的作业 Bean 名称不同。`cron` 非空时创建 `ScheduleJobBootstrap`，
++  应用启动后自动调度；`cron` 为空时创建 `OneOffJobBootstrap`，需要手动触发。
++- `registryCenter` 可选，用于指定 `CoordinatorRegistryCenter` Bean 名称。
++  为空时按类型注入容器中唯一的 `CoordinatorRegistryCenter`。
++- 作业配置在运行时从注解解析（CGLIB 代理走超类回退）。Bean 定义中仅注册 Bean 引用以保持 Spring AOT 友好，注解类型由 GraalVM 可达性元数据覆盖，原生镜像下仍可工作。
++- 注解属性覆盖 `timeZone`、`jobParameter`、`monitorExecution`、`failover`、`misfire`、
++  `maxTimeDiffSeconds`、`reconcileIntervalMinutes`、`jobShardingStrategyType`、
++  `jobExecutorThreadPoolSizeProviderType`、`jobErrorHandlerType`、`jobListenerTypes`、
++  `extraConfigurations`、`description`、`props`、`disabled`、`overwrite`、`label`、`staticSharding`、`maxWaitMillis`。
++
+ ## 作业启动
+ 
+ ### 定时调度
+diff --git a/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md b/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
+index 8653c9061..a263812ce 100644
+--- a/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
++++ b/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
+@@ -67,6 +67,49 @@ elasticjob:
+         script.command.line: "echo SCRIPT Job: "
+ ```
+ 
++### Configure jobs with annotation
++
++As an alternative to `elasticjob.jobs` properties, declare job configuration with `@ElasticJobConfiguration`
++and enable scanning with `@ElasticJobScan`. The scanner creates `ScheduleJobBootstrap` (when `cron` is set)
++or `OneOffJobBootstrap` (when `cron` is empty) automatically.
++
++```java
++@Component
++@ElasticJobConfiguration(
++        jobName = "annotationSimpleJob",
++        cron = "0/5 * * * * ?",
++        shardingTotalCount = 3,
++        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou")
++public class AnnotationSimpleJob implements SimpleJob {
++    
++    @Override
++    public void execute(final ShardingContext shardingContext) {
++        // do something
++    }
++}
++```
++
++Enable scanning. Both `value` and `basePackages` accept base packages to scan:
++
++```java
++@Configuration
++@ElasticJobScan(basePackages = "org.example.job")
++public class ElasticJobConfig {
++}
++```
++
++Notes:
++
++- The bootstrap bean name defaults to the `jobName`, which must differ from the scanned job bean name. A non-empty `cron` creates a `ScheduleJobBootstrap`
++  which is scheduled automatically on startup; an empty `cron` creates a `OneOffJobBootstrap` which must be triggered manually.
++- `registryCenter` optionally specifies the `CoordinatorRegistryCenter` bean name. When empty, the single
++  `CoordinatorRegistryCenter` bean in the context is injected by type.
++- Job configuration is resolved at runtime from the annotation (with superclass fallback for CGLIB proxies). Only bean references are registered so bean definitions stay Spring AOT friendly, and the annotation types are covered by GraalVM reachability metadata for native images.
++- Annotation attributes cover `timeZone`, `jobParameter`, `monitorExecution`, `failover`, `misfire`,
++  `maxTimeDiffSeconds`, `reconcileIntervalMinutes`, `jobShardingStrategyType`,
++  `jobExecutorThreadPoolSizeProviderType`, `jobErrorHandlerType`, `jobListenerTypes`,
++  `extraConfigurations`, `description`, `props`, `disabled`, `overwrite`, `label`, `staticSharding`, `maxWaitMillis`.
++
+ ## Job Start
+ 
+ ### Schedule Job
+diff --git a/docs/content/user-manual/usage/job-api/spring-namespace.cn.md b/docs/content/user-manual/usage/job-api/spring-namespace.cn.md
+index 485eb6c8b..b1f314921 100644
+--- a/docs/content/user-manual/usage/job-api/spring-namespace.cn.md
++++ b/docs/content/user-manual/usage/job-api/spring-namespace.cn.md
+@@ -39,6 +39,38 @@ ElasticJob 提供自定义的 Spring 命名空间，可以与 Spring 容器配
+ </beans>
+ ```
+ 
++### 使用注解扫描配置作业
++
++也可以用 `@ElasticJobConfiguration` 声明作业配置，再用 `<elasticjob:job-scanner />` 按包扫描。
++`base-package` 支持单个包或逗号分隔的多个包。`cron` 非空时创建 `ScheduleJobBootstrap` 并自动调度，
++`cron` 为空时创建 `OneOffJobBootstrap` 需要手动触发。
++
++```java
++@ElasticJobConfiguration(
++        jobName = "simpleJob",
++        cron = "0/5 * * * * ?",
++        shardingTotalCount = 3,
++        shardingItemParameters = "0=a,1=b,2=c")
++public class AnnotationSimpleJob implements SimpleJob {
++    
++    @Override
++    public void execute(final ShardingContext shardingContext) {
++        // 处理作业
++    }
++}
++```
++
++```xml
++<elasticjob:zookeeper id="regCenter" server-lists="yourhost:2181" namespace="my-job" />
++<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
++```
++
++说明：
++
++- Bootstrap Bean 名称默认为注解中的 `jobName`，且必须与被扫描的作业 Bean 名称不同。
++- 注解中的 `registryCenter` 可指定注册中心 Bean 名称，为空时按类型注入唯一的 `CoordinatorRegistryCenter`。
++- 作业配置在运行时从注解解析（CGLIB 代理走超类回退）。Bean 定义中仅注册 Bean 引用以保持 Spring AOT 友好，注解类型由 GraalVM 可达性元数据覆盖，原生镜像下仍可工作。
++
+ ## 作业启动
+ 
+ ### 定时调度
+diff --git a/docs/content/user-manual/usage/job-api/spring-namespace.en.md b/docs/content/user-manual/usage/job-api/spring-namespace.en.md
+index f9fd35ccc..b9d17652a 100644
+--- a/docs/content/user-manual/usage/job-api/spring-namespace.en.md
++++ b/docs/content/user-manual/usage/job-api/spring-namespace.en.md
+@@ -39,6 +39,39 @@ Through the way of DI (Dependency Injection), developers can easily use data sou
+ </beans>
+ ```
+ 
++### Configure jobs with annotation scanning
++
++As an alternative, declare job configuration with `@ElasticJobConfiguration` and scan it with `<elasticjob:job-scanner />`.
++`base-package` accepts a single package or multiple comma-separated packages. A non-empty `cron` creates a
++`ScheduleJobBootstrap` which is scheduled automatically; an empty `cron` creates a `OneOffJobBootstrap` which must be triggered manually.
++
++```java
++@ElasticJobConfiguration(
++        jobName = "simpleJob",
++        cron = "0/5 * * * * ?",
++        shardingTotalCount = 3,
++        shardingItemParameters = "0=a,1=b,2=c")
++public class AnnotationSimpleJob implements SimpleJob {
++    
++    @Override
++    public void execute(final ShardingContext shardingContext) {
++        // do something
++    }
++}
++```
++
++```xml
++<elasticjob:zookeeper id="regCenter" server-lists="yourhost:2181" namespace="my-job" />
++<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
++```
++
++Notes:
++
++- The bootstrap bean name defaults to the `jobName` in the annotation, which must differ from the scanned job bean name.
++- `registryCenter` in the annotation optionally specifies the registry center bean name. When empty, the single
++  `CoordinatorRegistryCenter` bean is injected by type.
++- Job configuration is resolved at runtime from the annotation (with superclass fallback for CGLIB proxies). Only bean references are registered so bean definitions stay Spring AOT friendly, and the annotation types are covered by GraalVM reachability metadata for native images.
++
+ ## Job Start
+ 
+ ### Schedule Job

@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+set -e
+
 SHARDINGSPHERE_DOC_PATH=$1
 
 echo "current path is ${SHARDINGSPHERE_DOC_PATH}"
@@ -28,22 +30,44 @@ sed -i 's/<property name="severity" value="error" \/>/<property name="severity" 
 echo "2. build project"
 ./mvnw clean install -DskipITs -DskipTests -Dcheckstyle.skip=true
 
+# Let dependency reports use the packaged JAR for modules without compiled classes.
+find . -type d -name target -prune -exec sh -ec '
+  for output in "$@"; do
+    [ -d "$output/classes" ] && continue
+    for jar in "$output"/*.jar; do
+      if [ -f "$jar" ]; then
+        mkdir -p "$output/classes"
+        break
+      fi
+    done
+  done
+' sh {} +
+
 echo "3. process maven site"
-./mvnw site:site
+./mvnw site:site -Dmaven.resolver.validation=OFF
 
 echo "4. process maven stage"
 ./mvnw site:stage
 
+for report in index.html project-info.html project-reports.html xref/index.html rat-report.html checkstyle-aggregate.html cpd.html pmd.html taglist.html; do
+  if [ ! -s "target/staging/${report}" ] || ! grep -qi '<html' "target/staging/${report}" || ! grep -qi '</html>' "target/staging/${report}"; then
+    echo "Missing or incomplete Maven report: target/staging/${report}" >&2
+    exit 1
+  fi
+done
+
 echo "5. upload the maven report"
-if [ -d "target/staging" ] && [ -n "$(ls -A "target/staging")" ]; then
-  rm -rf ${SHARDINGSPHERE_DOC_PATH}/statistics/staging
-  mv target/staging  ${SHARDINGSPHERE_DOC_PATH}/statistics/
-  git config --global user.email "dev@shardingsphere.apache.org"
-  git config --global user.name "shardingsphere"
-  cd ${SHARDINGSPHERE_DOC_PATH}
-  git add .
-  export TZ="Asia/Shanghai"
-  dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
-  git commit -m  "Update shardingsphere maven report at $dateStr."
-  git push
+rm -rf "${SHARDINGSPHERE_DOC_PATH}/statistics/staging"
+mv target/staging "${SHARDINGSPHERE_DOC_PATH}/statistics/"
+git config --global user.email "dev@shardingsphere.apache.org"
+git config --global user.name "shardingsphere"
+cd "${SHARDINGSPHERE_DOC_PATH}"
+git add -A -- statistics/staging
+if git diff --cached --quiet -- statistics/staging; then
+  echo "Maven reports are unchanged."
+  exit 0
 fi
+export TZ="Asia/Shanghai"
+dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
+git commit --only -m "Update shardingsphere maven report at $dateStr." -- statistics/staging
+git push

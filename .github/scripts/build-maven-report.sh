@@ -30,6 +30,19 @@ sed -i 's/<property name="severity" value="error" \/>/<property name="severity" 
 echo "2. build project"
 ./mvnw clean install -DskipITs -DskipTests -Dcheckstyle.skip=true
 
+# Let dependency reports use the packaged JAR for modules without compiled classes.
+find . -type d -name target -prune -exec sh -ec '
+  for output in "$@"; do
+    [ -d "$output/classes" ] && continue
+    for jar in "$output"/*.jar; do
+      if [ -f "$jar" ]; then
+        mkdir -p "$output/classes"
+        break
+      fi
+    done
+  done
+' sh {} +
+
 echo "3. process maven site"
 ./mvnw site:site -Dmaven.resolver.validation=OFF
 

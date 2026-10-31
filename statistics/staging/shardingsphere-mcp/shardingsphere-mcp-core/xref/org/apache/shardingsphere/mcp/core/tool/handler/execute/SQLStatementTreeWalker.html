@@ -1,0 +1,457 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="" lang="">
+<head><meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+<title>SQLStatementTreeWalker xref</title>
+<link type="text/css" rel="stylesheet" href="../../../../../../../../stylesheet.css" />
+</head>
+<body>
+<div id="overview"><a href="../../../../../../../../../apidocs/org/apache/shardingsphere/mcp/core/tool/handler/execute/SQLStatementTreeWalker.html">View Javadoc</a></div><pre>
+<a class="jxr_linenumber" name="L1" href="#L1">1</a>   <em class="jxr_comment">/*</em>
+<a class="jxr_linenumber" name="L2" href="#L2">2</a>   <em class="jxr_comment"> * Licensed to the Apache Software Foundation (ASF) under one or more</em>
+<a class="jxr_linenumber" name="L3" href="#L3">3</a>   <em class="jxr_comment"> * contributor license agreements.  See the NOTICE file distributed with</em>
+<a class="jxr_linenumber" name="L4" href="#L4">4</a>   <em class="jxr_comment"> * this work for additional information regarding copyright ownership.</em>
+<a class="jxr_linenumber" name="L5" href="#L5">5</a>   <em class="jxr_comment"> * The ASF licenses this file to You under the Apache License, Version 2.0</em>
+<a class="jxr_linenumber" name="L6" href="#L6">6</a>   <em class="jxr_comment"> * (the "License"); you may not use this file except in compliance with</em>
+<a class="jxr_linenumber" name="L7" href="#L7">7</a>   <em class="jxr_comment"> * the License.  You may obtain a copy of the License at</em>
+<a class="jxr_linenumber" name="L8" href="#L8">8</a>   <em class="jxr_comment"> *</em>
+<a class="jxr_linenumber" name="L9" href="#L9">9</a>   <em class="jxr_comment"> *     <a href="http://www.apache.org/licenses/LICENSE-2.0" target="alexandria_uri">http://www.apache.org/licenses/LICENSE-2.0</a></em>
+<a class="jxr_linenumber" name="L10" href="#L10">10</a>  <em class="jxr_comment"> *</em>
+<a class="jxr_linenumber" name="L11" href="#L11">11</a>  <em class="jxr_comment"> * Unless required by applicable law or agreed to in writing, software</em>
+<a class="jxr_linenumber" name="L12" href="#L12">12</a>  <em class="jxr_comment"> * distributed under the License is distributed on an "AS IS" BASIS,</em>
+<a class="jxr_linenumber" name="L13" href="#L13">13</a>  <em class="jxr_comment"> * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</em>
+<a class="jxr_linenumber" name="L14" href="#L14">14</a>  <em class="jxr_comment"> * See the License for the specific language governing permissions and</em>
+<a class="jxr_linenumber" name="L15" href="#L15">15</a>  <em class="jxr_comment"> * limitations under the License.</em>
+<a class="jxr_linenumber" name="L16" href="#L16">16</a>  <em class="jxr_comment"> */</em>
+<a class="jxr_linenumber" name="L17" href="#L17">17</a>  
+<a class="jxr_linenumber" name="L18" href="#L18">18</a>  <strong class="jxr_keyword">package</strong> org.apache.shardingsphere.mcp.core.tool.handler.execute;
+<a class="jxr_linenumber" name="L19" href="#L19">19</a>  
+<a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> lombok.RequiredArgsConstructor;
+<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.exception.ShardingSpherePreconditions;
+<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.mcp.core.protocol.exception.MCPUnsupportedSQLStatementException;
+<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.assignment.ColumnAssignmentSegment;
+<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.combine.CombineSegment;
+<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.datetime.DatetimeExpression;
+<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.BetweenExpression;
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.BinaryOperationExpression;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.CaseWhenExpression;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.CollateExpression;
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.ExistsSubqueryExpression;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.ExpressionSegment;
+<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.FunctionSegment;
+<a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.InExpression;
+<a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.IntervalExpression;
+<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.KeyValueSegment;
+<a class="jxr_linenumber" name="L36" href="#L36">36</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.ListExpression;
+<a class="jxr_linenumber" name="L37" href="#L37">37</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.NotExpression;
+<a class="jxr_linenumber" name="L38" href="#L38">38</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.QuantifySubqueryExpression;
+<a class="jxr_linenumber" name="L39" href="#L39">39</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.RowExpression;
+<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.TypeCastExpression;
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.UnaryOperationExpression;
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.ValuesExpression;
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.complex.CommonExpressionSegment;
+<a class="jxr_linenumber" name="L44" href="#L44">44</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.subquery.SubqueryExpressionSegment;
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.subquery.SubquerySegment;
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.AggregationProjectionSegment;
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ColumnProjectionSegment;
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.DatetimeProjectionSegment;
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ExpressionProjectionSegment;
+<a class="jxr_linenumber" name="L50" href="#L50">50</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.IntervalExpressionProjection;
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ProjectionSegment;
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.ProjectionsSegment;
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.item.SubqueryProjectionSegment;
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.join.OuterJoinExpression;
+<a class="jxr_linenumber" name="L55" href="#L55">55</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.merge.MergeWhenAndThenSegment;
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.multiset.MultisetExpression;
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.order.item.ExpressionOrderByItemSegment;
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.order.item.OrderByItemSegment;
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.pagination.ExpressionPaginationValueSegment;
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.pagination.PaginationValueSegment;
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.pagination.limit.LimitSegment;
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.table.MultiTableConditionalIntoSegment;
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.table.MultiTableConditionalIntoWhenThenSegment;
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.xml.XmlElementFunctionSegment;
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.xml.XmlPiFunctionSegment;
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.xml.XmlQueryAndExistsFunctionSegment;
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.xml.XmlSerializeFunctionSegment;
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.xml.XmlTableColumnSegment;
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.xml.XmlTableFunctionSegment;
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.xml.XmlTableOptionsSegment;
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.ModelColumnSegment;
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.ModelSegment;
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.OutputSegment;
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.WindowItemSegment;
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.WithSegment;
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.match.MatchAgainstExpression;
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.CollectionTableSegment;
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.DeleteMultiTableSegment;
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.FunctionTableSegment;
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.JoinTableSegment;
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.SimpleTableSegment;
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.SubqueryTableSegment;
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.TableSegment;
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.procedure.SQLStatementSegment;
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.SQLStatement;
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.function.CreateFunctionStatement;
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.procedure.CreateProcedureStatement;
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.table.CreateTableStatement;
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.trigger.CreateTriggerStatement;
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.view.AlterViewStatement;
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.view.CreateMaterializedViewStatement;
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.view.CreateViewStatement;
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.dml.DeleteStatement;
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.dml.InsertStatement;
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.dml.MergeStatement;
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.dml.SelectStatement;
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.dml.UpdateStatement;
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>  
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>  <strong class="jxr_keyword">import</strong> java.util.function.Consumer;
+<a class="jxr_linenumber" name="L100" href="#L100">100</a> 
+<a class="jxr_linenumber" name="L101" href="#L101">101</a> @RequiredArgsConstructor
+<a class="jxr_linenumber" name="L102" href="#L102">102</a> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a name="SQLStatementTreeWalker" href="../../../../../../../../org/apache/shardingsphere/mcp/core/tool/handler/execute/SQLStatementTreeWalker.html#SQLStatementTreeWalker">SQLStatementTreeWalker</a> {
+<a class="jxr_linenumber" name="L103" href="#L103">103</a>     
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> Consumer&lt;SQLStatement&gt; statementConsumer;
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>     
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> Consumer&lt;ExpressionSegment&gt; expressionConsumer;
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>     
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>     <strong class="jxr_keyword">void</strong> walk(<strong class="jxr_keyword">final</strong> SQLStatement sqlStatement) {
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == sqlStatement) {
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>         }
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>         statementConsumer.accept(sqlStatement);
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>         <strong class="jxr_keyword">if</strong> (sqlStatement instanceof SelectStatement select) {
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>             walkSelect(select);
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof InsertStatement insert) {
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>             walkInsert(insert);
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof UpdateStatement update) {
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>             walkUpdate(update);
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof DeleteStatement delete) {
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>             walkDelete(delete);
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof MergeStatement merge) {
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>             walkMerge(merge);
+<a class="jxr_linenumber" name="L123" href="#L123">123</a>         } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L124" href="#L124">124</a>             walkDDL(sqlStatement);
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>         }
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>     }
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>     
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkDDL(<strong class="jxr_keyword">final</strong> SQLStatement sqlStatement) {
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>         <strong class="jxr_keyword">if</strong> (sqlStatement instanceof CreateTableStatement createTableStatement) {
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>             createTableStatement.getSelectStatement().ifPresent(<strong class="jxr_keyword">this</strong>::walk);
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof CreateViewStatement createViewStatement) {
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>             walk(createViewStatement.getSelect());
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof AlterViewStatement alterViewStatement) {
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>             alterViewStatement.getSelect().ifPresent(<strong class="jxr_keyword">this</strong>::walk);
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof CreateMaterializedViewStatement createMaterializedViewStatement) {
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>             walk(createMaterializedViewStatement.getSelect());
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof CreateFunctionStatement createFunctionStatement) {
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>             walkRoutine(createFunctionStatement.getSqlStatements(), createFunctionStatement.getDynamicSqlStatementExpressions());
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof CreateProcedureStatement createProcedureStatement) {
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>             walkRoutine(createProcedureStatement.getSqlStatements(), createProcedureStatement.getDynamicSqlStatementExpressions());
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (sqlStatement instanceof CreateTriggerStatement createTriggerStatement) {
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>             walkRoutine(createTriggerStatement.getSqlStatements(), createTriggerStatement.getDynamicSqlStatementExpressions());
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>         }
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>     }
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>     
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkRoutine(<strong class="jxr_keyword">final</strong> Iterable&lt;SQLStatementSegment&gt; sqlStatements, <strong class="jxr_keyword">final</strong> Iterable&lt;ExpressionSegment&gt; expressions) {
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>         sqlStatements.forEach(each -&gt; walk(each.getSqlStatement()));
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>         expressions.forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>     }
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>     
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkSelect(<strong class="jxr_keyword">final</strong> SelectStatement sqlStatement) {
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>         walkProjections(sqlStatement.getProjections());
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>         sqlStatement.getWhere().ifPresent(each -&gt; walkExpression(each.getExpr()));
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>         sqlStatement.getHaving().ifPresent(each -&gt; walkExpression(each.getExpr()));
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>         sqlStatement.getGroupBy().ifPresent(each -&gt; walkOrderByItems(each.getGroupByItems()));
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>         sqlStatement.getOrderBy().ifPresent(each -&gt; walkOrderByItems(each.getOrderByItems()));
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>         sqlStatement.getFrom().ifPresent(<strong class="jxr_keyword">this</strong>::walkTable);
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>         sqlStatement.getHierarchicalQuery().ifPresent(each -&gt; {
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>             walkExpression(each.getStartWith());
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>             walkExpression(each.getConnectBy());
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>         });
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>         sqlStatement.getCombine().ifPresent(<strong class="jxr_keyword">this</strong>::walkCombine);
+<a class="jxr_linenumber" name="L163" href="#L163">163</a>         sqlStatement.getWith().ifPresent(<strong class="jxr_keyword">this</strong>::walkWith);
+<a class="jxr_linenumber" name="L164" href="#L164">164</a>         sqlStatement.getLimit().ifPresent(<strong class="jxr_keyword">this</strong>::walkLimit);
+<a class="jxr_linenumber" name="L165" href="#L165">165</a>         sqlStatement.getWindow().ifPresent(each -&gt; each.getItemSegments().forEach(<strong class="jxr_keyword">this</strong>::walkWindow));
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>         sqlStatement.getModel().ifPresent(<strong class="jxr_keyword">this</strong>::walkModel);
+<a class="jxr_linenumber" name="L167" href="#L167">167</a>         sqlStatement.getTransformSegments().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L168" href="#L168">168</a>     }
+<a class="jxr_linenumber" name="L169" href="#L169">169</a>     
+<a class="jxr_linenumber" name="L170" href="#L170">170</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkInsert(<strong class="jxr_keyword">final</strong> InsertStatement sqlStatement) {
+<a class="jxr_linenumber" name="L171" href="#L171">171</a>         sqlStatement.getInsertSelect().ifPresent(each -&gt; walk(each.getSelect()));
+<a class="jxr_linenumber" name="L172" href="#L172">172</a>         sqlStatement.getSetAssignment().ifPresent(each -&gt; each.getAssignments().forEach(assignment -&gt; walkExpression(assignment.getValue())));
+<a class="jxr_linenumber" name="L173" href="#L173">173</a>         sqlStatement.getOnDuplicateKeyColumns().ifPresent(each -&gt; each.getColumns().forEach(assignment -&gt; walkExpression(assignment.getValue())));
+<a class="jxr_linenumber" name="L174" href="#L174">174</a>         sqlStatement.getValues().forEach(each -&gt; each.getValues().forEach(<strong class="jxr_keyword">this</strong>::walkExpression));
+<a class="jxr_linenumber" name="L175" href="#L175">175</a>         sqlStatement.getWhere().ifPresent(each -&gt; walkExpression(each.getExpr()));
+<a class="jxr_linenumber" name="L176" href="#L176">176</a>         sqlStatement.getExec().ifPresent(each -&gt; each.getExpressionSegments().forEach(<strong class="jxr_keyword">this</strong>::walkExpression));
+<a class="jxr_linenumber" name="L177" href="#L177">177</a>         sqlStatement.getRowSetFunction().ifPresent(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L178" href="#L178">178</a>         sqlStatement.getMultiTableInsertInto().ifPresent(each -&gt; each.getInsertStatements().forEach(<strong class="jxr_keyword">this</strong>::walk));
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>         sqlStatement.getMultiTableConditionalInto().ifPresent(<strong class="jxr_keyword">this</strong>::walkMultiTableConditionalInto);
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>         sqlStatement.getWith().ifPresent(<strong class="jxr_keyword">this</strong>::walkWith);
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>         sqlStatement.getReturning().ifPresent(each -&gt; walkProjections(each.getProjections()));
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>         sqlStatement.getOutput().ifPresent(<strong class="jxr_keyword">this</strong>::walkOutput);
+<a class="jxr_linenumber" name="L183" href="#L183">183</a>     }
+<a class="jxr_linenumber" name="L184" href="#L184">184</a>     
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkMultiTableConditionalInto(<strong class="jxr_keyword">final</strong> MultiTableConditionalIntoSegment segment) {
+<a class="jxr_linenumber" name="L186" href="#L186">186</a>         <strong class="jxr_keyword">for</strong> (MultiTableConditionalIntoWhenThenSegment each : segment.getWhenThenSegments()) {
+<a class="jxr_linenumber" name="L187" href="#L187">187</a>             walkExpression(each.getWhenSegment());
+<a class="jxr_linenumber" name="L188" href="#L188">188</a>             each.getThenSegment().getInsertStatements().forEach(<strong class="jxr_keyword">this</strong>::walk);
+<a class="jxr_linenumber" name="L189" href="#L189">189</a>         }
+<a class="jxr_linenumber" name="L190" href="#L190">190</a>         segment.getElseSegment().ifPresent(each -&gt; each.getInsertStatements().forEach(<strong class="jxr_keyword">this</strong>::walk));
+<a class="jxr_linenumber" name="L191" href="#L191">191</a>     }
+<a class="jxr_linenumber" name="L192" href="#L192">192</a>     
+<a class="jxr_linenumber" name="L193" href="#L193">193</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkUpdate(<strong class="jxr_keyword">final</strong> UpdateStatement sqlStatement) {
+<a class="jxr_linenumber" name="L194" href="#L194">194</a>         walkTable(sqlStatement.getTable());
+<a class="jxr_linenumber" name="L195" href="#L195">195</a>         sqlStatement.getAssignment().ifPresent(each -&gt; each.getAssignments().forEach(assignment -&gt; walkExpression(assignment.getValue())));
+<a class="jxr_linenumber" name="L196" href="#L196">196</a>         sqlStatement.getWhere().ifPresent(each -&gt; walkExpression(each.getExpr()));
+<a class="jxr_linenumber" name="L197" href="#L197">197</a>         sqlStatement.getDeleteWhere().ifPresent(each -&gt; walkExpression(each.getExpr()));
+<a class="jxr_linenumber" name="L198" href="#L198">198</a>         sqlStatement.getOrderBy().ifPresent(each -&gt; walkOrderByItems(each.getOrderByItems()));
+<a class="jxr_linenumber" name="L199" href="#L199">199</a>         sqlStatement.getLimit().ifPresent(<strong class="jxr_keyword">this</strong>::walkLimit);
+<a class="jxr_linenumber" name="L200" href="#L200">200</a>         sqlStatement.getFrom().ifPresent(<strong class="jxr_keyword">this</strong>::walkTable);
+<a class="jxr_linenumber" name="L201" href="#L201">201</a>         sqlStatement.getWith().ifPresent(<strong class="jxr_keyword">this</strong>::walkWith);
+<a class="jxr_linenumber" name="L202" href="#L202">202</a>         sqlStatement.getReturning().ifPresent(each -&gt; walkProjections(each.getProjections()));
+<a class="jxr_linenumber" name="L203" href="#L203">203</a>         sqlStatement.getOutput().ifPresent(<strong class="jxr_keyword">this</strong>::walkOutput);
+<a class="jxr_linenumber" name="L204" href="#L204">204</a>     }
+<a class="jxr_linenumber" name="L205" href="#L205">205</a>     
+<a class="jxr_linenumber" name="L206" href="#L206">206</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkDelete(<strong class="jxr_keyword">final</strong> DeleteStatement sqlStatement) {
+<a class="jxr_linenumber" name="L207" href="#L207">207</a>         walkTable(sqlStatement.getTable());
+<a class="jxr_linenumber" name="L208" href="#L208">208</a>         sqlStatement.getWhere().ifPresent(each -&gt; walkExpression(each.getExpr()));
+<a class="jxr_linenumber" name="L209" href="#L209">209</a>         sqlStatement.getOrderBy().ifPresent(each -&gt; walkOrderByItems(each.getOrderByItems()));
+<a class="jxr_linenumber" name="L210" href="#L210">210</a>         sqlStatement.getLimit().ifPresent(<strong class="jxr_keyword">this</strong>::walkLimit);
+<a class="jxr_linenumber" name="L211" href="#L211">211</a>         sqlStatement.getWith().ifPresent(<strong class="jxr_keyword">this</strong>::walkWith);
+<a class="jxr_linenumber" name="L212" href="#L212">212</a>         sqlStatement.getReturning().ifPresent(each -&gt; walkProjections(each.getProjections()));
+<a class="jxr_linenumber" name="L213" href="#L213">213</a>         sqlStatement.getOutput().ifPresent(<strong class="jxr_keyword">this</strong>::walkOutput);
+<a class="jxr_linenumber" name="L214" href="#L214">214</a>     }
+<a class="jxr_linenumber" name="L215" href="#L215">215</a>     
+<a class="jxr_linenumber" name="L216" href="#L216">216</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkMerge(<strong class="jxr_keyword">final</strong> MergeStatement sqlStatement) {
+<a class="jxr_linenumber" name="L217" href="#L217">217</a>         walkTable(sqlStatement.getTarget());
+<a class="jxr_linenumber" name="L218" href="#L218">218</a>         walkTable(sqlStatement.getSource());
+<a class="jxr_linenumber" name="L219" href="#L219">219</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != sqlStatement.getExpression()) {
+<a class="jxr_linenumber" name="L220" href="#L220">220</a>             walkExpression(sqlStatement.getExpression().getExpr());
+<a class="jxr_linenumber" name="L221" href="#L221">221</a>         }
+<a class="jxr_linenumber" name="L222" href="#L222">222</a>         sqlStatement.getUpdate().ifPresent(<strong class="jxr_keyword">this</strong>::walk);
+<a class="jxr_linenumber" name="L223" href="#L223">223</a>         sqlStatement.getInsert().ifPresent(<strong class="jxr_keyword">this</strong>::walk);
+<a class="jxr_linenumber" name="L224" href="#L224">224</a>         <strong class="jxr_keyword">for</strong> (MergeWhenAndThenSegment each : sqlStatement.getWhenAndThens()) {
+<a class="jxr_linenumber" name="L225" href="#L225">225</a>             walkExpression(each.getAndExpr());
+<a class="jxr_linenumber" name="L226" href="#L226">226</a>             <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != each.getUpdate()) {
+<a class="jxr_linenumber" name="L227" href="#L227">227</a>                 walk(each.getUpdate());
+<a class="jxr_linenumber" name="L228" href="#L228">228</a>             }
+<a class="jxr_linenumber" name="L229" href="#L229">229</a>             <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != each.getInsert()) {
+<a class="jxr_linenumber" name="L230" href="#L230">230</a>                 walk(each.getInsert());
+<a class="jxr_linenumber" name="L231" href="#L231">231</a>             }
+<a class="jxr_linenumber" name="L232" href="#L232">232</a>         }
+<a class="jxr_linenumber" name="L233" href="#L233">233</a>         sqlStatement.getWith().ifPresent(<strong class="jxr_keyword">this</strong>::walkWith);
+<a class="jxr_linenumber" name="L234" href="#L234">234</a>         sqlStatement.getOutput().ifPresent(<strong class="jxr_keyword">this</strong>::walkOutput);
+<a class="jxr_linenumber" name="L235" href="#L235">235</a>     }
+<a class="jxr_linenumber" name="L236" href="#L236">236</a>     
+<a class="jxr_linenumber" name="L237" href="#L237">237</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkWith(<strong class="jxr_keyword">final</strong> WithSegment with) {
+<a class="jxr_linenumber" name="L238" href="#L238">238</a>         with.getCommonTableExpressions().forEach(each -&gt; {
+<a class="jxr_linenumber" name="L239" href="#L239">239</a>             ShardingSpherePreconditions.checkState(<strong class="jxr_keyword">null</strong> == each.getDataModification(), MCPUnsupportedSQLStatementException::<strong class="jxr_keyword">new</strong>);
+<a class="jxr_linenumber" name="L240" href="#L240">240</a>             walk(each.getSubquery().getSelect());
+<a class="jxr_linenumber" name="L241" href="#L241">241</a>         });
+<a class="jxr_linenumber" name="L242" href="#L242">242</a>     }
+<a class="jxr_linenumber" name="L243" href="#L243">243</a>     
+<a class="jxr_linenumber" name="L244" href="#L244">244</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkCombine(<strong class="jxr_keyword">final</strong> CombineSegment combine) {
+<a class="jxr_linenumber" name="L245" href="#L245">245</a>         walk(combine.getLeft().getSelect());
+<a class="jxr_linenumber" name="L246" href="#L246">246</a>         walk(combine.getRight().getSelect());
+<a class="jxr_linenumber" name="L247" href="#L247">247</a>     }
+<a class="jxr_linenumber" name="L248" href="#L248">248</a>     
+<a class="jxr_linenumber" name="L249" href="#L249">249</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkProjections(<strong class="jxr_keyword">final</strong> ProjectionsSegment projections) {
+<a class="jxr_linenumber" name="L250" href="#L250">250</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == projections) {
+<a class="jxr_linenumber" name="L251" href="#L251">251</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L252" href="#L252">252</a>         }
+<a class="jxr_linenumber" name="L253" href="#L253">253</a>         <strong class="jxr_keyword">for</strong> (ProjectionSegment each : projections.getProjections()) {
+<a class="jxr_linenumber" name="L254" href="#L254">254</a>             <strong class="jxr_keyword">if</strong> (each instanceof ExpressionProjectionSegment expressionProjection) {
+<a class="jxr_linenumber" name="L255" href="#L255">255</a>                 walkExpression(expressionProjection.getExpr());
+<a class="jxr_linenumber" name="L256" href="#L256">256</a>             } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (each instanceof ExpressionSegment expression) {
+<a class="jxr_linenumber" name="L257" href="#L257">257</a>                 walkExpression(expression);
+<a class="jxr_linenumber" name="L258" href="#L258">258</a>             } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (each instanceof ColumnProjectionSegment columnProjection) {
+<a class="jxr_linenumber" name="L259" href="#L259">259</a>                 walkExpression(columnProjection.getColumn());
+<a class="jxr_linenumber" name="L260" href="#L260">260</a>             } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (each instanceof SubqueryProjectionSegment subqueryProjection) {
+<a class="jxr_linenumber" name="L261" href="#L261">261</a>                 walk(subqueryProjection.getSubquery().getSelect());
+<a class="jxr_linenumber" name="L262" href="#L262">262</a>             } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (each instanceof DatetimeProjectionSegment datetimeProjection) {
+<a class="jxr_linenumber" name="L263" href="#L263">263</a>                 walkExpression(datetimeProjection.getLeft());
+<a class="jxr_linenumber" name="L264" href="#L264">264</a>                 walkExpression(datetimeProjection.getRight());
+<a class="jxr_linenumber" name="L265" href="#L265">265</a>             }
+<a class="jxr_linenumber" name="L266" href="#L266">266</a>         }
+<a class="jxr_linenumber" name="L267" href="#L267">267</a>     }
+<a class="jxr_linenumber" name="L268" href="#L268">268</a>     
+<a class="jxr_linenumber" name="L269" href="#L269">269</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkOrderByItems(<strong class="jxr_keyword">final</strong> Iterable&lt;OrderByItemSegment&gt; items) {
+<a class="jxr_linenumber" name="L270" href="#L270">270</a>         <strong class="jxr_keyword">for</strong> (OrderByItemSegment each : items) {
+<a class="jxr_linenumber" name="L271" href="#L271">271</a>             <strong class="jxr_keyword">if</strong> (each instanceof ExpressionOrderByItemSegment expressionOrderByItem) {
+<a class="jxr_linenumber" name="L272" href="#L272">272</a>                 walkExpression(expressionOrderByItem.getExpr());
+<a class="jxr_linenumber" name="L273" href="#L273">273</a>             }
+<a class="jxr_linenumber" name="L274" href="#L274">274</a>         }
+<a class="jxr_linenumber" name="L275" href="#L275">275</a>     }
+<a class="jxr_linenumber" name="L276" href="#L276">276</a>     
+<a class="jxr_linenumber" name="L277" href="#L277">277</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkLimit(<strong class="jxr_keyword">final</strong> LimitSegment limit) {
+<a class="jxr_linenumber" name="L278" href="#L278">278</a>         limit.getOffset().ifPresent(<strong class="jxr_keyword">this</strong>::walkPaginationValue);
+<a class="jxr_linenumber" name="L279" href="#L279">279</a>         limit.getRowCount().ifPresent(<strong class="jxr_keyword">this</strong>::walkPaginationValue);
+<a class="jxr_linenumber" name="L280" href="#L280">280</a>     }
+<a class="jxr_linenumber" name="L281" href="#L281">281</a>     
+<a class="jxr_linenumber" name="L282" href="#L282">282</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkPaginationValue(<strong class="jxr_keyword">final</strong> PaginationValueSegment value) {
+<a class="jxr_linenumber" name="L283" href="#L283">283</a>         <strong class="jxr_keyword">if</strong> (value instanceof ExpressionPaginationValueSegment expressionPaginationValue) {
+<a class="jxr_linenumber" name="L284" href="#L284">284</a>             walkExpression(expressionPaginationValue.getExpression());
+<a class="jxr_linenumber" name="L285" href="#L285">285</a>         }
+<a class="jxr_linenumber" name="L286" href="#L286">286</a>     }
+<a class="jxr_linenumber" name="L287" href="#L287">287</a>     
+<a class="jxr_linenumber" name="L288" href="#L288">288</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkOutput(<strong class="jxr_keyword">final</strong> OutputSegment output) {
+<a class="jxr_linenumber" name="L289" href="#L289">289</a>         walkProjections(output.getOutputColumns());
+<a class="jxr_linenumber" name="L290" href="#L290">290</a>     }
+<a class="jxr_linenumber" name="L291" href="#L291">291</a>     
+<a class="jxr_linenumber" name="L292" href="#L292">292</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkWindow(<strong class="jxr_keyword">final</strong> WindowItemSegment window) {
+<a class="jxr_linenumber" name="L293" href="#L293">293</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != window.getPartitionListSegments()) {
+<a class="jxr_linenumber" name="L294" href="#L294">294</a>             window.getPartitionListSegments().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L295" href="#L295">295</a>         }
+<a class="jxr_linenumber" name="L296" href="#L296">296</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> != window.getOrderBySegment()) {
+<a class="jxr_linenumber" name="L297" href="#L297">297</a>             walkOrderByItems(window.getOrderBySegment().getOrderByItems());
+<a class="jxr_linenumber" name="L298" href="#L298">298</a>         }
+<a class="jxr_linenumber" name="L299" href="#L299">299</a>         walkExpression(window.getFrameClause());
+<a class="jxr_linenumber" name="L300" href="#L300">300</a>     }
+<a class="jxr_linenumber" name="L301" href="#L301">301</a>     
+<a class="jxr_linenumber" name="L302" href="#L302">302</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkModel(<strong class="jxr_keyword">final</strong> ModelSegment model) {
+<a class="jxr_linenumber" name="L303" href="#L303">303</a>         model.getReferenceModelSelects().forEach(each -&gt; walk(each.getSelect()));
+<a class="jxr_linenumber" name="L304" href="#L304">304</a>         model.getCellAssignmentSelects().forEach(each -&gt; walk(each.getSelect()));
+<a class="jxr_linenumber" name="L305" href="#L305">305</a>         model.getOrderBySegments().forEach(each -&gt; walkOrderByItems(each.getOrderByItems()));
+<a class="jxr_linenumber" name="L306" href="#L306">306</a>         model.getPartitionColumns().forEach(<strong class="jxr_keyword">this</strong>::walkModelColumn);
+<a class="jxr_linenumber" name="L307" href="#L307">307</a>         model.getDimensionColumns().forEach(<strong class="jxr_keyword">this</strong>::walkModelColumn);
+<a class="jxr_linenumber" name="L308" href="#L308">308</a>         model.getMeasureColumns().forEach(<strong class="jxr_keyword">this</strong>::walkModelColumn);
+<a class="jxr_linenumber" name="L309" href="#L309">309</a>         model.getCellAssignmentColumns().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L310" href="#L310">310</a>     }
+<a class="jxr_linenumber" name="L311" href="#L311">311</a>     
+<a class="jxr_linenumber" name="L312" href="#L312">312</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkModelColumn(<strong class="jxr_keyword">final</strong> ModelColumnSegment modelColumn) {
+<a class="jxr_linenumber" name="L313" href="#L313">313</a>         walkExpression(modelColumn.getExpression());
+<a class="jxr_linenumber" name="L314" href="#L314">314</a>     }
+<a class="jxr_linenumber" name="L315" href="#L315">315</a>     
+<a class="jxr_linenumber" name="L316" href="#L316">316</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkTable(<strong class="jxr_keyword">final</strong> TableSegment table) {
+<a class="jxr_linenumber" name="L317" href="#L317">317</a>         <strong class="jxr_keyword">if</strong> (table instanceof SimpleTableSegment simpleTable) {
+<a class="jxr_linenumber" name="L318" href="#L318">318</a>             simpleTable.getTableSampleExpression().ifPresent(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L319" href="#L319">319</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (table instanceof FunctionTableSegment functionTable) {
+<a class="jxr_linenumber" name="L320" href="#L320">320</a>             walkExpression(functionTable.getTableFunction());
+<a class="jxr_linenumber" name="L321" href="#L321">321</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (table instanceof JoinTableSegment join) {
+<a class="jxr_linenumber" name="L322" href="#L322">322</a>             walkTable(join.getLeft());
+<a class="jxr_linenumber" name="L323" href="#L323">323</a>             walkTable(join.getRight());
+<a class="jxr_linenumber" name="L324" href="#L324">324</a>             walkExpression(join.getCondition());
+<a class="jxr_linenumber" name="L325" href="#L325">325</a>             join.getLeftQueryPartitionListSegments().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L326" href="#L326">326</a>             join.getRightQueryPartitionListSegments().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L327" href="#L327">327</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (table instanceof SubqueryTableSegment subqueryTable) {
+<a class="jxr_linenumber" name="L328" href="#L328">328</a>             walk(subqueryTable.getSubquery().getSelect());
+<a class="jxr_linenumber" name="L329" href="#L329">329</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (table instanceof CollectionTableSegment collectionTable) {
+<a class="jxr_linenumber" name="L330" href="#L330">330</a>             walkExpression(collectionTable.getExpressionSegment());
+<a class="jxr_linenumber" name="L331" href="#L331">331</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (table instanceof DeleteMultiTableSegment deleteMultiTable) {
+<a class="jxr_linenumber" name="L332" href="#L332">332</a>             walkTable(deleteMultiTable.getRelationTable());
+<a class="jxr_linenumber" name="L333" href="#L333">333</a>         }
+<a class="jxr_linenumber" name="L334" href="#L334">334</a>     }
+<a class="jxr_linenumber" name="L335" href="#L335">335</a>     
+<a class="jxr_linenumber" name="L336" href="#L336">336</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkExpression(<strong class="jxr_keyword">final</strong> ExpressionSegment expression) {
+<a class="jxr_linenumber" name="L337" href="#L337">337</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == expression) {
+<a class="jxr_linenumber" name="L338" href="#L338">338</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L339" href="#L339">339</a>         }
+<a class="jxr_linenumber" name="L340" href="#L340">340</a>         expressionConsumer.accept(expression);
+<a class="jxr_linenumber" name="L341" href="#L341">341</a>         <strong class="jxr_keyword">switch</strong> (expression) {
+<a class="jxr_linenumber" name="L342" href="#L342">342</a>             <strong class="jxr_keyword">case</strong> FunctionSegment function -&gt; walkFunction(function);
+<a class="jxr_linenumber" name="L343" href="#L343">343</a>             <strong class="jxr_keyword">case</strong> CommonExpressionSegment common -&gt; common.getChildren().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L344" href="#L344">344</a>             <strong class="jxr_keyword">case</strong> AggregationProjectionSegment aggregation -&gt; {
+<a class="jxr_linenumber" name="L345" href="#L345">345</a>                 aggregation.getParameters().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L346" href="#L346">346</a>                 aggregation.getWindow().ifPresent(<strong class="jxr_keyword">this</strong>::walkWindow);
+<a class="jxr_linenumber" name="L347" href="#L347">347</a>             }
+<a class="jxr_linenumber" name="L348" href="#L348">348</a>             <strong class="jxr_keyword">case</strong> BinaryOperationExpression binary -&gt; {
+<a class="jxr_linenumber" name="L349" href="#L349">349</a>                 walkExpression(binary.getLeft());
+<a class="jxr_linenumber" name="L350" href="#L350">350</a>                 walkExpression(binary.getRight());
+<a class="jxr_linenumber" name="L351" href="#L351">351</a>             }
+<a class="jxr_linenumber" name="L352" href="#L352">352</a>             <strong class="jxr_keyword">case</strong> ColumnAssignmentSegment assignment -&gt; walkExpression(assignment.getValue());
+<a class="jxr_linenumber" name="L353" href="#L353">353</a>             <strong class="jxr_keyword">case</strong> ListExpression list -&gt; list.getItems().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L354" href="#L354">354</a>             <strong class="jxr_keyword">case</strong> BetweenExpression between -&gt; {
+<a class="jxr_linenumber" name="L355" href="#L355">355</a>                 walkExpression(between.getLeft());
+<a class="jxr_linenumber" name="L356" href="#L356">356</a>                 walkExpression(between.getBetweenExpr());
+<a class="jxr_linenumber" name="L357" href="#L357">357</a>                 walkExpression(between.getAndExpr());
+<a class="jxr_linenumber" name="L358" href="#L358">358</a>             }
+<a class="jxr_linenumber" name="L359" href="#L359">359</a>             <strong class="jxr_keyword">case</strong> InExpression in -&gt; {
+<a class="jxr_linenumber" name="L360" href="#L360">360</a>                 walkExpression(in.getLeft());
+<a class="jxr_linenumber" name="L361" href="#L361">361</a>                 walkExpression(in.getRight());
+<a class="jxr_linenumber" name="L362" href="#L362">362</a>             }
+<a class="jxr_linenumber" name="L363" href="#L363">363</a>             <strong class="jxr_keyword">case</strong> CaseWhenExpression caseWhen -&gt; walkCaseWhen(caseWhen);
+<a class="jxr_linenumber" name="L364" href="#L364">364</a>             <strong class="jxr_keyword">case</strong> NotExpression not -&gt; walkExpression(not.getExpression());
+<a class="jxr_linenumber" name="L365" href="#L365">365</a>             <strong class="jxr_keyword">case</strong> TypeCastExpression typeCast -&gt; walkExpression(typeCast.getExpression());
+<a class="jxr_linenumber" name="L366" href="#L366">366</a>             <strong class="jxr_keyword">case</strong> CollateExpression collate -&gt; collate.getExpr().ifPresent(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L367" href="#L367">367</a>             <strong class="jxr_keyword">case</strong> DatetimeExpression datetime -&gt; {
+<a class="jxr_linenumber" name="L368" href="#L368">368</a>                 walkExpression(datetime.getLeft());
+<a class="jxr_linenumber" name="L369" href="#L369">369</a>                 walkExpression(datetime.getRight());
+<a class="jxr_linenumber" name="L370" href="#L370">370</a>             }
+<a class="jxr_linenumber" name="L371" href="#L371">371</a>             <strong class="jxr_keyword">case</strong> IntervalExpression interval -&gt; walkExpression(interval.getValue());
+<a class="jxr_linenumber" name="L372" href="#L372">372</a>             <strong class="jxr_keyword">case</strong> IntervalExpressionProjection intervalProjection -&gt; walkIntervalProjection(intervalProjection);
+<a class="jxr_linenumber" name="L373" href="#L373">373</a>             <strong class="jxr_keyword">case</strong> KeyValueSegment keyValue -&gt; {
+<a class="jxr_linenumber" name="L374" href="#L374">374</a>                 walkExpression(keyValue.getKey());
+<a class="jxr_linenumber" name="L375" href="#L375">375</a>                 walkExpression(keyValue.getValue());
+<a class="jxr_linenumber" name="L376" href="#L376">376</a>             }
+<a class="jxr_linenumber" name="L377" href="#L377">377</a>             <strong class="jxr_keyword">case</strong> RowExpression row -&gt; row.getItems().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L378" href="#L378">378</a>             <strong class="jxr_keyword">case</strong> UnaryOperationExpression unary -&gt; walkExpression(unary.getExpression());
+<a class="jxr_linenumber" name="L379" href="#L379">379</a>             <strong class="jxr_keyword">case</strong> ValuesExpression values -&gt; values.getRowConstructorList().forEach(each -&gt; each.getValues().forEach(<strong class="jxr_keyword">this</strong>::walkExpression));
+<a class="jxr_linenumber" name="L380" href="#L380">380</a>             <strong class="jxr_keyword">case</strong> MatchAgainstExpression match -&gt; walkMatchAgainst(match);
+<a class="jxr_linenumber" name="L381" href="#L381">381</a>             <strong class="jxr_keyword">case</strong> MultisetExpression multiset -&gt; {
+<a class="jxr_linenumber" name="L382" href="#L382">382</a>                 walkExpression(multiset.getLeft());
+<a class="jxr_linenumber" name="L383" href="#L383">383</a>                 walkExpression(multiset.getRight());
+<a class="jxr_linenumber" name="L384" href="#L384">384</a>             }
+<a class="jxr_linenumber" name="L385" href="#L385">385</a>             <strong class="jxr_keyword">case</strong> OuterJoinExpression outerJoin -&gt; walkExpression(outerJoin.getColumnName());
+<a class="jxr_linenumber" name="L386" href="#L386">386</a>             <strong class="jxr_keyword">case</strong> SubquerySegment subquery -&gt; walk(subquery.getSelect());
+<a class="jxr_linenumber" name="L387" href="#L387">387</a>             <strong class="jxr_keyword">case</strong> SubqueryExpressionSegment subqueryExpression -&gt; walk(subqueryExpression.getSubquery().getSelect());
+<a class="jxr_linenumber" name="L388" href="#L388">388</a>             <strong class="jxr_keyword">case</strong> ExistsSubqueryExpression exists -&gt; walk(exists.getSubquery().getSelect());
+<a class="jxr_linenumber" name="L389" href="#L389">389</a>             <strong class="jxr_keyword">case</strong> QuantifySubqueryExpression quantify -&gt; walk(quantify.getSubquery().getSelect());
+<a class="jxr_linenumber" name="L390" href="#L390">390</a>             <strong class="jxr_keyword">default</strong> -&gt; walkXMLExpression(expression);
+<a class="jxr_linenumber" name="L391" href="#L391">391</a>         }
+<a class="jxr_linenumber" name="L392" href="#L392">392</a>     }
+<a class="jxr_linenumber" name="L393" href="#L393">393</a>     
+<a class="jxr_linenumber" name="L394" href="#L394">394</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkFunction(<strong class="jxr_keyword">final</strong> FunctionSegment function) {
+<a class="jxr_linenumber" name="L395" href="#L395">395</a>         function.getParameters().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L396" href="#L396">396</a>         function.getWindow().ifPresent(<strong class="jxr_keyword">this</strong>::walkWindow);
+<a class="jxr_linenumber" name="L397" href="#L397">397</a>     }
+<a class="jxr_linenumber" name="L398" href="#L398">398</a>     
+<a class="jxr_linenumber" name="L399" href="#L399">399</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkCaseWhen(<strong class="jxr_keyword">final</strong> CaseWhenExpression caseWhen) {
+<a class="jxr_linenumber" name="L400" href="#L400">400</a>         walkExpression(caseWhen.getCaseExpr());
+<a class="jxr_linenumber" name="L401" href="#L401">401</a>         caseWhen.getWhenExprs().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L402" href="#L402">402</a>         caseWhen.getThenExprs().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L403" href="#L403">403</a>         walkExpression(caseWhen.getElseExpr());
+<a class="jxr_linenumber" name="L404" href="#L404">404</a>     }
+<a class="jxr_linenumber" name="L405" href="#L405">405</a>     
+<a class="jxr_linenumber" name="L406" href="#L406">406</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkIntervalProjection(<strong class="jxr_keyword">final</strong> IntervalExpressionProjection interval) {
+<a class="jxr_linenumber" name="L407" href="#L407">407</a>         walkExpression(interval.getLeft());
+<a class="jxr_linenumber" name="L408" href="#L408">408</a>         walkExpression(interval.getMinus());
+<a class="jxr_linenumber" name="L409" href="#L409">409</a>         walkExpression(interval.getRight());
+<a class="jxr_linenumber" name="L410" href="#L410">410</a>     }
+<a class="jxr_linenumber" name="L411" href="#L411">411</a>     
+<a class="jxr_linenumber" name="L412" href="#L412">412</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkMatchAgainst(<strong class="jxr_keyword">final</strong> MatchAgainstExpression match) {
+<a class="jxr_linenumber" name="L413" href="#L413">413</a>         match.getColumns().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L414" href="#L414">414</a>         walkExpression(match.getExpr());
+<a class="jxr_linenumber" name="L415" href="#L415">415</a>     }
+<a class="jxr_linenumber" name="L416" href="#L416">416</a>     
+<a class="jxr_linenumber" name="L417" href="#L417">417</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkXMLExpression(<strong class="jxr_keyword">final</strong> ExpressionSegment expression) {
+<a class="jxr_linenumber" name="L418" href="#L418">418</a>         <strong class="jxr_keyword">if</strong> (expression instanceof XmlElementFunctionSegment xmlElement) {
+<a class="jxr_linenumber" name="L419" href="#L419">419</a>             xmlElement.getXmlAttributes().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L420" href="#L420">420</a>             xmlElement.getParameters().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L421" href="#L421">421</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (expression instanceof XmlPiFunctionSegment xmlPi) {
+<a class="jxr_linenumber" name="L422" href="#L422">422</a>             walkExpression(xmlPi.getEvalNameValueExpr());
+<a class="jxr_linenumber" name="L423" href="#L423">423</a>             walkExpression(xmlPi.getValueExpr());
+<a class="jxr_linenumber" name="L424" href="#L424">424</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (expression instanceof XmlQueryAndExistsFunctionSegment xmlQueryAndExists) {
+<a class="jxr_linenumber" name="L425" href="#L425">425</a>             xmlQueryAndExists.getParameters().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L426" href="#L426">426</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (expression instanceof XmlSerializeFunctionSegment xmlSerialize) {
+<a class="jxr_linenumber" name="L427" href="#L427">427</a>             walkExpression(xmlSerialize.getParameter());
+<a class="jxr_linenumber" name="L428" href="#L428">428</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (expression instanceof XmlTableFunctionSegment xmlTable) {
+<a class="jxr_linenumber" name="L429" href="#L429">429</a>             walkXmlTableOptions(xmlTable.getXmlTableOption());
+<a class="jxr_linenumber" name="L430" href="#L430">430</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (expression instanceof XmlTableOptionsSegment xmlTableOptions) {
+<a class="jxr_linenumber" name="L431" href="#L431">431</a>             walkXmlTableOptions(xmlTableOptions);
+<a class="jxr_linenumber" name="L432" href="#L432">432</a>         } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (expression instanceof XmlTableColumnSegment xmlTableColumn) {
+<a class="jxr_linenumber" name="L433" href="#L433">433</a>             walkExpression(xmlTableColumn.getDefaultExpr());
+<a class="jxr_linenumber" name="L434" href="#L434">434</a>         }
+<a class="jxr_linenumber" name="L435" href="#L435">435</a>     }
+<a class="jxr_linenumber" name="L436" href="#L436">436</a>     
+<a class="jxr_linenumber" name="L437" href="#L437">437</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> walkXmlTableOptions(<strong class="jxr_keyword">final</strong> XmlTableOptionsSegment options) {
+<a class="jxr_linenumber" name="L438" href="#L438">438</a>         <strong class="jxr_keyword">if</strong> (<strong class="jxr_keyword">null</strong> == options) {
+<a class="jxr_linenumber" name="L439" href="#L439">439</a>             <strong class="jxr_keyword">return</strong>;
+<a class="jxr_linenumber" name="L440" href="#L440">440</a>         }
+<a class="jxr_linenumber" name="L441" href="#L441">441</a>         options.getParameters().forEach(<strong class="jxr_keyword">this</strong>::walkExpression);
+<a class="jxr_linenumber" name="L442" href="#L442">442</a>         options.getXmlTableColumnSegments().forEach(each -&gt; walkExpression(each.getDefaultExpr()));
+<a class="jxr_linenumber" name="L443" href="#L443">443</a>     }
+<a class="jxr_linenumber" name="L444" href="#L444">444</a> }
+</pre>
+<hr/>
+<div id="footer">Copyright &#169; 2026 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>
+</body>
+</html>

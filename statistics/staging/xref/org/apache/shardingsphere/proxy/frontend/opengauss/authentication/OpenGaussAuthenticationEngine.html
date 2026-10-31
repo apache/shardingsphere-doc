@@ -135,7 +135,7 @@
 <a class="jxr_linenumber" name="L127" href="#L127">127</a>         context.write(<strong class="jxr_keyword">new</strong> <a name="PostgreSQLParameterStatusPacket" href="../../../../../../../org/apache/shardingsphere/database/protocol/postgresql/packet/handshake/PostgreSQLParameterStatusPacket.html#PostgreSQLParameterStatusPacket">PostgreSQLParameterStatusPacket</a>(<span class="jxr_string">"server_encoding"</span>, <span class="jxr_string">"UTF8"</span>));
 <a class="jxr_linenumber" name="L128" href="#L128">128</a>         context.write(<strong class="jxr_keyword">new</strong> <a name="PostgreSQLParameterStatusPacket" href="../../../../../../../org/apache/shardingsphere/database/protocol/postgresql/packet/handshake/PostgreSQLParameterStatusPacket.html#PostgreSQLParameterStatusPacket">PostgreSQLParameterStatusPacket</a>(<span class="jxr_string">"integer_datetimes"</span>, <span class="jxr_string">"on"</span>));
 <a class="jxr_linenumber" name="L129" href="#L129">129</a>         context.writeAndFlush(PostgreSQLReadyForQueryPacket.NOT_IN_TRANSACTION);
-<a class="jxr_linenumber" name="L130" href="#L130">130</a>         <strong class="jxr_keyword">return</strong> AuthenticationResultBuilder.finished(currentAuthResult.getUsername(), <span class="jxr_string">""</span>, currentAuthResult.getDatabase());
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>         <strong class="jxr_keyword">return</strong> AuthenticationResultBuilder.finished(currentAuthResult.getUsername(), <span class="jxr_string">""</span>, currentAuthResult.getDatabase(), currentAuthResult.getConnectionAttributes());
 <a class="jxr_linenumber" name="L131" href="#L131">131</a>     }
 <a class="jxr_linenumber" name="L132" href="#L132">132</a>     
 <a class="jxr_linenumber" name="L133" href="#L133">133</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">void</strong> login(<strong class="jxr_keyword">final</strong> <a name="AuthorityRule" href="../../../../../../../org/apache/shardingsphere/authority/rule/AuthorityRule.html#AuthorityRule">AuthorityRule</a> rule, <strong class="jxr_keyword">final</strong> String digest) {
@@ -152,10 +152,10 @@
 <a class="jxr_linenumber" name="L144" href="#L144">144</a>     }
 <a class="jxr_linenumber" name="L145" href="#L145">145</a>     
 <a class="jxr_linenumber" name="L146" href="#L146">146</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">boolean</strong> login(<strong class="jxr_keyword">final</strong> <a name="Authenticator" href="../../../../../../../org/apache/shardingsphere/authentication/Authenticator.html#Authenticator">Authenticator</a> authenticator, <strong class="jxr_keyword">final</strong> <a name="ShardingSphereUser" href="../../../../../../../org/apache/shardingsphere/infra/metadata/user/ShardingSphereUser.html#ShardingSphereUser">ShardingSphereUser</a> user, <strong class="jxr_keyword">final</strong> String digest) {
-<a class="jxr_linenumber" name="L147" href="#L147">147</a>         <strong class="jxr_keyword">if</strong> (PostgreSQLAuthenticationMethod.MD5.getMethodName().equals(authenticator.getAuthenticationMethodName())) {
-<a class="jxr_linenumber" name="L148" href="#L148">148</a>             <strong class="jxr_keyword">return</strong> authenticator.authenticate(user, <strong class="jxr_keyword">new</strong> Object[]{digest, md5Salt});
-<a class="jxr_linenumber" name="L149" href="#L149">149</a>         }
-<a class="jxr_linenumber" name="L150" href="#L150">150</a>         <strong class="jxr_keyword">return</strong> authenticator.authenticate(user, <strong class="jxr_keyword">new</strong> Object[]{digest, authHexData.getSalt(), authHexData.getNonce(), serverIteration});
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>         Object[] authInfo = PostgreSQLAuthenticationMethod.MD5.getMethodName().equals(authenticator.getAuthenticationMethodName())
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>                 ? <strong class="jxr_keyword">new</strong> Object[]{digest, md5Salt}
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>                 : <strong class="jxr_keyword">new</strong> Object[]{digest, authHexData.getSalt(), authHexData.getNonce(), serverIteration};
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>         <strong class="jxr_keyword">return</strong> authenticator.authenticate(user, authInfo);
 <a class="jxr_linenumber" name="L151" href="#L151">151</a>     }
 <a class="jxr_linenumber" name="L152" href="#L152">152</a>     
 <a class="jxr_linenumber" name="L153" href="#L153">153</a>     <strong class="jxr_keyword">private</strong> <a name="AuthenticationResult" href="../../../../../../../org/apache/shardingsphere/authentication/result/AuthenticationResult.html#AuthenticationResult">AuthenticationResult</a> processStartupMessage(<strong class="jxr_keyword">final</strong> ChannelHandlerContext context, <strong class="jxr_keyword">final</strong> <a name="PostgreSQLPacketPayload" href="../../../../../../../org/apache/shardingsphere/database/protocol/postgresql/payload/PostgreSQLPacketPayload.html#PostgreSQLPacketPayload">PostgreSQLPacketPayload</a> payload, <strong class="jxr_keyword">final</strong> <a name="AuthorityRule" href="../../../../../../../org/apache/shardingsphere/authority/rule/AuthorityRule.html#AuthorityRule">AuthorityRule</a> rule) {
@@ -166,7 +166,7 @@
 <a class="jxr_linenumber" name="L158" href="#L158">158</a>         String username = startupPacket.getUsername();
 <a class="jxr_linenumber" name="L159" href="#L159">159</a>         ShardingSpherePreconditions.checkNotEmpty(username, EmptyUsernameException::<strong class="jxr_keyword">new</strong>);
 <a class="jxr_linenumber" name="L160" href="#L160">160</a>         context.writeAndFlush(getIdentifierPacket(username, rule, startupPacket.getVersion()));
-<a class="jxr_linenumber" name="L161" href="#L161">161</a>         currentAuthResult = AuthenticationResultBuilder.continued(username, <span class="jxr_string">""</span>, startupPacket.getDatabase());
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>         currentAuthResult = AuthenticationResultBuilder.continued(username, <span class="jxr_string">""</span>, startupPacket.getDatabase(), startupPacket.getConnectionAttributes());
 <a class="jxr_linenumber" name="L162" href="#L162">162</a>         <strong class="jxr_keyword">return</strong> currentAuthResult;
 <a class="jxr_linenumber" name="L163" href="#L163">163</a>     }
 <a class="jxr_linenumber" name="L164" href="#L164">164</a>     

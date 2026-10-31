@@ -33,10 +33,10 @@
 <a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.ingest.dumper.inventory.query.Range;
 <a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.ingest.position.IngestPosition;
 <a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.ingest.position.type.pk.UniqueKeyIngestPosition;
-<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.sqlbuilder.sql.PipelinePrepareSQLBuilder;
-<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.QualifiedTable;
-<a class="jxr_linenumber" name="L30" href="#L30">30</a>  
-<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> java.math.BigDecimal;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.preparer.inventory.calculator.position.exact.IntegerPositionHandler;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.data.pipeline.core.sqlbuilder.sql.PipelinePrepareSQLBuilder;
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.QualifiedTable;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  
 <a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> java.math.BigInteger;
 <a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> java.sql.Connection;
 <a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> java.sql.ResultSet;
@@ -69,38 +69,37 @@
 <a class="jxr_linenumber" name="L61" href="#L61">61</a>                  Statement statement = connection.createStatement();
 <a class="jxr_linenumber" name="L62" href="#L62">62</a>                  ResultSet resultSet = statement.executeQuery(sql)) {
 <a class="jxr_linenumber" name="L63" href="#L63">63</a>              resultSet.next();
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>              BigDecimal lowerBound = resultSet.getBigDecimal(1);
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>              BigDecimal upperBound = resultSet.getBigDecimal(2);
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>              <strong class="jxr_keyword">return</strong> Range.closed(<strong class="jxr_keyword">null</strong> == lowerBound ? <strong class="jxr_keyword">null</strong> : lowerBound.toBigInteger(), <strong class="jxr_keyword">null</strong> == upperBound ? <strong class="jxr_keyword">null</strong> : upperBound.toBigInteger());
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>          } <strong class="jxr_keyword">catch</strong> (<strong class="jxr_keyword">final</strong> SQLException ex) {
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>              <strong class="jxr_keyword">throw</strong> <strong class="jxr_keyword">new</strong> <a name="SplitPipelineJobByUniqueKeyException" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/exception/job/SplitPipelineJobByUniqueKeyException.html#SplitPipelineJobByUniqueKeyException">SplitPipelineJobByUniqueKeyException</a>(qualifiedTable.getTableName(), uniqueKey, ex);
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>          }
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>      }
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>      
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>      <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>  <em class="jxr_javadoccomment">     * Get positions by integer unique key range.</em>
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>  <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>  <em class="jxr_javadoccomment">     * @param tableRecordsCount table records count</em>
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>  <em class="jxr_javadoccomment">     * @param uniqueKeyValuesRange unique key values range</em>
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>  <em class="jxr_javadoccomment">     * @param shardingSize sharding size</em>
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>  <em class="jxr_javadoccomment">     * @return positions</em>
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>  <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> List&lt;IngestPosition&gt; getIntegerPositions(<strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">long</strong> tableRecordsCount, <strong class="jxr_keyword">final</strong> Range&lt;BigInteger&gt; uniqueKeyValuesRange, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">long</strong> shardingSize) {
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>          BigInteger lowerBound = uniqueKeyValuesRange.getLowerBound();
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>          BigInteger upperBound = uniqueKeyValuesRange.getUpperBound();
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>          <strong class="jxr_keyword">if</strong> (0 == tableRecordsCount || <strong class="jxr_keyword">null</strong> == lowerBound || <strong class="jxr_keyword">null</strong> == upperBound) {
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>              <strong class="jxr_keyword">return</strong> Collections.singletonList(UniqueKeyIngestPosition.ofInteger(Range.closed(<strong class="jxr_keyword">null</strong>, <strong class="jxr_keyword">null</strong>)));
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>          }
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>          List&lt;IngestPosition&gt; result = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>          <strong class="jxr_keyword">long</strong> splitCount = tableRecordsCount / shardingSize + (tableRecordsCount % shardingSize &gt; 0 ? 1 : 0);
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>          BigInteger stepSize = upperBound.subtract(lowerBound).divide(BigInteger.valueOf(splitCount));
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>          <a name="IntegerRangeSplittingIterator" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/ingest/dumper/inventory/query/IntegerRangeSplittingIterator.html#IntegerRangeSplittingIterator">IntegerRangeSplittingIterator</a> rangeIterator = <strong class="jxr_keyword">new</strong> <a name="IntegerRangeSplittingIterator" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/ingest/dumper/inventory/query/IntegerRangeSplittingIterator.html#IntegerRangeSplittingIterator">IntegerRangeSplittingIterator</a>(lowerBound, upperBound, stepSize);
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>          <strong class="jxr_keyword">while</strong> (rangeIterator.hasNext()) {
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>              result.add(UniqueKeyIngestPosition.ofInteger(rangeIterator.next()));
-<a class="jxr_linenumber" name="L92" href="#L92">92</a>          }
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>          <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>      }
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>  }
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>              <a name="IntegerPositionHandler" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/preparer/inventory/calculator/position/exact/IntegerPositionHandler.html#IntegerPositionHandler">IntegerPositionHandler</a> positionHandler = <strong class="jxr_keyword">new</strong> <a name="IntegerPositionHandler" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/preparer/inventory/calculator/position/exact/IntegerPositionHandler.html#IntegerPositionHandler">IntegerPositionHandler</a>();
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>              <strong class="jxr_keyword">return</strong> Range.closed(positionHandler.readColumnValue(resultSet, 1), positionHandler.readColumnValue(resultSet, 2));
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>          } <strong class="jxr_keyword">catch</strong> (<strong class="jxr_keyword">final</strong> SQLException ex) {
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>              <strong class="jxr_keyword">throw</strong> <strong class="jxr_keyword">new</strong> <a name="SplitPipelineJobByUniqueKeyException" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/exception/job/SplitPipelineJobByUniqueKeyException.html#SplitPipelineJobByUniqueKeyException">SplitPipelineJobByUniqueKeyException</a>(qualifiedTable, uniqueKey, ex);
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>          }
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>      }
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>      
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>      <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  <em class="jxr_javadoccomment">     * Get positions by integer unique key range.</em>
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>  <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>  <em class="jxr_javadoccomment">     * @param tableRecordsCount table records count</em>
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>  <em class="jxr_javadoccomment">     * @param uniqueKeyValuesRange unique key values range</em>
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>  <em class="jxr_javadoccomment">     * @param shardingSize sharding size</em>
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>  <em class="jxr_javadoccomment">     * @return positions</em>
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>  <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>      <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> List&lt;IngestPosition&gt; getIntegerPositions(<strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">long</strong> tableRecordsCount, <strong class="jxr_keyword">final</strong> Range&lt;BigInteger&gt; uniqueKeyValuesRange, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">long</strong> shardingSize) {
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>          BigInteger lowerBound = uniqueKeyValuesRange.getLowerBound();
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>          BigInteger upperBound = uniqueKeyValuesRange.getUpperBound();
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>          <strong class="jxr_keyword">if</strong> (0 == tableRecordsCount || <strong class="jxr_keyword">null</strong> == lowerBound || <strong class="jxr_keyword">null</strong> == upperBound) {
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>              <strong class="jxr_keyword">return</strong> Collections.singletonList(UniqueKeyIngestPosition.ofInteger(Range.closed(<strong class="jxr_keyword">null</strong>, <strong class="jxr_keyword">null</strong>)));
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>          }
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>          List&lt;IngestPosition&gt; result = <strong class="jxr_keyword">new</strong> LinkedList&lt;&gt;();
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>          <strong class="jxr_keyword">long</strong> splitCount = tableRecordsCount / shardingSize + (tableRecordsCount % shardingSize &gt; 0 ? 1 : 0);
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>          BigInteger stepSize = upperBound.subtract(lowerBound).divide(BigInteger.valueOf(splitCount));
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>          <a name="IntegerRangeSplittingIterator" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/ingest/dumper/inventory/query/IntegerRangeSplittingIterator.html#IntegerRangeSplittingIterator">IntegerRangeSplittingIterator</a> rangeIterator = <strong class="jxr_keyword">new</strong> <a name="IntegerRangeSplittingIterator" href="../../../../../../../../../../../org/apache/shardingsphere/data/pipeline/core/ingest/dumper/inventory/query/IntegerRangeSplittingIterator.html#IntegerRangeSplittingIterator">IntegerRangeSplittingIterator</a>(lowerBound, upperBound, stepSize);
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>          <strong class="jxr_keyword">while</strong> (rangeIterator.hasNext()) {
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>              result.add(UniqueKeyIngestPosition.ofInteger(rangeIterator.next()));
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>          }
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>          <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>      }
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2026 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

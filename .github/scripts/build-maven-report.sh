@@ -44,7 +44,7 @@ find . -type d -name target -prune -exec sh -ec '
 ' sh {} +
 
 echo "3. process maven site"
-./mvnw site:site -Dmaven.resolver.validation=OFF
+./mvnw site -Dmaven.resolver.validation=OFF
 
 echo "4. process maven stage"
 ./mvnw site:stage

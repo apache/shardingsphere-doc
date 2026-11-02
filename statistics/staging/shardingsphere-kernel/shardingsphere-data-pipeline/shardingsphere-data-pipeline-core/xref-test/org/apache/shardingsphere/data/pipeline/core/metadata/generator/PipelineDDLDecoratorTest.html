@@ -25,93 +25,425 @@
 <a class="jxr_linenumber" name="L17" href="#L17">17</a>  
 <a class="jxr_linenumber" name="L18" href="#L18">18</a>  <strong class="jxr_keyword">package</strong> org.apache.shardingsphere.data.pipeline.core.metadata.generator;
 <a class="jxr_linenumber" name="L19" href="#L19">19</a>  
-<a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.database.connector.core.type.DatabaseType;
-<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
-<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
-<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereIndex;
-<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereSchema;
-<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereTable;
-<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.util.IndexMetaDataUtils;
-<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.parser.SQLParserEngine;
-<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
-<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.ddl.index.IndexNameSegment;
-<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.ddl.index.IndexSegment;
-<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.SimpleTableSegment;
-<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.TableNameSegment;
-<a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.index.CreateIndexStatement;
-<a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.value.identifier.IdentifierValue;
-<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> org.junit.jupiter.api.Test;
-<a class="jxr_linenumber" name="L36" href="#L36">36</a>  
-<a class="jxr_linenumber" name="L37" href="#L37">37</a>  <strong class="jxr_keyword">import</strong> java.util.Arrays;
-<a class="jxr_linenumber" name="L38" href="#L38">38</a>  <strong class="jxr_keyword">import</strong> java.util.Collections;
-<a class="jxr_linenumber" name="L39" href="#L39">39</a>  
-<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.hamcrest.MatcherAssert.assertThat;
-<a class="jxr_linenumber" name="L41" href="#L41">41</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.hamcrest.Matchers.is;
-<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.junit.jupiter.api.Assertions.assertTrue;
-<a class="jxr_linenumber" name="L43" href="#L43">43</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.mockito.Mockito.mock;
-<a class="jxr_linenumber" name="L44" href="#L44">44</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.mockito.Mockito.when;
-<a class="jxr_linenumber" name="L45" href="#L45">45</a>  
-<a class="jxr_linenumber" name="L46" href="#L46">46</a>  <strong class="jxr_keyword">class</strong> <a name="PipelineDDLDecoratorTest" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/core/metadata/generator/PipelineDDLDecoratorTest.html#PipelineDDLDecoratorTest">PipelineDDLDecoratorTest</a> {
-<a class="jxr_linenumber" name="L47" href="#L47">47</a>      
-<a class="jxr_linenumber" name="L48" href="#L48">48</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> DatabaseType databaseType = TypedSPILoader.getService(DatabaseType.<strong class="jxr_keyword">class</strong>, <span class="jxr_string">"PostgreSQL"</span>);
-<a class="jxr_linenumber" name="L49" href="#L49">49</a>      
-<a class="jxr_linenumber" name="L50" href="#L50">50</a>      @Test
-<a class="jxr_linenumber" name="L51" href="#L51">51</a>      <strong class="jxr_keyword">void</strong> assertDecorateUsesSchemaSpecificCandidatesForSameNamedTables() {
-<a class="jxr_linenumber" name="L52" href="#L52">52</a>          String logicIndexName = <span class="jxr_string">"very_long_named_index_boundary_case_for_sharding_length_safety_validation"</span>;
-<a class="jxr_linenumber" name="L53" href="#L53">53</a>          String actualIndexName = IndexMetaDataUtils.getActualIndexName(logicIndexName, <span class="jxr_string">"t_order_0"</span>, databaseType);
-<a class="jxr_linenumber" name="L54" href="#L54">54</a>          assertTrue(actualIndexName.matches(<span class="jxr_string">".*_t[0-9a-z]{8}$"</span>));
-<a class="jxr_linenumber" name="L55" href="#L55">55</a>          String actualSQL = String.format(<span class="jxr_string">"CREATE INDEX %s ON t_order_0 (order_id)"</span>, actualIndexName);
-<a class="jxr_linenumber" name="L56" href="#L56">56</a>          String expected = String.format(<span class="jxr_string">"CREATE INDEX %s ON t_order (order_id)"</span>, logicIndexName);
-<a class="jxr_linenumber" name="L57" href="#L57">57</a>          assertThat(
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>                  <strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockMetaData(logicIndexName)).decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"schema_b"</span>, <span class="jxr_string">"t_order"</span>, createParserEngine(actualSQL, actualIndexName), actualSQL).orElse(<span class="jxr_string">""</span>),
-<a class="jxr_linenumber" name="L59" href="#L59">59</a>                  is(expected));
-<a class="jxr_linenumber" name="L60" href="#L60">60</a>      }
-<a class="jxr_linenumber" name="L61" href="#L61">61</a>      
-<a class="jxr_linenumber" name="L62" href="#L62">62</a>      <strong class="jxr_keyword">private</strong> ShardingSphereMetaData mockMetaData(<strong class="jxr_keyword">final</strong> String logicIndexName) {
-<a class="jxr_linenumber" name="L63" href="#L63">63</a>          ShardingSphereMetaData result = mock(ShardingSphereMetaData.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L64" href="#L64">64</a>          ShardingSphereDatabase database = mock(ShardingSphereDatabase.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L65" href="#L65">65</a>          ShardingSphereSchema schemaA = <strong class="jxr_keyword">new</strong> ShardingSphereSchema(<span class="jxr_string">"schema_a"</span>, databaseType, Collections.singleton(
-<a class="jxr_linenumber" name="L66" href="#L66">66</a>                  <strong class="jxr_keyword">new</strong> ShardingSphereTable(<span class="jxr_string">"t_order"</span>, Collections.emptyList(),
-<a class="jxr_linenumber" name="L67" href="#L67">67</a>                          Collections.singleton(<strong class="jxr_keyword">new</strong> ShardingSphereIndex(<span class="jxr_string">"another_very_long_named_index_for_schema_a_validation"</span>, Collections.emptyList(), false)), Collections.emptyList())),
-<a class="jxr_linenumber" name="L68" href="#L68">68</a>                  Collections.emptyList());
-<a class="jxr_linenumber" name="L69" href="#L69">69</a>          ShardingSphereSchema schemaB = <strong class="jxr_keyword">new</strong> ShardingSphereSchema(<span class="jxr_string">"schema_b"</span>, databaseType, Collections.singleton(
-<a class="jxr_linenumber" name="L70" href="#L70">70</a>                  <strong class="jxr_keyword">new</strong> ShardingSphereTable(<span class="jxr_string">"t_order"</span>, Collections.emptyList(),
-<a class="jxr_linenumber" name="L71" href="#L71">71</a>                          Collections.singleton(<strong class="jxr_keyword">new</strong> ShardingSphereIndex(logicIndexName, Collections.emptyList(), false)), Collections.emptyList())),
-<a class="jxr_linenumber" name="L72" href="#L72">72</a>                  Collections.emptyList());
-<a class="jxr_linenumber" name="L73" href="#L73">73</a>          when(result.getDatabase(<span class="jxr_string">"foo_db"</span>)).thenReturn(database);
-<a class="jxr_linenumber" name="L74" href="#L74">74</a>          when(database.containsSchema(<span class="jxr_string">"schema_b"</span>)).thenReturn(<strong class="jxr_keyword">true</strong>);
-<a class="jxr_linenumber" name="L75" href="#L75">75</a>          when(database.getSchema(<span class="jxr_string">"schema_b"</span>)).thenReturn(schemaB);
-<a class="jxr_linenumber" name="L76" href="#L76">76</a>          when(database.getAllSchemas()).thenReturn(Arrays.asList(schemaA, schemaB));
-<a class="jxr_linenumber" name="L77" href="#L77">77</a>          <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L78" href="#L78">78</a>      }
-<a class="jxr_linenumber" name="L79" href="#L79">79</a>      
-<a class="jxr_linenumber" name="L80" href="#L80">80</a>      <strong class="jxr_keyword">private</strong> SQLParserEngine createParserEngine(<strong class="jxr_keyword">final</strong> String actualSQL, <strong class="jxr_keyword">final</strong> String actualIndexName) {
-<a class="jxr_linenumber" name="L81" href="#L81">81</a>          SQLParserEngine result = mock(SQLParserEngine.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L82" href="#L82">82</a>          when(result.parse(actualSQL, <strong class="jxr_keyword">true</strong>)).thenReturn(CreateIndexStatement.builder()
-<a class="jxr_linenumber" name="L83" href="#L83">83</a>                  .databaseType(databaseType)
-<a class="jxr_linenumber" name="L84" href="#L84">84</a>                  .index(<strong class="jxr_keyword">new</strong> IndexSegment(getIndexStartIndex(), getIndexStopIndex(actualIndexName),
-<a class="jxr_linenumber" name="L85" href="#L85">85</a>                          <strong class="jxr_keyword">new</strong> IndexNameSegment(getIndexStartIndex(), getIndexStopIndex(actualIndexName), <strong class="jxr_keyword">new</strong> IdentifierValue(actualIndexName))))
-<a class="jxr_linenumber" name="L86" href="#L86">86</a>                  .table(<strong class="jxr_keyword">new</strong> SimpleTableSegment(<strong class="jxr_keyword">new</strong> TableNameSegment(getTableStartIndex(actualSQL), getTableStopIndex(actualSQL), <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"t_order_0"</span>))))
-<a class="jxr_linenumber" name="L87" href="#L87">87</a>                  .build());
-<a class="jxr_linenumber" name="L88" href="#L88">88</a>          <strong class="jxr_keyword">return</strong> result;
-<a class="jxr_linenumber" name="L89" href="#L89">89</a>      }
-<a class="jxr_linenumber" name="L90" href="#L90">90</a>      
-<a class="jxr_linenumber" name="L91" href="#L91">91</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getIndexStartIndex() {
-<a class="jxr_linenumber" name="L92" href="#L92">92</a>          <strong class="jxr_keyword">return</strong> <span class="jxr_string">"CREATE INDEX "</span>.length();
-<a class="jxr_linenumber" name="L93" href="#L93">93</a>      }
-<a class="jxr_linenumber" name="L94" href="#L94">94</a>      
-<a class="jxr_linenumber" name="L95" href="#L95">95</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getIndexStopIndex(<strong class="jxr_keyword">final</strong> String actualIndexName) {
-<a class="jxr_linenumber" name="L96" href="#L96">96</a>          <strong class="jxr_keyword">return</strong> getIndexStartIndex() + actualIndexName.length() - 1;
-<a class="jxr_linenumber" name="L97" href="#L97">97</a>      }
-<a class="jxr_linenumber" name="L98" href="#L98">98</a>      
-<a class="jxr_linenumber" name="L99" href="#L99">99</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getTableStartIndex(<strong class="jxr_keyword">final</strong> String actualSQL) {
-<a class="jxr_linenumber" name="L100" href="#L100">100</a>         <strong class="jxr_keyword">return</strong> actualSQL.indexOf(<span class="jxr_string">"t_order_0"</span>);
-<a class="jxr_linenumber" name="L101" href="#L101">101</a>     }
-<a class="jxr_linenumber" name="L102" href="#L102">102</a>     
-<a class="jxr_linenumber" name="L103" href="#L103">103</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getTableStopIndex(<strong class="jxr_keyword">final</strong> String actualSQL) {
-<a class="jxr_linenumber" name="L104" href="#L104">104</a>         <strong class="jxr_keyword">return</strong> getTableStartIndex(actualSQL) + <span class="jxr_string">"t_order_0"</span>.length() - 1;
-<a class="jxr_linenumber" name="L105" href="#L105">105</a>     }
-<a class="jxr_linenumber" name="L106" href="#L106">106</a> }
+<a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.database.connector.core.metadata.database.enums.QuoteCharacter;
+<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.database.connector.core.metadata.database.metadata.DialectDatabaseMetaData;
+<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.database.connector.core.metadata.identifier.IdentifierCasePolicyFactory;
+<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.database.connector.core.spi.DatabaseTypedSPILoader;
+<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.database.connector.core.type.DatabaseType;
+<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.binder.context.DialectCommonSQLStatementContextWarpProvider;
+<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.ShardingSphereMetaData;
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.ShardingSphereDatabase;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereIndex;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereSchema;
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.model.ShardingSphereTable;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.database.schema.util.IndexMetaDataUtils;
+<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.identifier.DatabaseIdentifierContext;
+<a class="jxr_linenumber" name="L33" href="#L33">33</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.metadata.identifier.IdentifierCasePolicyResolver;
+<a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.parser.SQLParserEngine;
+<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.infra.spi.type.typed.TypedSPILoader;
+<a class="jxr_linenumber" name="L36" href="#L36">36</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.ddl.column.ColumnDefinitionSegment;
+<a class="jxr_linenumber" name="L37" href="#L37">37</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.ddl.constraint.ConstraintDefinitionSegment;
+<a class="jxr_linenumber" name="L38" href="#L38">38</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.ddl.constraint.alter.AddConstraintDefinitionSegment;
+<a class="jxr_linenumber" name="L39" href="#L39">39</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.ddl.index.IndexNameSegment;
+<a class="jxr_linenumber" name="L40" href="#L40">40</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.ddl.index.IndexSegment;
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.column.ColumnSegment;
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.DataTypeSegment;
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.OwnerSegment;
+<a class="jxr_linenumber" name="L44" href="#L44">44</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.SimpleTableSegment;
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.<strong class="jxr_keyword">generic</strong>.table.TableNameSegment;
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.SQLStatement;
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.CommentStatement;
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.index.CreateIndexStatement;
+<a class="jxr_linenumber" name="L49" href="#L49">49</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.table.AlterTableStatement;
+<a class="jxr_linenumber" name="L50" href="#L50">50</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.ddl.table.CreateTableStatement;
+<a class="jxr_linenumber" name="L51" href="#L51">51</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.value.identifier.IdentifierValue;
+<a class="jxr_linenumber" name="L52" href="#L52">52</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.test.infra.framework.extension.mock.AutoMockExtension;
+<a class="jxr_linenumber" name="L53" href="#L53">53</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.test.infra.framework.extension.mock.StaticMockSettings;
+<a class="jxr_linenumber" name="L54" href="#L54">54</a>  <strong class="jxr_keyword">import</strong> org.junit.jupiter.api.Nested;
+<a class="jxr_linenumber" name="L55" href="#L55">55</a>  <strong class="jxr_keyword">import</strong> org.junit.jupiter.api.Test;
+<a class="jxr_linenumber" name="L56" href="#L56">56</a>  <strong class="jxr_keyword">import</strong> org.junit.jupiter.api.extension.ExtendWith;
+<a class="jxr_linenumber" name="L57" href="#L57">57</a>  <strong class="jxr_keyword">import</strong> org.junit.jupiter.params.ParameterizedTest;
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>  <strong class="jxr_keyword">import</strong> org.junit.jupiter.params.provider.CsvSource;
+<a class="jxr_linenumber" name="L59" href="#L59">59</a>  
+<a class="jxr_linenumber" name="L60" href="#L60">60</a>  <strong class="jxr_keyword">import</strong> java.util.ArrayList;
+<a class="jxr_linenumber" name="L61" href="#L61">61</a>  <strong class="jxr_keyword">import</strong> java.util.Arrays;
+<a class="jxr_linenumber" name="L62" href="#L62">62</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
+<a class="jxr_linenumber" name="L63" href="#L63">63</a>  <strong class="jxr_keyword">import</strong> java.util.Collections;
+<a class="jxr_linenumber" name="L64" href="#L64">64</a>  <strong class="jxr_keyword">import</strong> java.util.Optional;
+<a class="jxr_linenumber" name="L65" href="#L65">65</a>  
+<a class="jxr_linenumber" name="L66" href="#L66">66</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.hamcrest.MatcherAssert.assertThat;
+<a class="jxr_linenumber" name="L67" href="#L67">67</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.hamcrest.Matchers.is;
+<a class="jxr_linenumber" name="L68" href="#L68">68</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.junit.jupiter.api.Assertions.assertTrue;
+<a class="jxr_linenumber" name="L69" href="#L69">69</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.mockito.Mockito.mock;
+<a class="jxr_linenumber" name="L70" href="#L70">70</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.mockito.Mockito.when;
+<a class="jxr_linenumber" name="L71" href="#L71">71</a>  
+<a class="jxr_linenumber" name="L72" href="#L72">72</a>  <strong class="jxr_keyword">class</strong> <a name="PipelineDDLDecoratorTest" href="../../../../../../../../org/apache/shardingsphere/data/pipeline/core/metadata/generator/PipelineDDLDecoratorTest.html#PipelineDDLDecoratorTest">PipelineDDLDecoratorTest</a> {
+<a class="jxr_linenumber" name="L73" href="#L73">73</a>      
+<a class="jxr_linenumber" name="L74" href="#L74">74</a>      <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">final</strong> DatabaseType databaseType = TypedSPILoader.getService(DatabaseType.<strong class="jxr_keyword">class</strong>, <span class="jxr_string">"PostgreSQL"</span>);
+<a class="jxr_linenumber" name="L75" href="#L75">75</a>      
+<a class="jxr_linenumber" name="L76" href="#L76">76</a>      @Test
+<a class="jxr_linenumber" name="L77" href="#L77">77</a>      <strong class="jxr_keyword">void</strong> assertDecorateUsesSchemaSpecificCandidatesForSameNamedTables() {
+<a class="jxr_linenumber" name="L78" href="#L78">78</a>          String logicIndexName = <span class="jxr_string">"very_long_named_index_boundary_case_for_sharding_length_safety_validation"</span>;
+<a class="jxr_linenumber" name="L79" href="#L79">79</a>          String actualIndexName = IndexMetaDataUtils.getActualIndexName(logicIndexName, <span class="jxr_string">"t_order_0"</span>, databaseType);
+<a class="jxr_linenumber" name="L80" href="#L80">80</a>          assertTrue(actualIndexName.matches(<span class="jxr_string">".*_t[0-9a-z]{8}$"</span>));
+<a class="jxr_linenumber" name="L81" href="#L81">81</a>          String actualSQL = String.format(<span class="jxr_string">"CREATE INDEX %s ON t_order_0 (order_id)"</span>, actualIndexName);
+<a class="jxr_linenumber" name="L82" href="#L82">82</a>          String expected = String.format(<span class="jxr_string">"CREATE INDEX %s ON t_order (order_id)"</span>, logicIndexName);
+<a class="jxr_linenumber" name="L83" href="#L83">83</a>          assertThat(
+<a class="jxr_linenumber" name="L84" href="#L84">84</a>                  <strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockMetaData(logicIndexName)).decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"schema_b"</span>, <span class="jxr_string">"t_order"</span>, createParserEngine(actualSQL, actualIndexName), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L85" href="#L85">85</a>                  is(expected));
+<a class="jxr_linenumber" name="L86" href="#L86">86</a>      }
+<a class="jxr_linenumber" name="L87" href="#L87">87</a>      
+<a class="jxr_linenumber" name="L88" href="#L88">88</a>      <strong class="jxr_keyword">private</strong> ShardingSphereMetaData mockMetaData(<strong class="jxr_keyword">final</strong> String logicIndexName) {
+<a class="jxr_linenumber" name="L89" href="#L89">89</a>          ShardingSphereMetaData result = mock(ShardingSphereMetaData.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L90" href="#L90">90</a>          ShardingSphereDatabase database = mock(ShardingSphereDatabase.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L91" href="#L91">91</a>          ShardingSphereSchema schemaA = <strong class="jxr_keyword">new</strong> ShardingSphereSchema(<span class="jxr_string">"schema_a"</span>, databaseType, Collections.singleton(
+<a class="jxr_linenumber" name="L92" href="#L92">92</a>                  <strong class="jxr_keyword">new</strong> ShardingSphereTable(<span class="jxr_string">"t_order"</span>, Collections.emptyList(),
+<a class="jxr_linenumber" name="L93" href="#L93">93</a>                          Collections.singleton(<strong class="jxr_keyword">new</strong> ShardingSphereIndex(<span class="jxr_string">"another_very_long_named_index_for_schema_a_validation"</span>, Collections.emptyList(), false)), Collections.emptyList())),
+<a class="jxr_linenumber" name="L94" href="#L94">94</a>                  Collections.emptyList());
+<a class="jxr_linenumber" name="L95" href="#L95">95</a>          ShardingSphereSchema schemaB = <strong class="jxr_keyword">new</strong> ShardingSphereSchema(<span class="jxr_string">"schema_b"</span>, databaseType, Collections.singleton(
+<a class="jxr_linenumber" name="L96" href="#L96">96</a>                  <strong class="jxr_keyword">new</strong> ShardingSphereTable(<span class="jxr_string">"t_order"</span>, Collections.emptyList(),
+<a class="jxr_linenumber" name="L97" href="#L97">97</a>                          Collections.singleton(<strong class="jxr_keyword">new</strong> ShardingSphereIndex(logicIndexName, Collections.emptyList(), false)), Collections.emptyList())),
+<a class="jxr_linenumber" name="L98" href="#L98">98</a>                  Collections.emptyList());
+<a class="jxr_linenumber" name="L99" href="#L99">99</a>          when(result.getDatabase(<span class="jxr_string">"foo_db"</span>)).thenReturn(database);
+<a class="jxr_linenumber" name="L100" href="#L100">100</a>         when(database.containsSchema(<span class="jxr_string">"schema_b"</span>)).thenReturn(<strong class="jxr_keyword">true</strong>);
+<a class="jxr_linenumber" name="L101" href="#L101">101</a>         when(database.getSchema(<span class="jxr_string">"schema_b"</span>)).thenReturn(schemaB);
+<a class="jxr_linenumber" name="L102" href="#L102">102</a>         when(database.getAllSchemas()).thenReturn(Arrays.asList(schemaA, schemaB));
+<a class="jxr_linenumber" name="L103" href="#L103">103</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>     }
+<a class="jxr_linenumber" name="L105" href="#L105">105</a>     
+<a class="jxr_linenumber" name="L106" href="#L106">106</a>     <strong class="jxr_keyword">private</strong> SQLParserEngine createParserEngine(<strong class="jxr_keyword">final</strong> String actualSQL, <strong class="jxr_keyword">final</strong> String actualIndexName) {
+<a class="jxr_linenumber" name="L107" href="#L107">107</a>         SQLParserEngine result = mock(SQLParserEngine.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L108" href="#L108">108</a>         when(result.parse(actualSQL, <strong class="jxr_keyword">true</strong>)).thenReturn(CreateIndexStatement.builder()
+<a class="jxr_linenumber" name="L109" href="#L109">109</a>                 .databaseType(databaseType)
+<a class="jxr_linenumber" name="L110" href="#L110">110</a>                 .index(<strong class="jxr_keyword">new</strong> IndexSegment(getIndexStartIndex(), getIndexStopIndex(actualIndexName),
+<a class="jxr_linenumber" name="L111" href="#L111">111</a>                         <strong class="jxr_keyword">new</strong> IndexNameSegment(getIndexStartIndex(), getIndexStopIndex(actualIndexName), <strong class="jxr_keyword">new</strong> IdentifierValue(actualIndexName))))
+<a class="jxr_linenumber" name="L112" href="#L112">112</a>                 .table(<strong class="jxr_keyword">new</strong> SimpleTableSegment(<strong class="jxr_keyword">new</strong> TableNameSegment(getTableStartIndex(actualSQL), getTableStopIndex(actualSQL), <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"t_order_0"</span>))))
+<a class="jxr_linenumber" name="L113" href="#L113">113</a>                 .build());
+<a class="jxr_linenumber" name="L114" href="#L114">114</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L115" href="#L115">115</a>     }
+<a class="jxr_linenumber" name="L116" href="#L116">116</a>     
+<a class="jxr_linenumber" name="L117" href="#L117">117</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getIndexStartIndex() {
+<a class="jxr_linenumber" name="L118" href="#L118">118</a>         <strong class="jxr_keyword">return</strong> <span class="jxr_string">"CREATE INDEX "</span>.length();
+<a class="jxr_linenumber" name="L119" href="#L119">119</a>     }
+<a class="jxr_linenumber" name="L120" href="#L120">120</a>     
+<a class="jxr_linenumber" name="L121" href="#L121">121</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getIndexStopIndex(<strong class="jxr_keyword">final</strong> String actualIndexName) {
+<a class="jxr_linenumber" name="L122" href="#L122">122</a>         <strong class="jxr_keyword">return</strong> getIndexStartIndex() + actualIndexName.length() - 1;
+<a class="jxr_linenumber" name="L123" href="#L123">123</a>     }
+<a class="jxr_linenumber" name="L124" href="#L124">124</a>     
+<a class="jxr_linenumber" name="L125" href="#L125">125</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getTableStartIndex(<strong class="jxr_keyword">final</strong> String actualSQL) {
+<a class="jxr_linenumber" name="L126" href="#L126">126</a>         <strong class="jxr_keyword">return</strong> actualSQL.indexOf(<span class="jxr_string">"t_order_0"</span>);
+<a class="jxr_linenumber" name="L127" href="#L127">127</a>     }
+<a class="jxr_linenumber" name="L128" href="#L128">128</a>     
+<a class="jxr_linenumber" name="L129" href="#L129">129</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">int</strong> getTableStopIndex(<strong class="jxr_keyword">final</strong> String actualSQL) {
+<a class="jxr_linenumber" name="L130" href="#L130">130</a>         <strong class="jxr_keyword">return</strong> getTableStartIndex(actualSQL) + <span class="jxr_string">"t_order_0"</span>.length() - 1;
+<a class="jxr_linenumber" name="L131" href="#L131">131</a>     }
+<a class="jxr_linenumber" name="L132" href="#L132">132</a>     
+<a class="jxr_linenumber" name="L133" href="#L133">133</a>     <strong class="jxr_keyword">private</strong> SimpleTableSegment createQualifiedTable(<strong class="jxr_keyword">final</strong> String sql) {
+<a class="jxr_linenumber" name="L134" href="#L134">134</a>         <strong class="jxr_keyword">int</strong> tableStartIndex = sql.indexOf(<span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>);
+<a class="jxr_linenumber" name="L135" href="#L135">135</a>         SimpleTableSegment result = <strong class="jxr_keyword">new</strong> SimpleTableSegment(<strong class="jxr_keyword">new</strong> TableNameSegment(tableStartIndex, tableStartIndex + <span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>)));
+<a class="jxr_linenumber" name="L136" href="#L136">136</a>         <strong class="jxr_keyword">int</strong> schemaStartIndex = sql.indexOf(<span class="jxr_string">"\&quot;UPPER_SCHEMA\&quot;"</span>);
+<a class="jxr_linenumber" name="L137" href="#L137">137</a>         result.setOwner(<strong class="jxr_keyword">new</strong> OwnerSegment(schemaStartIndex, schemaStartIndex + <span class="jxr_string">"\&quot;UPPER_SCHEMA\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;UPPER_SCHEMA\&quot;"</span>)));
+<a class="jxr_linenumber" name="L138" href="#L138">138</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L139" href="#L139">139</a>     }
+<a class="jxr_linenumber" name="L140" href="#L140">140</a>     
+<a class="jxr_linenumber" name="L141" href="#L141">141</a>     <strong class="jxr_keyword">private</strong> ShardingSphereMetaData mockTargetMetaData(<strong class="jxr_keyword">final</strong> DatabaseIdentifierContext identifierContext) {
+<a class="jxr_linenumber" name="L142" href="#L142">142</a>         ShardingSphereMetaData result = mock(ShardingSphereMetaData.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L143" href="#L143">143</a>         ShardingSphereDatabase database = mock(ShardingSphereDatabase.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L144" href="#L144">144</a>         when(result.getDatabase(<span class="jxr_string">"foo_db"</span>)).thenReturn(database);
+<a class="jxr_linenumber" name="L145" href="#L145">145</a>         when(database.getIdentifierContext()).thenReturn(identifierContext);
+<a class="jxr_linenumber" name="L146" href="#L146">146</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L147" href="#L147">147</a>     }
+<a class="jxr_linenumber" name="L148" href="#L148">148</a>     
+<a class="jxr_linenumber" name="L149" href="#L149">149</a>     <strong class="jxr_keyword">private</strong> SQLParserEngine mockParserEngine(<strong class="jxr_keyword">final</strong> String sql, <strong class="jxr_keyword">final</strong> SQLStatement sqlStatement) {
+<a class="jxr_linenumber" name="L150" href="#L150">150</a>         SQLParserEngine result = mock(SQLParserEngine.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L151" href="#L151">151</a>         when(result.parse(sql, <strong class="jxr_keyword">true</strong>)).thenReturn(sqlStatement);
+<a class="jxr_linenumber" name="L152" href="#L152">152</a>         <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L153" href="#L153">153</a>     }
+<a class="jxr_linenumber" name="L154" href="#L154">154</a>     
+<a class="jxr_linenumber" name="L155" href="#L155">155</a>     @Nested
+<a class="jxr_linenumber" name="L156" href="#L156">156</a>     <strong class="jxr_keyword">class</strong> CreateTableIdentifiers {
+<a class="jxr_linenumber" name="L157" href="#L157">157</a>         
+<a class="jxr_linenumber" name="L158" href="#L158">158</a>         @ParameterizedTest(name = <span class="jxr_string">"{0}"</span>)
+<a class="jxr_linenumber" name="L159" href="#L159">159</a>         @CsvSource({<span class="jxr_string">"ORDER_ID, order_id"</span>, <span class="jxr_string">"order_id, order_id"</span>, <span class="jxr_string">"USER, user"</span>})
+<a class="jxr_linenumber" name="L160" href="#L160">160</a>         <strong class="jxr_keyword">void</strong> assertDecorateCreateTable(<strong class="jxr_keyword">final</strong> String sourceColumnName, <strong class="jxr_keyword">final</strong> String targetColumnName) {
+<a class="jxr_linenumber" name="L161" href="#L161">161</a>             String actualSQL = String.format(<span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (\&quot;%s\&quot; bigint, PRIMARY KEY (\&quot;%s\&quot;))"</span>, sourceColumnName, sourceColumnName);
+<a class="jxr_linenumber" name="L162" href="#L162">162</a>             String expected = String.format(<span class="jxr_string">"CREATE TABLE \&quot;upper_schema\&quot;.t_order (\&quot;%s\&quot; bigint, PRIMARY KEY (\&quot;%s\&quot;))"</span>, targetColumnName, targetColumnName);
+<a class="jxr_linenumber" name="L163" href="#L163">163</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L164" href="#L164">164</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, createTableStatement(actualSQL, sourceColumnName)), actualSQL).orElse(<span class="jxr_string">""</span>), is(expected));
+<a class="jxr_linenumber" name="L165" href="#L165">165</a>         }
+<a class="jxr_linenumber" name="L166" href="#L166">166</a>         
+<a class="jxr_linenumber" name="L167" href="#L167">167</a>         <strong class="jxr_keyword">private</strong> CreateTableStatement createTableStatement(<strong class="jxr_keyword">final</strong> String sql, <strong class="jxr_keyword">final</strong> String columnName) {
+<a class="jxr_linenumber" name="L168" href="#L168">168</a>             <strong class="jxr_keyword">int</strong> primaryKeyStartIndex = sql.lastIndexOf('&quot;' + columnName + '&quot;');
+<a class="jxr_linenumber" name="L169" href="#L169">169</a>             ConstraintDefinitionSegment constraint = mock(ConstraintDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L170" href="#L170">170</a>             when(constraint.getPrimaryKeyColumns()).thenReturn(Collections.singleton(
+<a class="jxr_linenumber" name="L171" href="#L171">171</a>                     <strong class="jxr_keyword">new</strong> ColumnSegment(primaryKeyStartIndex, primaryKeyStartIndex + columnName.length() + 1, <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + columnName + '&quot;'))));
+<a class="jxr_linenumber" name="L172" href="#L172">172</a>             <strong class="jxr_keyword">return</strong> CreateTableStatement.builder().databaseType(databaseType).table(createQualifiedTable(sql))
+<a class="jxr_linenumber" name="L173" href="#L173">173</a>                     .columnDefinitions(Collections.singleton(mockColumnDefinition(sql, columnName)))
+<a class="jxr_linenumber" name="L174" href="#L174">174</a>                     .constraintDefinitions(Collections.singleton(constraint)).build();
+<a class="jxr_linenumber" name="L175" href="#L175">175</a>         }
+<a class="jxr_linenumber" name="L176" href="#L176">176</a>         
+<a class="jxr_linenumber" name="L177" href="#L177">177</a>         <strong class="jxr_keyword">private</strong> ColumnDefinitionSegment mockColumnDefinition(<strong class="jxr_keyword">final</strong> String sql, <strong class="jxr_keyword">final</strong> String columnName) {
+<a class="jxr_linenumber" name="L178" href="#L178">178</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = sql.indexOf('&quot;' + columnName + '&quot;');
+<a class="jxr_linenumber" name="L179" href="#L179">179</a>             ColumnDefinitionSegment result = mock(ColumnDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L180" href="#L180">180</a>             when(result.getColumnName()).thenReturn(<strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + columnName.length() + 1, <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + columnName + '&quot;')));
+<a class="jxr_linenumber" name="L181" href="#L181">181</a>             <strong class="jxr_keyword">return</strong> result;
+<a class="jxr_linenumber" name="L182" href="#L182">182</a>         }
+<a class="jxr_linenumber" name="L183" href="#L183">183</a>         
+<a class="jxr_linenumber" name="L184" href="#L184">184</a>         @ParameterizedTest(name = <span class="jxr_string">"{0}"</span>)
+<a class="jxr_linenumber" name="L185" href="#L185">185</a>         @CsvSource(quoteCharacter = '~', value = {<span class="jxr_string">"foo\&quot;bar"</span>, <span class="jxr_string">"\&quot;foo\&quot;"</span>, <span class="jxr_string">"*"</span>})
+<a class="jxr_linenumber" name="L186" href="#L186">186</a>         <strong class="jxr_keyword">void</strong> assertDecorateDecodedColumnNames(<strong class="jxr_keyword">final</strong> String columnName) {
+<a class="jxr_linenumber" name="L187" href="#L187">187</a>             IdentifierValue identifier = IdentifierValue.fromDecodedQuotedName(columnName);
+<a class="jxr_linenumber" name="L188" href="#L188">188</a>             String quotedColumnName = identifier.getValueWithQuoteCharacters();
+<a class="jxr_linenumber" name="L189" href="#L189">189</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE foo_table ("</span> + quotedColumnName + <span class="jxr_string">" integer, UNIQUE ("</span> + quotedColumnName + <span class="jxr_string">"))"</span>;
+<a class="jxr_linenumber" name="L190" href="#L190">190</a>             ColumnDefinitionSegment columnDefinition = mock(ColumnDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L191" href="#L191">191</a>             when(columnDefinition.getColumnName()).thenReturn(<strong class="jxr_keyword">new</strong> ColumnSegment(actualSQL.indexOf(quotedColumnName),
+<a class="jxr_linenumber" name="L192" href="#L192">192</a>                     actualSQL.indexOf(quotedColumnName) + quotedColumnName.length() - 1, identifier));
+<a class="jxr_linenumber" name="L193" href="#L193">193</a>             CreateTableStatement sqlStatement = CreateTableStatement.builder().databaseType(databaseType)
+<a class="jxr_linenumber" name="L194" href="#L194">194</a>                     .table(<strong class="jxr_keyword">new</strong> SimpleTableSegment(<strong class="jxr_keyword">new</strong> TableNameSegment(13, 21, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"foo_table"</span>))))
+<a class="jxr_linenumber" name="L195" href="#L195">195</a>                     .columnDefinitions(Collections.singleton(columnDefinition)).build();
+<a class="jxr_linenumber" name="L196" href="#L196">196</a>             sqlStatement.getColumnReferences().add(<strong class="jxr_keyword">new</strong> ColumnSegment(actualSQL.lastIndexOf(quotedColumnName),
+<a class="jxr_linenumber" name="L197" href="#L197">197</a>                     actualSQL.lastIndexOf(quotedColumnName) + quotedColumnName.length() - 1, identifier));
+<a class="jxr_linenumber" name="L198" href="#L198">198</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L199" href="#L199">199</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"public"</span>, <span class="jxr_string">"foo_table"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>), is(actualSQL));
+<a class="jxr_linenumber" name="L200" href="#L200">200</a>         }
+<a class="jxr_linenumber" name="L201" href="#L201">201</a>         
+<a class="jxr_linenumber" name="L202" href="#L202">202</a>         @Test
+<a class="jxr_linenumber" name="L203" href="#L203">203</a>         <strong class="jxr_keyword">void</strong> assertDecorateWholeRowReference() {
+<a class="jxr_linenumber" name="L204" href="#L204">204</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (\&quot;ORDER_ID\&quot; integer, CHECK (\&quot;UPPER_TABLE\&quot;.* IS NOT NULL))"</span>;
+<a class="jxr_linenumber" name="L205" href="#L205">205</a>             <strong class="jxr_keyword">int</strong> referenceStartIndex = actualSQL.lastIndexOf(<span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>);
+<a class="jxr_linenumber" name="L206" href="#L206">206</a>             ColumnSegment wholeRow = <strong class="jxr_keyword">new</strong> ColumnSegment(referenceStartIndex, referenceStartIndex + <span class="jxr_string">"\&quot;UPPER_TABLE\&quot;.*"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"*"</span>));
+<a class="jxr_linenumber" name="L207" href="#L207">207</a>             wholeRow.setOwner(<strong class="jxr_keyword">new</strong> OwnerSegment(referenceStartIndex, referenceStartIndex + <span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>)));
+<a class="jxr_linenumber" name="L208" href="#L208">208</a>             CreateTableStatement sqlStatement = CreateTableStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L209" href="#L209">209</a>                     .columnDefinitions(Collections.singleton(mockColumnDefinition(actualSQL, <span class="jxr_string">"ORDER_ID"</span>))).build();
+<a class="jxr_linenumber" name="L210" href="#L210">210</a>             sqlStatement.getColumnReferences().add(wholeRow);
+<a class="jxr_linenumber" name="L211" href="#L211">211</a>             String expected = <span class="jxr_string">"CREATE TABLE \&quot;upper_schema\&quot;.t_order (\&quot;order_id\&quot; integer, CHECK (\&quot;t_order\&quot;.* IS NOT NULL))"</span>;
+<a class="jxr_linenumber" name="L212" href="#L212">212</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L213" href="#L213">213</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>), is(expected));
+<a class="jxr_linenumber" name="L214" href="#L214">214</a>         }
+<a class="jxr_linenumber" name="L215" href="#L215">215</a>         
+<a class="jxr_linenumber" name="L216" href="#L216">216</a>         @Test
+<a class="jxr_linenumber" name="L217" href="#L217">217</a>         <strong class="jxr_keyword">void</strong> assertDecorateWithTargetColumnPolicy() {
+<a class="jxr_linenumber" name="L218" href="#L218">218</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (\&quot;order_id\&quot; bigint, PRIMARY KEY (\&quot;order_id\&quot;))"</span>;
+<a class="jxr_linenumber" name="L219" href="#L219">219</a>             String expected = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.t_order (\&quot;ORDER_ID\&quot; bigint, PRIMARY KEY (\&quot;ORDER_ID\&quot;))"</span>;
+<a class="jxr_linenumber" name="L220" href="#L220">220</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyFactory.newUpperCasePolicySet())))
+<a class="jxr_linenumber" name="L221" href="#L221">221</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"UPPER_SCHEMA"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, createTableStatement(actualSQL, <span class="jxr_string">"order_id"</span>)), actualSQL).orElse(<span class="jxr_string">""</span>), is(expected));
+<a class="jxr_linenumber" name="L222" href="#L222">222</a>         }
+<a class="jxr_linenumber" name="L223" href="#L223">223</a>         
+<a class="jxr_linenumber" name="L224" href="#L224">224</a>         @ParameterizedTest(name = <span class="jxr_string">"{0}"</span>)
+<a class="jxr_linenumber" name="L225" href="#L225">225</a>         @CsvSource(delimiter = '|', quoteCharacter = '~', value = {
+<a class="jxr_linenumber" name="L226" href="#L226">226</a>                 <span class="jxr_string">"UNIQUE (\&quot;ORDER_ID\&quot;)|UNIQUE (\&quot;order_id\&quot;)|1"</span>,
+<a class="jxr_linenumber" name="L227" href="#L227">227</a>                 <span class="jxr_string">"CHECK (\&quot;ORDER_ID\&quot; &gt; 0 AND '\&quot;ORDER_ID\&quot;' &lt;&gt; '')|CHECK (\&quot;order_id\&quot; &gt; 0 AND '\&quot;ORDER_ID\&quot;' &lt;&gt; '')|1"</span>,
+<a class="jxr_linenumber" name="L228" href="#L228">228</a>                 <span class="jxr_string">"FOREIGN KEY (\&quot;ORDER_ID\&quot;) REFERENCES foo_parent (\&quot;ORDER_ID\&quot;)|FOREIGN KEY (\&quot;order_id\&quot;) REFERENCES foo_parent (\&quot;ORDER_ID\&quot;)|1"</span>,
+<a class="jxr_linenumber" name="L229" href="#L229">229</a>                 <span class="jxr_string">"EXCLUDE USING gist (\&quot;ORDER_ID\&quot; WITH =)|EXCLUDE USING gist (\&quot;order_id\&quot; WITH =)|1"</span>})
+<a class="jxr_linenumber" name="L230" href="#L230">230</a>         <strong class="jxr_keyword">void</strong> assertDecorateConstraintReferences(<strong class="jxr_keyword">final</strong> String constraint, <strong class="jxr_keyword">final</strong> String expectedConstraint, <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">int</strong> referenceCount) {
+<a class="jxr_linenumber" name="L231" href="#L231">231</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (\&quot;ORDER_ID\&quot; bigint, "</span> + constraint + <span class="jxr_string">")"</span>;
+<a class="jxr_linenumber" name="L232" href="#L232">232</a>             Collection&lt;ColumnSegment&gt; columnReferences = <strong class="jxr_keyword">new</strong> ArrayList&lt;&gt;(referenceCount);
+<a class="jxr_linenumber" name="L233" href="#L233">233</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = actualSQL.indexOf(constraint);
+<a class="jxr_linenumber" name="L234" href="#L234">234</a>             <strong class="jxr_keyword">for</strong> (<strong class="jxr_keyword">int</strong> i = 0; i &lt; referenceCount; i++) {
+<a class="jxr_linenumber" name="L235" href="#L235">235</a>                 columnStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>, columnStartIndex);
+<a class="jxr_linenumber" name="L236" href="#L236">236</a>                 columnReferences.add(<strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>)));
+<a class="jxr_linenumber" name="L237" href="#L237">237</a>                 columnStartIndex += <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length();
+<a class="jxr_linenumber" name="L238" href="#L238">238</a>             }
+<a class="jxr_linenumber" name="L239" href="#L239">239</a>             ConstraintDefinitionSegment constraintDefinition = mock(ConstraintDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L240" href="#L240">240</a>             when(constraintDefinition.getColumnReferences()).thenReturn(columnReferences);
+<a class="jxr_linenumber" name="L241" href="#L241">241</a>             CreateTableStatement sqlStatement = CreateTableStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L242" href="#L242">242</a>                     .columnDefinitions(Collections.singleton(mockColumnDefinition(actualSQL, <span class="jxr_string">"ORDER_ID"</span>))).constraintDefinitions(Collections.singleton(constraintDefinition)).build();
+<a class="jxr_linenumber" name="L243" href="#L243">243</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L244" href="#L244">244</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L245" href="#L245">245</a>                     is(<span class="jxr_string">"CREATE TABLE \&quot;upper_schema\&quot;.t_order (\&quot;order_id\&quot; bigint, "</span> + expectedConstraint + <span class="jxr_string">")"</span>));
+<a class="jxr_linenumber" name="L246" href="#L246">246</a>         }
+<a class="jxr_linenumber" name="L247" href="#L247">247</a>         
+<a class="jxr_linenumber" name="L248" href="#L248">248</a>     }
+<a class="jxr_linenumber" name="L249" href="#L249">249</a>     
+<a class="jxr_linenumber" name="L250" href="#L250">250</a>     @Nested
+<a class="jxr_linenumber" name="L251" href="#L251">251</a>     @ExtendWith(AutoMockExtension.<strong class="jxr_keyword">class</strong>)
+<a class="jxr_linenumber" name="L252" href="#L252">252</a>     @StaticMockSettings(DatabaseTypedSPILoader.<strong class="jxr_keyword">class</strong>)
+<a class="jxr_linenumber" name="L253" href="#L253">253</a>     <strong class="jxr_keyword">class</strong> OtherDialectIdentifiers {
+<a class="jxr_linenumber" name="L254" href="#L254">254</a>         
+<a class="jxr_linenumber" name="L255" href="#L255">255</a>         @Test
+<a class="jxr_linenumber" name="L256" href="#L256">256</a>         <strong class="jxr_keyword">void</strong> assertDecorateOtherDialectColumns() {
+<a class="jxr_linenumber" name="L257" href="#L257">257</a>             DatabaseType openGauss = mock(DatabaseType.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L258" href="#L258">258</a>             when(openGauss.getType()).thenReturn(<span class="jxr_string">"openGauss"</span>);
+<a class="jxr_linenumber" name="L259" href="#L259">259</a>             when(DatabaseTypedSPILoader.findService(DialectCommonSQLStatementContextWarpProvider.<strong class="jxr_keyword">class</strong>, openGauss)).thenReturn(Optional.empty());
+<a class="jxr_linenumber" name="L260" href="#L260">260</a>             DialectDatabaseMetaData dialectMetaData = mock(DialectDatabaseMetaData.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L261" href="#L261">261</a>             when((Object) DatabaseTypedSPILoader.getService(DialectDatabaseMetaData.<strong class="jxr_keyword">class</strong>, openGauss)).thenReturn(dialectMetaData);
+<a class="jxr_linenumber" name="L262" href="#L262">262</a>             when(dialectMetaData.getQuoteCharacter()).thenReturn(QuoteCharacter.QUOTE);
+<a class="jxr_linenumber" name="L263" href="#L263">263</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (\&quot;ORDER_ID\&quot; integer, UNIQUE (\&quot;ORDER_ID\&quot;), CHECK (\&quot;ORDER_ID\&quot; &gt; 0))"</span>;
+<a class="jxr_linenumber" name="L264" href="#L264">264</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>);
+<a class="jxr_linenumber" name="L265" href="#L265">265</a>             ColumnDefinitionSegment columnDefinition = <strong class="jxr_keyword">new</strong> ColumnDefinitionSegment(columnStartIndex, columnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot; integer"</span>.length() - 1,
+<a class="jxr_linenumber" name="L266" href="#L266">266</a>                     <strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>)), mock(DataTypeSegment.<strong class="jxr_keyword">class</strong>), false, false,
+<a class="jxr_linenumber" name="L267" href="#L267">267</a>                     <span class="jxr_string">"\&quot;ORDER_ID\&quot; integer"</span>);
+<a class="jxr_linenumber" name="L268" href="#L268">268</a>             CreateTableStatement sqlStatement = CreateTableStatement.builder().databaseType(openGauss).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L269" href="#L269">269</a>                     .columnDefinitions(Collections.singleton(columnDefinition)).build();
+<a class="jxr_linenumber" name="L270" href="#L270">270</a>             SQLParserEngine parserEngine = mock(SQLParserEngine.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L271" href="#L271">271</a>             when(parserEngine.parse(actualSQL, <strong class="jxr_keyword">true</strong>)).thenReturn(sqlStatement);
+<a class="jxr_linenumber" name="L272" href="#L272">272</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mock(ShardingSphereMetaData.<strong class="jxr_keyword">class</strong>))
+<a class="jxr_linenumber" name="L273" href="#L273">273</a>                     .decorate(openGauss, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"UPPER_SCHEMA"</span>, <span class="jxr_string">"UPPER_TABLE"</span>, parserEngine, actualSQL).orElse(<span class="jxr_string">""</span>), is(actualSQL));
+<a class="jxr_linenumber" name="L274" href="#L274">274</a>         }
+<a class="jxr_linenumber" name="L275" href="#L275">275</a>     }
+<a class="jxr_linenumber" name="L276" href="#L276">276</a>     
+<a class="jxr_linenumber" name="L277" href="#L277">277</a>     @Nested
+<a class="jxr_linenumber" name="L278" href="#L278">278</a>     <strong class="jxr_keyword">class</strong> ColumnReferences {
+<a class="jxr_linenumber" name="L279" href="#L279">279</a>         
+<a class="jxr_linenumber" name="L280" href="#L280">280</a>         @Test
+<a class="jxr_linenumber" name="L281" href="#L281">281</a>         <strong class="jxr_keyword">void</strong> assertDecorateColumnComment() {
+<a class="jxr_linenumber" name="L282" href="#L282">282</a>             String actualSQL = <span class="jxr_string">"COMMENT ON COLUMN \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot;.\&quot;ORDER_ID\&quot; IS 'ORDER_ID'"</span>;
+<a class="jxr_linenumber" name="L283" href="#L283">283</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>);
+<a class="jxr_linenumber" name="L284" href="#L284">284</a>             CommentStatement sqlStatement = CommentStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L285" href="#L285">285</a>                     .column(<strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>))).build();
+<a class="jxr_linenumber" name="L286" href="#L286">286</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L287" href="#L287">287</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L288" href="#L288">288</a>                     is(<span class="jxr_string">"COMMENT ON COLUMN \&quot;upper_schema\&quot;.t_order.\&quot;order_id\&quot; IS 'ORDER_ID'"</span>));
+<a class="jxr_linenumber" name="L289" href="#L289">289</a>         }
+<a class="jxr_linenumber" name="L290" href="#L290">290</a>         
+<a class="jxr_linenumber" name="L291" href="#L291">291</a>         @Test
+<a class="jxr_linenumber" name="L292" href="#L292">292</a>         <strong class="jxr_keyword">void</strong> assertDecorateTableCommentWithoutDatabase() {
+<a class="jxr_linenumber" name="L293" href="#L293">293</a>             String actualSQL = <span class="jxr_string">"COMMENT ON TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; IS 'ORDER_ID'"</span>;
+<a class="jxr_linenumber" name="L294" href="#L294">294</a>             CommentStatement sqlStatement = CommentStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL)).build();
+<a class="jxr_linenumber" name="L295" href="#L295">295</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mock(ShardingSphereMetaData.<strong class="jxr_keyword">class</strong>))
+<a class="jxr_linenumber" name="L296" href="#L296">296</a>                     .decorate(databaseType, <strong class="jxr_keyword">null</strong>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L297" href="#L297">297</a>                     is(<span class="jxr_string">"COMMENT ON TABLE \&quot;upper_schema\&quot;.t_order IS 'ORDER_ID'"</span>));
+<a class="jxr_linenumber" name="L298" href="#L298">298</a>         }
+<a class="jxr_linenumber" name="L299" href="#L299">299</a>         
+<a class="jxr_linenumber" name="L300" href="#L300">300</a>         @Test
+<a class="jxr_linenumber" name="L301" href="#L301">301</a>         <strong class="jxr_keyword">void</strong> assertDecorateIndexColumn() {
+<a class="jxr_linenumber" name="L302" href="#L302">302</a>             String actualSQL = <span class="jxr_string">"CREATE INDEX idx ON \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (\&quot;ORDER_ID\&quot;)"</span>;
+<a class="jxr_linenumber" name="L303" href="#L303">303</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>);
+<a class="jxr_linenumber" name="L304" href="#L304">304</a>             <strong class="jxr_keyword">int</strong> indexStartIndex = actualSQL.indexOf(<span class="jxr_string">"idx"</span>);
+<a class="jxr_linenumber" name="L305" href="#L305">305</a>             CreateIndexStatement sqlStatement = CreateIndexStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L306" href="#L306">306</a>                     .index(<strong class="jxr_keyword">new</strong> IndexSegment(indexStartIndex, indexStartIndex + 2, <strong class="jxr_keyword">new</strong> IndexNameSegment(indexStartIndex, indexStartIndex + 2, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"idx"</span>))))
+<a class="jxr_linenumber" name="L307" href="#L307">307</a>                     .columns(Collections.singleton(<strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>)))).build();
+<a class="jxr_linenumber" name="L308" href="#L308">308</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L309" href="#L309">309</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L310" href="#L310">310</a>                     is(<span class="jxr_string">"CREATE INDEX idx ON \&quot;upper_schema\&quot;.t_order (\&quot;order_id\&quot;)"</span>));
+<a class="jxr_linenumber" name="L311" href="#L311">311</a>         }
+<a class="jxr_linenumber" name="L312" href="#L312">312</a>         
+<a class="jxr_linenumber" name="L313" href="#L313">313</a>         @Test
+<a class="jxr_linenumber" name="L314" href="#L314">314</a>         <strong class="jxr_keyword">void</strong> assertDecorateAlterPrimaryKey() {
+<a class="jxr_linenumber" name="L315" href="#L315">315</a>             String actualSQL = <span class="jxr_string">"ALTER TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; ADD PRIMARY KEY (\&quot;ORDER_ID\&quot;)"</span>;
+<a class="jxr_linenumber" name="L316" href="#L316">316</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>);
+<a class="jxr_linenumber" name="L317" href="#L317">317</a>             ConstraintDefinitionSegment constraint = mock(ConstraintDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L318" href="#L318">318</a>             when(constraint.getPrimaryKeyColumns()).thenReturn(Collections.singleton(
+<a class="jxr_linenumber" name="L319" href="#L319">319</a>                     <strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>))));
+<a class="jxr_linenumber" name="L320" href="#L320">320</a>             AlterTableStatement sqlStatement = AlterTableStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L321" href="#L321">321</a>                     .addConstraintDefinitions(Collections.singleton(<strong class="jxr_keyword">new</strong> AddConstraintDefinitionSegment(actualSQL.indexOf(<span class="jxr_string">"ADD"</span>), actualSQL.length() - 1, constraint))).build();
+<a class="jxr_linenumber" name="L322" href="#L322">322</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L323" href="#L323">323</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L324" href="#L324">324</a>                     is(<span class="jxr_string">"ALTER TABLE \&quot;upper_schema\&quot;.t_order ADD PRIMARY KEY (\&quot;order_id\&quot;)"</span>));
+<a class="jxr_linenumber" name="L325" href="#L325">325</a>         }
+<a class="jxr_linenumber" name="L326" href="#L326">326</a>         
+<a class="jxr_linenumber" name="L327" href="#L327">327</a>     }
+<a class="jxr_linenumber" name="L328" href="#L328">328</a>     
+<a class="jxr_linenumber" name="L329" href="#L329">329</a>     @Nested
+<a class="jxr_linenumber" name="L330" href="#L330">330</a>     <strong class="jxr_keyword">class</strong> ForeignKeySchemas {
+<a class="jxr_linenumber" name="L331" href="#L331">331</a>         
+<a class="jxr_linenumber" name="L332" href="#L332">332</a>         @ParameterizedTest(name = <span class="jxr_string">"{0}"</span>)
+<a class="jxr_linenumber" name="L333" href="#L333">333</a>         @CsvSource({<span class="jxr_string">"PARENT_SCHEMA, PARENT_SCHEMA"</span>, <span class="jxr_string">"UPPER_SCHEMA, target_schema"</span>, <span class="jxr_string">"upper_schema, upper_schema"</span>})
+<a class="jxr_linenumber" name="L334" href="#L334">334</a>         <strong class="jxr_keyword">void</strong> assertDecorateForeignKeySchema(<strong class="jxr_keyword">final</strong> String referencedSchemaName, <strong class="jxr_keyword">final</strong> String expectedSchemaName) {
+<a class="jxr_linenumber" name="L335" href="#L335">335</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (order_id integer, FOREIGN KEY (order_id) REFERENCES \&quot;"</span> + referencedSchemaName + <span class="jxr_string">"\&quot;.\&quot;UPPER_TABLE\&quot; (order_id))"</span>;
+<a class="jxr_linenumber" name="L336" href="#L336">336</a>             <strong class="jxr_keyword">int</strong> tableStartIndex = actualSQL.lastIndexOf(<span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>);
+<a class="jxr_linenumber" name="L337" href="#L337">337</a>             SimpleTableSegment referencedTable =
+<a class="jxr_linenumber" name="L338" href="#L338">338</a>                     <strong class="jxr_keyword">new</strong> SimpleTableSegment(<strong class="jxr_keyword">new</strong> TableNameSegment(tableStartIndex, tableStartIndex + <span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;UPPER_TABLE\&quot;"</span>)));
+<a class="jxr_linenumber" name="L339" href="#L339">339</a>             <strong class="jxr_keyword">int</strong> schemaStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;"</span> + referencedSchemaName + <span class="jxr_string">"\&quot;"</span>, actualSQL.indexOf(<span class="jxr_string">"REFERENCES"</span>));
+<a class="jxr_linenumber" name="L340" href="#L340">340</a>             referencedTable.setOwner(<strong class="jxr_keyword">new</strong> OwnerSegment(schemaStartIndex, schemaStartIndex + referencedSchemaName.length() + 1, <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + referencedSchemaName + '&quot;')));
+<a class="jxr_linenumber" name="L341" href="#L341">341</a>             ConstraintDefinitionSegment constraint = mock(ConstraintDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L342" href="#L342">342</a>             when(constraint.getReferencedTable()).thenReturn(Optional.of(referencedTable));
+<a class="jxr_linenumber" name="L343" href="#L343">343</a>             CreateTableStatement sqlStatement =
+<a class="jxr_linenumber" name="L344" href="#L344">344</a>                     CreateTableStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL)).constraintDefinitions(Collections.singleton(constraint)).build();
+<a class="jxr_linenumber" name="L345" href="#L345">345</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mock(ShardingSphereMetaData.<strong class="jxr_keyword">class</strong>))
+<a class="jxr_linenumber" name="L346" href="#L346">346</a>                     .decorate(databaseType, <strong class="jxr_keyword">null</strong>, <span class="jxr_string">"target_schema"</span>, <span class="jxr_string">"UPPER_TABLE"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L347" href="#L347">347</a>                     is(<span class="jxr_string">"CREATE TABLE \&quot;target_schema\&quot;.\&quot;UPPER_TABLE\&quot; (order_id integer, FOREIGN KEY (order_id) REFERENCES \&quot;"</span> + expectedSchemaName + <span class="jxr_string">"\&quot;.\&quot;UPPER_TABLE\&quot; (order_id))"</span>));
+<a class="jxr_linenumber" name="L348" href="#L348">348</a>         }
+<a class="jxr_linenumber" name="L349" href="#L349">349</a>     }
+<a class="jxr_linenumber" name="L350" href="#L350">350</a>     
+<a class="jxr_linenumber" name="L351" href="#L351">351</a>     @Nested
+<a class="jxr_linenumber" name="L352" href="#L352">352</a>     <strong class="jxr_keyword">class</strong> TableExpressions {
+<a class="jxr_linenumber" name="L353" href="#L353">353</a>         
+<a class="jxr_linenumber" name="L354" href="#L354">354</a>         @ParameterizedTest(name = <span class="jxr_string">"{0}"</span>)
+<a class="jxr_linenumber" name="L355" href="#L355">355</a>         @CsvSource(delimiter = '|', quoteCharacter = '~', value = {
+<a class="jxr_linenumber" name="L356" href="#L356">356</a>                 <span class="jxr_string">"\&quot;ORDER_ID\&quot; integer, \&quot;DERIVED\&quot; integer GENERATED ALWAYS AS (\&quot;ORDER_ID\&quot; + 1) STORED)|\&quot;order_id\&quot; integer, \&quot;derive"</span>
+<a class="jxr_linenumber" name="L357" href="#L357">357</a>                         + <span class="jxr_string">"d\&quot; integer GENERATED ALWAYS AS (\&quot;order_id\&quot; + 1) STORED)|ORDER_ID,DERIVED,ORDER_ID"</span>,
+<a class="jxr_linenumber" name="L358" href="#L358">358</a>                 <span class="jxr_string">"\&quot;ORDER_ID\&quot; integer) PARTITION BY RANGE (\&quot;ORDER_ID\&quot;)|\&quot;order_id\&quot; integer) PARTITION BY RANGE (\&quot;order_id\&quot;)|ORDER_"</span>
+<a class="jxr_linenumber" name="L359" href="#L359">359</a>                         + <span class="jxr_string">"ID,ORDER_ID"</span>,
+<a class="jxr_linenumber" name="L360" href="#L360">360</a>                 <span class="jxr_string">"\&quot;STATUS\&quot; text DEFAULT '\&quot;ORDER_ID\&quot;')|\&quot;status\&quot; text DEFAULT '\&quot;ORDER_ID\&quot;')|STATUS"</span>})
+<a class="jxr_linenumber" name="L361" href="#L361">361</a>         <strong class="jxr_keyword">void</strong> assertDecorateTableReferences(<strong class="jxr_keyword">final</strong> String tableDefinition, <strong class="jxr_keyword">final</strong> String expectedDefinition, <strong class="jxr_keyword">final</strong> String referenceNames) {
+<a class="jxr_linenumber" name="L362" href="#L362">362</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; ("</span> + tableDefinition;
+<a class="jxr_linenumber" name="L363" href="#L363">363</a>             CreateTableStatement sqlStatement = CreateTableStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL)).build();
+<a class="jxr_linenumber" name="L364" href="#L364">364</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = 0;
+<a class="jxr_linenumber" name="L365" href="#L365">365</a>             <strong class="jxr_keyword">for</strong> (String each : referenceNames.split(<span class="jxr_string">","</span>)) {
+<a class="jxr_linenumber" name="L366" href="#L366">366</a>                 columnStartIndex = actualSQL.indexOf('&quot;' + each + '&quot;', columnStartIndex);
+<a class="jxr_linenumber" name="L367" href="#L367">367</a>                 sqlStatement.getColumnReferences().add(<strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + each.length() + 1, <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + each + '&quot;')));
+<a class="jxr_linenumber" name="L368" href="#L368">368</a>                 columnStartIndex += each.length() + 2;
+<a class="jxr_linenumber" name="L369" href="#L369">369</a>             }
+<a class="jxr_linenumber" name="L370" href="#L370">370</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L371" href="#L371">371</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L372" href="#L372">372</a>                     is(<span class="jxr_string">"CREATE TABLE \&quot;upper_schema\&quot;.t_order ("</span> + expectedDefinition));
+<a class="jxr_linenumber" name="L373" href="#L373">373</a>         }
+<a class="jxr_linenumber" name="L374" href="#L374">374</a>     }
+<a class="jxr_linenumber" name="L375" href="#L375">375</a>     
+<a class="jxr_linenumber" name="L376" href="#L376">376</a>     @Nested
+<a class="jxr_linenumber" name="L377" href="#L377">377</a>     <strong class="jxr_keyword">class</strong> IndexExpressions {
+<a class="jxr_linenumber" name="L378" href="#L378">378</a>         
+<a class="jxr_linenumber" name="L379" href="#L379">379</a>         @ParameterizedTest(name = <span class="jxr_string">"{0}"</span>)
+<a class="jxr_linenumber" name="L380" href="#L380">380</a>         @CsvSource(delimiter = '|', quoteCharacter = '~', value = {
+<a class="jxr_linenumber" name="L381" href="#L381">381</a>                 <span class="jxr_string">"(\&quot;ORDER_ID\&quot;) INCLUDE (\&quot;STATUS\&quot;) WHERE \&quot;STATUS\&quot; &lt;&gt; '\&quot;ORDER_ID\&quot;'|(\&quot;order_id\&quot;) INCLUDE (\&quot;status\&quot;) WHERE \&quot;status\&quot; "</span>
+<a class="jxr_linenumber" name="L382" href="#L382">382</a>                         + <span class="jxr_string">"&lt;&gt; '\&quot;ORDER_ID\&quot;'|ORDER_ID,STATUS,STATUS"</span>,
+<a class="jxr_linenumber" name="L383" href="#L383">383</a>                 <span class="jxr_string">"((\&quot;ORDER_ID\&quot; + 1))|((\&quot;order_id\&quot; + 1))|ORDER_ID"</span>,
+<a class="jxr_linenumber" name="L384" href="#L384">384</a>                 <span class="jxr_string">"(lower(\&quot;STATUS\&quot;))|(lower(\&quot;status\&quot;))|STATUS"</span>})
+<a class="jxr_linenumber" name="L385" href="#L385">385</a>         <strong class="jxr_keyword">void</strong> assertDecorateIndexReferences(<strong class="jxr_keyword">final</strong> String indexDefinition, <strong class="jxr_keyword">final</strong> String expectedDefinition, <strong class="jxr_keyword">final</strong> String referenceNames) {
+<a class="jxr_linenumber" name="L386" href="#L386">386</a>             String actualSQL = <span class="jxr_string">"CREATE INDEX foo_idx ON \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; "</span> + indexDefinition;
+<a class="jxr_linenumber" name="L387" href="#L387">387</a>             <strong class="jxr_keyword">int</strong> indexStartIndex = actualSQL.indexOf(<span class="jxr_string">"foo_idx"</span>);
+<a class="jxr_linenumber" name="L388" href="#L388">388</a>             CreateIndexStatement sqlStatement = CreateIndexStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L389" href="#L389">389</a>                     .index(<strong class="jxr_keyword">new</strong> IndexSegment(indexStartIndex, indexStartIndex + <span class="jxr_string">"foo_idx"</span>.length() - 1,
+<a class="jxr_linenumber" name="L390" href="#L390">390</a>                             <strong class="jxr_keyword">new</strong> IndexNameSegment(indexStartIndex, indexStartIndex + <span class="jxr_string">"foo_idx"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"foo_idx"</span>))))
+<a class="jxr_linenumber" name="L391" href="#L391">391</a>                     .build();
+<a class="jxr_linenumber" name="L392" href="#L392">392</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = 0;
+<a class="jxr_linenumber" name="L393" href="#L393">393</a>             <strong class="jxr_keyword">for</strong> (String each : referenceNames.split(<span class="jxr_string">","</span>)) {
+<a class="jxr_linenumber" name="L394" href="#L394">394</a>                 columnStartIndex = actualSQL.indexOf('&quot;' + each + '&quot;', columnStartIndex);
+<a class="jxr_linenumber" name="L395" href="#L395">395</a>                 sqlStatement.getColumnReferences().add(<strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + each.length() + 1, <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + each + '&quot;')));
+<a class="jxr_linenumber" name="L396" href="#L396">396</a>                 columnStartIndex += each.length() + 2;
+<a class="jxr_linenumber" name="L397" href="#L397">397</a>             }
+<a class="jxr_linenumber" name="L398" href="#L398">398</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L399" href="#L399">399</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"upper_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L400" href="#L400">400</a>                     is(<span class="jxr_string">"CREATE INDEX foo_idx ON \&quot;upper_schema\&quot;.t_order "</span> + expectedDefinition));
+<a class="jxr_linenumber" name="L401" href="#L401">401</a>         }
+<a class="jxr_linenumber" name="L402" href="#L402">402</a>     }
+<a class="jxr_linenumber" name="L403" href="#L403">403</a>     
+<a class="jxr_linenumber" name="L404" href="#L404">404</a>     @Nested
+<a class="jxr_linenumber" name="L405" href="#L405">405</a>     <strong class="jxr_keyword">class</strong> ForeignKeyColumns {
+<a class="jxr_linenumber" name="L406" href="#L406">406</a>         
+<a class="jxr_linenumber" name="L407" href="#L407">407</a>         @ParameterizedTest(name = <span class="jxr_string">"{0}.{1}"</span>)
+<a class="jxr_linenumber" name="L408" href="#L408">408</a>         @CsvSource(delimiter = '|', quoteCharacter = '~', value = {
+<a class="jxr_linenumber" name="L409" href="#L409">409</a>                 <span class="jxr_string">"PARENT_SCHEMA|PARENT_TABLE|PARENT_ID|\&quot;PARENT_SCHEMA\&quot;.\&quot;PARENT_TABLE\&quot; (\&quot;PARENT_ID\&quot;)"</span>,
+<a class="jxr_linenumber" name="L410" href="#L410">410</a>                 <span class="jxr_string">"UPPER_SCHEMA|UPPER_TABLE|ORDER_ID|\&quot;target_schema\&quot;.t_order (\&quot;order_id\&quot;)"</span>,
+<a class="jxr_linenumber" name="L411" href="#L411">411</a>                 <span class="jxr_string">"UPPER_SCHEMA|PARENT_TABLE|PARENT_ID|\&quot;UPPER_SCHEMA\&quot;.\&quot;PARENT_TABLE\&quot; (\&quot;PARENT_ID\&quot;)"</span>})
+<a class="jxr_linenumber" name="L412" href="#L412">412</a>         <strong class="jxr_keyword">void</strong> assertDecorateForeignKeyColumns(<strong class="jxr_keyword">final</strong> String referencedSchemaName, <strong class="jxr_keyword">final</strong> String referencedTableName, <strong class="jxr_keyword">final</strong> String referencedColumnName, <strong class="jxr_keyword">final</strong> String expectedReference) {
+<a class="jxr_linenumber" name="L413" href="#L413">413</a>             String actualSQL = <span class="jxr_string">"CREATE TABLE \&quot;UPPER_SCHEMA\&quot;.\&quot;UPPER_TABLE\&quot; (\&quot;ORDER_ID\&quot; integer, FOREIGN KEY (\&quot;ORDER_ID\&quot;) REFERENCES \&quot;"</span> + referencedSchemaName
+<a class="jxr_linenumber" name="L414" href="#L414">414</a>                     + <span class="jxr_string">"\&quot;.\&quot;"</span> + referencedTableName + <span class="jxr_string">"\&quot; (\&quot;"</span> + referencedColumnName + <span class="jxr_string">"\&quot;))"</span>;
+<a class="jxr_linenumber" name="L415" href="#L415">415</a>             <strong class="jxr_keyword">int</strong> tableStartIndex = actualSQL.lastIndexOf('&quot;' + referencedTableName + '&quot;');
+<a class="jxr_linenumber" name="L416" href="#L416">416</a>             SimpleTableSegment referencedTable = <strong class="jxr_keyword">new</strong> SimpleTableSegment(<strong class="jxr_keyword">new</strong> TableNameSegment(tableStartIndex, tableStartIndex + referencedTableName.length() + 1,
+<a class="jxr_linenumber" name="L417" href="#L417">417</a>                     <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + referencedTableName + '&quot;')));
+<a class="jxr_linenumber" name="L418" href="#L418">418</a>             <strong class="jxr_keyword">int</strong> schemaStartIndex = actualSQL.indexOf('&quot;' + referencedSchemaName + '&quot;', actualSQL.indexOf(<span class="jxr_string">"REFERENCES"</span>));
+<a class="jxr_linenumber" name="L419" href="#L419">419</a>             referencedTable.setOwner(<strong class="jxr_keyword">new</strong> OwnerSegment(schemaStartIndex, schemaStartIndex + referencedSchemaName.length() + 1, <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + referencedSchemaName + '&quot;')));
+<a class="jxr_linenumber" name="L420" href="#L420">420</a>             <strong class="jxr_keyword">int</strong> localColumnStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>, actualSQL.indexOf(<span class="jxr_string">"FOREIGN KEY"</span>));
+<a class="jxr_linenumber" name="L421" href="#L421">421</a>             <strong class="jxr_keyword">int</strong> referencedColumnStartIndex = actualSQL.lastIndexOf('&quot;' + referencedColumnName + '&quot;');
+<a class="jxr_linenumber" name="L422" href="#L422">422</a>             ConstraintDefinitionSegment constraint = mock(ConstraintDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L423" href="#L423">423</a>             when(constraint.getReferencedTable()).thenReturn(Optional.of(referencedTable));
+<a class="jxr_linenumber" name="L424" href="#L424">424</a>             when(constraint.getColumnReferences()).thenReturn(Collections.singleton(
+<a class="jxr_linenumber" name="L425" href="#L425">425</a>                     <strong class="jxr_keyword">new</strong> ColumnSegment(localColumnStartIndex, localColumnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>))));
+<a class="jxr_linenumber" name="L426" href="#L426">426</a>             when(constraint.getReferencedColumns()).thenReturn(Collections.singleton(<strong class="jxr_keyword">new</strong> ColumnSegment(referencedColumnStartIndex,
+<a class="jxr_linenumber" name="L427" href="#L427">427</a>                     referencedColumnStartIndex + referencedColumnName.length() + 1, <strong class="jxr_keyword">new</strong> IdentifierValue('&quot;' + referencedColumnName + '&quot;'))));
+<a class="jxr_linenumber" name="L428" href="#L428">428</a>             ColumnDefinitionSegment columnDefinition = mock(ColumnDefinitionSegment.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L429" href="#L429">429</a>             <strong class="jxr_keyword">int</strong> columnStartIndex = actualSQL.indexOf(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>);
+<a class="jxr_linenumber" name="L430" href="#L430">430</a>             when(columnDefinition.getColumnName()).thenReturn(<strong class="jxr_keyword">new</strong> ColumnSegment(columnStartIndex, columnStartIndex + <span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>.length() - 1, <strong class="jxr_keyword">new</strong> IdentifierValue(<span class="jxr_string">"\&quot;ORDER_ID\&quot;"</span>)));
+<a class="jxr_linenumber" name="L431" href="#L431">431</a>             CreateTableStatement sqlStatement = CreateTableStatement.builder().databaseType(databaseType).table(createQualifiedTable(actualSQL))
+<a class="jxr_linenumber" name="L432" href="#L432">432</a>                     .columnDefinitions(Collections.singleton(columnDefinition)).constraintDefinitions(Collections.singleton(constraint)).build();
+<a class="jxr_linenumber" name="L433" href="#L433">433</a>             assertThat(<strong class="jxr_keyword">new</strong> PipelineDDLDecorator(mockTargetMetaData(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyResolver.resolveProtocol(databaseType))))
+<a class="jxr_linenumber" name="L434" href="#L434">434</a>                     .decorate(databaseType, <span class="jxr_string">"foo_db"</span>, <span class="jxr_string">"target_schema"</span>, <span class="jxr_string">"t_order"</span>, mockParserEngine(actualSQL, sqlStatement), actualSQL).orElse(<span class="jxr_string">""</span>),
+<a class="jxr_linenumber" name="L435" href="#L435">435</a>                     is(<span class="jxr_string">"CREATE TABLE \&quot;target_schema\&quot;.t_order (\&quot;order_id\&quot; integer, FOREIGN KEY (\&quot;order_id\&quot;) REFERENCES "</span> + expectedReference + <span class="jxr_string">")"</span>));
+<a class="jxr_linenumber" name="L436" href="#L436">436</a>         }
+<a class="jxr_linenumber" name="L437" href="#L437">437</a>     }
+<a class="jxr_linenumber" name="L438" href="#L438">438</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2026 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

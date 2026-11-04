@@ -19,37 +19,24 @@
 set -e
 
 docs_root=$(cd "$1" && pwd)
-lock_file="$docs_root/themes.lock"
-if [ ! -f "$lock_file" ]; then
-  exit 0
-fi
-
 theme_temp_dir=$(mktemp -d)
 trap 'rm -rf "$theme_temp_dir"' EXIT
 
-while read -r site commit archive_sha256 || [ -n "$site" ]; do
-  case "$site" in
-    ""|\#*) continue ;;
-  esac
+document_commit=e817f53d690d35f181c896e0e320cb40f797e88c
+community_commit=59c4cbf18690feb0cd0a16ad0f1434249c9dd5f3
+git init --quiet "$theme_temp_dir"
+git -C "$theme_temp_dir" fetch --quiet --depth=1 \
+  https://github.com/matcornic/hugo-theme-learn.git "$document_commit" "$community_commit"
 
-  archive="$theme_temp_dir/$site.tar.gz"
-  curl --fail --location --silent --show-error \
-    "https://codeload.github.com/matcornic/hugo-theme-learn/tar.gz/$commit" \
-    --output "$archive"
-  if command -v sha256sum >/dev/null 2>&1; then
-    checksum=$(sha256sum "$archive")
-  else
-    checksum=$(shasum -a 256 "$archive")
+for site in document community; do
+  if [ ! -d "$docs_root/$site" ]; then
+    continue
   fi
-  if [ "${checksum%% *}" != "$archive_sha256" ]; then
-    printf 'Learn theme checksum mismatch for %s\n' "$site" >&2
-    exit 1
+  commit=$document_commit
+  if [ "$site" = community ]; then
+    commit=$community_commit
   fi
-
-  extracted_theme="$theme_temp_dir/$site"
-  mkdir "$extracted_theme"
-  tar -xzf "$archive" --strip-components=1 -C "$extracted_theme"
-  mkdir -p "$docs_root/$site/themes"
-  rm -rf "$docs_root/$site/themes/hugo-theme-learn"
-  mv "$extracted_theme" "$docs_root/$site/themes/hugo-theme-learn"
-done < "$lock_file"
+  git -C "$theme_temp_dir" archive "$commit" > "$theme_temp_dir/$site.tar"
+  mkdir -p "$docs_root/$site/themes/hugo-theme-learn"
+  tar -xf "$theme_temp_dir/$site.tar" -C "$docs_root/$site/themes/hugo-theme-learn"
+done

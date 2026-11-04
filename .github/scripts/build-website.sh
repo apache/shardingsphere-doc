@@ -27,109 +27,78 @@ export TZ="Asia/Shanghai"
 #######################################
 ##        SHARDINGSPHERE/DOCS        ##
 #######################################
+set -e
 echo "[1] ====>>>> process shardingsphere/docs"
+companion_root=$PWD
+ss_build_dir=$(mktemp -d)
+trap 'rm -rf "$ss_build_dir"' EXIT
+
 echo git clone https://github.com/apache/shardingsphere
+git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere "$ss_build_dir/upstream"
+cd "$ss_build_dir/upstream"
+tags=$(git tag --sort=taggerdate)
+valid_tags=()
+mkdir "$ss_build_dir/history"
 
-git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere _shardingsphere 
-
-# ------------------------- build history docs --------------------------------------
-cd _shardingsphere
-TAGS=(`git tag --sort=taggerdate | grep -E '^[[:digit:]]+.[[:digit:]]+.*+'`)
-VALID_TAGS=()
-
-# generate released document
-if [ ${#TAGS} -gt 0 ] ; then
-  for tag in ${TAGS[@]}
-  do
-    echo "generate $tag documnet"
-    git checkout $tag
-    if [ -d docs/document -a -f docs/build.sh ] ; then
-      # delete downloads of tag
-      rm -rf docs/document/downloads
-      VALID_TAGS=(${VALID_TAGS[@]} $tag)
-      if [ ! -d ../document/$tag ] ; then
-        count=1
-        dir=$tag
-        set -e
-        bash "$script_dir/prepare-learn-themes.sh" "$PWD/docs"
-        env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
-          HUGO_PARAMS_EDITURL="" \
-          bash docs/build.sh
-        set +e
-        find docs/target/document/current -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'$dir'|g' {} \;
-        mv docs/target/document/current/ ../document/$dir
-      fi
+# Build missing release content with the current companion renderer.
+for tag in $tags; do
+  if [[ ! "$tag" =~ ^[0-9]+\.[0-9]+ ]]; then
+    continue
+  fi
+  echo "generate $tag document"
+  git checkout "$tag"
+  if [ -d docs/document/content ]; then
+    valid_tags+=("$tag")
+    if [ ! -d "$companion_root/document/$tag" ]; then
+      env HUGO_BASEURL="https://shardingsphere.apache.org/document/$tag/" \
+        HUGO_PARAMS_EDITURL="" SHARDINGSPHERE_DOCS_SITES=document \
+        bash "$script_dir/build-shardingsphere-docs.sh" "$PWD/docs" "$ss_build_dir/release"
+      find "$ss_build_dir/release/document/current" -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'"$tag"'|g' {} \;
+      mv "$ss_build_dir/release/document/current" "$ss_build_dir/history/$tag"
+      rm -rf "$ss_build_dir/release"
     fi
-  done
-fi
+  fi
+done
 
-# generate version data
-echo "[\""$(echo ${VALID_TAGS[@]}|sed 's/ /","/g')"\"]" > ../versions.json
+echo "[\""$(echo ${valid_tags[@]}|sed 's/ /","/g')"\"]" > "$ss_build_dir/versions.json"
 
-
-# -----------------------------------------------------------------------------------
-echo check diff
-if  [ ! -s old_version_ss ]  ; then
-    echo init > old_version_ss 
-fi
 git checkout master
-git log -1 -p docs > new_version_ss
-diff ../old_version_ss new_version_ss > result_version
+git log -1 -p docs > "$ss_build_dir/new_version_ss"
+git -C "$companion_root" ls-tree -r HEAD -- \
+  .github/scripts/build-shardingsphere-docs.sh .github/scripts/prepare-learn-themes.sh \
+  .github/scripts/build-website.sh .github/website/shardingsphere .github/workflows/build-website.yml \
+  > "$ss_build_dir/renderer_tree"
+renderer_revision=$(git -C "$companion_root" hash-object "$ss_build_dir/renderer_tree")
+printf '\nrenderer revision: %s\n' "$renderer_revision" >> "$ss_build_dir/new_version_ss"
 
-if  [ ! -s result_version ]  ; then
-    echo "shardingsphere docs sources didn't change and nothing to do!"
-    cd ..
+if cmp -s "$companion_root/old_version_ss" "$ss_build_dir/new_version_ss"; then
+  echo "shardingsphere docs sources and renderer didn't change and nothing to do!"
 else
-    count=2
-    echo "check shardingsphere something new, launch a build..."
-    cd ..
-    rm -rf old_version_ss
-    mv _shardingsphere/new_version_ss ./old_version_ss
-    
-    cp -rf _shardingsphere/docs ./
-    mv docs ssdocs
-    
-    echo build hugo ss documents
-    set -e
-    bash "$script_dir/prepare-learn-themes.sh" "$PWD/ssdocs"
-    bash ./ssdocs/build.sh
-    set +e
-    cp -rf ssdocs/target ./
-    rm -rf ssdocs
-    mv target sstarget
-    
-    echo replace old files
-    # Overwrite HTLM files
-    echo copy document/current to dest dir
-    if [ ! -d "document/current"  ];then
-      mkdir -p document/current
-    else
-      echo document/current  exist
-      rm -rf document/current/*
-    fi
-    cp -fr sstarget/document/current/* document/current
-    
-    echo copy community to dest dir
-    if [ ! -d "community"  ];then
-      mkdir -p community
-    else
-      echo community  exist
-      rm -rf community/*
-    fi
-    cp -fr sstarget/community/* community
-    
-    echo copy blog to dest dir
-    if [ ! -d "blog"  ];then
-      mkdir -p blog
-    else
-      echo blog  exist
-      rm -rf iblog/*
-    fi
-    cp -fr sstarget/blog/* blog
-    
-    rm -rf sstarget
+  echo "check shardingsphere something new, launch a build..."
+  bash "$script_dir/build-shardingsphere-docs.sh" "$PWD/docs" "$ss_build_dir/current"
 fi
-rm -rf _shardingsphere
+
+# Publish only after all ShardingSphere builds have succeeded.
+cd "$companion_root"
+mkdir -p document
+for tag in "${valid_tags[@]}"; do
+  if [ -d "$ss_build_dir/history/$tag" ]; then
+    mv "$ss_build_dir/history/$tag" "document/$tag"
+    count=1
+  fi
+done
+mv "$ss_build_dir/versions.json" versions.json
+if [ -d "$ss_build_dir/current" ]; then
+  rm -rf document/current community blog
+  mv "$ss_build_dir/current/document/current" document/current
+  mv "$ss_build_dir/current/community" community
+  mv "$ss_build_dir/current/blog" blog
+  mv "$ss_build_dir/new_version_ss" old_version_ss
+  count=2
+fi
+rm -rf "$ss_build_dir"
+trap - EXIT
+set +e
 
 #######################################
 ##  SHARDINGSPHERE-ELASTICJOB/DOCS   ##

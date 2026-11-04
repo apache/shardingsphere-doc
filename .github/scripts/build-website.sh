@@ -46,7 +46,7 @@ for tag in $tags; do
     continue
   fi
   echo "generate $tag document"
-  git checkout "$tag"
+  git checkout --force "$tag"
   if [ -d docs/document/content ]; then
     valid_tags+=("$tag")
     if [ ! -d "$companion_root/document/$tag" ]; then
@@ -62,7 +62,7 @@ done
 
 echo "[\""$(echo ${valid_tags[@]}|sed 's/ /","/g')"\"]" > "$ss_build_dir/versions.json"
 
-git checkout master
+git checkout --force master
 git log -1 -p docs > "$ss_build_dir/new_version_ss"
 git -C "$companion_root" ls-tree -r HEAD -- \
   .github/scripts/build-shardingsphere-docs.sh .github/scripts/prepare-learn-themes.sh \

@@ -237,6 +237,8 @@ rm -rf _oncloud
 
 if [ $count -eq 0 ];then
     echo "Both ShardingSphere&ElasticJob&OnCloud docs are not Changed, Skip&Return now."
+elif [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ]; then
+    echo "Pull request build completed, skip publishing."
 else
     echo git push new files
     git add .

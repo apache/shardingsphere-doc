@@ -15,6 +15,8 @@
 # limitations under the License.
 #
 
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 echo config user shardingsphere
 git config --global user.email "dev@shardingsphere.apache.org"
 git config --global user.name "shardingsphere"
@@ -49,6 +51,7 @@ if [ ${#TAGS} -gt 0 ] ; then
         count=1
         dir=$tag
         set -e
+        bash "$script_dir/prepare-learn-themes.sh" "$PWD/docs"
         env HUGO_BASEURL="https://shardingsphere.apache.org/document/$dir/" \
           HUGO_PARAMS_EDITURL="" \
           bash docs/build.sh
@@ -88,7 +91,8 @@ else
     
     echo build hugo ss documents
     set -e
-    sh ./ssdocs/build.sh
+    bash "$script_dir/prepare-learn-themes.sh" "$PWD/ssdocs"
+    bash ./ssdocs/build.sh
     set +e
     cp -rf ssdocs/target ./
     rm -rf ssdocs

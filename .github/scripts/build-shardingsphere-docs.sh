@@ -41,6 +41,14 @@ fi
 
 build_temp_dir=$(mktemp -d)
 trap 'rm -rf "$build_temp_dir"' EXIT
+hugo_binary=${SHARDINGSPHERE_HUGO_BINARY:-hugo}
+case "$("$hugo_binary" version)" in
+  "hugo v0.169.0"*"+extended "*) ;;
+  *) printf 'ShardingSphere requires Hugo 0.169.0 extended. Set SHARDINGSPHERE_HUGO_BINARY.\n' >&2; exit 1 ;;
+esac
+document_version=${SHARDINGSPHERE_DOCS_VERSION:-current}
+versions_root=${SHARDINGSPHERE_DOCS_VERSIONS_ROOT:-"$script_dir/../.."}
+history_root=${SHARDINGSPHERE_DOCS_HISTORY_ROOT:-}
 sites=(document community blog)
 if [ "${SHARDINGSPHERE_DOCS_SITES:-}" = document ]; then
   sites=(document)
@@ -61,21 +69,22 @@ for site in "${sites[@]}"; do
     )
     tar -xf "$build_temp_dir/$site-static.tar" -C "$build_temp_dir/$site/static"
   fi
+  cp -R "$renderer_root/common/." "$build_temp_dir/$site/"
   cp -R "$renderer_root/$site/." "$build_temp_dir/$site/"
+  python3 "$script_dir/prepare-site-config.py" site "$site" "$build_temp_dir/$site" \
+    "$versions_root" "$history_root" "$document_version"
 done
 
-bash "$script_dir/prepare-learn-themes.sh" "$build_temp_dir"
+bash "$script_dir/prepare-hextra-theme.sh" "$build_temp_dir"
 for site in "${sites[@]}"; do
   site_prefix="/$site"
   if [ "$site" = document ]; then
-    site_prefix=/document/current
+    site_prefix="/document/$document_version"
   fi
   (
     cd "$build_temp_dir/$site"
-    hugo --cleanDestinationDir
-    find public/ -name '*.html' -exec sed -i -e 's|[[:space:]]*<option id="\([a-zA-Z]\+\)" value="|<option id="\1" value="'"$site_prefix"'|g' {} \;
-    cd public/en
-    sed -i -e 's/cn/en/g' index.html
+    "$hugo_binary" --config config.toml,generated.json \
+      --baseURL "https://shardingsphere.apache.org$site_prefix/" --cleanDestinationDir
   )
   mkdir -p "$build_temp_dir/target$site_prefix"
   mv "$build_temp_dir/$site/public/"* "$build_temp_dir/target$site_prefix/"

@@ -1,88 +1,975 @@
 <!DOCTYPE html>
-<html lang="en-us">
-    <head>
-        <style>
-            a {
-                word-wrap: break-word;
-            }
-        </style>
-    </head>  
-    <body>
-        <head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="cn" dir="ltr"><head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="robots" content="index, follow" />
+  
+<link rel="icon" href="/favicon/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="/favicon/site.webmanifest">
+<title>分布式事务在Sharding-Sphere中的实现 – ShardingSphere Blog</title>
+  <meta name="description" content="讲师简介 赵俊
+京东金融
+高级Java开发工程师
+多年互联网开发经验，热爱开源技术，对分布式存储有浓厚的兴趣。熟悉 ElasticSearch、HBase、Presto、Storm 等离线和实时数据处理
+目前主要在 Sharding-Sphere 团队负责分布式事务的开发
+分布式事务的使用场景 ACID 一切从 ACID 开始说起。ACID 是本地事务所具有的四大特征：
+Atomicity：原子性
+事务作为整体来执行，要么全部执行，要么全不执行。
+Consistency：一致性
+事务应确保数据从一个一致的状态转变为另一个一致的状态。
+Isolation：隔离性
+多个事务并发执行时，一个事务的执行不应影响其他事务的执行。
+Durability：持久性
+已提交的事务修改数据会被持久保持。
+关系型数据库的本地事务完美的提供了对ACID的原生支持。但在分布式的场景下，它却成为系统性能的桎梏。如何让数据库在分布式场景下满足ACID的特性或找寻相应的替代方案，是本文将要阐述的话题。
+CAP 和 Base 理论 对于互联网应用而言，随着访问量和数据量的激增，传统的单体架构模式将无法满足业务的高速发展。这时，开发者需要把单体应用拆分为多个独立的小应用，把单个数据库按照分片规则拆分为多个库和多个表。
+数据拆分后，如何在多个数据库节点间保证本地事务的ACID特性则成为一个技术难题，并且由此而衍生出了 CAP 和 BASE 经典理论。
+CAP 理论指出，对于分布式的应用而言，不可能同时满足C（一致性），A（可用性），P（分区容错性），由于网络分区是分布式应用的基本要素，因此开发者需要在C和A上做出平衡。
+由于 C 和 A 互斥性，其权衡的结果就是 BASE 理论。
+对于大部分的分布式应用而言，只要数据在规定的时间内达到最终一致性即可。我们可以把符合传统的 ACID 叫做刚性事务，把满足 BASE 理论的最终一致性事务叫做柔性事务。
+一味的追求强一致性，并非最佳方案。对于分布式应用来说，刚柔并济是更加合理的设计方案，即在本地服务中采用强一致事务，在跨系统调用中采用最终一致性。如何权衡系统的性能与一致性，是十分考验架构师与开发者的设计功力的。
+业界方法 具体到分布式事务的实现上，业界主要采用了XA协议的强一致规范以及柔性事务的最终一致规范。
+XA XA 是 X/Open CAE Specification (Distributed Transaction Processing)模型中定义的 TM（Transaction Manager）与RM（Resource Manager）之间进行通信的接口。" /><link rel="canonical" href="https://shardingsphere.apache.org/blog/cn/material/realization/" itemprop="url" />
 
-		<title>分布式事务在Sharding-Sphere中的实现 &middot; ShardingSphere - 博客</title>
+<meta property="og:title" content="分布式事务在Sharding-Sphere中的实现">
+<meta
+  property="og:description"
+  content="
+    
+      讲师简介赵俊
+京东金融
+高级Java开发工程师
 
-		
-  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
-		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
-		
-		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
-		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
-		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
 
-		
-		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - 博客" />
-	
-		<script src="https://shardingsphere.apache.org/js/kapa-widget.js"></script>
-	</head>
+多年互联网开发经验，热爱开源技术，对分布式存储有浓厚的兴趣。熟悉 ElasticSearch、HBase、Presto、Storm 等离线和实时数据处理
 
-        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
-			<div class="nav-container">
-				<a href="https://shardingsphere.apache.org/blog/">
-					<h1 class="nav-title">ShardingSphere - 博客</h1>
-				</a>
 
-				<span style="padding-left: 65px;">
-					
-					
-					<li>
-						<a href="https://shardingsphere.apache.org/blog/cn/material/">
-							<h3>文章</h3>
-						</a>
-					</li>
-					
-					<li>
-						<a href="https://shardingsphere.apache.org/blog/cn/videos/">
-							<h3>视频</h3>
-						</a>
-					</li>
-					
-				</span>
+目前主要在 Sharding-Sphere 团队负责分布式事务的开发
 
-				<span style="position: relative; left: 75px; 
-				background: rgba(0, 0, 0, 0.664);
-				font-weight: bold;
-				padding:0.1rem; 
-				padding-left:15px; 
-				padding-right:15px; 
-				padding-top: 2px; 
-				padding-bottom: 5px; 
-				border-radius:10px;">
-					
-					
-					<a style="color: white;" href="https://shardingsphere.apache.org/blog/en/material/realization/">English</a>
-					
-					
-				</span>
-			</div>
-			</div>
-		</nav></div>
-        
 
-<main>
-	<div class="post">
-		<h1 class="post-title">分布式事务在Sharding-Sphere中的实现</h1>
 
-		<div class="post-info">
-        
+分布式事务的使用场景
+ACID一切从 ACID 开始说起。ACID 是本地事务所具有的四大特征：
+
+
+Atomicity：原子性
+事务作为整体来执行，要么全部执行，要么全不执行。
+
+
+Consistency：一致性
+事务应确保数据从一个一致的状态转变为另一个一致的状态。
+
+
+Isolation：隔离性
+多个事务并发执行时，一个事务的执行不应影响其他事务的执行。
+
+
+Durability：持久性
+已提交的事务修改数据会被持久保持。
+
+
+关系型数据库的本地事务完美的提供了对ACID的原生支持。但在分布式的场景下，它却成为系统性能的桎梏。如何让数据库在分布式场景下满足ACID的特性或找寻相应的替代方案，是本文将要阐述的话题。
+
+CAP 和 Base 理论对于互联网应用而言，随着访问量和数据量的激增，传统的单体架构模式将无法满足业务的高速发展。这时，开发者需要把单体应用拆分为多个独立的小应用，把单个数据库按照分片规则拆分为多个库和多个表。
+数据拆分后，如何在多个数据库节点间保证本地事务的ACID特性则成为一个技术难题，并且由此而衍生出了 CAP 和 BASE 经典理论。
+CAP 理论指出，对于分布式的应用而言，不可能同时满足C（一致性），A（可用性），P（分区容错性），由于网络分区是分布式应用的基本要素，因此开发者需要在C和A上做出平衡。
+由于 C 和 A 互斥性，其权衡的结果就是 BASE 理论。
+对于大部分的分布式应用而言，只要数据在规定的时间内达到最终一致性即可。我们可以把符合传统的 ACID 叫做刚性事务，把满足 BASE 理论的最终一致性事务叫做柔性事务。
+一味的追求强一致性，并非最佳方案。对于分布式应用来说，刚柔并济是更加合理的设计方案，即在本地服务中采用强一致事务，在跨系统调用中采用最终一致性。如何权衡系统的性能与一致性，是十分考验架构师与开发者的设计功力的。
+
+
+业界方法具体到分布式事务的实现上，业界主要采用了XA协议的强一致规范以及柔性事务的最终一致规范。
+
+XAXA 是 X/Open CAE Specification (Distributed Transaction Processing)模型中定义的 TM（Transaction Manager）与RM（Resource Manager）之间进行通信的接口。
+    
+  ">
+<meta
+  property="og:type"
+  content="
+    article
+  ">
+<meta property="og:url" content="https://shardingsphere.apache.org/blog/cn/material/realization/"><meta property="article:section" content="material">
+
+
+
+
+	<meta itemprop="name" content="分布式事务在Sharding-Sphere中的实现">
+	<meta itemprop="description" content="讲师简介 赵俊
+京东金融
+高级Java开发工程师
+多年互联网开发经验，热爱开源技术，对分布式存储有浓厚的兴趣。熟悉 ElasticSearch、HBase、Presto、Storm 等离线和实时数据处理
+目前主要在 Sharding-Sphere 团队负责分布式事务的开发
+分布式事务的使用场景 ACID 一切从 ACID 开始说起。ACID 是本地事务所具有的四大特征：
+Atomicity：原子性
+事务作为整体来执行，要么全部执行，要么全不执行。
+Consistency：一致性
+事务应确保数据从一个一致的状态转变为另一个一致的状态。
+Isolation：隔离性
+多个事务并发执行时，一个事务的执行不应影响其他事务的执行。
+Durability：持久性
+已提交的事务修改数据会被持久保持。
+关系型数据库的本地事务完美的提供了对ACID的原生支持。但在分布式的场景下，它却成为系统性能的桎梏。如何让数据库在分布式场景下满足ACID的特性或找寻相应的替代方案，是本文将要阐述的话题。
+CAP 和 Base 理论 对于互联网应用而言，随着访问量和数据量的激增，传统的单体架构模式将无法满足业务的高速发展。这时，开发者需要把单体应用拆分为多个独立的小应用，把单个数据库按照分片规则拆分为多个库和多个表。
+数据拆分后，如何在多个数据库节点间保证本地事务的ACID特性则成为一个技术难题，并且由此而衍生出了 CAP 和 BASE 经典理论。
+CAP 理论指出，对于分布式的应用而言，不可能同时满足C（一致性），A（可用性），P（分区容错性），由于网络分区是分布式应用的基本要素，因此开发者需要在C和A上做出平衡。
+由于 C 和 A 互斥性，其权衡的结果就是 BASE 理论。
+对于大部分的分布式应用而言，只要数据在规定的时间内达到最终一致性即可。我们可以把符合传统的 ACID 叫做刚性事务，把满足 BASE 理论的最终一致性事务叫做柔性事务。
+一味的追求强一致性，并非最佳方案。对于分布式应用来说，刚柔并济是更加合理的设计方案，即在本地服务中采用强一致事务，在跨系统调用中采用最终一致性。如何权衡系统的性能与一致性，是十分考验架构师与开发者的设计功力的。
+业界方法 具体到分布式事务的实现上，业界主要采用了XA协议的强一致规范以及柔性事务的最终一致规范。
+XA XA 是 X/Open CAE Specification (Distributed Transaction Processing)模型中定义的 TM（Transaction Manager）与RM（Resource Manager）之间进行通信的接口。">
+	<meta itemprop="wordCount" content="612">
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="分布式事务在Sharding-Sphere中的实现">
+	<meta name="twitter:description" content="讲师简介 赵俊
+京东金融
+高级Java开发工程师
+多年互联网开发经验，热爱开源技术，对分布式存储有浓厚的兴趣。熟悉 ElasticSearch、HBase、Presto、Storm 等离线和实时数据处理
+目前主要在 Sharding-Sphere 团队负责分布式事务的开发
+分布式事务的使用场景 ACID 一切从 ACID 开始说起。ACID 是本地事务所具有的四大特征：
+Atomicity：原子性
+事务作为整体来执行，要么全部执行，要么全不执行。
+Consistency：一致性
+事务应确保数据从一个一致的状态转变为另一个一致的状态。
+Isolation：隔离性
+多个事务并发执行时，一个事务的执行不应影响其他事务的执行。
+Durability：持久性
+已提交的事务修改数据会被持久保持。
+关系型数据库的本地事务完美的提供了对ACID的原生支持。但在分布式的场景下，它却成为系统性能的桎梏。如何让数据库在分布式场景下满足ACID的特性或找寻相应的替代方案，是本文将要阐述的话题。
+CAP 和 Base 理论 对于互联网应用而言，随着访问量和数据量的激增，传统的单体架构模式将无法满足业务的高速发展。这时，开发者需要把单体应用拆分为多个独立的小应用，把单个数据库按照分片规则拆分为多个库和多个表。
+数据拆分后，如何在多个数据库节点间保证本地事务的ACID特性则成为一个技术难题，并且由此而衍生出了 CAP 和 BASE 经典理论。
+CAP 理论指出，对于分布式的应用而言，不可能同时满足C（一致性），A（可用性），P（分区容错性），由于网络分区是分布式应用的基本要素，因此开发者需要在C和A上做出平衡。
+由于 C 和 A 互斥性，其权衡的结果就是 BASE 理论。
+对于大部分的分布式应用而言，只要数据在规定的时间内达到最终一致性即可。我们可以把符合传统的 ACID 叫做刚性事务，把满足 BASE 理论的最终一致性事务叫做柔性事务。
+一味的追求强一致性，并非最佳方案。对于分布式应用来说，刚柔并济是更加合理的设计方案，即在本地服务中采用强一致事务，在跨系统调用中采用最终一致性。如何权衡系统的性能与一致性，是十分考验架构师与开发者的设计功力的。
+业界方法 具体到分布式事务的实现上，业界主要采用了XA协议的强一致规范以及柔性事务的最终一致规范。
+XA XA 是 X/Open CAE Specification (Distributed Transaction Processing)模型中定义的 TM（Transaction Manager）与RM（Resource Manager）之间进行通信的接口。">
+
+    <link rel="preload" href="/blog/css/compiled/main.min.8cb6ee1fcd497d1c7d2c0b6b279bcf5b4b48f7728ccf04bc0203a7df241f95db.css" as="style" integrity="sha256-jLbuH81JfRx9LAtrJ5vPW0tI93KMzwS8AgOn3yQflds=" />
+    <link href="/blog/css/compiled/main.min.8cb6ee1fcd497d1c7d2c0b6b279bcf5b4b48f7728ccf04bc0203a7df241f95db.css" rel="stylesheet" integrity="sha256-jLbuH81JfRx9LAtrJ5vPW0tI93KMzwS8AgOn3yQflds=" />
+
+  
+
+
+
+
+
+
+<script src="/blog/js/main-head.min.bbb353731723c08eaf67b231610392e3665384806ddb6bee51d4a965494c762e.js" integrity="sha256-u7NTcxcjwI6vZ7IxYQOS42ZThIBt22vuUdSpZUlMdi4="></script>
+
+  
+  
+  <script src="/blog/js/site.min.34dc4da0b817452cdc9e77e1e07c34d99b8b9f434c26a950dc228f8477a429df.js" integrity="sha256-NNxNoLgXRSzcnnfh4Hw02ZuLn0NMJqlQ3CKPhHekKd8="></script>
+<script src="/js/kapa-widget.js" defer></script></head>
+<body>
+    <a href="#content" class="hx:sr-only hx:focus-visible:not-sr-only hx:focus-visible:fixed hx:focus-visible:z-50 hx:focus-visible:top-2 hx:focus-visible:left-2 hx:focus-visible:bg-primary-500 hx:focus-visible:text-white hx:focus-visible:px-4 hx:focus-visible:py-2 hx:focus-visible:rounded-md hx:focus-visible:text-sm hx:focus-visible:font-medium">跳至内容</a><div class="hextra-nav-container hx:sticky hx:top-0 hx:z-20 hx:w-full hx:bg-transparent hx:print:hidden">
+  <div
+    class="hextra-nav-container-blur hx:pointer-events-none hx:absolute hx:z-[-1] hx:h-full hx:w-full hx:bg-white hx:dark:bg-dark hx:shadow-[0_2px_4px_rgba(0,0,0,.02),0_1px_0_rgba(0,0,0,.06)] hx:contrast-more:shadow-[0_0_0_1px_#000] hx:dark:shadow-[0_-1px_0_rgba(255,255,255,.1)_inset] hx:contrast-more:dark:shadow-[0_0_0_1px_#fff]"
+  ></div>
+
+  <nav class="hextra-max-navbar-width hx:mx-auto hx:flex hx:items-center hx:justify-end hx:gap-1 hx:md:gap-2 hx:h-[var(--hextra-navbar-height)] hx:px-6">
+    <a class="hx:flex hx:items-center hx:hover:opacity-75 hx:ltr:mr-auto hx:rtl:ml-auto" href="https://shardingsphere.apache.org/">
+    <img class="hx:mr-2 hx:block hx:dark:hidden" src="https://shardingsphere.apache.org/images/base/logo.png" alt="Logo" height="40" width="40" />
+    <img class="hx:mr-2 hx:hidden hx:dark:block" src="https://shardingsphere.apache.org/images/base/logo.png" alt="Dark Logo" height="40" width="40" />
+    <span class="hx:mr-2 hx:font-extrabold hx:inline hx:select-none">ShardingSphere Blog</span>
+</a>
+<a
+  title=""
+  href="/document/current/cn/overview/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">文档</span>
+</a><a
+  title=""
+  href="/community/cn/involved/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">社区</span>
+</a><a
+  title=""
+  href="/blog/cn/material/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">博客</span>
+</a><a
+  title=""
+  href="/blog/cn/material/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">文章</span>
+</a><a
+  title=""
+  href="/blog/cn/videos/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">视频</span>
+</a><button
+    type="button"
+    class="hx:p-1 hx:md:p-2 hx:text-current hx:cursor-pointer hx:hextra-focus-visible"
+    data-search-open
+    aria-haspopup="dialog"
+    aria-controls="hextra-search-dialog"
+    aria-label="搜索文档..."
+    title="搜索文档..."
+  ><svg height=24 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="hx:sr-only">搜索文档...</span>
+  </button><div class="hx:flex hx:justify-items-start ">
+    <button
+      title="切换语言"
+      data-state="closed"
+      data-location="top"
+      class="hextra-language-switcher hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:p-1 hx:md:p-2 hx:grow"
+      type="button"
+      aria-label="切换语言"
+      aria-expanded="false"
+      aria-haspopup="menu"
+    >
+      <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=24 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg></div>
+    </button>
+    <ul
+      class="hextra-language-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+      style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+      role="menu"
+    >
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/en/material/realization/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >English</a>
+        </li>
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/cn/material/realization/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >简体中文<span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span></a>
+        </li>
+      </ul>
+  </div><div class="hx:flex hx:justify-items-start hx:group" data-theme="light">
+  <button
+    title="切换主题"
+    data-state="closed"
+    data-location="top"
+    class="hextra-theme-toggle hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:p-1 hx:md:p-2 hx:grow"
+    type="button"
+    aria-label="切换主题"
+    aria-expanded="false"
+    aria-haspopup="menu"
+  >
+    <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=24 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg><svg height=24 class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg><svg height=24 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="currentColor">
+  <path d="M 11.996094,2 C 6.4986225,2.0192368 2.03125,6.5024993 2.03125,12 c 0,5.497501 4.4673725,9.980763 9.964844,10 H 12 12.0039 c 5.497471,-0.01924 9.964844,-4.502499 9.964844,-10 0,-5.4975007 -4.467373,-9.9807632 -9.964844,-10 H 12 Z M 12,4 c 4.417218,0.017598 7.96875,3.5822356 7.96875,8 0,4.417764 -3.551532,7.982402 -7.96875,8 z" />
+</svg>
+</div>
+  </button>
+  <ul
+    class="hextra-theme-toggle-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+    style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+    data-theme="light"
+    role="menu"
+  >
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="true"
+        tabindex="-1"
+        data-item="light"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        浅色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="dark"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        深色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="system"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        跟随系统
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+  </ul>
+</div>
+<button type="button" aria-label="菜单" aria-expanded="false" class="hextra-hamburger-menu hx:cursor-pointer hx:-mr-1 hx:rounded-sm hx:p-1 hx:active:bg-gray-400/20 hx:md:hidden hx:hextra-focus-visible-inset"><svg height=24 fill="none" viewBox="0 0 24 24" stroke="currentColor"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8H20"></path></g><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16H20"></path></g></svg></button>
+  </nav>
 </div>
 
-		
+  <div class="hx:mx-auto hx:flex hextra-max-page-width">
+    
+<aside class="hextra-sidebar-container hx:flex hx:flex-col hx:print:hidden hx:md:top-[var(--hextra-navbar-height)] hx:md:shrink-0 hx:md:w-64 hx:md:self-start hx:max-md:[transform:translate3d(0,-100%,0)] hx:md:hidden hx:xl:block">
+  <div class="hextra-scrollbar hx:overflow-y-auto hx:overflow-x-hidden hx:p-4 hx:grow hx:md:h-[calc(100vh-var(--hextra-navbar-height)-var(--menu-height))]">
+    <ul class="hx:flex hx:flex-col hx:gap-1 hx:md:hidden">
+      
+      <li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/document/current/cn/overview/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">文档</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/community/cn/involved/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">社区</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">博客</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">文章</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">视频</span>
+    </a>
+  </div></li>
+            <li class="open"><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:ltr:pr-8 hx:rtl:pl-8 hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">博文选集</span>
+    </a>
+      <button type="button" class="hextra-sidebar-collapsible-button hx:absolute hx:top-1/2 hx:-translate-y-1/2 hx:ltr:right-2 hx:rtl:left-2 hx:shrink-0 hx:cursor-pointer hx:p-0 hx:text-gray-500 hx:dark:text-neutral-400 hx:group-hover:text-gray-900 hx:dark:group-hover:text-gray-50 hx:group-data-[active=true]:text-primary-800 hx:group-data-[active=true]:dark:text-primary-600 hx:hextra-focus-visible-inset" aria-label="切换章节" aria-expanded="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" focusable="false" class="hx:h-[18px] hx:min-w-[18px] hx:rounded-xs hx:p-0.5 hx:hover:bg-gray-800/5 hx:dark:hover:bg-gray-100/5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" class="hx:origin-center hx:transition-transform hx:rtl:-rotate-180"></path></svg></button>
+  </div><div class="hextra-sidebar-children hx:ltr:pr-0 hx:rtl:pl-0 hx:overflow-hidden">
+        <ul class='hx:relative hx:flex hx:flex-col hx:gap-1 hx:before:absolute hx:before:inset-y-1 hx:before:w-px hx:before:bg-gray-200 hx:before:content-[""] hx:ltr:ml-3 hx:ltr:pl-3 hx:ltr:before:left-0 hx:rtl:mr-3 hx:rtl:pr-3 hx:rtl:before:right-0 hx:dark:before:bg-neutral-800'><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/proxy/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">揭秘 Sharding-Proxy——面向DBA的数据库中间层</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col open"><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="true">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hextra-sidebar-active-item hx:bg-primary-100 hx:font-semibold hx:text-primary-800 hx:contrast-more:border hx:contrast-more:border-primary-500 hx:dark:bg-primary-400/10 hx:dark:text-primary-600 hx:contrast-more:dark:border-primary-500"
+      href="/blog/cn/material/realization/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">分布式事务在Sharding-Sphere中的实现</span>
+    </a>
+  </div>
+  
+  
+  
+    <ul
+      class='hx:flex hx:flex-col hx:gap-1 hx:relative hx:before:absolute hx:before:inset-y-1 hx:before:w-px hx:before:bg-gray-200 hx:before:content-[""] hx:dark:before:bg-neutral-800 hx:ltr:pl-3 hx:ltr:before:left-0 hx:rtl:pr-3 hx:rtl:before:right-0 hx:ltr:ml-3 hx:rtl:mr-3'
+    ><li>
+              <a
+                href="#"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              ></a>
+            </li>
+          </ul>
+  
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/result/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">剖析Sharding-Sphere系列——结果归并 </span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/engine/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">自动化执行引擎</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/committer/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">成为 Apache 官方认可的 Committer 有什么优势</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/solution/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">刚柔并济的开源分布式事务解决方案</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/seata/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere整合Seata AT分布式事务</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/cncf/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">快讯！Apache ShardingSphere 进入 CNCF 全景图</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/community/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 社区的探索与拓展</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/database/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">我们是怎样打造一款分布式数据库的</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/graduate/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">分布式数据库解决方案Apache ShardingSphere毕业成为顶级项目</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/elasticjob/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">快讯！分布式调度项目ElasticJob即将重新起航</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/alpha/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">停滞数年后，ElasticJob 携首个 Apache 版本 3.0.0-alpha 回归</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/ss_5.0.0beta/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">新版发布｜ShardingSphere 5.0.0-beta 来了！</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/open_source_community/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">为什么要参与到开源社区中？</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/jul_26_an_introduction_to_distsql/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">DistSQL：像数据库一样使用 Apache ShardingSphere</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_1_shardingspheres_metadata_loading_process/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">元数据在 ShardingSphere 中加载的过程</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_2_a_distributed_database_middleware_ecosystem_driven_by_open_source/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere：由开源驱动的分布式数据库中间件生态</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_3_how_can_students_participate_in_open-source_communities/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">趣说开源｜学生如何参与开源社区？</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_4_updates_and_faq_your_1_minute_quick_start_guide_to_shardingsphere/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere 知识库更新 | 官方样例集助你快速上手</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_5_e-hualu_shardingsphere_hulu_story_data_processing_shortcut/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">易华录 X ShardingSphere｜葫芦 App 后台数据处理的逻辑捷径</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_6_autotable_your_butler-like_sharding_configuration_tool/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">分片利器 AutoTable：为用户带来「管家式」分片配置体验</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_7_opengauss_shardingsphere_one_of_the_top_distribution_solutions/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">openGauss X ShardingSphere，分布式方案的另一种最佳实践</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_8_shardingsphere_google_summer_of_code_students_how_was_your_open_source_experience/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere X Google 编程之夏：同学，开源你怎么看？</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_9_shardingsphere_jd_baitiao_story_of_an_implementation_journey/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 在京东白条场景的落地之旅</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/proxyintroduce/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere-Proxy：从实际场景出发，快速上手</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/spotless/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 代码格式化实战 —— Spotless</span>
+    </a>
+  </div>
+              
+            </li></ul>
+      </div></li>
+            <li class=""><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:ltr:pr-8 hx:rtl:pl-8 hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">视频选集</span>
+    </a>
+      <button type="button" class="hextra-sidebar-collapsible-button hx:absolute hx:top-1/2 hx:-translate-y-1/2 hx:ltr:right-2 hx:rtl:left-2 hx:shrink-0 hx:cursor-pointer hx:p-0 hx:text-gray-500 hx:dark:text-neutral-400 hx:group-hover:text-gray-900 hx:dark:group-hover:text-gray-50 hx:group-data-[active=true]:text-primary-800 hx:group-data-[active=true]:dark:text-primary-600 hx:hextra-focus-visible-inset" aria-label="切换章节" aria-expanded="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" focusable="false" class="hx:h-[18px] hx:min-w-[18px] hx:rounded-xs hx:p-0.5 hx:hover:bg-gray-800/5 hx:dark:hover:bg-gray-100/5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" class="hx:origin-center hx:transition-transform hx:rtl:-rotate-180"></path></svg></button>
+  </div><div class="hextra-sidebar-children hx:ltr:pr-0 hx:rtl:pl-0 hx:overflow-hidden">
+        <ul class='hx:relative hx:flex hx:flex-col hx:gap-1 hx:before:absolute hx:before:inset-y-1 hx:before:w-px hx:before:bg-gray-200 hx:before:content-[""] hx:ltr:ml-3 hx:ltr:pl-3 hx:ltr:before:left-0 hx:rtl:mr-3 hx:rtl:pr-3 hx:rtl:before:right-0 hx:dark:before:bg-neutral-800'><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/opengauss/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere 与 openGauss 的化学反应</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/opensource/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">【开源总动员】零基础入门 Apache ShardingSphere 开源之道</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/build/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere 的 Apache 共建之道</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/new_sql/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">从 New SQL 角度看 Apache ShardingSphere</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/evolution/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">开源推动下的 Apache ShardingSphere 架构演进</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/ecosystem/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">海量数据下的 NewSQL 数据库生态构建</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/newfeature/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 5.x 的新功能</span>
+    </a>
+  </div>
+              
+            </li></ul>
+      </div></li>
+    </ul>
 
-		<h3 id="讲师简介">讲师简介</h3>
-<p><strong>赵俊</strong></p>
+    <div class="hx:max-xl:hidden hx:h-0 hx:w-64 hx:shrink-0"></div></div>
+  
+  
+    <div class="hx:md:hidden hx:justify-end hx:sticky hx:bottom-0 hx:max-h-(--menu-height) hx:bg-white hx:dark:bg-dark hx:mx-4 hx:py-4 hx:shadow-[0_-12px_16px_#fff] hx:flex hx:items-center hx:gap-2 hx:border-gray-200 hx:dark:border-neutral-800 hx:dark:shadow-[0_-12px_16px_#111] hx:contrast-more:border-neutral-400 hx:contrast-more:shadow-none hx:contrast-more:dark:shadow-none hx:border-t" data-toggle-animation="show"><div class="hx:flex hx:justify-items-start hx:grow">
+    <button
+      title="切换语言"
+      data-state="closed"
+      data-location=""
+      class="hextra-language-switcher hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:grow"
+      type="button"
+      aria-label="切换语言"
+      aria-expanded="false"
+      aria-haspopup="menu"
+    >
+      <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg><span>简体中文</span></div>
+    </button>
+    <ul
+      class="hextra-language-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+      style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+      role="menu"
+    >
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/en/material/realization/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >English</a>
+        </li>
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/cn/material/realization/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >简体中文<span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span></a>
+        </li>
+      </ul>
+  </div><div class="hx:flex hx:justify-items-start hx:group" data-theme="light">
+  <button
+    title="切换主题"
+    data-state="closed"
+    data-location="bottom-right"
+    class="hextra-theme-toggle hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:font-medium hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:grow"
+    type="button"
+    aria-label="切换主题"
+    aria-expanded="false"
+    aria-haspopup="menu"
+  >
+    <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg><svg height=12 class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="currentColor">
+  <path d="M 11.996094,2 C 6.4986225,2.0192368 2.03125,6.5024993 2.03125,12 c 0,5.497501 4.4673725,9.980763 9.964844,10 H 12 12.0039 c 5.497471,-0.01924 9.964844,-4.502499 9.964844,-10 0,-5.4975007 -4.467373,-9.9807632 -9.964844,-10 H 12 Z M 12,4 c 4.417218,0.017598 7.96875,3.5822356 7.96875,8 0,4.417764 -3.551532,7.982402 -7.96875,8 z" />
+</svg>
+</div>
+  </button>
+  <ul
+    class="hextra-theme-toggle-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+    style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+    data-theme="light"
+    role="menu"
+  >
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="true"
+        tabindex="-1"
+        data-item="light"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        浅色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="dark"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        深色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="system"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        跟随系统
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+  </ul>
+</div>
+</div></aside>
+    
+<nav class="hextra-toc hx:order-last hx:hidden hx:w-64 hx:shrink-0 hx:xl:block hx:print:hidden hx:px-4" aria-label="目录">
+    <div class="hextra-scrollbar hx:sticky hx:top-[var(--hextra-navbar-height)] hx:overflow-y-auto hx:pr-4 hx:pt-6 hx:text-sm [hyphens:auto] hx:max-h-[calc(100vh-var(--hextra-navbar-height)-env(safe-area-inset-bottom))] hx:ltr:-mr-4 hx:rtl:-ml-4"><p class="hx:mb-4 hx:font-semibold hx:tracking-tight">此页上</p><ul>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e8%ae%b2%e5%b8%88%e7%ae%80%e4%bb%8b">讲师简介
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e5%88%86%e5%b8%83%e5%bc%8f%e4%ba%8b%e5%8a%a1%e7%9a%84%e4%bd%bf%e7%94%a8%e5%9c%ba%e6%99%af">分布式事务的使用场景
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-8 hx:rtl:pr-8 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#acid">ACID
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-8 hx:rtl:pr-8 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#cap-%e5%92%8c-base-%e7%90%86%e8%ae%ba">CAP 和 Base 理论
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e4%b8%9a%e7%95%8c%e6%96%b9%e6%b3%95">业界方法
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-8 hx:rtl:pr-8 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#xa">XA
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-8 hx:rtl:pr-8 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e6%9f%94%e6%80%a7%e4%ba%8b%e5%8a%a1">柔性事务
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#sharding-sphere-%e5%af%b9%e5%88%86%e5%b8%83%e5%bc%8f%e4%ba%8b%e5%8a%a1%e7%9a%84%e6%94%af%e6%8c%81">Sharding-Sphere 对分布式事务的支持
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-8 hx:rtl:pr-8 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e4%ba%8b%e5%8a%a1%e6%a8%a1%e5%9e%8b">事务模型
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-8 hx:rtl:pr-8 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#sharding-proxy%e4%ba%8b%e5%8a%a1%e5%ae%9e%e7%8e%b0">Sharding-Proxy事务实现
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e6%9c%aa%e6%9d%a5%e8%ae%a1%e5%88%92">未来计划
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#qa">Q&amp;A
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e7%9b%b4%e6%92%ad%e5%9b%9e%e6%94%be">直播回放
+        </a>
+      </li></ul>
+      <div class="hx:mt-8 hx:border-t hx:bg-white hx:pt-8 hx:shadow-[0_-12px_16px_white] hx:dark:bg-dark hx:dark:shadow-[0_-12px_16px_#111] hx:sticky hx:bottom-0 hx:flex hx:flex-col hx:items-start hx:gap-2 hx:pb-8 hx:border-gray-200 hx:dark:border-neutral-800 hx:contrast-more:border-t hx:contrast-more:border-neutral-400 hx:contrast-more:shadow-none hx:contrast-more:dark:border-neutral-400"><a class="hx:inline-block hx:rounded-sm hx:text-xs hx:font-medium hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-100 hx:contrast-more:text-gray-800 hx:contrast-more:dark:text-gray-50 hx:hextra-focus-visible-inset" href="https://github.com/apache/shardingsphere/edit/master/docs/blog/content/material/realization.cn.md" target="_blank" rel="noreferrer">在 GitHub 上编辑此页 →</a>
+        <button id="backToTop" tabindex="-1" class="hx:cursor-pointer hx:transition-all hx:duration-75 hx:opacity-0 hx:text-xs hx:font-medium hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-100 hx:contrast-more:text-gray-800 hx:contrast-more:dark:text-gray-50">
+          <span>返回顶部</span>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" focusable="false" class="hx:inline hx:ltr:ml-1 hx:rtl:mr-1 hx:h-3.5 hx:w-3.5 hx:rounded-full hx:border hx:border-gray-500 hx:hover:border-gray-900 hx:dark:border-gray-400 hx:dark:hover:border-gray-100 hx:contrast-more:border-gray-800 hx:contrast-more:dark:border-gray-50">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+
+    <article class="hx:w-full hx:break-words hx:flex hx:min-h-[calc(100vh-var(--hextra-navbar-height))] hx:min-w-0 hx:justify-center hx:pb-8 hx:pr-[calc(env(safe-area-inset-right)-1.5rem)]">
+      <main id="content" class="hx:w-full hx:min-w-0 hextra-max-content-width hx:px-6 hx:pt-4 hx:md:px-12">
+        
+        <div class="hx:mt-1.5 hx:flex hx:items-center hx:gap-1 hx:overflow-hidden hx:text-sm hx:text-gray-500 hx:dark:text-gray-400 hx:contrast-more:text-current">
+        <div class="hx:whitespace-nowrap hx:transition-colors hx:min-w-[24px] hx:overflow-hidden hx:text-ellipsis hx:hover:text-gray-900 hx:dark:hover:text-gray-100">
+          <a href="/blog/cn/material/" class="hx:inline-block hx:rounded-sm hx:hextra-focus-visible-inset">博文选集</a>
+        </div><svg class="hx:w-3.5 hx:shrink-0 hx:rtl:-rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg><div class="hx:whitespace-nowrap hx:transition-colors hx:font-medium hx:text-gray-700 hx:contrast-more:font-bold hx:contrast-more:text-current hx:dark:text-gray-100 hx:contrast-more:dark:text-current">分布式事务在Sharding-Sphere中的实现</div>
+  </div>
+
+        
+          <div class="hx:flex hx:flex-col hx:sm:flex-row hx:items-start hx:sm:items-center hx:sm:justify-between hx:gap-4 hx:mt-2">
+            <h1 class="hx:mb-0 hx:text-4xl hx:font-bold hx:tracking-tight hx:text-slate-900 hx:dark:text-slate-100">分布式事务在Sharding-Sphere中的实现</h1>
+            <div class="hextra-page-context-menu hx:relative hx:inline-flex hx:shrink-0">
+      <div class="hx:inline-flex hx:rounded-lg hx:border hx:border-gray-200 hx:transition-colors hx:hover:border-gray-300 hx:dark:border-neutral-800 hx:dark:hover:border-neutral-700">
+        <button
+          class="hextra-page-context-menu-copy hx:group/copybtn hx:inline-flex hx:cursor-pointer hx:items-center hx:gap-1.5 hx:bg-transparent hx:px-2.5 hx:py-1 hx:text-sm hx:font-medium hx:text-gray-700 hx:transition-colors hx:hover:bg-slate-50 hx:dark:text-gray-300 hx:dark:hover:bg-neutral-900 hx:ltr:rounded-l-lg hx:rtl:rounded-r-lg hx:hextra-focus-visible-inset"
+          data-url="https://shardingsphere.apache.org/blog/cn/material/realization.md"
+          title="复制为 Markdown"
+          aria-label="复制为 Markdown"
+        >
+          <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:size-4"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></div>
+          <div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:size-4"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+          <span>复制页面</span>
+        </button>
+        <button
+          class="hextra-page-context-menu-toggle hx:inline-flex hx:cursor-pointer hx:items-center hx:justify-center hx:bg-transparent hx:px-1.5 hx:py-1 hx:text-gray-500 hx:transition-colors hx:hover:bg-slate-50 hx:hover:text-gray-700 hx:dark:text-gray-400 hx:dark:hover:bg-neutral-900 hx:dark:hover:text-gray-300 hx:ltr:rounded-r-lg hx:rtl:rounded-l-lg hx:hextra-focus-visible-inset"
+          data-state="closed"
+          aria-label="切换页面上下文菜单"
+          aria-expanded="false"
+          aria-haspopup="menu"
+        >
+          <div class="hx:size-4 hx:transition-transform hx:duration-200" data-chevron><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></div>
+        </button>
+      </div>
+      <ul class="hextra-page-context-menu-dropdown not-prose hx:hidden hx:absolute hx:top-full hx:left-0 hx:sm:left-auto hx:sm:right-0 hx:mt-1 hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900" role="menu">
+        <li role="none">
+          <button
+            data-action="copy"
+            role="menuitem"
+            class="hx:flex hx:w-full hx:cursor-pointer hx:select-none hx:items-center hx:gap-2 hx:whitespace-nowrap hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:text-gray-700 hx:outline-none hx:transition-colors hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-gray-300 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100"
+          >
+            <div class="hx:size-4 hx:shrink-0 hx:text-gray-500 hx:dark:text-gray-400"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></div>
+            复制为 Markdown
+          </button>
+        </li>
+        <li role="none">
+          <button
+            data-action="view"
+            data-url="https://shardingsphere.apache.org/blog/cn/material/realization.md"
+            role="menuitem"
+            class="hx:flex hx:w-full hx:cursor-pointer hx:select-none hx:items-center hx:gap-2 hx:whitespace-nowrap hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:text-gray-700 hx:outline-none hx:transition-colors hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-gray-300 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100"
+          >
+            <div class="hx:size-4 hx:shrink-0 hx:text-gray-500 hx:dark:text-gray-400"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20.56 18H3.44C2.65 18 2 17.37 2 16.59V7.41C2 6.63 2.65 6 3.44 6h17.12c.79 0 1.44.63 1.44 1.41v9.18c0 .78-.65 1.41-1.44 1.41M6.81 15.19v-3.66l1.92 2.35l1.92-2.35v3.66h1.93V8.81h-1.93l-1.92 2.35l-1.92-2.35H4.89v6.38h1.92M19.69 12h-1.92V8.81h-1.92V12h-1.93l2.89 3.28L19.69 12Z"/></svg></div>
+            以 Markdown 查看
+          </button>
+        </li></ul>
+    </div>
+          </div>
+        
+        <div class="hx:mt-4 hx:mb-16 hx:text-gray-500 hx:dark:text-gray-400 hx:text-sm hx:flex hx:items-center hx:flex-wrap hx:gap-y-2"></div>
+        <div class="content">
+          
+          
+<h3 data-hextra-search-id="讲师简介">讲师简介<span class="hx:absolute hx:-mt-20" id="讲师简介"></span><a href="#%e8%ae%b2%e5%b8%88%e7%ae%80%e4%bb%8b" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p><strong>赵俊</strong></p>
 <p>京东金融</p>
 <p>高级Java开发工程师</p>
 <ul>
@@ -93,9 +980,9 @@
 <p>目前主要在 Sharding-Sphere 团队负责分布式事务的开发</p>
 </li>
 </ul>
-<h3 id="分布式事务的使用场景">分布式事务的使用场景</h3>
-<h4 id="acid">ACID</h4>
-<p>一切从 ACID 开始说起。ACID 是本地事务所具有的四大特征：</p>
+
+<h3 data-hextra-search-id="分布式事务的使用场景">分布式事务的使用场景<span class="hx:absolute hx:-mt-20" id="分布式事务的使用场景"></span><a href="#%e5%88%86%e5%b8%83%e5%bc%8f%e4%ba%8b%e5%8a%a1%e7%9a%84%e4%bd%bf%e7%94%a8%e5%9c%ba%e6%99%af" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3>
+<h4 data-hextra-search-id="acid">ACID<span class="hx:absolute hx:-mt-20" id="acid"></span><a href="#acid" class="subheading-anchor" aria-label="此章节的永久链接"></a></h4><p>一切从 ACID 开始说起。ACID 是本地事务所具有的四大特征：</p>
 <ul>
 <li>
 <p><strong>Atomicity：原子性</strong></p>
@@ -115,37 +1002,37 @@
 </li>
 </ul>
 <p>关系型数据库的本地事务完美的提供了对ACID的原生支持。但在分布式的场景下，它却成为系统性能的桎梏。如何让数据库在分布式场景下满足ACID的特性或找寻相应的替代方案，是本文将要阐述的话题。</p>
-<h4 id="cap-和-base-理论">CAP 和 Base 理论</h4>
-<p>对于互联网应用而言，随着访问量和数据量的激增，传统的单体架构模式将无法满足业务的高速发展。这时，开发者需要把单体应用拆分为多个独立的小应用，把单个数据库按照分片规则拆分为多个库和多个表。</p>
+
+<h4 data-hextra-search-id="cap-和-base-理论">CAP 和 Base 理论<span class="hx:absolute hx:-mt-20" id="cap-和-base-理论"></span><a href="#cap-%e5%92%8c-base-%e7%90%86%e8%ae%ba" class="subheading-anchor" aria-label="此章节的永久链接"></a></h4><p>对于互联网应用而言，随着访问量和数据量的激增，传统的单体架构模式将无法满足业务的高速发展。这时，开发者需要把单体应用拆分为多个独立的小应用，把单个数据库按照分片规则拆分为多个库和多个表。</p>
 <p>数据拆分后，如何在多个数据库节点间保证本地事务的ACID特性则成为一个技术难题，并且由此而衍生出了 CAP 和 BASE 经典理论。</p>
 <p>CAP 理论指出，对于分布式的应用而言，不可能同时满足C（一致性），A（可用性），P（分区容错性），由于网络分区是分布式应用的基本要素，因此开发者需要在C和A上做出平衡。</p>
 <p>由于 C 和 A 互斥性，其权衡的结果就是 BASE 理论。</p>
 <p>对于大部分的分布式应用而言，只要数据在规定的时间内达到最终一致性即可。我们可以把符合传统的 ACID 叫做刚性事务，把满足 BASE 理论的最终一致性事务叫做柔性事务。</p>
 <p>一味的追求强一致性，并非最佳方案。对于分布式应用来说，刚柔并济是更加合理的设计方案，即在本地服务中采用强一致事务，在跨系统调用中采用最终一致性。如何权衡系统的性能与一致性，是十分考验架构师与开发者的设计功力的。</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization1.jpg" alt=""></p>
-<h3 id="业界方法">业界方法</h3>
-<p>具体到分布式事务的实现上，业界主要采用了XA协议的强一致规范以及柔性事务的最终一致规范。</p>
-<h4 id="xa">XA</h4>
-<p>XA 是 X/Open CAE Specification (Distributed Transaction Processing)模型中定义的 TM（Transaction Manager）与RM（Resource Manager）之间进行通信的接口。</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization1.jpg" alt=""  loading="lazy" /></p>
+
+<h3 data-hextra-search-id="业界方法">业界方法<span class="hx:absolute hx:-mt-20" id="业界方法"></span><a href="#%e4%b8%9a%e7%95%8c%e6%96%b9%e6%b3%95" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>具体到分布式事务的实现上，业界主要采用了XA协议的强一致规范以及柔性事务的最终一致规范。</p>
+
+<h4 data-hextra-search-id="xa">XA<span class="hx:absolute hx:-mt-20" id="xa"></span><a href="#xa" class="subheading-anchor" aria-label="此章节的永久链接"></a></h4><p>XA 是 X/Open CAE Specification (Distributed Transaction Processing)模型中定义的 TM（Transaction Manager）与RM（Resource Manager）之间进行通信的接口。</p>
 <p>Java 中的 javax.transaction.xa.XAResource 定义了 XA 接口，它依赖数据库厂商对 jdbc-driver 的具体实现。</p>
 <p>mysql-connector-java-5.1.30的实现可参考：</p>
 <p>com.mysql.jdbc.jdbc2.optional.MysqlXAConnection。</p>
 <p>在 XA 规范中，数据库充当 RM 角色，应用需要充当 TM 的角色，即生成全局的 txId，调用 XAResource 接口，把多个本地事务协调为全局统一的分布式事务。</p>
 <p><strong>一阶段提交：弱XA</strong></p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization2.jpg" alt="">
+<p><img src="https://shardingsphere.apache.org/blog/img/realization2.jpg" alt=""  loading="lazy" />
 弱 XA 通过去掉 XA 的 Prepare 阶段，以达到减少资源锁定范围而提升并发性能的效果。典型的实现为在一个业务线程中，遍历所有的数据库连接，依次做 commit 或者 rollback。弱XA同本地事务相比，性能损耗低，但在事务提交的执行过程中，若出现网络故障、数据库宕机等预期之外的异常，将会造成数据不一致，且无法进行回滚。基于弱XA的事务无需额外的实现成本，因此 Sharding-Sphere 默认支持。</p>
 <p><strong>二阶段提交：2PC</strong></p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization3.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization3.jpg" alt=""  loading="lazy" /></p>
 <p>二阶段提交是 XA 的标准实现。它将分布式事务的提交拆分为 2 个阶段：prepare 和 commit/rollback。</p>
 <p>开启XA全局事务后，所有子事务会按照本地默认的隔离级别锁定资源，并记录 undo 和 redo 日志，然后由 TM 发起 prepare 投票，询问所有的子事务是否可以进行提交：当所有子事务反馈的结果为“yes”时，TM 再发起 commit；若其中任何一个子事务反馈的结果为“no”，TM 则发起 rollback；如果在 prepare 阶段的反馈结果为 yes，而 commit 的过程中出现宕机等异常时，则在节点服务重启后，可根据 XA recover 再次进行 commit 补偿，以保证数据的一致性。</p>
 <p>2PC模型中，在 prepare 阶段需要等待所有参与子事务的反馈，因此可能造成数据库资源锁定时间过长，不适合并发高以及子事务生命周长较长的业务场景。</p>
 <p>Sharding-Sphere 支持基于 XA 的强一致性事务解决方案，可以通过 SPI 注入不同的第三方组件作为事务管理器实现 XA 协议，如 Atomikos 和 Narayana。</p>
-<h4 id="柔性事务">柔性事务</h4>
-<p>柔性事务是对 XA 协议的妥协和补偿，它通过对强一致性要求的降低，已达到降低数据库资源锁定时间的效果。柔性事务的种类很多，可以通过各种不同的策略来权衡使用。</p>
+
+<h4 data-hextra-search-id="柔性事务">柔性事务<span class="hx:absolute hx:-mt-20" id="柔性事务"></span><a href="#%e6%9f%94%e6%80%a7%e4%ba%8b%e5%8a%a1" class="subheading-anchor" aria-label="此章节的永久链接"></a></h4><p>柔性事务是对 XA 协议的妥协和补偿，它通过对强一致性要求的降低，已达到降低数据库资源锁定时间的效果。柔性事务的种类很多，可以通过各种不同的策略来权衡使用。</p>
 <p><strong>一阶段提交 + 补偿 ：最大努力送达（BED）</strong></p>
 <p>最大努力送达，是针对于弱 XA 的一种补偿策略。它采用事务表记录所有的事务操作 SQL，如果子事务提交成功，将会删除事务日志；如果执行失败，则会按照配置的重试次数，尝试再次提交，即最大努力的进行提交，尽量保证数据的一致性，这里可以根据不同的业务场景，平衡 C 和 A ，采用同步重试或异步重试。</p>
 <p>这种策略的优点是无锁定资源时间，性能损耗小。缺点是尝试多次提交失败后，无法回滚，它仅适用于事务最终一定能够成功的业务场景。因此 BED 是通过事务回滚功能上的妥协，来换取性能的提升。</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization4.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization4.jpg" alt=""  loading="lazy" /></p>
 <p><strong>TCC： Try-Confirm-Cancel</strong></p>
 <p>TCC模型是把锁的粒度完全交给业务处理，它需要每个子事务业务都实现Try-Confirm/Cancel接口。</p>
 <ul>
@@ -171,7 +1058,7 @@
 </ul>
 <p>这三个阶段都会按本地事务的方式执行，不同于 XA 的 prepare，TCC无需将XA的投票期间的所有资源挂起，因此极大的提高了吞吐量。</p>
 <p>下面对 TCC 模式下，A 账户往 B 账户汇款 100 元为例子，对业务的改造进行详细的分析：</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization5.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization5.jpg" alt=""  loading="lazy" /></p>
 <p>汇款服务和收款服务分别需要实现，Try-Confirm-Cancel 接口，并在业务初始化阶段将其注入到 TCC 事务管理器中。</p>
 <p>汇款服务</p>
 <ul>
@@ -210,12 +1097,12 @@
 </ul>
 <p>由此可以看出，TCC 模型对业务的侵入强，改造的难度大。</p>
 <p><strong>消息驱动</strong></p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization6.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization6.jpg" alt=""  loading="lazy" /></p>
 <p>消息一致性方案是通过消息中间件保证上下游应用数据操作的一致性。基本思路是将本地操作和发送消息放在一个事务中，下游应用向消息系统订阅该消息，收到消息后执行相应操作。本质上是依靠消息的重试机制，达到最终一致性。消息驱动的缺点是：耦合度高，需要在业务系统中引入 MQ，导致系统复杂度增加。</p>
 <p><strong>SAGA</strong></p>
 <p>Saga 起源于 1987 年 Hector &amp; Kenneth 发表的论文 Sagas。</p>
 <p>参考地址：</p>
-<p><a href="https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf">https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf</a></p>
+<p><a href="https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf" target="_blank" rel="noopener">https://www.cs.cornell.edu/andru/cs711/2002fa/reading/sagas.pdf</a></p>
 <p>Saga工作原理</p>
 <p>Saga 模型把一个分布式事务拆分为多个本地事务，每个本地事务都有相应的执行模块和补偿模块（ TCC 中的 Confirm 和 Cancel）。当 Saga 事务中任意一个本地事务出错时，可以通过调用相关的补偿方法恢复之前的事务，达到事务最终的一致性。</p>
 <p>当每个 Saga 子事务 T1, T2, …, Tn 都有对应的补偿定义 C1, C2, …, Cn-1,那么 Saga 系统可以保证：</p>
@@ -248,13 +1135,13 @@
 </ul>
 <p>显然，向前恢复没有必要提供补偿事务，如果你的业务中，子事务（最终）总会成功，或补偿事务难以定义或不可能，向前恢复更符合你的需求。理论上补偿事务永不失败，然而，在分布式世界中，服务器可能会宕机、网络可能会失败，甚至数据中心也可能会停电，这时需要提供故障恢复后回退的机制，比如人工干预。</p>
 <p>总的来说，TCC 和 MQ 都是以服务为范围进行分布式事务的处理，而XA、BED、SAGA则是以数据库为范围进行分布式处理，我们更趋向于选择后者，对于业务而言侵入小，改造的成本低。</p>
-<h3 id="sharding-sphere-对分布式事务的支持">Sharding-Sphere 对分布式事务的支持</h3>
-<p>Sharding-Sphere 是一套开源的分布式数据库中间件解决方案组成的生态圈，它由 Sharding-JDBC、Sharding-Proxy 和 Sharding-Sidecar 这3款相互独立的产品组成。它们均提供标准化的数据水平扩展、分布式事务和分布式治理等功能，可适用于如 Java 同构、异构语言、容器、云原生等各种多样化的应用场景。</p>
+
+<h3 data-hextra-search-id="sharding-sphere-对分布式事务的支持">Sharding-Sphere 对分布式事务的支持<span class="hx:absolute hx:-mt-20" id="sharding-sphere-对分布式事务的支持"></span><a href="#sharding-sphere-%e5%af%b9%e5%88%86%e5%b8%83%e5%bc%8f%e4%ba%8b%e5%8a%a1%e7%9a%84%e6%94%af%e6%8c%81" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>Sharding-Sphere 是一套开源的分布式数据库中间件解决方案组成的生态圈，它由 Sharding-JDBC、Sharding-Proxy 和 Sharding-Sidecar 这3款相互独立的产品组成。它们均提供标准化的数据水平扩展、分布式事务和分布式治理等功能，可适用于如 Java 同构、异构语言、容器、云原生等各种多样化的应用场景。</p>
 <p>项目地址：</p>
-<p><a href="https://github.com/sharding-sphere/sharding-sphere/">https://github.com/sharding-sphere/sharding-sphere/</a></p>
+<p><a href="https://github.com/sharding-sphere/sharding-sphere/" target="_blank" rel="noopener">https://github.com/sharding-sphere/sharding-sphere/</a></p>
 <p>Sharding-Sphere 同时支持 XA 和柔性事务，它允许每次对数据库的访问，可以自由选择事务类型。分布式事务对业务操作完全透明，极大地降低了引入分布式事务的成本。</p>
-<h4 id="事务模型">事务模型</h4>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization7.jpg" alt=""></p>
+
+<h4 data-hextra-search-id="事务模型">事务模型<span class="hx:absolute hx:-mt-20" id="事务模型"></span><a href="#%e4%ba%8b%e5%8a%a1%e6%a8%a1%e5%9e%8b" class="subheading-anchor" aria-label="此章节的永久链接"></a></h4><p><img src="https://shardingsphere.apache.org/blog/img/realization7.jpg" alt=""  loading="lazy" /></p>
 <p>Sharding-Sphere 事务管理器集成了XA和柔性事务模型：</p>
 <ul>
 <li>
@@ -265,34 +1152,34 @@
 </li>
 </ul>
 <p>下面将 Sharding-Sphere 内部如何用事件驱动方式，将事务从分片主流程中解耦进行详细说明：</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization8.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization8.jpg" alt=""  loading="lazy" /></p>
 <p>从图可以看出在 Sharding-core 在调用执行引擎时，会根据SQL的种类产生事件进行分发。事务监听线程在收到符合要求的事件后，再调用对应的事务处理器进行处理。</p>
-<h4 id="sharding-proxy事务实现">Sharding-Proxy事务实现</h4>
-<p>Sharding-Proxy 是基于 netty 开发的数据库中间代理层，实现了标准的 MySQL 协议，可以看做是一个实现了数据分片的数据库。Sharding-Proxy 已经实现了基于 Atomikos 的 XA 事务，为了保证所有的子事务都处于同一个线程之中，整个 Proxy 的线程模型进行了如下的调整：</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization9.jpg" alt=""></p>
+
+<h4 data-hextra-search-id="sharding-proxy事务实现">Sharding-Proxy事务实现<span class="hx:absolute hx:-mt-20" id="sharding-proxy事务实现"></span><a href="#sharding-proxy%e4%ba%8b%e5%8a%a1%e5%ae%9e%e7%8e%b0" class="subheading-anchor" aria-label="此章节的永久链接"></a></h4><p>Sharding-Proxy 是基于 netty 开发的数据库中间代理层，实现了标准的 MySQL 协议，可以看做是一个实现了数据分片的数据库。Sharding-Proxy 已经实现了基于 Atomikos 的 XA 事务，为了保证所有的子事务都处于同一个线程之中，整个 Proxy 的线程模型进行了如下的调整：</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization9.jpg" alt=""  loading="lazy" /></p>
 <p>当开启事务后，Proxy 后端的 SQL 命令执行引擎将采用一通道一线程的模式，此事务线程的生命周期同通道保持一致。事务处理的具体过程与 Proxy 彻底解耦，即 Proxy 将发布事务类型的事件，然后 Sharding-Sphere-TM 根据传入的事务消息，选择具体的 TM 进行处理。</p>
 <p>压测结果表明：XA 事务的插入和更新的性能，基本上同跨库的个数呈线性关系，查询的性能基本不受影响，建议在并发量不大，每次事务涉及的库在 10 个以内时，可以使用 XA。</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization10.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization10.jpg" alt=""  loading="lazy" /></p>
 <p>Atomikos 事务管理器原理分析</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization11.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization11.jpg" alt=""  loading="lazy" /></p>
 <p>Atomikos 的事务管理器可以内嵌到业务进程中，当应用调用 TransactionManager.begin 时，将会创建本次 XA 事务，并且与当前线程关联。同时 Atomikos 也对 DataSource 中的 connection 做了二次封装，代理 connection 中含有本次事务相关信息的状态，并且拦截了 connection 的 JDBC 操作。</p>
 <p>在 createStatement 时，调用 XAResource.start 进行资源注册；在 close 时，调用 XAResource.end 让 XA 事务处于 idle 可提交状态；在 commit 或 rollback 时，依次调用 prepare 和 commit 进行二阶段提交。</p>
 <p><strong>Sharding-Sphere 的 Saga 事务实现</strong></p>
 <p>Sharding-Sphere 通过与 Apache Service Comb 的合作，将采用 Service Comb 的 Saga 事务引擎作为的分布式事务实现。</p>
 <p>Apache Service Comb 是华为开源的微服务框架，其中微服务事务处理框架分为集中式和分布式协调器。未来会在 Sharding-Sphere 内部集成 Saga 集中式协调器，支持同一线程内不同服务（本地）间的分布式事务。</p>
 <p>参考链接：</p>
-<p><a href="https://github.com/apache/incubator-servicecomb-saga">https://github.com/apache/incubator-servicecomb-saga</a></p>
+<p><a href="https://github.com/apache/incubator-servicecomb-saga" target="_blank" rel="noopener">https://github.com/apache/incubator-servicecomb-saga</a></p>
 <p>Service Comb 集中式事务协调器</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization12.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization12.jpg" alt=""  loading="lazy" /></p>
 <p>集中式的协调器，包含了 Saga 调用请求接收、分析、执行以及结果查询的内容。任务代理模块需要预先知道 Saga 事务调用关系图，执行模块根据生成的调用图产生调用任务，调用相关微服务服务接口。如果服务调用执行出错，会调用服务的相关的补偿方法回滚。</p>
 <p>Saga 执行模块通过分析请求的 JSON 数据，来构建一个调用关系图。Sharding-Sphere 是通过 JSON 描述 Saga 事务串行调用子事务或者并行调用子事务。关系调用图被 Saga 实现中的任务运行模块分解成为一个一个执行任务，执行任务由任务消费者获取并生成相关的调用 （同时支持串行和并行调用）。Saga 任务会根据执行的情况向 Saga Log 中记录对应的 Saga 事务的关键事件，并可以通过事件查看器查查询执行情况。</p>
 <p>Sharding-Sphere 内嵌 Saga 事务管理器</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization13.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization13.jpg" alt=""  loading="lazy" /></p>
 <p>Saga 以 jar 包的形式提供分布式事务治理能力。</p>
 <p>对 Sharding-Sphere 而言，confirm 和 cancel 过程代表了子事务中的正常执行 SQL 和逆向执行 SQL，（未来 Sharding-Sphere 将提供自动生成逆向SQL的能力）。当启用 Saga 柔性事务后，路由完成之后的物理数据源将开启本地自动提交事务，每次 confirm 和cancel 都会直接提交。</p>
 <p>在 Sharding-Sphere 内部，触发 SQL 执行引擎后，将会产生 Saga 事务事件，这时 Sharding-Sphere 事务监听器会注册本次子事务的 confirm 和 cancel 至 Saga 事务管理器的队列中；在业务线程触发 commit 和 rollback 后，Saga 事务管理器再根据子事务执行的结果，判断进行 confirm 重试或者 cancel 流程。</p>
-<h3 id="未来计划">未来计划</h3>
-<p>未来 Sharding-Sphere 将按照文中介绍的 Sharding-Sphere-TM 逐步完善整个事务框架：</p>
+
+<h3 data-hextra-search-id="未来计划">未来计划<span class="hx:absolute hx:-mt-20" id="未来计划"></span><a href="#%e6%9c%aa%e6%9d%a5%e8%ae%a1%e5%88%92" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>未来 Sharding-Sphere 将按照文中介绍的 Sharding-Sphere-TM 逐步完善整个事务框架：</p>
 <ul>
 <li>
 <p>弱 XA 事务 （已发布）</p>
@@ -314,18 +1201,18 @@
 </li>
 </ul>
 <p>如果前面的分享太过冗长，那么千言万语汇聚成一张表格，欢迎阅读。</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/realization14.jpg" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/blog/img/realization14.jpg" alt=""  loading="lazy" /></p>
 <p>未来，我们将不断优化当前的特性，陆续推出大家关注的柔性事务、数据治理等更多新特性。如果有什么想法、意见和建议，也欢迎留言交流，更欢迎加入到 Sharding-Sphere 的开源项目中：</p>
 <ul>
 <li>
-<p><a href="https://github.com/sharding-sphere/sharding-sphere/">https://github.com/sharding-sphere/sharding-sphere/</a></p>
+<p><a href="https://github.com/sharding-sphere/sharding-sphere/" target="_blank" rel="noopener">https://github.com/sharding-sphere/sharding-sphere/</a></p>
 </li>
 <li>
-<p><a href="https://gitee.com/sharding-sphere/sharding-sphere/">https://gitee.com/sharding-sphere/sharding-sphere/</a></p>
+<p><a href="https://gitee.com/sharding-sphere/sharding-sphere/" target="_blank" rel="noopener">https://gitee.com/sharding-sphere/sharding-sphere/</a></p>
 </li>
 </ul>
-<h3 id="qa">Q&amp;A</h3>
-<p><strong>Q1</strong>：基于 XA 的事物，可以应用到微服务架构中吗？</p>
+
+<h3 data-hextra-search-id="qa">Q&amp;A<span class="hx:absolute hx:-mt-20" id="qa"></span><a href="#qa" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p><strong>Q1</strong>：基于 XA 的事物，可以应用到微服务架构中吗？</p>
 <p><strong>A1</strong>：目前我们是把事务管理器内嵌到 JVM 进程中，对于并发量小，短事务的业务，可以用 XA。</p>
 <p><strong>Q2</strong>：对于各个事务框架开发计划的先后顺序是基本什么来确定的呢？</p>
 <p><strong>A2</strong>：基于难易程度，所以我们把 TCC 放到了最后。</p>
@@ -339,28 +1226,168 @@
 <p><strong>A6</strong>：目前暂不支持隔离性，今后我们有增加 I 的规划，其实所有的柔性事务都不支持 I，TCC 增加了 Try 阶段，可以理解是准隔离性，使用 SAGA 时，可以在业务层面控制并发，防止脏读等产生。</p>
 <p><strong>Q7</strong>：那意思，现在 3 的版本还不能单独用事务的模块？</p>
 <p><strong>A7</strong>：现在 3.0 版本，事务模块依赖了 Sharding-JDBC 模块，事务模块需要监听 Sharding-JDBC 和 Proxy 中的事件，然后进行事务操作。如果你想单独用事务模块，需要按 Core 中定义的事件，在你的业务里进行发布。</p>
-<h3 id="直播回放">直播回放</h3>
-<p><a href="https://m.qlchat.com/topic/details?topicId=2000001669563722&amp;tracePage=liveCenter">https://m.qlchat.com/topic/details?topicId=2000001669563722&amp;tracePage=liveCenter</a></p>
 
+<h3 data-hextra-search-id="直播回放">直播回放<span class="hx:absolute hx:-mt-20" id="直播回放"></span><a href="#%e7%9b%b4%e6%92%ad%e5%9b%9e%e6%94%be" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p><a href="https://m.qlchat.com/topic/details?topicId=2000001669563722&amp;tracePage=liveCenter" target="_blank" rel="noopener">https://m.qlchat.com/topic/details?topicId=2000001669563722&tracePage=liveCenter</a></p>
 
-		
-	</div>
+          
+        </div><div class="hx:mt-16"></div><div class="hx:mb-8 hx:flex hx:items-center hx:border-t hx:pt-8 hx:border-gray-200 hx:dark:border-neutral-800 hx:contrast-more:border-neutral-400 hx:dark:contrast-more:border-neutral-400 hx:print:hidden"><a
+        href="/blog/cn/material/result/"
+        title="剖析Sharding-Sphere系列——结果归并 "
+        class="hx:flex hx:max-w-[50%] hx:items-center hx:gap-1 hx:py-4 hx:text-base hx:font-medium hx:text-gray-600 hx:transition-colors [word-break:break-word] hx:hover:text-primary-600 hx:dark:text-gray-300 hx:md:text-lg hx:ltr:pr-4 hx:rtl:pl-4"
+      ><svg class="hx:inline hx:h-5 hx:shrink-0 hx:ltr:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>剖析Sharding-Sphere系列——结果归并 </a><a
+        href="/blog/cn/material/proxy/"
+        title="揭秘 Sharding-Proxy——面向DBA的数据库中间层"
+        class="hx:flex hx:max-w-[50%] hx:items-center hx:gap-1 hx:py-4 hx:text-base hx:font-medium hx:text-gray-600 hx:transition-colors [word-break:break-word] hx:hover:text-primary-600 hx:dark:text-gray-300 hx:md:text-lg hx:ltr:ml-auto hx:ltr:pl-4 hx:ltr:text-right hx:rtl:mr-auto hx:rtl:pr-4 hx:rtl:text-left"
+      >揭秘 Sharding-Proxy——面向DBA的数据库中间层<svg class="hx:inline hx:h-5 hx:shrink-0 hx:rtl:-rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a></div>
+      </main>
+    </article>
+  </div>
 
-	<div class="pagination">
-		<a href="https://shardingsphere.apache.org/blog/cn/videos/build/" class="left arrow">&#8592;</a>
-		<a href="https://shardingsphere.apache.org/blog/cn/videos/opensource/" class="right arrow">&#8594;</a>
-
-		<a href="#" class="top">Top</a>
-	</div>
-</main>
-
-
-        		<footer>
-			<span>
-			
-			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
-			</span>
-		</footer>
-
-    </body>
+      <footer class="hextra-footer hx:bg-gray-100 hx:pb-[env(safe-area-inset-bottom)] hx:dark:bg-neutral-900 hx:print:bg-transparent"><div class="hx:mx-auto hx:flex hx:gap-2 hx:py-2 hx:px-4 hextra-max-footer-width"><div class="hx:flex hx:justify-items-start ">
+    <button
+      title="切换语言"
+      data-state="closed"
+      data-location=""
+      class="hextra-language-switcher hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:grow"
+      type="button"
+      aria-label="切换语言"
+      aria-expanded="false"
+      aria-haspopup="menu"
+    >
+      <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg><span>简体中文</span></div>
+    </button>
+    <ul
+      class="hextra-language-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+      style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+      role="menu"
+    >
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/en/material/realization/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >English</a>
+        </li>
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/cn/material/realization/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >简体中文<span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span></a>
+        </li>
+      </ul>
+  </div><div class="hx:flex hx:justify-items-start hx:group" data-theme="light">
+  <button
+    title="切换主题"
+    data-state="closed"
+    data-location="bottom"
+    class="hextra-theme-toggle hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:font-medium hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:grow"
+    type="button"
+    aria-label="切换主题"
+    aria-expanded="false"
+    aria-haspopup="menu"
+  >
+    <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg><span class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden">浅色</span><svg height=12 class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg><span class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden">深色</span><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="currentColor">
+  <path d="M 11.996094,2 C 6.4986225,2.0192368 2.03125,6.5024993 2.03125,12 c 0,5.497501 4.4673725,9.980763 9.964844,10 H 12 12.0039 c 5.497471,-0.01924 9.964844,-4.502499 9.964844,-10 0,-5.4975007 -4.467373,-9.9807632 -9.964844,-10 H 12 Z M 12,4 c 4.417218,0.017598 7.96875,3.5822356 7.96875,8 0,4.417764 -3.551532,7.982402 -7.96875,8 z" />
+</svg>
+<span class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden">跟随系统</span></div>
+  </button>
+  <ul
+    class="hextra-theme-toggle-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+    style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+    data-theme="light"
+    role="menu"
+  >
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="true"
+        tabindex="-1"
+        data-item="light"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        浅色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="dark"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        深色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="system"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        跟随系统
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+  </ul>
+</div>
+</div><hr class="hx:border-gray-200 hx:dark:border-neutral-800" /><div class="hextra-custom-footer hextra-max-footer-width hx:mx-auto hx:pl-[max(env(safe-area-inset-left),1.5rem)] hx:pr-[max(env(safe-area-inset-right),1.5rem)] hx:text-gray-600 hx:dark:text-gray-400"><small>Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>. ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.</small></div><div
+      class="hextra-max-footer-width hx:mx-auto hx:flex hx:justify-center hx:py-12 hx:pl-[max(env(safe-area-inset-left),1.5rem)] hx:pr-[max(env(safe-area-inset-right),1.5rem)] hx:text-gray-600 hx:dark:text-gray-400 hx:md:justify-start"
+    >
+      <div class="hx:flex hx:w-full hx:flex-col hx:items-center hx:sm:items-start"><div class="hx:font-semibold"><a class="hx:flex hx:text-sm hx:items-center hx:gap-1 hx:text-current" target="_blank" rel="noopener noreferrer" title="Hextra GitHub Homepage" href="https://github.com/imfing/hextra">
+    <span>由 Hextra 驱动<svg height=1em class="hx:inline-block hx:ltr:ml-1 hx:rtl:mr-1 hx:align-[-2.5px]" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="m 105.50024,22.224647 c -9.59169,-5.537563 -21.40871,-5.537563 -31.000093,0 L 39.054693,42.689119 C 29.463353,48.226675 23.55484,58.460531 23.55484,69.535642 v 40.928918 c 0,11.07542 5.908513,21.3092 15.499853,26.84652 l 35.445453,20.46446 c 9.591313,5.53732 21.408404,5.53732 31.000094,0 l 35.44507,-20.46446 c 9.59131,-5.53732 15.49985,-15.7711 15.49985,-26.84652 V 69.535642 c 0,-11.075111 -5.90854,-21.308967 -15.49985,-26.846523 z M 34.112797,85.737639 c -1.384445,2.397827 -1.384445,5.352099 0,7.749927 l 24.781554,42.922974 c 1.38437,2.39783 3.942853,3.87496 6.711592,3.87496 h 49.563107 c 2.76905,0 5.3273,-1.47713 6.71144,-3.87496 l 24.78194,-42.922974 c 1.38414,-2.397828 1.38414,-5.3521 0,-7.749927 L 121.88049,42.814746 c -1.38414,-2.397828 -3.94239,-3.874964 -6.71144,-3.874964 H 65.605944 c -2.768739,0 -5.327223,1.477059 -6.711592,3.874964 z" style="stroke-width:0.774993" /></svg></span>
+  </a></div></div>
+    </div></footer>
+    
+    <dialog
+    id="hextra-search-dialog"
+    class="hextra-search-dialog"
+    aria-label="搜索文档..."
+  >
+    <div class="hextra-search">
+      <div class="hextra-search-input-wrapper"><svg class="hextra-search-input-icon" focusable="false" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input
+          class="hextra-search-input"
+          type="search"
+          role="combobox"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="搜索文档..."
+          aria-label="搜索文档..."
+          aria-controls="hextra-search-results"
+          aria-expanded="false"
+        /><button
+          type="button"
+          class="hextra-search-input-kbd"
+          data-search-close
+          aria-label="Close"
+        >ESC</button>
+      </div>
+      <div class="hextra-search-results-viewport" data-search-viewport>
+        <div class="hextra-search-results-inner hextra-scrollbar" data-search-inner>
+          <ul
+            id="hextra-search-results"
+            class="hextra-search-results"
+            role="listbox"
+            aria-label="搜索结果"
+          ></ul>
+          <div class="hextra-search-empty" data-search-empty hidden>无结果</div>
+        </div>
+      </div>
+      <div class="hextra-search-status hx:sr-only" aria-live="polite" role="status"></div>
+    </div>
+  </dialog>
+    <script defer src="/blog/js/main.min.6c7da39b30c6c45c59eaba96e5b93bffd087568cdcabbfdcd33925ad755c627e.js" integrity="sha256-bH2jmzDGxFxZ6rqW5bk7/9CHVozcq7/c0zklrXVcYn4="></script>
+<script defer src="/blog/vendor/flexsearch.bundle.min.433e941a8a573ebb9931fc16fc75266ab6b93f569ac2fb4f3dc66882e0416f4c.js" integrity="sha256-Qz6UGopXPruZMfwW/HUmara5P1aawvtPPcZoguBBb0w=" crossorigin="anonymous"></script><script defer src="/blog/cn.search.min.586d0a195179ff5ed492bfdb70b553abdee68997f5f25924e9a4e2aaaa4645ce.js" integrity="sha256-WG0KGVF5/17Ukr/bcLVTq97miZf18lkk6aTiqqpGRc4="></script>
+    <script defer src="/blog/cn.search-dialog.min.43f138c37a644bf0d959fbe0da2b6cd7a2356c7d131e12960231cb40a4e76b60.js" integrity="sha256-Q/E4w3pkS/DZWfvg2its16I1bH0THhKWAjHLQKTna2A="></script>
+  </body>
 </html>

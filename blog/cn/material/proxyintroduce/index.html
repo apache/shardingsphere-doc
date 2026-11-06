@@ -1,99 +1,978 @@
 <!DOCTYPE html>
-<html lang="en-us">
-    <head>
-        <style>
-            a {
-                word-wrap: break-word;
-            }
-        </style>
-    </head>  
-    <body>
-        <head>
-		<meta charset="UTF-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<html lang="cn" dir="ltr"><head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="robots" content="index, follow" />
+  
+<link rel="icon" href="/favicon/favicon.ico" sizes="32x32">
+<link rel="icon" href="/favicon/favicon-32x32.png" type="image/png" sizes="32x32">
+<link rel="icon" href="/favicon/favicon-16x16.png" type="image/png" sizes="16x16">
+<link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="/favicon/site.webmanifest">
+<title>ShardingSphere-Proxy：从实际场景出发，快速上手 – ShardingSphere Blog</title>
+  <meta name="description" content="本篇文章主要从项目中实际场景出发，讲解分库分表等功能在日常运维中遇到的问题，以及 ShardingSphere-Proxy 对应的解决方案，版本号：v5.1.0。
+如无特别声明，以下示例中的数据库指 MySQL。
+这个项目做什么 ShardingSphere-Proxy，可以让用户像使用原生数据库一样使用 Apache ShardingSphere。
+了解一项技术的开始，一般从官网开始。先来看一看官网对 ShardingSphere-Proxy 的定义是什么样的：
+定位为透明化的数据库代理端，提供封装了数据库二进制协议的服务端版本，用于完成对异构语言的支持。 目前提供 MySQL 和 PostgreSQL（兼容 openGauss 等基于 PostgreSQL 的数据库）版本，它可以使用任何兼容 MySQL/PostgreSQL 协议的访问客户端（如：MySQL Command Client, MySQL Workbench, Navicat 等）操作数据，对 DBA 更加友好。
+先明确一个概念，ShardingSphere-Proxy 是一个服务进程。从客户端程序连接来说，它和 MySQL 数据库并没有什么区别。
+为什么要用 Proxy 在做了分库分表或其他规则的情况下，数据会分散到多个数据库实例上，在管理上难免会有一些不便；或者使用非 Java 语言的开发者，需要 ShardingSphere 所提供的能力…… 以上这些情况，正是 ShardingSphere-Proxy 力所能及之处。
+1. Proxy 应用场景 日常工作中，大家使用 ShardingSphere-JDBC 进行分库分表的场景是比较多的。假设你有一张用户表，通过用户 ID 以 Hash 的方式进行了水平分库，那么此时客户端连接数据库的方式是这样：
+我们举例工作中真实存在的几个场景：
+测试同学想看下用户 ID 123456 的信息在数据库表里情况，需要你提供下用户在哪一张分表； 公司领导需要技术提供一份 2022 年用户的增长总量以及用户信息； 公司举行 8 周年活动，需要技术提供一份注册日期超过 8 周年的活跃老用户名单。 因为数据分库分表后，数据是散落在不同的库表中，对于上述的场景实现并不容易；如果为了实现类似临时需求，每次都需要开发代码，显得有些笨重。这个时候就需要文章主角 ShardingSphere-Proxy 登场了。" /><link rel="canonical" href="https://shardingsphere.apache.org/blog/cn/material/proxyintroduce/" itemprop="url" />
 
-		<title>ShardingSphere-Proxy：从实际场景出发，快速上手 &middot; ShardingSphere - 博客</title>
+<meta property="og:title" content="ShardingSphere-Proxy：从实际场景出发，快速上手">
+<meta
+  property="og:description"
+  content="
+    
+      本篇文章主要从项目中实际场景出发，讲解分库分表等功能在日常运维中遇到的问题，以及 ShardingSphere-Proxy 对应的解决方案，版本号：v5.1.0。
 
-		
-  		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/style.css">
-		<link rel="stylesheet" href="https://shardingsphere.apache.org/blog/css/fonts.css">
-		
-		<link rel="icon" type="image/png" sizes="32x32" href="https://shardingsphere.apache.org/blog/images/favicon-32x32.png">
-		<link rel="icon" type="image/png" sizes="16x16" href="https://shardingsphere.apache.org/blog/images/favicon-16x16.png">
-		<link rel="apple-touch-icon" sizes="180x180" href="https://shardingsphere.apache.org/blog/images/apple-touch-icon.png">
+  如无特别声明，以下示例中的数据库指 MySQL。
 
-		
-		<link href="" rel="alternate" type="application/rss+xml" title="ShardingSphere - 博客" />
-	
-		<script src="https://shardingsphere.apache.org/js/kapa-widget.js"></script>
-	</head>
 
-        <div style="position: sticky; position: -webkit-sticky; top: 0px; background-color: rgba(255, 255, 255, 0.888);">		<nav class="nav">
-			<div class="nav-container">
-				<a href="https://shardingsphere.apache.org/blog/">
-					<h1 class="nav-title">ShardingSphere - 博客</h1>
-				</a>
 
-				<span style="padding-left: 65px;">
-					
-					
-					<li>
-						<a href="https://shardingsphere.apache.org/blog/cn/material/">
-							<h3>文章</h3>
-						</a>
-					</li>
-					
-					<li>
-						<a href="https://shardingsphere.apache.org/blog/cn/videos/">
-							<h3>视频</h3>
-						</a>
-					</li>
-					
-				</span>
+这个项目做什么ShardingSphere-Proxy，可以让用户像使用原生数据库一样使用 Apache ShardingSphere。
+了解一项技术的开始，一般从官网开始。先来看一看官网对 ShardingSphere-Proxy 的定义是什么样的：
 
-				<span style="position: relative; left: 75px; 
-				background: rgba(0, 0, 0, 0.664);
-				font-weight: bold;
-				padding:0.1rem; 
-				padding-left:15px; 
-				padding-right:15px; 
-				padding-top: 2px; 
-				padding-bottom: 5px; 
-				border-radius:10px;">
-					
-				</span>
-			</div>
-			</div>
-		</nav></div>
-        
+  定位为透明化的数据库代理端，提供封装了数据库二进制协议的服务端版本，用于完成对异构语言的支持。 目前提供 MySQL 和 PostgreSQL（兼容 openGauss 等基于 PostgreSQL 的数据库）版本，它可以使用任何兼容 MySQL/PostgreSQL 协议的访问客户端（如：MySQL Command Client, MySQL Workbench, Navicat 等）操作数据，对 DBA 更加友好。
 
-<main>
-	<div class="post">
-		<h1 class="post-title">ShardingSphere-Proxy：从实际场景出发，快速上手</h1>
 
-		<div class="post-info">
-        
+
+先明确一个概念，ShardingSphere-Proxy 是一个服务进程。从客户端程序连接来说，它和 MySQL 数据库并没有什么区别。
+
+为什么要用 Proxy在做了分库分表或其他规则的情况下，数据会分散到多个数据库实例上，在管理上难免会有一些不便；或者使用非 Java 语言的开发者，需要 ShardingSphere 所提供的能力…… 以上这些情况，正是 ShardingSphere-Proxy 力所能及之处。
+
+1. Proxy 应用场景日常工作中，大家使用 ShardingSphere-JDBC 进行分库分表的场景是比较多的。假设你有一张用户表，通过用户 ID 以 Hash 的方式进行了水平分库，那么此时客户端连接数据库的方式是这样：
+
+我们举例工作中真实存在的几个场景：
+
+测试同学想看下用户 ID 123456 的信息在数据库表里情况，需要你提供下用户在哪一张分表；
+公司领导需要技术提供一份 2022 年用户的增长总量以及用户信息；
+公司举行 8 周年活动，需要技术提供一份注册日期超过 8 周年的活跃老用户名单。
+
+因为数据分库分表后，数据是散落在不同的库表中，对于上述的场景实现并不容易；如果为了实现类似临时需求，每次都需要开发代码，显得有些笨重。这个时候就需要文章主角 ShardingSphere-Proxy 登场了。
+    
+  ">
+<meta
+  property="og:type"
+  content="
+    article
+  ">
+<meta property="og:url" content="https://shardingsphere.apache.org/blog/cn/material/proxyintroduce/"><meta property="article:section" content="material">
+
+
+
+
+	<meta itemprop="name" content="ShardingSphere-Proxy：从实际场景出发，快速上手">
+	<meta itemprop="description" content="本篇文章主要从项目中实际场景出发，讲解分库分表等功能在日常运维中遇到的问题，以及 ShardingSphere-Proxy 对应的解决方案，版本号：v5.1.0。
+如无特别声明，以下示例中的数据库指 MySQL。
+这个项目做什么 ShardingSphere-Proxy，可以让用户像使用原生数据库一样使用 Apache ShardingSphere。
+了解一项技术的开始，一般从官网开始。先来看一看官网对 ShardingSphere-Proxy 的定义是什么样的：
+定位为透明化的数据库代理端，提供封装了数据库二进制协议的服务端版本，用于完成对异构语言的支持。 目前提供 MySQL 和 PostgreSQL（兼容 openGauss 等基于 PostgreSQL 的数据库）版本，它可以使用任何兼容 MySQL/PostgreSQL 协议的访问客户端（如：MySQL Command Client, MySQL Workbench, Navicat 等）操作数据，对 DBA 更加友好。
+先明确一个概念，ShardingSphere-Proxy 是一个服务进程。从客户端程序连接来说，它和 MySQL 数据库并没有什么区别。
+为什么要用 Proxy 在做了分库分表或其他规则的情况下，数据会分散到多个数据库实例上，在管理上难免会有一些不便；或者使用非 Java 语言的开发者，需要 ShardingSphere 所提供的能力…… 以上这些情况，正是 ShardingSphere-Proxy 力所能及之处。
+1. Proxy 应用场景 日常工作中，大家使用 ShardingSphere-JDBC 进行分库分表的场景是比较多的。假设你有一张用户表，通过用户 ID 以 Hash 的方式进行了水平分库，那么此时客户端连接数据库的方式是这样：
+我们举例工作中真实存在的几个场景：
+测试同学想看下用户 ID 123456 的信息在数据库表里情况，需要你提供下用户在哪一张分表； 公司领导需要技术提供一份 2022 年用户的增长总量以及用户信息； 公司举行 8 周年活动，需要技术提供一份注册日期超过 8 周年的活跃老用户名单。 因为数据分库分表后，数据是散落在不同的库表中，对于上述的场景实现并不容易；如果为了实现类似临时需求，每次都需要开发代码，显得有些笨重。这个时候就需要文章主角 ShardingSphere-Proxy 登场了。">
+	<meta itemprop="wordCount" content="1037">
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="ShardingSphere-Proxy：从实际场景出发，快速上手">
+	<meta name="twitter:description" content="本篇文章主要从项目中实际场景出发，讲解分库分表等功能在日常运维中遇到的问题，以及 ShardingSphere-Proxy 对应的解决方案，版本号：v5.1.0。
+如无特别声明，以下示例中的数据库指 MySQL。
+这个项目做什么 ShardingSphere-Proxy，可以让用户像使用原生数据库一样使用 Apache ShardingSphere。
+了解一项技术的开始，一般从官网开始。先来看一看官网对 ShardingSphere-Proxy 的定义是什么样的：
+定位为透明化的数据库代理端，提供封装了数据库二进制协议的服务端版本，用于完成对异构语言的支持。 目前提供 MySQL 和 PostgreSQL（兼容 openGauss 等基于 PostgreSQL 的数据库）版本，它可以使用任何兼容 MySQL/PostgreSQL 协议的访问客户端（如：MySQL Command Client, MySQL Workbench, Navicat 等）操作数据，对 DBA 更加友好。
+先明确一个概念，ShardingSphere-Proxy 是一个服务进程。从客户端程序连接来说，它和 MySQL 数据库并没有什么区别。
+为什么要用 Proxy 在做了分库分表或其他规则的情况下，数据会分散到多个数据库实例上，在管理上难免会有一些不便；或者使用非 Java 语言的开发者，需要 ShardingSphere 所提供的能力…… 以上这些情况，正是 ShardingSphere-Proxy 力所能及之处。
+1. Proxy 应用场景 日常工作中，大家使用 ShardingSphere-JDBC 进行分库分表的场景是比较多的。假设你有一张用户表，通过用户 ID 以 Hash 的方式进行了水平分库，那么此时客户端连接数据库的方式是这样：
+我们举例工作中真实存在的几个场景：
+测试同学想看下用户 ID 123456 的信息在数据库表里情况，需要你提供下用户在哪一张分表； 公司领导需要技术提供一份 2022 年用户的增长总量以及用户信息； 公司举行 8 周年活动，需要技术提供一份注册日期超过 8 周年的活跃老用户名单。 因为数据分库分表后，数据是散落在不同的库表中，对于上述的场景实现并不容易；如果为了实现类似临时需求，每次都需要开发代码，显得有些笨重。这个时候就需要文章主角 ShardingSphere-Proxy 登场了。">
+
+    <link rel="preload" href="/blog/css/compiled/main.min.8cb6ee1fcd497d1c7d2c0b6b279bcf5b4b48f7728ccf04bc0203a7df241f95db.css" as="style" integrity="sha256-jLbuH81JfRx9LAtrJ5vPW0tI93KMzwS8AgOn3yQflds=" />
+    <link href="/blog/css/compiled/main.min.8cb6ee1fcd497d1c7d2c0b6b279bcf5b4b48f7728ccf04bc0203a7df241f95db.css" rel="stylesheet" integrity="sha256-jLbuH81JfRx9LAtrJ5vPW0tI93KMzwS8AgOn3yQflds=" />
+
+  
+
+
+
+
+
+
+<script src="/blog/js/main-head.min.bbb353731723c08eaf67b231610392e3665384806ddb6bee51d4a965494c762e.js" integrity="sha256-u7NTcxcjwI6vZ7IxYQOS42ZThIBt22vuUdSpZUlMdi4="></script>
+
+  
+  
+  <script src="/blog/js/site.min.34dc4da0b817452cdc9e77e1e07c34d99b8b9f434c26a950dc228f8477a429df.js" integrity="sha256-NNxNoLgXRSzcnnfh4Hw02ZuLn0NMJqlQ3CKPhHekKd8="></script>
+<script src="/js/kapa-widget.js" defer></script></head>
+<body>
+    <a href="#content" class="hx:sr-only hx:focus-visible:not-sr-only hx:focus-visible:fixed hx:focus-visible:z-50 hx:focus-visible:top-2 hx:focus-visible:left-2 hx:focus-visible:bg-primary-500 hx:focus-visible:text-white hx:focus-visible:px-4 hx:focus-visible:py-2 hx:focus-visible:rounded-md hx:focus-visible:text-sm hx:focus-visible:font-medium">跳至内容</a><div class="hextra-nav-container hx:sticky hx:top-0 hx:z-20 hx:w-full hx:bg-transparent hx:print:hidden">
+  <div
+    class="hextra-nav-container-blur hx:pointer-events-none hx:absolute hx:z-[-1] hx:h-full hx:w-full hx:bg-white hx:dark:bg-dark hx:shadow-[0_2px_4px_rgba(0,0,0,.02),0_1px_0_rgba(0,0,0,.06)] hx:contrast-more:shadow-[0_0_0_1px_#000] hx:dark:shadow-[0_-1px_0_rgba(255,255,255,.1)_inset] hx:contrast-more:dark:shadow-[0_0_0_1px_#fff]"
+  ></div>
+
+  <nav class="hextra-max-navbar-width hx:mx-auto hx:flex hx:items-center hx:justify-end hx:gap-1 hx:md:gap-2 hx:h-[var(--hextra-navbar-height)] hx:px-6">
+    <a class="hx:flex hx:items-center hx:hover:opacity-75 hx:ltr:mr-auto hx:rtl:ml-auto" href="https://shardingsphere.apache.org/">
+    <img class="hx:mr-2 hx:block hx:dark:hidden" src="https://shardingsphere.apache.org/images/base/logo.png" alt="Logo" height="40" width="40" />
+    <img class="hx:mr-2 hx:hidden hx:dark:block" src="https://shardingsphere.apache.org/images/base/logo.png" alt="Dark Logo" height="40" width="40" />
+    <span class="hx:mr-2 hx:font-extrabold hx:inline hx:select-none">ShardingSphere Blog</span>
+</a>
+<a
+  title=""
+  href="/document/current/cn/overview/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">文档</span>
+</a><a
+  title=""
+  href="/community/cn/involved/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">社区</span>
+</a><a
+  title=""
+  href="/blog/cn/material/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">博客</span>
+</a><a
+  title=""
+  href="/blog/cn/material/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">文章</span>
+</a><a
+  title=""
+  href="/blog/cn/videos/"
+  
+  class="hx:text-sm hx:contrast-more:text-gray-700 hx:contrast-more:dark:text-gray-100 hx:relative hx:-ml-2 hx:hidden hx:whitespace-nowrap hx:p-2 hx:md:inline-flex hx:items-center hx:gap-1 hx:text-gray-600 hx:hover:text-gray-800 hx:dark:text-gray-400 hx:dark:hover:text-gray-200"
+><span class="hx:text-center">视频</span>
+</a><button
+    type="button"
+    class="hx:p-1 hx:md:p-2 hx:text-current hx:cursor-pointer hx:hextra-focus-visible"
+    data-search-open
+    aria-haspopup="dialog"
+    aria-controls="hextra-search-dialog"
+    aria-label="搜索文档..."
+    title="搜索文档..."
+  ><svg height=24 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span class="hx:sr-only">搜索文档...</span>
+  </button><div class="hx:flex hx:justify-items-start ">
+    <button
+      title="切换语言"
+      data-state="closed"
+      data-location="top"
+      class="hextra-language-switcher hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:p-1 hx:md:p-2 hx:grow"
+      type="button"
+      aria-label="切换语言"
+      aria-expanded="false"
+      aria-haspopup="menu"
+    >
+      <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=24 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/></svg></div>
+    </button>
+    <ul
+      class="hextra-language-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+      style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+      role="menu"
+    >
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/en/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >English</a>
+        </li>
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/cn/material/proxyintroduce/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >简体中文<span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span></a>
+        </li>
+      </ul>
+  </div><div class="hx:flex hx:justify-items-start hx:group" data-theme="light">
+  <button
+    title="切换主题"
+    data-state="closed"
+    data-location="top"
+    class="hextra-theme-toggle hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:p-1 hx:md:p-2 hx:grow"
+    type="button"
+    aria-label="切换主题"
+    aria-expanded="false"
+    aria-haspopup="menu"
+  >
+    <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=24 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg><svg height=24 class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg><svg height=24 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="currentColor">
+  <path d="M 11.996094,2 C 6.4986225,2.0192368 2.03125,6.5024993 2.03125,12 c 0,5.497501 4.4673725,9.980763 9.964844,10 H 12 12.0039 c 5.497471,-0.01924 9.964844,-4.502499 9.964844,-10 0,-5.4975007 -4.467373,-9.9807632 -9.964844,-10 H 12 Z M 12,4 c 4.417218,0.017598 7.96875,3.5822356 7.96875,8 0,4.417764 -3.551532,7.982402 -7.96875,8 z" />
+</svg>
+</div>
+  </button>
+  <ul
+    class="hextra-theme-toggle-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+    style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+    data-theme="light"
+    role="menu"
+  >
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="true"
+        tabindex="-1"
+        data-item="light"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        浅色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="dark"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        深色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="system"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        跟随系统
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+  </ul>
+</div>
+<button type="button" aria-label="菜单" aria-expanded="false" class="hextra-hamburger-menu hx:cursor-pointer hx:-mr-1 hx:rounded-sm hx:p-1 hx:active:bg-gray-400/20 hx:md:hidden hx:hextra-focus-visible-inset"><svg height=24 fill="none" viewBox="0 0 24 24" stroke="currentColor"><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8H20"></path></g><g><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16H20"></path></g></svg></button>
+  </nav>
 </div>
 
-		
+  <div class="hx:mx-auto hx:flex hextra-max-page-width">
+    
+<aside class="hextra-sidebar-container hx:flex hx:flex-col hx:print:hidden hx:md:top-[var(--hextra-navbar-height)] hx:md:shrink-0 hx:md:w-64 hx:md:self-start hx:max-md:[transform:translate3d(0,-100%,0)] hx:md:hidden hx:xl:block">
+  <div class="hextra-scrollbar hx:overflow-y-auto hx:overflow-x-hidden hx:p-4 hx:grow hx:md:h-[calc(100vh-var(--hextra-navbar-height)-var(--menu-height))]">
+    <ul class="hx:flex hx:flex-col hx:gap-1 hx:md:hidden">
+      
+      <li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/document/current/cn/overview/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">文档</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/community/cn/involved/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">社区</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">博客</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">文章</span>
+    </a>
+  </div></li><li><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">视频</span>
+    </a>
+  </div></li>
+            <li class="open"><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:ltr:pr-8 hx:rtl:pl-8 hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">博文选集</span>
+    </a>
+      <button type="button" class="hextra-sidebar-collapsible-button hx:absolute hx:top-1/2 hx:-translate-y-1/2 hx:ltr:right-2 hx:rtl:left-2 hx:shrink-0 hx:cursor-pointer hx:p-0 hx:text-gray-500 hx:dark:text-neutral-400 hx:group-hover:text-gray-900 hx:dark:group-hover:text-gray-50 hx:group-data-[active=true]:text-primary-800 hx:group-data-[active=true]:dark:text-primary-600 hx:hextra-focus-visible-inset" aria-label="切换章节" aria-expanded="true"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" focusable="false" class="hx:h-[18px] hx:min-w-[18px] hx:rounded-xs hx:p-0.5 hx:hover:bg-gray-800/5 hx:dark:hover:bg-gray-100/5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" class="hx:origin-center hx:transition-transform hx:rtl:-rotate-180"></path></svg></button>
+  </div><div class="hextra-sidebar-children hx:ltr:pr-0 hx:rtl:pl-0 hx:overflow-hidden">
+        <ul class='hx:relative hx:flex hx:flex-col hx:gap-1 hx:before:absolute hx:before:inset-y-1 hx:before:w-px hx:before:bg-gray-200 hx:before:content-[""] hx:ltr:ml-3 hx:ltr:pl-3 hx:ltr:before:left-0 hx:rtl:mr-3 hx:rtl:pr-3 hx:rtl:before:right-0 hx:dark:before:bg-neutral-800'><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/proxy/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">揭秘 Sharding-Proxy——面向DBA的数据库中间层</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/realization/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">分布式事务在Sharding-Sphere中的实现</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/result/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">剖析Sharding-Sphere系列——结果归并 </span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/engine/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">自动化执行引擎</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/committer/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">成为 Apache 官方认可的 Committer 有什么优势</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/solution/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">刚柔并济的开源分布式事务解决方案</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/seata/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere整合Seata AT分布式事务</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/cncf/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">快讯！Apache ShardingSphere 进入 CNCF 全景图</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/community/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 社区的探索与拓展</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/database/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">我们是怎样打造一款分布式数据库的</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/graduate/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">分布式数据库解决方案Apache ShardingSphere毕业成为顶级项目</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/elasticjob/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">快讯！分布式调度项目ElasticJob即将重新起航</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/alpha/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">停滞数年后，ElasticJob 携首个 Apache 版本 3.0.0-alpha 回归</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/ss_5.0.0beta/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">新版发布｜ShardingSphere 5.0.0-beta 来了！</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/open_source_community/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">为什么要参与到开源社区中？</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/jul_26_an_introduction_to_distsql/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">DistSQL：像数据库一样使用 Apache ShardingSphere</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_1_shardingspheres_metadata_loading_process/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">元数据在 ShardingSphere 中加载的过程</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_2_a_distributed_database_middleware_ecosystem_driven_by_open_source/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere：由开源驱动的分布式数据库中间件生态</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_3_how_can_students_participate_in_open-source_communities/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">趣说开源｜学生如何参与开源社区？</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_4_updates_and_faq_your_1_minute_quick_start_guide_to_shardingsphere/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere 知识库更新 | 官方样例集助你快速上手</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_5_e-hualu_shardingsphere_hulu_story_data_processing_shortcut/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">易华录 X ShardingSphere｜葫芦 App 后台数据处理的逻辑捷径</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_6_autotable_your_butler-like_sharding_configuration_tool/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">分片利器 AutoTable：为用户带来「管家式」分片配置体验</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_7_opengauss_shardingsphere_one_of_the_top_distribution_solutions/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">openGauss X ShardingSphere，分布式方案的另一种最佳实践</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_8_shardingsphere_google_summer_of_code_students_how_was_your_open_source_experience/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere X Google 编程之夏：同学，开源你怎么看？</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/oct_12_9_shardingsphere_jd_baitiao_story_of_an_implementation_journey/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 在京东白条场景的落地之旅</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col open"><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="true">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hextra-sidebar-active-item hx:bg-primary-100 hx:font-semibold hx:text-primary-800 hx:contrast-more:border hx:contrast-more:border-primary-500 hx:dark:bg-primary-400/10 hx:dark:text-primary-600 hx:contrast-more:dark:border-primary-500"
+      href="/blog/cn/material/proxyintroduce/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere-Proxy：从实际场景出发，快速上手</span>
+    </a>
+  </div>
+  
+  
+  
+    <ul
+      class='hx:flex hx:flex-col hx:gap-1 hx:relative hx:before:absolute hx:before:inset-y-1 hx:before:w-px hx:before:bg-gray-200 hx:before:content-[""] hx:dark:before:bg-neutral-800 hx:ltr:pl-3 hx:ltr:before:left-0 hx:rtl:pr-3 hx:rtl:before:right-0 hx:ltr:ml-3 hx:rtl:mr-3'
+    ><li>
+              <a
+                href="#%e8%bf%99%e4%b8%aa%e9%a1%b9%e7%9b%ae%e5%81%9a%e4%bb%80%e4%b9%88"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              >这个项目做什么</a>
+            </li>
+          <li>
+              <a
+                href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e7%94%a8-proxy"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              >为什么要用 Proxy</a>
+            </li>
+          <li>
+              <a
+                href="#%e5%a6%82%e4%bd%95%e5%bc%80%e5%a7%8b"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              >如何开始</a>
+            </li>
+          <li>
+              <a
+                href="#%e5%9c%ba%e6%99%af%e5%ae%9e%e8%b7%b5"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              >场景实践</a>
+            </li>
+          <li>
+              <a
+                href="#%e6%9c%80%e5%90%8e%e6%80%bb%e7%bb%93"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              >最后总结</a>
+            </li>
+          <li>
+              <a
+                href="#%e5%b7%a8%e4%ba%ba%e7%9a%84%e8%82%a9%e8%86%80"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              >巨人的肩膀</a>
+            </li>
+          <li>
+              <a
+                href="#%e4%bd%9c%e8%80%85%e7%ae%80%e4%bb%8b"
+                class="hx:flex hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [word-break:break-word] hx:cursor-pointer [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:contrast-more:border hx:gap-2 hx:before:opacity-25 hx:before:content-['#'] hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:text-gray-900 hx:contrast-more:dark:text-gray-50 hx:contrast-more:border-transparent hx:contrast-more:hover:border-gray-900 hx:contrast-more:dark:hover:border-gray-50"
+              >作者简介</a>
+            </li>
+          </ul>
+  
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/material/spotless/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 代码格式化实战 —— Spotless</span>
+    </a>
+  </div>
+              
+            </li></ul>
+      </div></li>
+            <li class=""><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:ltr:pr-8 hx:rtl:pl-8 hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">视频选集</span>
+    </a>
+      <button type="button" class="hextra-sidebar-collapsible-button hx:absolute hx:top-1/2 hx:-translate-y-1/2 hx:ltr:right-2 hx:rtl:left-2 hx:shrink-0 hx:cursor-pointer hx:p-0 hx:text-gray-500 hx:dark:text-neutral-400 hx:group-hover:text-gray-900 hx:dark:group-hover:text-gray-50 hx:group-data-[active=true]:text-primary-800 hx:group-data-[active=true]:dark:text-primary-600 hx:hextra-focus-visible-inset" aria-label="切换章节" aria-expanded="false"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" focusable="false" class="hx:h-[18px] hx:min-w-[18px] hx:rounded-xs hx:p-0.5 hx:hover:bg-gray-800/5 hx:dark:hover:bg-gray-100/5"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" class="hx:origin-center hx:transition-transform hx:rtl:-rotate-180"></path></svg></button>
+  </div><div class="hextra-sidebar-children hx:ltr:pr-0 hx:rtl:pl-0 hx:overflow-hidden">
+        <ul class='hx:relative hx:flex hx:flex-col hx:gap-1 hx:before:absolute hx:before:inset-y-1 hx:before:w-px hx:before:bg-gray-200 hx:before:content-[""] hx:ltr:ml-3 hx:ltr:pl-3 hx:ltr:before:left-0 hx:rtl:mr-3 hx:rtl:pr-3 hx:rtl:before:right-0 hx:dark:before:bg-neutral-800'><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/opengauss/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere 与 openGauss 的化学反应</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/opensource/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">【开源总动员】零基础入门 Apache ShardingSphere 开源之道</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/build/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">ShardingSphere 的 Apache 共建之道</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/new_sql/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">从 New SQL 角度看 Apache ShardingSphere</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/evolution/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">开源推动下的 Apache ShardingSphere 架构演进</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/ecosystem/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">海量数据下的 NewSQL 数据库生态构建</span>
+    </a>
+  </div>
+              
+            </li><li class="hx:flex hx:flex-col "><div class="hextra-sidebar-item hx:group hx:relative hx:flex hx:items-center" data-active="false">
+    <a
+      class="hx:flex hx:items-center hx:justify-between hx:gap-2 hx:grow hx:cursor-pointer hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:transition-colors [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none] hx:hextra-focus-visible-inset hx:text-gray-500 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:contrast-more:border hx:contrast-more:border-transparent hx:contrast-more:text-gray-900 hx:contrast-more:hover:border-gray-900 hx:dark:text-neutral-400 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:contrast-more:dark:text-gray-50 hx:contrast-more:dark:hover:border-gray-50"
+      href="/blog/cn/videos/newfeature/"
+      
+    >
+      <span class="hx:min-w-0 [word-break:break-word]">Apache ShardingSphere 5.x 的新功能</span>
+    </a>
+  </div>
+              
+            </li></ul>
+      </div></li>
+    </ul>
 
-		<p>本篇文章主要从项目中实际场景出发，讲解分库分表等功能在日常运维中遇到的问题，以及 ShardingSphere-Proxy 对应的解决方案，版本号：v5.1.0。</p>
+    <div class="hx:max-xl:hidden hx:h-0 hx:w-64 hx:shrink-0"></div></div>
+  
+  
+    <div class="hx:md:hidden hx:justify-end hx:sticky hx:bottom-0 hx:max-h-(--menu-height) hx:bg-white hx:dark:bg-dark hx:mx-4 hx:py-4 hx:shadow-[0_-12px_16px_#fff] hx:flex hx:items-center hx:gap-2 hx:border-gray-200 hx:dark:border-neutral-800 hx:dark:shadow-[0_-12px_16px_#111] hx:contrast-more:border-neutral-400 hx:contrast-more:shadow-none hx:contrast-more:dark:shadow-none hx:border-t" data-toggle-animation="show"><div class="hx:flex hx:justify-items-start hx:grow">
+    <button
+      title="切换语言"
+      data-state="closed"
+      data-location=""
+      class="hextra-language-switcher hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:grow"
+      type="button"
+      aria-label="切换语言"
+      aria-expanded="false"
+      aria-haspopup="menu"
+    >
+      <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg><span>简体中文</span></div>
+    </button>
+    <ul
+      class="hextra-language-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+      style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+      role="menu"
+    >
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/en/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >English</a>
+        </li>
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/cn/material/proxyintroduce/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >简体中文<span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span></a>
+        </li>
+      </ul>
+  </div><div class="hx:flex hx:justify-items-start hx:group" data-theme="light">
+  <button
+    title="切换主题"
+    data-state="closed"
+    data-location="bottom-right"
+    class="hextra-theme-toggle hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:font-medium hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:grow"
+    type="button"
+    aria-label="切换主题"
+    aria-expanded="false"
+    aria-haspopup="menu"
+  >
+    <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg><svg height=12 class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="currentColor">
+  <path d="M 11.996094,2 C 6.4986225,2.0192368 2.03125,6.5024993 2.03125,12 c 0,5.497501 4.4673725,9.980763 9.964844,10 H 12 12.0039 c 5.497471,-0.01924 9.964844,-4.502499 9.964844,-10 0,-5.4975007 -4.467373,-9.9807632 -9.964844,-10 H 12 Z M 12,4 c 4.417218,0.017598 7.96875,3.5822356 7.96875,8 0,4.417764 -3.551532,7.982402 -7.96875,8 z" />
+</svg>
+</div>
+  </button>
+  <ul
+    class="hextra-theme-toggle-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+    style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+    data-theme="light"
+    role="menu"
+  >
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="true"
+        tabindex="-1"
+        data-item="light"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        浅色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="dark"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        深色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="system"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        跟随系统
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+  </ul>
+</div>
+</div></aside>
+    
+<nav class="hextra-toc hx:order-last hx:hidden hx:w-64 hx:shrink-0 hx:xl:block hx:print:hidden hx:px-4" aria-label="目录">
+    <div class="hextra-scrollbar hx:sticky hx:top-[var(--hextra-navbar-height)] hx:overflow-y-auto hx:pr-4 hx:pt-6 hx:text-sm [hyphens:auto] hx:max-h-[calc(100vh-var(--hextra-navbar-height)-env(safe-area-inset-bottom))] hx:ltr:-mr-4 hx:rtl:-ml-4"><p class="hx:mb-4 hx:font-semibold hx:tracking-tight">此页上</p><ul>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:font-medium hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e8%bf%99%e4%b8%aa%e9%a1%b9%e7%9b%ae%e5%81%9a%e4%bb%80%e4%b9%88">这个项目做什么
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:font-medium hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e7%94%a8-proxy">为什么要用 Proxy
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#1-proxy-%e5%ba%94%e7%94%a8%e5%9c%ba%e6%99%af">1. Proxy 应用场景
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#2-jdbc-%e5%92%8c-proxy-%e7%9a%84%e5%8c%ba%e5%88%ab">2. JDBC 和 Proxy 的区别
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:font-medium hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e5%a6%82%e4%bd%95%e5%bc%80%e5%a7%8b">如何开始
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#1-%e5%b0%86-mysql-%e7%9a%84-jdbc-%e9%a9%b1%e5%8a%a8%e5%a4%8d%e5%88%b6%e5%88%b0-ext-lib-%e5%8c%85">1. 将 MySQL 的 JDBC 驱动复制到 ext-lib 包
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#2-%e4%bf%ae%e6%94%b9-confserveryaml-%e9%85%8d%e7%bd%ae%e6%96%87%e4%bb%b6">2. 修改 conf/server.yaml 配置文件
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#3-%e5%90%af%e5%8a%a8-shardingsphere-proxy">3. 启动 ShardingSphere-Proxy
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:font-medium hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e5%9c%ba%e6%99%af%e5%ae%9e%e8%b7%b5">场景实践
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#1-%e5%88%9d%e5%a7%8b%e5%8c%96%e6%95%b0%e6%8d%ae%e5%ba%93%e8%a1%a8">1. 初始化数据库表
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#2-%e5%88%9d%e5%a7%8b%e5%8c%96-proxy-%e5%88%86%e7%89%87%e9%85%8d%e7%bd%ae">2. 初始化 Proxy 分片配置
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:ltr:pl-4 hx:rtl:pr-4 hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#3-%e5%88%86%e7%89%87%e6%b5%8b%e8%af%95">3. 分片测试
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:font-medium hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e6%9c%80%e5%90%8e%e6%80%bb%e7%bb%93">最后总结
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:font-medium hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e5%b7%a8%e4%ba%ba%e7%9a%84%e8%82%a9%e8%86%80">巨人的肩膀
+        </a>
+      </li>
+      <li class="hx:my-2 hx:scroll-my-6 hx:scroll-py-6">
+        <a class="hx:font-medium hx:inline-block hx:rounded-sm hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-300 hx:contrast-more:text-gray-900 hx:contrast-more:underline hx:contrast-more:dark:text-gray-50 hx:w-full hx:wrap-break-word hx:hextra-focus-visible-inset" href="#%e4%bd%9c%e8%80%85%e7%ae%80%e4%bb%8b">作者简介
+        </a>
+      </li></ul>
+      <div class="hx:mt-8 hx:border-t hx:bg-white hx:pt-8 hx:shadow-[0_-12px_16px_white] hx:dark:bg-dark hx:dark:shadow-[0_-12px_16px_#111] hx:sticky hx:bottom-0 hx:flex hx:flex-col hx:items-start hx:gap-2 hx:pb-8 hx:border-gray-200 hx:dark:border-neutral-800 hx:contrast-more:border-t hx:contrast-more:border-neutral-400 hx:contrast-more:shadow-none hx:contrast-more:dark:border-neutral-400"><a class="hx:inline-block hx:rounded-sm hx:text-xs hx:font-medium hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-100 hx:contrast-more:text-gray-800 hx:contrast-more:dark:text-gray-50 hx:hextra-focus-visible-inset" href="https://github.com/apache/shardingsphere/edit/master/docs/blog/content/material/proxyIntroduce.cn.md" target="_blank" rel="noreferrer">在 GitHub 上编辑此页 →</a>
+        <button id="backToTop" tabindex="-1" class="hx:cursor-pointer hx:transition-all hx:duration-75 hx:opacity-0 hx:text-xs hx:font-medium hx:text-gray-500 hx:hover:text-gray-900 hx:dark:text-gray-400 hx:dark:hover:text-gray-100 hx:contrast-more:text-gray-800 hx:contrast-more:dark:text-gray-50">
+          <span>返回顶部</span>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" focusable="false" class="hx:inline hx:ltr:ml-1 hx:rtl:mr-1 hx:h-3.5 hx:w-3.5 hx:rounded-full hx:border hx:border-gray-500 hx:hover:border-gray-900 hx:dark:border-gray-400 hx:dark:hover:border-gray-100 hx:contrast-more:border-gray-800 hx:contrast-more:dark:border-gray-50">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+
+    <article class="hx:w-full hx:break-words hx:flex hx:min-h-[calc(100vh-var(--hextra-navbar-height))] hx:min-w-0 hx:justify-center hx:pb-8 hx:pr-[calc(env(safe-area-inset-right)-1.5rem)]">
+      <main id="content" class="hx:w-full hx:min-w-0 hextra-max-content-width hx:px-6 hx:pt-4 hx:md:px-12">
+        
+        <div class="hx:mt-1.5 hx:flex hx:items-center hx:gap-1 hx:overflow-hidden hx:text-sm hx:text-gray-500 hx:dark:text-gray-400 hx:contrast-more:text-current">
+        <div class="hx:whitespace-nowrap hx:transition-colors hx:min-w-[24px] hx:overflow-hidden hx:text-ellipsis hx:hover:text-gray-900 hx:dark:hover:text-gray-100">
+          <a href="/blog/cn/material/" class="hx:inline-block hx:rounded-sm hx:hextra-focus-visible-inset">博文选集</a>
+        </div><svg class="hx:w-3.5 hx:shrink-0 hx:rtl:-rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg><div class="hx:whitespace-nowrap hx:transition-colors hx:font-medium hx:text-gray-700 hx:contrast-more:font-bold hx:contrast-more:text-current hx:dark:text-gray-100 hx:contrast-more:dark:text-current">ShardingSphere-Proxy：从实际场景出发，快速上手</div>
+  </div>
+
+        
+          <div class="hx:flex hx:flex-col hx:sm:flex-row hx:items-start hx:sm:items-center hx:sm:justify-between hx:gap-4 hx:mt-2">
+            <h1 class="hx:mb-0 hx:text-4xl hx:font-bold hx:tracking-tight hx:text-slate-900 hx:dark:text-slate-100">ShardingSphere-Proxy：从实际场景出发，快速上手</h1>
+            <div class="hextra-page-context-menu hx:relative hx:inline-flex hx:shrink-0">
+      <div class="hx:inline-flex hx:rounded-lg hx:border hx:border-gray-200 hx:transition-colors hx:hover:border-gray-300 hx:dark:border-neutral-800 hx:dark:hover:border-neutral-700">
+        <button
+          class="hextra-page-context-menu-copy hx:group/copybtn hx:inline-flex hx:cursor-pointer hx:items-center hx:gap-1.5 hx:bg-transparent hx:px-2.5 hx:py-1 hx:text-sm hx:font-medium hx:text-gray-700 hx:transition-colors hx:hover:bg-slate-50 hx:dark:text-gray-300 hx:dark:hover:bg-neutral-900 hx:ltr:rounded-l-lg hx:rtl:rounded-r-lg hx:hextra-focus-visible-inset"
+          data-url="https://shardingsphere.apache.org/blog/cn/material/proxyintroduce.md"
+          title="复制为 Markdown"
+          aria-label="复制为 Markdown"
+        >
+          <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:size-4"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></div>
+          <div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:size-4"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>
+          <span>复制页面</span>
+        </button>
+        <button
+          class="hextra-page-context-menu-toggle hx:inline-flex hx:cursor-pointer hx:items-center hx:justify-center hx:bg-transparent hx:px-1.5 hx:py-1 hx:text-gray-500 hx:transition-colors hx:hover:bg-slate-50 hx:hover:text-gray-700 hx:dark:text-gray-400 hx:dark:hover:bg-neutral-900 hx:dark:hover:text-gray-300 hx:ltr:rounded-r-lg hx:rtl:rounded-l-lg hx:hextra-focus-visible-inset"
+          data-state="closed"
+          aria-label="切换页面上下文菜单"
+          aria-expanded="false"
+          aria-haspopup="menu"
+        >
+          <div class="hx:size-4 hx:transition-transform hx:duration-200" data-chevron><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></div>
+        </button>
+      </div>
+      <ul class="hextra-page-context-menu-dropdown not-prose hx:hidden hx:absolute hx:top-full hx:left-0 hx:sm:left-auto hx:sm:right-0 hx:mt-1 hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900" role="menu">
+        <li role="none">
+          <button
+            data-action="copy"
+            role="menuitem"
+            class="hx:flex hx:w-full hx:cursor-pointer hx:select-none hx:items-center hx:gap-2 hx:whitespace-nowrap hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:text-gray-700 hx:outline-none hx:transition-colors hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-gray-300 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100"
+          >
+            <div class="hx:size-4 hx:shrink-0 hx:text-gray-500 hx:dark:text-gray-400"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg></div>
+            复制为 Markdown
+          </button>
+        </li>
+        <li role="none">
+          <button
+            data-action="view"
+            data-url="https://shardingsphere.apache.org/blog/cn/material/proxyintroduce.md"
+            role="menuitem"
+            class="hx:flex hx:w-full hx:cursor-pointer hx:select-none hx:items-center hx:gap-2 hx:whitespace-nowrap hx:rounded-sm hx:px-2 hx:py-1.5 hx:text-sm hx:text-gray-700 hx:outline-none hx:transition-colors hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:text-gray-300 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100"
+          >
+            <div class="hx:size-4 hx:shrink-0 hx:text-gray-500 hx:dark:text-gray-400"><svg height=16 width=16 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M20.56 18H3.44C2.65 18 2 17.37 2 16.59V7.41C2 6.63 2.65 6 3.44 6h17.12c.79 0 1.44.63 1.44 1.41v9.18c0 .78-.65 1.41-1.44 1.41M6.81 15.19v-3.66l1.92 2.35l1.92-2.35v3.66h1.93V8.81h-1.93l-1.92 2.35l-1.92-2.35H4.89v6.38h1.92M19.69 12h-1.92V8.81h-1.92V12h-1.93l2.89 3.28L19.69 12Z"/></svg></div>
+            以 Markdown 查看
+          </button>
+        </li></ul>
+    </div>
+          </div>
+        
+        <div class="hx:mt-4 hx:mb-16 hx:text-gray-500 hx:dark:text-gray-400 hx:text-sm hx:flex hx:items-center hx:flex-wrap hx:gap-y-2"></div>
+        <div class="content">
+          
+          <p>本篇文章主要从项目中实际场景出发，讲解分库分表等功能在日常运维中遇到的问题，以及 ShardingSphere-Proxy 对应的解决方案，版本号：v5.1.0。</p>
 <blockquote>
-<p>如无特别声明，以下示例中的数据库指 MySQL。</p>
+  <p>如无特别声明，以下示例中的数据库指 MySQL。</p>
+
 </blockquote>
-<h2 id="这个项目做什么">这个项目做什么</h2>
-<p>ShardingSphere-Proxy，可以让用户像使用原生数据库一样使用 Apache ShardingSphere。</p>
+
+<h2 data-hextra-search-id="这个项目做什么">这个项目做什么<span class="hx:absolute hx:-mt-20" id="这个项目做什么"></span><a href="#%e8%bf%99%e4%b8%aa%e9%a1%b9%e7%9b%ae%e5%81%9a%e4%bb%80%e4%b9%88" class="subheading-anchor" aria-label="此章节的永久链接"></a></h2><p>ShardingSphere-Proxy，可以让用户像使用原生数据库一样使用 Apache ShardingSphere。</p>
 <p>了解一项技术的开始，一般从官网开始。先来看一看官网对 ShardingSphere-Proxy 的定义是什么样的：</p>
 <blockquote>
-<p>定位为透明化的数据库代理端，提供封装了数据库二进制协议的服务端版本，用于完成对异构语言的支持。 目前提供 MySQL 和 PostgreSQL（兼容 openGauss 等基于 PostgreSQL 的数据库）版本，它可以使用任何兼容 MySQL/PostgreSQL 协议的访问客户端（如：MySQL Command Client, MySQL Workbench, Navicat 等）操作数据，对 DBA 更加友好。</p>
+  <p>定位为透明化的数据库代理端，提供封装了数据库二进制协议的服务端版本，用于完成对异构语言的支持。 目前提供 MySQL 和 PostgreSQL（兼容 openGauss 等基于 PostgreSQL 的数据库）版本，它可以使用任何兼容 MySQL/PostgreSQL 协议的访问客户端（如：MySQL Command Client, MySQL Workbench, Navicat 等）操作数据，对 DBA 更加友好。</p>
+
 </blockquote>
-<p><img src="https://shardingsphere.apache.org/document/current/img/shardingsphere-proxy_v2.png" alt=""></p>
+<p><img src="https://shardingsphere.apache.org/document/current/img/shardingsphere-proxy_v2.png" alt=""  loading="lazy" /></p>
 <p>先明确一个概念，ShardingSphere-Proxy 是一个服务进程。从客户端程序连接来说，它和 MySQL 数据库并没有什么区别。</p>
-<h2 id="为什么要用-proxy">为什么要用 Proxy</h2>
-<p>在做了分库分表或其他规则的情况下，数据会分散到多个数据库实例上，在管理上难免会有一些不便；或者使用非 Java 语言的开发者，需要 ShardingSphere 所提供的能力…… 以上这些情况，正是 ShardingSphere-Proxy 力所能及之处。</p>
-<h3 id="1-proxy-应用场景">1. Proxy 应用场景</h3>
-<p>日常工作中，大家使用 ShardingSphere-JDBC 进行分库分表的场景是比较多的。假设你有一张用户表，通过用户 ID 以 Hash 的方式进行了水平分库，那么此时客户端连接数据库的方式是这样：</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce1.png" alt=""></p>
+
+<h2 data-hextra-search-id="为什么要用-proxy">为什么要用 Proxy<span class="hx:absolute hx:-mt-20" id="为什么要用-proxy"></span><a href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e7%94%a8-proxy" class="subheading-anchor" aria-label="此章节的永久链接"></a></h2><p>在做了分库分表或其他规则的情况下，数据会分散到多个数据库实例上，在管理上难免会有一些不便；或者使用非 Java 语言的开发者，需要 ShardingSphere 所提供的能力…… 以上这些情况，正是 ShardingSphere-Proxy 力所能及之处。</p>
+
+<h3 data-hextra-search-id="1-proxy-应用场景">1. Proxy 应用场景<span class="hx:absolute hx:-mt-20" id="1-proxy-应用场景"></span><a href="#1-proxy-%e5%ba%94%e7%94%a8%e5%9c%ba%e6%99%af" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>日常工作中，大家使用 ShardingSphere-JDBC 进行分库分表的场景是比较多的。假设你有一张用户表，通过用户 ID 以 Hash 的方式进行了水平分库，那么此时客户端连接数据库的方式是这样：</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce1.png" alt=""  loading="lazy" /></p>
 <p>我们举例工作中真实存在的几个场景：</p>
 <ol>
 <li>测试同学想看下用户 ID 123456 的信息在数据库表里情况，需要你提供下用户在哪一张分表；</li>
@@ -107,49 +986,49 @@
 <li>逻辑表：相同结构的水平拆分数据库（表）的逻辑名称，是 SQL 中表的逻辑标识。 例：用户数据根据主键尾数拆分为 10 张表，分别是 <code>t_user_0</code> 到 <code>t_user_9</code>，他们的逻辑表名为 <code>t_user</code>。</li>
 <li>真实表：在水平拆分的数据库中真实存在的物理表。 即上个示例中的 <code>t_user_0</code> 到 <code>t_user_9</code>。</li>
 </ol>
-<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce2.png" alt=""></p>
-<h3 id="2-jdbc-和-proxy-的区别">2. JDBC 和 Proxy 的区别</h3>
-<p>看了上面的描述，怎么感觉 ShardingSphere-Proxy 和 ShardingSphere-JDBC 这么像，两者有什么区别？</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce2.png" alt=""  loading="lazy" /></p>
+
+<h3 data-hextra-search-id="2-jdbc-和-proxy-的区别">2. JDBC 和 Proxy 的区别<span class="hx:absolute hx:-mt-20" id="2-jdbc-和-proxy-的区别"></span><a href="#2-jdbc-%e5%92%8c-proxy-%e7%9a%84%e5%8c%ba%e5%88%ab" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>看了上面的描述，怎么感觉 ShardingSphere-Proxy 和 ShardingSphere-JDBC 这么像，两者有什么区别？</p>
 <table>
-<thead>
-<tr>
-<th style="text-align:left"></th>
-<th style="text-align:left">ShardingSphere-JDBC</th>
-<th style="text-align:left">ShardingSphere-Proxy</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td style="text-align:left">数据库</td>
-<td style="text-align:left">任意</td>
-<td style="text-align:left">基于 MySQL / PostgreSQL 协议的数据库</td>
-</tr>
-<tr>
-<td style="text-align:left">连接消耗数</td>
-<td style="text-align:left">高</td>
-<td style="text-align:left">低</td>
-</tr>
-<tr>
-<td style="text-align:left">异构语言</td>
-<td style="text-align:left">支持 Java 等基于 JVM 语言</td>
-<td style="text-align:left">任意</td>
-</tr>
-<tr>
-<td style="text-align:left">性能</td>
-<td style="text-align:left">损耗低</td>
-<td style="text-align:left">损耗略高</td>
-</tr>
-<tr>
-<td style="text-align:left">无中心化</td>
-<td style="text-align:left">是</td>
-<td style="text-align:left">否</td>
-</tr>
-<tr>
-<td style="text-align:left">静态入口</td>
-<td style="text-align:left">无</td>
-<td style="text-align:left">有</td>
-</tr>
-</tbody>
+	<thead>
+			<tr>
+					<th style="text-align: left"></th>
+					<th style="text-align: left">ShardingSphere-JDBC</th>
+					<th style="text-align: left">ShardingSphere-Proxy</th>
+			</tr>
+	</thead>
+	<tbody>
+			<tr>
+					<td style="text-align: left">数据库</td>
+					<td style="text-align: left">任意</td>
+					<td style="text-align: left">基于 MySQL / PostgreSQL 协议的数据库</td>
+			</tr>
+			<tr>
+					<td style="text-align: left">连接消耗数</td>
+					<td style="text-align: left">高</td>
+					<td style="text-align: left">低</td>
+			</tr>
+			<tr>
+					<td style="text-align: left">异构语言</td>
+					<td style="text-align: left">支持 Java 等基于 JVM 语言</td>
+					<td style="text-align: left">任意</td>
+			</tr>
+			<tr>
+					<td style="text-align: left">性能</td>
+					<td style="text-align: left">损耗低</td>
+					<td style="text-align: left">损耗略高</td>
+			</tr>
+			<tr>
+					<td style="text-align: left">无中心化</td>
+					<td style="text-align: left">是</td>
+					<td style="text-align: left">否</td>
+			</tr>
+			<tr>
+					<td style="text-align: left">静态入口</td>
+					<td style="text-align: left">无</td>
+					<td style="text-align: left">有</td>
+			</tr>
+	</tbody>
 </table>
 <p>简单总结下两者的不同：</p>
 <ol>
@@ -162,263 +1041,534 @@
 <li>应用调用链路多了一层，容易形成流量瓶颈，对应用增加了潜在的风险；一般来说，应用程序会搭配 ShardingSphere-JDBC 使用。</li>
 </ol>
 <p>当然，ShardingSphere-JDBC 和 ShardingSphere-Proxy 可以进行混合部署，ShardingSphere-JDBC 适用于 Java 开发的高性能的轻量级 OLTP 应用，ShardingSphere-Proxy 适用于 OLAP 应用以及对分片数据库进行管理和运维的场景。</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce3.png" alt=""></p>
-<h2 id="如何开始">如何开始</h2>
-<p>ShardingSphere-Proxy 的启动方式有三种：二进制包、Docker、Helm，并分为单机部署和集群部署。文章以单机二进制包的方式启动。</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce3.png" alt=""  loading="lazy" /></p>
+
+<h2 data-hextra-search-id="如何开始">如何开始<span class="hx:absolute hx:-mt-20" id="如何开始"></span><a href="#%e5%a6%82%e4%bd%95%e5%bc%80%e5%a7%8b" class="subheading-anchor" aria-label="此章节的永久链接"></a></h2><p>ShardingSphere-Proxy 的启动方式有三种：二进制包、Docker、Helm，并分为单机部署和集群部署。文章以单机二进制包的方式启动。</p>
 <ol>
-<li>通过 <a href="https://shardingsphere.apache.org/document/current/cn/downloads/">下载页面</a> 获取 ShardingSphere-Proxy 二进制安装包；</li>
+<li>通过 <a href="https://shardingsphere.apache.org/document/current/cn/downloads/" target="_blank" rel="noopener">下载页面</a> 获取 ShardingSphere-Proxy 二进制安装包；</li>
 <li>解压缩后修改 <code>conf/server.yaml</code> 和以 <code>config-</code> 前缀开头的文件，进行分片、读写分离等规则配置；</li>
 <li>Linux 操作系统请运行 <code>bin/start.sh</code>，Windows 操作系统请运行 <code>bin/start.bat</code> 启动 ShardingSphere-Proxy。</li>
 </ol>
 <p>下载后的文件目录如下：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-shell" data-lang="shell">├── LICENSE
-├── NOTICE
-├── README.txt
-├── bin <span style="color:#75715e"># 启动停止脚本</span>
-├── conf <span style="color:#75715e"># 服务配置，分库分表、读写分离、数据加密等功能的配置文件</span>
-├── lib <span style="color:#75715e"># Jar 包</span>
-└── licenses
-</code></pre></div><h3 id="1-将-mysql-的-jdbc-驱动复制到-ext-lib-包">1. 将 MySQL 的 JDBC 驱动复制到 ext-lib 包</h3>
-<p>下载驱动 <a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.49/mysql-connector-java-5.1.49.jar">mysql-connector-java-5.1.49.jar</a> 或者 <a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar">mysql-connector-java-8.0.11.jar</a> 放入 ext-lib 包。因为初始目录中并没有 ext-lib，需要自行创建。</p>
-<h3 id="2-修改-confserveryaml-配置文件">2. 修改 conf/server.yaml 配置文件</h3>
-<p>server.yaml 配置中默认集群运行模式，这里提供一份单机的运行配置。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#f92672">mode</span>:
- <span style="color:#f92672">type</span>: <span style="color:#ae81ff">Standalone</span> <span style="color:#75715e"># 单机模式</span>
- <span style="color:#f92672">repository</span>:
-   <span style="color:#f92672">type</span>: <span style="color:#ae81ff">H2</span>
-   <span style="color:#f92672">props</span>:
-     <span style="color:#f92672">standardJdbcUrl</span>: <span style="color:#ae81ff">jdbc:h2:file:~/config_data</span> <span style="color:#75715e"># 元数据持久化数据库连接 URL</span>
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
 
-<span style="color:#f92672">rules</span>: <span style="color:#75715e"># 认证信息</span>
- - !<span style="color:#ae81ff">AUTHORITY</span>
-   <span style="color:#f92672">users</span>: <span style="color:#75715e"># 初始化用户</span>
-     - <span style="color:#ae81ff">root@%:root</span>
-     - <span style="color:#ae81ff">sharding@:sharding</span>
-   <span style="color:#f92672">provider</span>:
-     <span style="color:#f92672">type</span>: <span style="color:#ae81ff">ALL_PERMITTED</span>
- - !<span style="color:#ae81ff">TRANSACTION</span>
-   <span style="color:#f92672">defaultType</span>: <span style="color:#ae81ff">XA</span>
-   <span style="color:#f92672">providerType</span>: <span style="color:#ae81ff">Atomikos</span>
- - !<span style="color:#ae81ff">SQL_PARSER</span>
-   <span style="color:#f92672">sqlStatementCache</span>:
-     <span style="color:#f92672">initialCapacity</span>: <span style="color:#ae81ff">2000</span>
-     <span style="color:#f92672">maximumSize</span>: <span style="color:#ae81ff">65535</span>
-   <span style="color:#f92672">parseTreeCache</span>:
-     <span style="color:#f92672">initialCapacity</span>: <span style="color:#ae81ff">128</span>
-     <span style="color:#f92672">maximumSize</span>: <span style="color:#ae81ff">1024</span>
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-shell" data-lang="shell"><span style="display:flex;"><span>├── LICENSE
+</span></span><span style="display:flex;"><span>├── NOTICE
+</span></span><span style="display:flex;"><span>├── README.txt
+</span></span><span style="display:flex;"><span>├── bin <span style="color:#75715e"># 启动停止脚本</span>
+</span></span><span style="display:flex;"><span>├── conf <span style="color:#75715e"># 服务配置，分库分表、读写分离、数据加密等功能的配置文件</span>
+</span></span><span style="display:flex;"><span>├── lib <span style="color:#75715e"># Jar 包</span>
+</span></span><span style="display:flex;"><span>└── licenses</span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
 
-<span style="color:#f92672">props</span>: <span style="color:#75715e"># 公用配置</span>
- <span style="color:#f92672">max-connections-size-per-query</span>: <span style="color:#ae81ff">1</span>
- <span style="color:#f92672">kernel-executor-size</span>: <span style="color:#ae81ff">16</span>  <span style="color:#75715e"># Infinite by default.</span>
- <span style="color:#f92672">proxy-frontend-flush-threshold</span>: <span style="color:#ae81ff">128</span>  <span style="color:#75715e"># The default value is 128.</span>
- <span style="color:#f92672">proxy-opentracing-enabled</span>: <span style="color:#66d9ef">false</span>
- <span style="color:#f92672">sql-show</span>: <span style="color:#66d9ef">false</span>
- <span style="color:#f92672">check-table-metadata-enabled</span>: <span style="color:#66d9ef">false</span>
-   <span style="color:#75715e"># Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy.</span>
-   <span style="color:#75715e"># The default value is -1, which means set the minimum value for different JDBC drivers.</span>
- <span style="color:#f92672">proxy-backend-query-fetch-size</span>: -<span style="color:#ae81ff">1</span>
- <span style="color:#f92672">proxy-frontend-executor-size</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Proxy frontend executor size. The default value is 0, which means let Netty decide.</span>
-   <span style="color:#75715e"># Available options of proxy backend executor suitable: OLAP(default), OLTP. The OLTP option may reduce time cost of writing packets to client, but it may increase the latency of SQL execution</span>
-   <span style="color:#75715e"># and block other clients if client connections are more than `proxy-frontend-executor-size`, especially executing slow SQL.</span>
- <span style="color:#f92672">proxy-backend-executor-suitable</span>: <span style="color:#ae81ff">OLAP</span>
- <span style="color:#f92672">proxy-frontend-max-connections</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Less than or equal to 0 means no limitation.</span>
- <span style="color:#f92672">sql-federation-enabled</span>: <span style="color:#66d9ef">false</span>
-   <span style="color:#75715e"># Available proxy backend driver type: JDBC (default), ExperimentalVertx</span>
- <span style="color:#f92672">proxy-backend-driver-type</span>: <span style="color:#ae81ff">JDBC</span>
+<h3 data-hextra-search-id="1-将-mysql-的-jdbc-驱动复制到-ext-lib-包">1. 将 MySQL 的 JDBC 驱动复制到 ext-lib 包<span class="hx:absolute hx:-mt-20" id="1-将-mysql-的-jdbc-驱动复制到-ext-lib-包"></span><a href="#1-%e5%b0%86-mysql-%e7%9a%84-jdbc-%e9%a9%b1%e5%8a%a8%e5%a4%8d%e5%88%b6%e5%88%b0-ext-lib-%e5%8c%85" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>下载驱动 <a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.49/mysql-connector-java-5.1.49.jar" target="_blank" rel="noopener">mysql-connector-java-5.1.49.jar</a> 或者 <a href="https://repo1.maven.org/maven2/mysql/mysql-connector-java/8.0.11/mysql-connector-java-8.0.11.jar" target="_blank" rel="noopener">mysql-connector-java-8.0.11.jar</a> 放入 ext-lib 包。因为初始目录中并没有 ext-lib，需要自行创建。</p>
 
-</code></pre></div><blockquote>
-<p>需要注意，如果启动单机 ShardingSphere-Proxy，后续需要 Proxy 配置变更，建议将 mode.overwrite 设置为 true，这样 ShardingSphere-Proxy 在启动时就会重新加载元数据。</p>
+<h3 data-hextra-search-id="2-修改-confserveryaml-配置文件">2. 修改 conf/server.yaml 配置文件<span class="hx:absolute hx:-mt-20" id="2-修改-confserveryaml-配置文件"></span><a href="#2-%e4%bf%ae%e6%94%b9-confserveryaml-%e9%85%8d%e7%bd%ae%e6%96%87%e4%bb%b6" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>server.yaml 配置中默认集群运行模式，这里提供一份单机的运行配置。</p>
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
+
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">mode</span>:
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">type</span>: <span style="color:#ae81ff">Standalone</span> <span style="color:#75715e"># 单机模式</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">repository</span>:
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">type</span>: <span style="color:#ae81ff">H2</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">props</span>:
+</span></span><span style="display:flex;"><span>     <span style="color:#f92672">standardJdbcUrl</span>: <span style="color:#ae81ff">jdbc:h2:file:~/config_data</span> <span style="color:#75715e"># 元数据持久化数据库连接 URL</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">rules</span>: <span style="color:#75715e"># 认证信息</span>
+</span></span><span style="display:flex;"><span> - !<span style="color:#ae81ff">AUTHORITY</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">users</span>: <span style="color:#75715e"># 初始化用户</span>
+</span></span><span style="display:flex;"><span>     - <span style="color:#ae81ff">root@%:root</span>
+</span></span><span style="display:flex;"><span>     - <span style="color:#ae81ff">sharding@:sharding</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">provider</span>:
+</span></span><span style="display:flex;"><span>     <span style="color:#f92672">type</span>: <span style="color:#ae81ff">ALL_PERMITTED</span>
+</span></span><span style="display:flex;"><span> - !<span style="color:#ae81ff">TRANSACTION</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">defaultType</span>: <span style="color:#ae81ff">XA</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">providerType</span>: <span style="color:#ae81ff">Atomikos</span>
+</span></span><span style="display:flex;"><span> - !<span style="color:#ae81ff">SQL_PARSER</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">sqlStatementCache</span>:
+</span></span><span style="display:flex;"><span>     <span style="color:#f92672">initialCapacity</span>: <span style="color:#ae81ff">2000</span>
+</span></span><span style="display:flex;"><span>     <span style="color:#f92672">maximumSize</span>: <span style="color:#ae81ff">65535</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#f92672">parseTreeCache</span>:
+</span></span><span style="display:flex;"><span>     <span style="color:#f92672">initialCapacity</span>: <span style="color:#ae81ff">128</span>
+</span></span><span style="display:flex;"><span>     <span style="color:#f92672">maximumSize</span>: <span style="color:#ae81ff">1024</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">props</span>: <span style="color:#75715e"># 公用配置</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">max-connections-size-per-query</span>: <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">kernel-executor-size</span>: <span style="color:#ae81ff">16</span>  <span style="color:#75715e"># Infinite by default.</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">proxy-frontend-flush-threshold</span>: <span style="color:#ae81ff">128</span>  <span style="color:#75715e"># The default value is 128.</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">proxy-opentracing-enabled</span>: <span style="color:#66d9ef">false</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">sql-show</span>: <span style="color:#66d9ef">false</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">check-table-metadata-enabled</span>: <span style="color:#66d9ef">false</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e"># Proxy backend query fetch size. A larger value may increase the memory usage of ShardingSphere Proxy.</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e"># The default value is -1, which means set the minimum value for different JDBC drivers.</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">proxy-backend-query-fetch-size</span>: -<span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">proxy-frontend-executor-size</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Proxy frontend executor size. The default value is 0, which means let Netty decide.</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e"># Available options of proxy backend executor suitable: OLAP(default), OLTP. The OLTP option may reduce time cost of writing packets to client, but it may increase the latency of SQL execution</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e"># and block other clients if client connections are more than `proxy-frontend-executor-size`, especially executing slow SQL.</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">proxy-backend-executor-suitable</span>: <span style="color:#ae81ff">OLAP</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">proxy-frontend-max-connections</span>: <span style="color:#ae81ff">0</span> <span style="color:#75715e"># Less than or equal to 0 means no limitation.</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">sql-federation-enabled</span>: <span style="color:#66d9ef">false</span>
+</span></span><span style="display:flex;"><span>   <span style="color:#75715e"># Available proxy backend driver type: JDBC (default), ExperimentalVertx</span>
+</span></span><span style="display:flex;"><span> <span style="color:#f92672">proxy-backend-driver-type</span>: <span style="color:#ae81ff">JDBC</span></span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
+<blockquote>
+  <p>需要注意，如果启动单机 ShardingSphere-Proxy，后续需要 Proxy 配置变更，建议将 mode.overwrite 设置为 true，这样 ShardingSphere-Proxy 在启动时就会重新加载元数据。</p>
+
 </blockquote>
-<h3 id="3-启动-shardingsphere-proxy">3. 启动 ShardingSphere-Proxy</h3>
-<p>执行启动命令：<code>sh bin/start.sh</code>。默认启动端口 <code>3307</code>，可以通过启动脚本命令追加参数的方式替换端口：<code>sh bin/start.sh 3308</code>。</p>
+
+<h3 data-hextra-search-id="3-启动-shardingsphere-proxy">3. 启动 ShardingSphere-Proxy<span class="hx:absolute hx:-mt-20" id="3-启动-shardingsphere-proxy"></span><a href="#3-%e5%90%af%e5%8a%a8-shardingsphere-proxy" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>执行启动命令：<code>sh bin/start.sh</code>。默认启动端口 <code>3307</code>，可以通过启动脚本命令追加参数的方式替换端口：<code>sh bin/start.sh 3308</code>。</p>
 <p>查看 ShardingSphere-Proxy 是否启动成功，执行查看日志命令：<code>tail -100f logs/stdout.log</code>。如最后一行出现下述信息，即为启动成功：</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-tex" data-lang="tex">[INFO ] xxx-xx-xx xx:xx:xx.xxx [main] o.a.s.p.frontend.ShardingSphereProxy - ShardingSphere-Proxy Standalone mode started successfully
-</code></pre></div><h2 id="场景实践">场景实践</h2>
-<p>本章节从实战场景的前提出发，通过 ShardingSphere-Proxy 完成上述需求。</p>
-<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce4.png" alt=""></p>
-<h3 id="1-初始化数据库表">1. 初始化数据库表</h3>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#f92672">#</span> <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span>
-<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> user_sharding_0;
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
 
-<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> user_sharding_1;
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-tex" data-lang="tex"><span style="display:flex;"><span>[INFO ] xxx-xx-xx xx:xx:xx.xxx [main] o.a.s.p.frontend.ShardingSphereProxy - ShardingSphere-Proxy Standalone mode started successfully</span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
 
-<span style="color:#f92672">#</span> <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span>
-use user_sharding_0;
+<h2 data-hextra-search-id="场景实践">场景实践<span class="hx:absolute hx:-mt-20" id="场景实践"></span><a href="#%e5%9c%ba%e6%99%af%e5%ae%9e%e8%b7%b5" class="subheading-anchor" aria-label="此章节的永久链接"></a></h2><p>本章节从实战场景的前提出发，通过 ShardingSphere-Proxy 完成上述需求。</p>
+<p><img src="https://shardingsphere.apache.org/blog/img/proxyIntroduce4.png" alt=""  loading="lazy" /></p>
 
-<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_0<span style="color:#f92672">`</span> (
-	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+<h3 data-hextra-search-id="1-初始化数据库表">1. 初始化数据库表<span class="hx:absolute hx:-mt-20" id="1-初始化数据库表"></span><a href="#1-%e5%88%9d%e5%a7%8b%e5%8c%96%e6%95%b0%e6%8d%ae%e5%ba%93%e8%a1%a8" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
 
-<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_1<span style="color:#f92672">`</span> (
-	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#f92672">#</span> <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> user_sharding_0;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">DATABASE</span> user_sharding_1;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">#</span> <span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span>
+</span></span><span style="display:flex;"><span>use user_sharding_0;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_0<span style="color:#f92672">`</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_1<span style="color:#f92672">`</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>use user_sharding_1;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_0<span style="color:#f92672">`</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_1<span style="color:#f92672">`</span> (
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
+</span></span><span style="display:flex;"><span>	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;</span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
 
+<h3 data-hextra-search-id="2-初始化-proxy-分片配置">2. 初始化 Proxy 分片配置<span class="hx:absolute hx:-mt-20" id="2-初始化-proxy-分片配置"></span><a href="#2-%e5%88%9d%e5%a7%8b%e5%8c%96-proxy-%e5%88%86%e7%89%87%e9%85%8d%e7%bd%ae" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>修改 conf/config-sharding.yaml 文件，添加分片配置。</p>
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
 
-use user_sharding_1;
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-yaml" data-lang="yaml"><span style="display:flex;"><span><span style="color:#f92672">schemaName</span>: <span style="color:#ae81ff">sharding_db</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">dataSources</span>:
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">ds_0</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">url</span>: <span style="color:#ae81ff">jdbc:mysql://127.0.0.1:3306/user_sharding_0?serverTimezone=UTC&amp;useSSL=false</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">username</span>: <span style="color:#ae81ff">root</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">password</span>: <span style="color:#ae81ff">root</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">ds_1</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">url</span>: <span style="color:#ae81ff">jdbc:mysql://127.0.0.1:3306/user_sharding_1?serverTimezone=UTC&amp;useSSL=false</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">username</span>: <span style="color:#ae81ff">root</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">password</span>: <span style="color:#ae81ff">root</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">minPoolSize</span>: <span style="color:#ae81ff">1</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">rules</span>:
+</span></span><span style="display:flex;"><span>- !<span style="color:#ae81ff">SHARDING</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">tables</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">t_user</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">actualDataNodes</span>: <span style="color:#ae81ff">ds_${0..1}.t_user_${0..1}</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">tableStrategy</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">standard</span>:
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">shardingColumn</span>: <span style="color:#ae81ff">user_id</span>
+</span></span><span style="display:flex;"><span>          <span style="color:#f92672">shardingAlgorithmName</span>: <span style="color:#ae81ff">t_user_inline</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">keyGenerateStrategy</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">column</span>: <span style="color:#ae81ff">user_id</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">keyGeneratorName</span>: <span style="color:#ae81ff">snowflake</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">bindingTables</span>:
+</span></span><span style="display:flex;"><span>    - <span style="color:#ae81ff">t_user</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">defaultDatabaseStrategy</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">standard</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">shardingColumn</span>: <span style="color:#ae81ff">user_id</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">shardingAlgorithmName</span>: <span style="color:#ae81ff">database_inline</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">defaultTableStrategy</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">none</span>:
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">shardingAlgorithms</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">database_inline</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">INLINE</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">props</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">algorithm-expression</span>: <span style="color:#ae81ff">ds_${user_id % 2}</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">t_user_inline</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">INLINE</span>
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">props</span>:
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">algorithm-expression</span>: <span style="color:#ae81ff">t_user_${user_id % 2}</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">keyGenerators</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">snowflake</span>:
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">SNOWFLAKE</span></span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
 
-<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_0<span style="color:#f92672">`</span> (
-	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
+<h3 data-hextra-search-id="3-分片测试">3. 分片测试<span class="hx:absolute hx:-mt-20" id="3-分片测试"></span><a href="#3-%e5%88%86%e7%89%87%e6%b5%8b%e8%af%95" class="subheading-anchor" aria-label="此章节的永久链接"></a></h3><p>使用 MySQL 终端命令连接 ShardingSphere-Proxy 服务端。如果 Docker 部署的数据库，需要加上 -h 本机 ip。因为容器内访问 127.0.0.1 不通。</p>
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
 
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span><span style="color:#f92672">#</span> <span style="color:#960050;background-color:#1e0010">将</span> <span style="color:#960050;background-color:#1e0010">{</span>xx<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#960050;background-color:#1e0010">替换为实际参数</span>
+</span></span><span style="display:flex;"><span>mysql <span style="color:#f92672">-</span>h <span style="color:#960050;background-color:#1e0010">{</span>ip<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#f92672">-</span>u <span style="color:#960050;background-color:#1e0010">{</span>username<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#f92672">-</span>p<span style="color:#960050;background-color:#1e0010">{</span>password<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#f92672">-</span>P <span style="color:#ae81ff">3307</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">#</span> <span style="color:#960050;background-color:#1e0010">示例命令</span>
+</span></span><span style="display:flex;"><span>mysql <span style="color:#f92672">-</span>h <span style="color:#ae81ff">127</span>.<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">1</span> <span style="color:#f92672">-</span>u root <span style="color:#f92672">-</span>proot <span style="color:#f92672">-</span>P <span style="color:#ae81ff">3307</span></span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
+<blockquote>
+  <p>ShardingSphere-Proxy 支持 Navicat MySQL、DataGrip、WorkBench、TablePlus 等数据库管理工具连接。</p>
 
-<span style="color:#66d9ef">CREATE</span> <span style="color:#66d9ef">TABLE</span> <span style="color:#f92672">`</span>t_user_1<span style="color:#f92672">`</span> (
-	<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>user_id<span style="color:#f92672">`</span> bigint (<span style="color:#ae81ff">20</span>) <span style="color:#66d9ef">NOT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#f92672">`</span>create_date<span style="color:#f92672">`</span> datetime <span style="color:#66d9ef">DEFAULT</span> <span style="color:#66d9ef">NULL</span>,
-	<span style="color:#66d9ef">PRIMARY</span> <span style="color:#66d9ef">KEY</span> (<span style="color:#f92672">`</span>id<span style="color:#f92672">`</span>)) ENGINE <span style="color:#f92672">=</span> InnoDB <span style="color:#66d9ef">DEFAULT</span> CHARSET <span style="color:#f92672">=</span> latin1;
-</code></pre></div><h3 id="2-初始化-proxy-分片配置">2. 初始化 Proxy 分片配置</h3>
-<p>修改 conf/config-sharding.yaml 文件，添加分片配置。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-yaml" data-lang="yaml"><span style="color:#f92672">schemaName</span>: <span style="color:#ae81ff">sharding_db</span>
-
-<span style="color:#f92672">dataSources</span>:
-  <span style="color:#f92672">ds_0</span>:
-    <span style="color:#f92672">url</span>: <span style="color:#ae81ff">jdbc:mysql://127.0.0.1:3306/user_sharding_0?serverTimezone=UTC&amp;useSSL=false</span>
-    <span style="color:#f92672">username</span>: <span style="color:#ae81ff">root</span>
-    <span style="color:#f92672">password</span>: <span style="color:#ae81ff">root</span>
-    <span style="color:#f92672">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
-    <span style="color:#f92672">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
-    <span style="color:#f92672">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
-    <span style="color:#f92672">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
-    <span style="color:#f92672">minPoolSize</span>: <span style="color:#ae81ff">1</span>
-  <span style="color:#f92672">ds_1</span>:
-    <span style="color:#f92672">url</span>: <span style="color:#ae81ff">jdbc:mysql://127.0.0.1:3306/user_sharding_1?serverTimezone=UTC&amp;useSSL=false</span>
-    <span style="color:#f92672">username</span>: <span style="color:#ae81ff">root</span>
-    <span style="color:#f92672">password</span>: <span style="color:#ae81ff">root</span>
-    <span style="color:#f92672">connectionTimeoutMilliseconds</span>: <span style="color:#ae81ff">30000</span>
-    <span style="color:#f92672">idleTimeoutMilliseconds</span>: <span style="color:#ae81ff">60000</span>
-    <span style="color:#f92672">maxLifetimeMilliseconds</span>: <span style="color:#ae81ff">1800000</span>
-    <span style="color:#f92672">maxPoolSize</span>: <span style="color:#ae81ff">50</span>
-    <span style="color:#f92672">minPoolSize</span>: <span style="color:#ae81ff">1</span>
-
-<span style="color:#f92672">rules</span>:
-- !<span style="color:#ae81ff">SHARDING</span>
-  <span style="color:#f92672">tables</span>:
-    <span style="color:#f92672">t_user</span>:
-      <span style="color:#f92672">actualDataNodes</span>: <span style="color:#ae81ff">ds_${0..1}.t_user_${0..1}</span>
-      <span style="color:#f92672">tableStrategy</span>:
-        <span style="color:#f92672">standard</span>:
-          <span style="color:#f92672">shardingColumn</span>: <span style="color:#ae81ff">user_id</span>
-          <span style="color:#f92672">shardingAlgorithmName</span>: <span style="color:#ae81ff">t_user_inline</span>
-      <span style="color:#f92672">keyGenerateStrategy</span>:
-        <span style="color:#f92672">column</span>: <span style="color:#ae81ff">user_id</span>
-        <span style="color:#f92672">keyGeneratorName</span>: <span style="color:#ae81ff">snowflake</span>
-  <span style="color:#f92672">bindingTables</span>:
-    - <span style="color:#ae81ff">t_user</span>
-  <span style="color:#f92672">defaultDatabaseStrategy</span>:
-    <span style="color:#f92672">standard</span>:
-      <span style="color:#f92672">shardingColumn</span>: <span style="color:#ae81ff">user_id</span>
-      <span style="color:#f92672">shardingAlgorithmName</span>: <span style="color:#ae81ff">database_inline</span>
-  <span style="color:#f92672">defaultTableStrategy</span>:
-    <span style="color:#f92672">none</span>:
-
-  <span style="color:#f92672">shardingAlgorithms</span>:
-    <span style="color:#f92672">database_inline</span>:
-      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">INLINE</span>
-      <span style="color:#f92672">props</span>:
-        <span style="color:#f92672">algorithm-expression</span>: <span style="color:#ae81ff">ds_${user_id % 2}</span>
-    <span style="color:#f92672">t_user_inline</span>:
-      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">INLINE</span>
-      <span style="color:#f92672">props</span>:
-        <span style="color:#f92672">algorithm-expression</span>: <span style="color:#ae81ff">t_user_${user_id % 2}</span>
-
-  <span style="color:#f92672">keyGenerators</span>:
-    <span style="color:#f92672">snowflake</span>:
-      <span style="color:#f92672">type</span>: <span style="color:#ae81ff">SNOWFLAKE</span>
-</code></pre></div><h3 id="3-分片测试">3. 分片测试</h3>
-<p>使用 MySQL 终端命令连接 ShardingSphere-Proxy 服务端。如果 Docker 部署的数据库，需要加上 -h 本机 ip。因为容器内访问 127.0.0.1 不通。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql"><span style="color:#f92672">#</span> <span style="color:#960050;background-color:#1e0010">将</span> <span style="color:#960050;background-color:#1e0010">{</span>xx<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#960050;background-color:#1e0010">替换为实际参数</span>
-mysql <span style="color:#f92672">-</span>h <span style="color:#960050;background-color:#1e0010">{</span>ip<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#f92672">-</span>u <span style="color:#960050;background-color:#1e0010">{</span>username<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#f92672">-</span>p<span style="color:#960050;background-color:#1e0010">{</span>password<span style="color:#960050;background-color:#1e0010">}</span> <span style="color:#f92672">-</span>P <span style="color:#ae81ff">3307</span>
-<span style="color:#f92672">#</span> <span style="color:#960050;background-color:#1e0010">示例命令</span>
-mysql <span style="color:#f92672">-</span>h <span style="color:#ae81ff">127</span>.<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">1</span> <span style="color:#f92672">-</span>u root <span style="color:#f92672">-</span>proot <span style="color:#f92672">-</span>P <span style="color:#ae81ff">3307</span>
-</code></pre></div><blockquote>
-<p>ShardingSphere-Proxy 支持 Navicat MySQL、DataGrip、WorkBench、TablePlus 等数据库管理工具连接。</p>
 </blockquote>
 <p>连接成功后，查询代理数据库，与配置文件中一致。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">show</span> databases;
-<span style="color:#f92672">+</span><span style="color:#75715e">-------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span> <span style="color:#66d9ef">schema_name</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">-------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span> sharding_db <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">-------------+
-</span><span style="color:#75715e"></span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">row</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">02</span> sec)
-</code></pre></div><p>执行新增 t_user 语句，插入 6 条用户数据，创建时间 2021 年 3 条，2022 年 3 条。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">mysql<span style="color:#f92672">&gt;</span> use sharding_db;
-mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_user (id, user_id, create_date) <span style="color:#66d9ef">values</span>(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;2021-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">2</span>, <span style="color:#e6db74">&#39;2021-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">3</span>, <span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#39;2021-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">4</span>, <span style="color:#ae81ff">4</span>, <span style="color:#e6db74">&#39;2022-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">5</span>, <span style="color:#ae81ff">5</span>, <span style="color:#e6db74">&#39;2022-02-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">6</span>, <span style="color:#ae81ff">6</span>, <span style="color:#e6db74">&#39;2022-03-01 00:00:00&#39;</span>);
-Query OK, <span style="color:#ae81ff">6</span> <span style="color:#66d9ef">rows</span> affected (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">16</span> sec)
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
 
-mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_user;
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span> id <span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> create_date         <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">2</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">2</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">|</span>  <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">|</span>  <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">03</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">|</span>  <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">|</span>  <span style="color:#ae81ff">3</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">3</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">|</span>  <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">02</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span></code></pre></div><p>此时数据分别散落在 <code>user_sharding_0</code> 和 <code>user_sharding_1</code> 库。</p>
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">show</span> databases;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">-------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span> <span style="color:#66d9ef">schema_name</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">-------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span> sharding_db <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">-------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">row</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">02</span> sec)</span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
+<p>执行新增 t_user 语句，插入 6 条用户数据，创建时间 2021 年 3 条，2022 年 3 条。</p>
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
+
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span>mysql<span style="color:#f92672">&gt;</span> use sharding_db;
+</span></span><span style="display:flex;"><span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">INSERT</span> <span style="color:#66d9ef">INTO</span> t_user (id, user_id, create_date) <span style="color:#66d9ef">values</span>(<span style="color:#ae81ff">1</span>, <span style="color:#ae81ff">1</span>, <span style="color:#e6db74">&#39;2021-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">2</span>, <span style="color:#ae81ff">2</span>, <span style="color:#e6db74">&#39;2021-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">3</span>, <span style="color:#ae81ff">3</span>, <span style="color:#e6db74">&#39;2021-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">4</span>, <span style="color:#ae81ff">4</span>, <span style="color:#e6db74">&#39;2022-01-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">5</span>, <span style="color:#ae81ff">5</span>, <span style="color:#e6db74">&#39;2022-02-01 00:00:00&#39;</span>), (<span style="color:#ae81ff">6</span>, <span style="color:#ae81ff">6</span>, <span style="color:#e6db74">&#39;2022-03-01 00:00:00&#39;</span>);
+</span></span><span style="display:flex;"><span>Query OK, <span style="color:#ae81ff">6</span> <span style="color:#66d9ef">rows</span> affected (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">16</span> sec)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_user;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span> id <span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> create_date         <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">2</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">2</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">03</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">3</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">3</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">02</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+</span></span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
+<p>此时数据分别散落在 <code>user_sharding_0</code> 和 <code>user_sharding_1</code> 库。</p>
 <p>回到最初的问题，如何定位数据信息。因为 ShardingSphere-Proxy 已经将表进行了逻辑聚合，所以直接查询就好。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_user <span style="color:#66d9ef">where</span> user_id <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span> id <span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> create_date         <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">row</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">01</span> sec)
-</code></pre></div><p>第二个问题，查询 2022 年用户增长数量以及用户情况。</p>
-<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-sql" data-lang="sql">mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#66d9ef">count</span>(<span style="color:#f92672">*</span>) <span style="color:#66d9ef">from</span> t_user <span style="color:#66d9ef">where</span> create_date <span style="color:#f92672">&gt;</span> <span style="color:#e6db74">&#39;2022-00-00 00:00:00&#39;</span>;
-<span style="color:#f92672">+</span><span style="color:#75715e">----------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span> <span style="color:#66d9ef">count</span>(<span style="color:#f92672">*</span>) <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span>        <span style="color:#ae81ff">3</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----------+
-</span><span style="color:#75715e"></span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">row</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">10</span> sec)
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
 
-mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_user <span style="color:#66d9ef">where</span> create_date <span style="color:#f92672">&gt;</span> <span style="color:#e6db74">&#39;2022-00-00 00:00:00&#39;</span>;
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span> id <span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> create_date         <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">|</span>  <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">|</span>  <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
-<span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
-</span><span style="color:#75715e"></span><span style="color:#ae81ff">3</span> <span style="color:#66d9ef">rows</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">02</span> sec)
-</code></pre></div><p>第三个问题同上。</p>
-<h2 id="最后总结">最后总结</h2>
-<p>文章通过图文并茂的方式帮助大家过了一遍 ShardingSphere-Proxy 的基本概念，引申出了分库分表后产生的实际运维场景，并演示了如何通过 ShardingSphere-Proxy 解决相关问题。</p>
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_user <span style="color:#66d9ef">where</span> user_id <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span> id <span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> create_date         <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">1</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2021</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">row</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">01</span> sec)</span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
+<p>第二个问题，查询 2022 年用户增长数量以及用户情况。</p>
+<div class="hextra-code-block hx:relative hx:mt-6 hx:first:mt-0 hx:group/code">
+
+<div><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-sql" data-lang="sql"><span style="display:flex;"><span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#66d9ef">count</span>(<span style="color:#f92672">*</span>) <span style="color:#66d9ef">from</span> t_user <span style="color:#66d9ef">where</span> create_date <span style="color:#f92672">&gt;</span> <span style="color:#e6db74">&#39;2022-00-00 00:00:00&#39;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span> <span style="color:#66d9ef">count</span>(<span style="color:#f92672">*</span>) <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>        <span style="color:#ae81ff">3</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----------+
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff">1</span> <span style="color:#66d9ef">row</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">10</span> sec)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>mysql<span style="color:#f92672">&gt;</span> <span style="color:#66d9ef">select</span> <span style="color:#f92672">*</span> <span style="color:#66d9ef">from</span> t_user <span style="color:#66d9ef">where</span> create_date <span style="color:#f92672">&gt;</span> <span style="color:#e6db74">&#39;2022-00-00 00:00:00&#39;</span>;
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span> id <span style="color:#f92672">|</span> user_id <span style="color:#f92672">|</span> create_date         <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">4</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">6</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">|</span>  <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span>       <span style="color:#ae81ff">5</span> <span style="color:#f92672">|</span> <span style="color:#ae81ff">2022</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span><span style="color:#f92672">-</span><span style="color:#ae81ff">01</span> <span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span>:<span style="color:#ae81ff">00</span> <span style="color:#f92672">|</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">+</span><span style="color:#75715e">----+---------+---------------------+
+</span></span></span><span style="display:flex;"><span><span style="color:#ae81ff">3</span> <span style="color:#66d9ef">rows</span> <span style="color:#66d9ef">in</span> <span style="color:#66d9ef">set</span> (<span style="color:#ae81ff">0</span>.<span style="color:#ae81ff">02</span> sec)</span></span></code></pre></div></div><div class="hextra-code-copy-btn-container hx:opacity-0 hx:transition hx:group-hover/code:opacity-100 hx:flex hx:gap-1 hx:absolute hx:m-[11px] hx:right-0 hx:top-0">
+  <button
+    class="hextra-code-copy-btn hx:group/copybtn hx:cursor-pointer hx:transition-all hx:active:opacity-50 hx:bg-primary-700/5 hx:border hx:border-black/5 hx:text-gray-600 hx:hover:text-gray-900 hx:rounded-md hx:p-1.5 hx:dark:bg-primary-300/10 hx:dark:border-white/10 hx:dark:text-gray-400 hx:dark:hover:text-gray-50"
+    title="复制代码"
+    aria-label="复制代码"
+    data-copied-label="已复制！"
+  >
+    <div class="hextra-copy-icon hx:group-[.copied]/copybtn:hidden hx:pointer-events-none hx:h-4 hx:w-4"></div>
+<div class="hextra-success-icon hx:hidden hx:group-[.copied]/copybtn:block hx:pointer-events-none hx:h-4 hx:w-4"></div>
+  </button>
+</div>
+</div>
+<p>第三个问题同上。</p>
+
+<h2 data-hextra-search-id="最后总结">最后总结<span class="hx:absolute hx:-mt-20" id="最后总结"></span><a href="#%e6%9c%80%e5%90%8e%e6%80%bb%e7%bb%93" class="subheading-anchor" aria-label="此章节的永久链接"></a></h2><p>文章通过图文并茂的方式帮助大家过了一遍 ShardingSphere-Proxy 的基本概念，引申出了分库分表后产生的实际运维场景，并演示了如何通过 ShardingSphere-Proxy 解决相关问题。</p>
 <p>相信大家看完对 ShardingSphere-Proxy 有了更深入的认识。首先要明白 ShardingSphere-Proxy 的定位是协助开发运维的产品，掌握 ShardingSphere-JDBC 和 ShardingSphere-Proxy 有哪些区别，以及理解两者的优缺点和实现方式是怎么样的。在这个基础上去阅读两者的源码，也就更容易理解了。</p>
-<h2 id="巨人的肩膀">巨人的肩膀</h2>
-<p><a href="https://shardingsphere.apache.org/">Apache ShardingSphere 官网</a></p>
-<p><a href="https://community.sphere-ex.com/t/topic/497">打造基于 PostgreSQL/openGauss 的分布式数据库解决方案</a></p>
-<h2 id="作者简介">作者简介</h2>
-<p>龙台，Apache ShardingSphere Contributor，Github 2.1k star hippo4j 作者，Github ID：longtai-cn。</p>
 
+<h2 data-hextra-search-id="巨人的肩膀">巨人的肩膀<span class="hx:absolute hx:-mt-20" id="巨人的肩膀"></span><a href="#%e5%b7%a8%e4%ba%ba%e7%9a%84%e8%82%a9%e8%86%80" class="subheading-anchor" aria-label="此章节的永久链接"></a></h2><p><a href="https://shardingsphere.apache.org/" target="_blank" rel="noopener">Apache ShardingSphere 官网</a></p>
+<p><a href="https://community.sphere-ex.com/t/topic/497" target="_blank" rel="noopener">打造基于 PostgreSQL/openGauss 的分布式数据库解决方案</a></p>
 
-		
-	</div>
+<h2 data-hextra-search-id="作者简介">作者简介<span class="hx:absolute hx:-mt-20" id="作者简介"></span><a href="#%e4%bd%9c%e8%80%85%e7%ae%80%e4%bb%8b" class="subheading-anchor" aria-label="此章节的永久链接"></a></h2><p>龙台，Apache ShardingSphere Contributor，Github 2.1k star hippo4j 作者，Github ID：longtai-cn。</p>
 
-	<div class="pagination">
-		<a href="https://shardingsphere.apache.org/blog/cn/material/spotless/" class="left arrow">&#8592;</a>
-		<a href="https://shardingsphere.apache.org/blog/cn/material/oct_12_9_shardingsphere_jd_baitiao_story_of_an_implementation_journey/" class="right arrow">&#8594;</a>
+          
+        </div><div class="hx:mt-16"></div><div class="hx:mb-8 hx:flex hx:items-center hx:border-t hx:pt-8 hx:border-gray-200 hx:dark:border-neutral-800 hx:contrast-more:border-neutral-400 hx:dark:contrast-more:border-neutral-400 hx:print:hidden"><a
+        href="/blog/cn/material/spotless/"
+        title="Apache ShardingSphere 代码格式化实战 —— Spotless"
+        class="hx:flex hx:max-w-[50%] hx:items-center hx:gap-1 hx:py-4 hx:text-base hx:font-medium hx:text-gray-600 hx:transition-colors [word-break:break-word] hx:hover:text-primary-600 hx:dark:text-gray-300 hx:md:text-lg hx:ltr:pr-4 hx:rtl:pl-4"
+      ><svg class="hx:inline hx:h-5 hx:shrink-0 hx:ltr:rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>Apache ShardingSphere 代码格式化实战 —— Spotless</a><a
+        href="/blog/cn/material/oct_12_9_shardingsphere_jd_baitiao_story_of_an_implementation_journey/"
+        title="Apache ShardingSphere 在京东白条场景的落地之旅"
+        class="hx:flex hx:max-w-[50%] hx:items-center hx:gap-1 hx:py-4 hx:text-base hx:font-medium hx:text-gray-600 hx:transition-colors [word-break:break-word] hx:hover:text-primary-600 hx:dark:text-gray-300 hx:md:text-lg hx:ltr:ml-auto hx:ltr:pl-4 hx:ltr:text-right hx:rtl:mr-auto hx:rtl:pr-4 hx:rtl:text-left"
+      >Apache ShardingSphere 在京东白条场景的落地之旅<svg class="hx:inline hx:h-5 hx:shrink-0 hx:rtl:-rotate-180" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg></a></div>
+      </main>
+    </article>
+  </div>
 
-		<a href="#" class="top">Top</a>
-	</div>
-</main>
-
-
-        		<footer>
-			<span>
-			
-			Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>, ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.
-			</span>
-		</footer>
-
-    </body>
+      <footer class="hextra-footer hx:bg-gray-100 hx:pb-[env(safe-area-inset-bottom)] hx:dark:bg-neutral-900 hx:print:bg-transparent"><div class="hx:mx-auto hx:flex hx:gap-2 hx:py-2 hx:px-4 hextra-max-footer-width"><div class="hx:flex hx:justify-items-start ">
+    <button
+      title="切换语言"
+      data-state="closed"
+      data-location=""
+      class="hextra-language-switcher hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:grow"
+      type="button"
+      aria-label="切换语言"
+      aria-expanded="false"
+      aria-haspopup="menu"
+    >
+      <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg><span>简体中文</span></div>
+    </button>
+    <ul
+      class="hextra-language-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+      style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+      role="menu"
+    >
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/en/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >English</a>
+        </li>
+      <li role="none" class="hx:flex hx:flex-col">
+          <a
+            href="/blog/cn/material/proxyintroduce/"
+            role="menuitem"
+            class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9"
+          >简体中文<span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span></a>
+        </li>
+      </ul>
+  </div><div class="hx:flex hx:justify-items-start hx:group" data-theme="light">
+  <button
+    title="切换主题"
+    data-state="closed"
+    data-location="bottom"
+    class="hextra-theme-toggle hx:cursor-pointer hx:rounded-md hx:text-left hx:font-medium hx:h-7 hx:px-2 hx:text-xs hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-primary-100/5 hx:dark:hover:text-gray-50 hx:font-medium hx:text-gray-600 hx:transition-colors hx:dark:text-gray-400 hx:grow"
+    type="button"
+    aria-label="切换主题"
+    aria-expanded="false"
+    aria-haspopup="menu"
+  >
+    <div class="hx:flex hx:items-center hx:gap-2 hx:capitalize"><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg><span class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden">浅色</span><svg height=12 class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg><span class="hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden">深色</span><svg height=12 class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"  fill="currentColor">
+  <path d="M 11.996094,2 C 6.4986225,2.0192368 2.03125,6.5024993 2.03125,12 c 0,5.497501 4.4673725,9.980763 9.964844,10 H 12 12.0039 c 5.497471,-0.01924 9.964844,-4.502499 9.964844,-10 0,-5.4975007 -4.467373,-9.9807632 -9.964844,-10 H 12 Z M 12,4 c 4.417218,0.017598 7.96875,3.5822356 7.96875,8 0,4.417764 -3.551532,7.982402 -7.96875,8 z" />
+</svg>
+<span class="hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden">跟随系统</span></div>
+  </button>
+  <ul
+    class="hextra-theme-toggle-options hx:hidden hx:z-20 hx:max-h-64 hx:overflow-auto hx:rounded-lg hx:border hx:border-gray-200 hx:bg-white hx:p-1 hx:text-sm hx:shadow-lg hx:dark:border-neutral-700 hx:dark:bg-neutral-900"
+    style="position: fixed; inset: auto auto 0px 0px; margin: 0px; min-width: 100px;"
+    data-theme="light"
+    role="menu"
+  >
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="true"
+        tabindex="-1"
+        data-item="light"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        浅色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="dark"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        深色
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=light]:hidden hx:group-data-[theme=system]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+    <li role="none" class="hx:flex hx:flex-col">
+      <button
+        type="button"
+        role="menuitemradio"
+        aria-checked="false"
+        tabindex="-1"
+        data-item="system"
+        class="hx:text-gray-700 hx:dark:text-gray-300 hx:hover:bg-gray-100 hx:hover:text-gray-900 hx:dark:hover:bg-neutral-800 hx:dark:hover:text-gray-100 hx:relative hx:cursor-pointer hx:whitespace-nowrap hx:rounded-sm hx:py-1.5 hx:transition-colors hx:ltr:pl-3 hx:ltr:pr-9 hx:rtl:pr-3 hx:rtl:pl-9 hx:text-left hx:w-full hx:bg-transparent hx:border-0"
+      >
+        跟随系统
+         <span class="hx:absolute hx:inset-y-0 hx:flex hx:items-center hx:ltr:right-3 hx:rtl:left-3 hx:group-data-[theme=dark]:hidden hx:group-data-[theme=light]:hidden"><svg height=1em width=1em xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></span>
+      </button>
+    </li>
+  </ul>
+</div>
+</div><hr class="hx:border-gray-200 hx:dark:border-neutral-800" /><div class="hextra-custom-footer hextra-max-footer-width hx:mx-auto hx:pl-[max(env(safe-area-inset-left),1.5rem)] hx:pr-[max(env(safe-area-inset-right),1.5rem)] hx:text-gray-600 hx:dark:text-gray-400"><small>Copyright &copy; 2018-2020, <a href="https://shardingsphere.apache.org/blog/">Apache ShardingSphere</a>. ShardingSphere, Apache, the Apache feather logo, and the Apache ShardingSphere project logo are either registered trademarks or trademarks of The Apache Software Foundation in the United States and other countries.</small></div><div
+      class="hextra-max-footer-width hx:mx-auto hx:flex hx:justify-center hx:py-12 hx:pl-[max(env(safe-area-inset-left),1.5rem)] hx:pr-[max(env(safe-area-inset-right),1.5rem)] hx:text-gray-600 hx:dark:text-gray-400 hx:md:justify-start"
+    >
+      <div class="hx:flex hx:w-full hx:flex-col hx:items-center hx:sm:items-start"><div class="hx:font-semibold"><a class="hx:flex hx:text-sm hx:items-center hx:gap-1 hx:text-current" target="_blank" rel="noopener noreferrer" title="Hextra GitHub Homepage" href="https://github.com/imfing/hextra">
+    <span>由 Hextra 驱动<svg height=1em class="hx:inline-block hx:ltr:ml-1 hx:rtl:mr-1 hx:align-[-2.5px]" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="m 105.50024,22.224647 c -9.59169,-5.537563 -21.40871,-5.537563 -31.000093,0 L 39.054693,42.689119 C 29.463353,48.226675 23.55484,58.460531 23.55484,69.535642 v 40.928918 c 0,11.07542 5.908513,21.3092 15.499853,26.84652 l 35.445453,20.46446 c 9.591313,5.53732 21.408404,5.53732 31.000094,0 l 35.44507,-20.46446 c 9.59131,-5.53732 15.49985,-15.7711 15.49985,-26.84652 V 69.535642 c 0,-11.075111 -5.90854,-21.308967 -15.49985,-26.846523 z M 34.112797,85.737639 c -1.384445,2.397827 -1.384445,5.352099 0,7.749927 l 24.781554,42.922974 c 1.38437,2.39783 3.942853,3.87496 6.711592,3.87496 h 49.563107 c 2.76905,0 5.3273,-1.47713 6.71144,-3.87496 l 24.78194,-42.922974 c 1.38414,-2.397828 1.38414,-5.3521 0,-7.749927 L 121.88049,42.814746 c -1.38414,-2.397828 -3.94239,-3.874964 -6.71144,-3.874964 H 65.605944 c -2.768739,0 -5.327223,1.477059 -6.711592,3.874964 z" style="stroke-width:0.774993" /></svg></span>
+  </a></div></div>
+    </div></footer>
+    
+    <dialog
+    id="hextra-search-dialog"
+    class="hextra-search-dialog"
+    aria-label="搜索文档..."
+  >
+    <div class="hextra-search">
+      <div class="hextra-search-input-wrapper"><svg class="hextra-search-input-icon" focusable="false" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><input
+          class="hextra-search-input"
+          type="search"
+          role="combobox"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          placeholder="搜索文档..."
+          aria-label="搜索文档..."
+          aria-controls="hextra-search-results"
+          aria-expanded="false"
+        /><button
+          type="button"
+          class="hextra-search-input-kbd"
+          data-search-close
+          aria-label="Close"
+        >ESC</button>
+      </div>
+      <div class="hextra-search-results-viewport" data-search-viewport>
+        <div class="hextra-search-results-inner hextra-scrollbar" data-search-inner>
+          <ul
+            id="hextra-search-results"
+            class="hextra-search-results"
+            role="listbox"
+            aria-label="搜索结果"
+          ></ul>
+          <div class="hextra-search-empty" data-search-empty hidden>无结果</div>
+        </div>
+      </div>
+      <div class="hextra-search-status hx:sr-only" aria-live="polite" role="status"></div>
+    </div>
+  </dialog>
+    <script defer src="/blog/js/main.min.6c7da39b30c6c45c59eaba96e5b93bffd087568cdcabbfdcd33925ad755c627e.js" integrity="sha256-bH2jmzDGxFxZ6rqW5bk7/9CHVozcq7/c0zklrXVcYn4="></script>
+<script defer src="/blog/vendor/flexsearch.bundle.min.433e941a8a573ebb9931fc16fc75266ab6b93f569ac2fb4f3dc66882e0416f4c.js" integrity="sha256-Qz6UGopXPruZMfwW/HUmara5P1aawvtPPcZoguBBb0w=" crossorigin="anonymous"></script><script defer src="/blog/cn.search.min.586d0a195179ff5ed492bfdb70b553abdee68997f5f25924e9a4e2aaaa4645ce.js" integrity="sha256-WG0KGVF5/17Ukr/bcLVTq97miZf18lkk6aTiqqpGRc4="></script>
+    <script defer src="/blog/cn.search-dialog.min.43f138c37a644bf0d959fbe0da2b6cd7a2356c7d131e12960231cb40a4e76b60.js" integrity="sha256-Q/E4w3pkS/DZWfvg2its16I1bH0THhKWAjHLQKTna2A="></script>
+  </body>
 </html>

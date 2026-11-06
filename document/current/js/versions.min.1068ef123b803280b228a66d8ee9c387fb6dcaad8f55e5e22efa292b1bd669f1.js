@@ -1,0 +1,1 @@
+document.addEventListener("DOMContentLoaded",()=>{const t=JSON.parse(document.getElementById("doc-version-targets").textContent),n=Array.from(document.querySelectorAll('a[href$="#doc-version"]'),e=>[e,t[decodeURI(e.getAttribute("href").split("#")[0])]]),e=()=>n.forEach(([e,t])=>{e.href=t.url+(t.samePage?window.location.hash:"")});e(),window.addEventListener("hashchange",e)})

@@ -37,55 +37,92 @@ echo git clone https://github.com/apache/shardingsphere
 git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere "$ss_build_dir/upstream"
 cd "$ss_build_dir/upstream"
 tags=$(git tag --sort=taggerdate)
-valid_tags=()
+new_tags=()
 mkdir "$ss_build_dir/history"
+# Validate the published versions before building or replacing any output.
+python3 "$script_dir/prepare-site-config.py" versions "$companion_root" "$ss_build_dir/history" \
+  > "$ss_build_dir/versions.json"
 
-# Build missing release content with the current companion renderer.
+# Existing release HTML is immutable, including versions with older content layouts.
 for tag in $tags; do
-  if [[ ! "$tag" =~ ^[0-9]+\.[0-9]+ ]]; then
+  if [[ ! "$tag" =~ ^[0-9]+\.[0-9]+ ]] || [ -d "$companion_root/document/$tag" ]; then
     continue
   fi
-  echo "generate $tag document"
   git checkout --force "$tag"
   if [ -d docs/document/content ]; then
-    valid_tags+=("$tag")
-    if [ ! -d "$companion_root/document/$tag" ]; then
-      env HUGO_BASEURL="https://shardingsphere.apache.org/document/$tag/" \
-        HUGO_PARAMS_EDITURL="" SHARDINGSPHERE_DOCS_SITES=document \
-        bash "$script_dir/build-shardingsphere-docs.sh" "$PWD/docs" "$ss_build_dir/release"
-      find "$ss_build_dir/release/document/current" -name '*.html' -exec sed -i -e 's|<option id="\([a-zA-Z]\+\)" value="/document/current|<option id="\1" value="/document/'"$tag"'|g' {} \;
-      mv "$ss_build_dir/release/document/current" "$ss_build_dir/history/$tag"
-      rm -rf "$ss_build_dir/release"
-    fi
+    echo "generate $tag document"
+    env SHARDINGSPHERE_DOCS_SITES=document \
+      SHARDINGSPHERE_DOCS_VERSION="$tag" SHARDINGSPHERE_DOCS_VERSIONS_ROOT="$companion_root" \
+      SHARDINGSPHERE_DOCS_HISTORY_ROOT="$ss_build_dir/history" \
+      bash "$script_dir/build-shardingsphere-docs.sh" "$PWD/docs" "$ss_build_dir/release"
+    mv "$ss_build_dir/release/document/$tag" "$ss_build_dir/history/$tag"
+    rm -rf "$ss_build_dir/release"
+    new_tags+=("$tag")
   fi
 done
 
-echo "[\""$(echo ${valid_tags[@]}|sed 's/ /","/g')"\"]" > "$ss_build_dir/versions.json"
+python3 "$script_dir/prepare-site-config.py" versions "$companion_root" "$ss_build_dir/history" \
+  > "$ss_build_dir/versions.json"
 
 git checkout --force master
 git log -1 -p docs > "$ss_build_dir/new_version_ss"
 git -C "$companion_root" ls-tree -r HEAD -- \
-  .github/scripts/build-shardingsphere-docs.sh .github/scripts/prepare-learn-themes.sh \
-  .github/scripts/build-website.sh .github/website/shardingsphere .github/workflows/build-website.yml \
+  .github/scripts/build-shardingsphere-docs.sh .github/scripts/prepare-hextra-theme.sh \
+  .github/scripts/prepare-site-config.py .github/scripts/build-website.sh \
+  .github/website/shardingsphere .github/workflows/build-website.yml \
   > "$ss_build_dir/renderer_tree"
 renderer_revision=$(git -C "$companion_root" hash-object "$ss_build_dir/renderer_tree")
-printf '\nrenderer revision: %s\n' "$renderer_revision" >> "$ss_build_dir/new_version_ss"
+versions_revision=$(git -C "$companion_root" hash-object "$ss_build_dir/versions.json")
+printf '\nrenderer revision: %s\nversions revision: %s\n' \
+  "$renderer_revision" "$versions_revision" >> "$ss_build_dir/new_version_ss"
 
 if cmp -s "$companion_root/old_version_ss" "$ss_build_dir/new_version_ss"; then
-  echo "shardingsphere docs sources and renderer didn't change and nothing to do!"
+  echo "shardingsphere docs sources, renderer and versions didn't change and nothing to do!"
 else
   echo "check shardingsphere something new, launch a build..."
-  bash "$script_dir/build-shardingsphere-docs.sh" "$PWD/docs" "$ss_build_dir/current"
+  env SHARDINGSPHERE_DOCS_VERSIONS_ROOT="$companion_root" \
+    SHARDINGSPHERE_DOCS_HISTORY_ROOT="$ss_build_dir/history" \
+    bash "$script_dir/build-shardingsphere-docs.sh" "$PWD/docs" "$ss_build_dir/current"
+fi
+
+# New release menus also need the current pages from this run, not the previous publication.
+if [ -d "$ss_build_dir/current" ]; then
+  ln -s "$ss_build_dir/current/document/current" "$ss_build_dir/history/current"
+fi
+for tag in "${new_tags[@]}"; do
+  git checkout --force "$tag"
+  env SHARDINGSPHERE_DOCS_SITES=document \
+    SHARDINGSPHERE_DOCS_VERSION="$tag" SHARDINGSPHERE_DOCS_VERSIONS_ROOT="$companion_root" \
+    SHARDINGSPHERE_DOCS_HISTORY_ROOT="$ss_build_dir/history" \
+    bash "$script_dir/build-shardingsphere-docs.sh" "$PWD/docs" "$ss_build_dir/release"
+  rm -rf "$ss_build_dir/history/$tag"
+  mv "$ss_build_dir/release/document/$tag" "$ss_build_dir/history/$tag"
+  rm -rf "$ss_build_dir/release"
+done
+
+# Published history also consumes these stable asset paths outside its own directories.
+if [ -d "$ss_build_dir/current" ]; then
+  legacy_assets=(document/current/{css,js,fonts,webfonts,img,images,mermaid} community/{css,js,fonts,images,image,mermaid} blog/img)
+  for asset_dir in "${legacy_assets[@]}"; do
+    if [ ! -d "$companion_root/$asset_dir" ]; then
+      continue
+    fi
+    while IFS= read -r -d '' asset; do
+      target="$ss_build_dir/current/${asset#"$companion_root/"}"
+      if [ ! -e "$target" ]; then
+        mkdir -p "$(dirname "$target")"
+        cp -p "$asset" "$target"
+      fi
+    done < <(find "$companion_root/$asset_dir" -type f -print0)
+  done
 fi
 
 # Publish only after all ShardingSphere builds have succeeded.
 cd "$companion_root"
 mkdir -p document
-for tag in "${valid_tags[@]}"; do
-  if [ -d "$ss_build_dir/history/$tag" ]; then
-    mv "$ss_build_dir/history/$tag" "document/$tag"
-    count=1
-  fi
+for tag in "${new_tags[@]}"; do
+  mv "$ss_build_dir/history/$tag" "document/$tag"
+  count=1
 done
 mv "$ss_build_dir/versions.json" versions.json
 if [ -d "$ss_build_dir/current" ]; then

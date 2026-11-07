@@ -237,7 +237,7 @@ SHOW MIGRATION CHECK STATUS 'j0102p00002333dcb3d9db141cef14bed6fbf1ab54';
 COMMIT MIGRATION 'j0102p00002333dcb3d9db141cef14bed6fbf1ab54';
 ```
 
-更多 DistSQL 请参见 [RAL #数据迁移](/cn/user-manual/shardingsphere-proxy/distsql/syntax/ral/migration/)。
+更多 DistSQL 请参见 [RAL #数据迁移](/cn/user-manual/distsql/syntax/ral/migration/)。
 
 ## PostgreSQL 使用手册
 
@@ -444,7 +444,7 @@ SHOW MIGRATION CHECK STATUS 'j0102p00002333dcb3d9db141cef14bed6fbf1ab54';
 COMMIT MIGRATION 'j0102p00002333dcb3d9db141cef14bed6fbf1ab54';
 ```
 
-更多 DistSQL 请参见 [RAL #数据迁移](/cn/user-manual/shardingsphere-proxy/distsql/syntax/ral/migration/)。
+更多 DistSQL 请参见 [RAL #数据迁移](/cn/user-manual/distsql/syntax/ral/migration/)。
 
 ## openGauss 使用手册
 
@@ -700,5 +700,5 @@ SHOW MIGRATION CHECK STATUS 'j0102p00002333dcb3d9db141cef14bed6fbf1ab54';
 COMMIT MIGRATION 'j0102p00002333dcb3d9db141cef14bed6fbf1ab54';
 ```
 
-更多 DistSQL 请参见 [RAL #数据迁移](/cn/user-manual/shardingsphere-proxy/distsql/syntax/ral/migration/)。
+更多 DistSQL 请参见 [RAL #数据迁移](/cn/user-manual/distsql/syntax/ral/migration/)。
 

@@ -2,7 +2,7 @@
 
 ### 描述
 
-`SHOW COMPUTE NODE INFO` 语法用于查询当前 proxy 实例信息。
+`SHOW COMPUTE NODE INFO` 语法用于查询当前计算节点信息。
 
 ### 语法
 
@@ -22,17 +22,17 @@ ShowComputeNodeInfo ::=
 
 | 列           | 说明         |
 |-------------|------------|
-| instance_id | proxy 实例编号 |
+| instance_id | 计算节点编号 |
 | host        | 主机地址       |
-| port        | 端口号        |
-| status      | proxy 实例状态 |
-| mode_type   | proxy 实例模式 |
+| port        | Proxy 端口号，JDBC 为 `-1` |
+| status      | 计算节点状态 |
+| mode_type   | 计算节点运行模式 |
 | worker_id   | worker id  |
 | version    | 版本                  |
 
 ### 示例
 
-- 查询当前 proxy 实例信息
+- 查询当前计算节点信息
 
 ```sql
 SHOW COMPUTE NODE INFO;

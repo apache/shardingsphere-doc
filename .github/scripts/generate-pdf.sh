@@ -1,3 +1,9 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+
 function clone_repo {
     git clone https://github.com/apache/$1.git _$1
 }
@@ -9,34 +15,29 @@ function prepare {
     pip install sphinx
     sudo apt-get update -y 
     sudo apt-get install -y latexmk texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
-    sudo apt-get install texlive-xetex latex-cjk-all
-    #wget -q https://github.com/jgm/pandoc/releases/download/2.16.1/pandoc-2.16.1-1-amd64.deb
-    sudo dpkg -i pandoc-2.16.1-1-amd64.deb
-    #wget https://github.com/adobe-fonts/source-han-sans/raw/release/OTF/SourceHanSansSC.zip
-    wget https://github.com/adobe-fonts/source-han-sans/releases/latest/download/SourceHanSansSC.zip
-    wget https://github.com/adobe-fonts/source-han-serif/releases/download/2.000R/SourceHanSerifSC.zip
-    #wget https://github.com/adobe-fonts/source-han-serif/raw/release/OTF/SourceHanSerifSC_SB-H.zip
-    #wget https://github.com/adobe-fonts/source-han-serif/raw/release/OTF/SourceHanSerifSC_EL-M.zip
-    unzip SourceHanSansSC.zip -d SourceHanSansSC
-    unzip SourceHanSerifSC.zip -d SourceHanSerifSC
-    #unzip SourceHanSerifSC_EL-M.zip -d SourceHanSerifSC_EL-M
-    #unzip SourceHanSerifSC_SB-H.zip -d SourceHanSerifSC_SB-H
-    #sudo mv SourceHanSansSC SourceHanSerifSC_EL-M SourceHanSerifSC_SB-H /usr/share/fonts/opentype/
-    sudo mv SourceHanSansSC SourceHanSerifSC /usr/share/fonts/opentype/
-    wget -O source-serif-pro.zip https://www.fontsquirrel.com/fonts/download/source-serif-pro
-    unzip source-serif-pro -d source-serif-pro
-    sudo mv source-serif-pro /usr/share/fonts/opentype/
-    wget -O source-sans-pro.zip https://www.fontsquirrel.com/fonts/download/source-sans-pro
-    unzip source-sans-pro -d source-sans-pro
-    sudo mv source-sans-pro /usr/share/fonts/opentype/
-    wget -O source-code-pro.zip https://www.fontsquirrel.com/fonts/download/source-code-pro
-    unzip source-code-pro -d source-code-pro
-    sudo mv source-code-pro /usr/share/fonts/opentype/
+    sudo apt-get install -y texlive-xetex latex-cjk-all
+    sudo dpkg -i "$script_dir/../../pandoc-2.16.1-1-amd64.deb"
+    mkdir -p "$pdf_temp_dir/fonts"
+    (
+        cd "$pdf_temp_dir/fonts"
+        wget -nv -O SourceHanSansSC.zip https://github.com/adobe-fonts/source-han-sans/releases/download/2.005R/09_SourceHanSansSC.zip
+        wget -nv -O SourceHanSerifSC.zip https://github.com/adobe-fonts/source-han-serif/releases/download/2.000R/SourceHanSerifSC.zip
+        wget -nv -O source-serif-pro.zip https://github.com/adobe-fonts/source-serif/releases/download/3.001R/source-serif-pro-3.001R.zip
+        wget -nv -O source-sans-pro.zip https://github.com/adobe-fonts/source-sans/releases/download/2.045R-ro/1.095R-it/source-sans-pro-2.045R-ro-1.095R-it.zip
+        wget -nv -O source-code-pro.zip https://github.com/adobe-fonts/source-code-pro/releases/download/2.042R-u/1.062R-i/1.026R-vf/OTF-source-code-pro-2.042R-u_1.062R-i.zip
+        for font in SourceHanSansSC SourceHanSerifSC source-serif-pro source-sans-pro source-code-pro; do
+            unzip -q "$font.zip" -d "$font"
+            sudo mkdir -p "/usr/share/fonts/opentype/$font"
+            # XeTeX needs desktop fonts; do not let Fontconfig select bundled web fonts.
+            find "$font" -type f -name '*.otf' -exec sudo cp -t "/usr/share/fonts/opentype/$font" {} +
+        done
+    )
     sudo fc-cache -f -v
 }
 
 function generate_pdf {
-    mv _$1/new_version_$1 ./old_version_$1
+    local pdf_dir="$pdf_temp_dir/$1"
+    mkdir -p "$pdf_dir"
     if [[ "$1" == "shardingsphere" ]] ;then
         targetDir=" _$1/docs/document/content"
     else
@@ -87,18 +88,6 @@ function generate_pdf {
             fi
         done
 
-        if [[ "$1" == "shardingsphere" ]] ;then
-            findex="findex"
-            testweight=0
-            mkdir $test
-            echo "test" >> "${findex}/_index.md.rst"
-            echo -e "${testweight}\t${findex}/index" >> "${lastpath}/filelist.txt"
-            echo "============================" >> "${findex}/index.rst"
-            echo "test" >> "${findex}/index.rst"
-            echo "============================" >> "${findex}/index.rst"
-            echo -e ".. toctree::\n   :hidden: \n\n   _index.md" >> "${path}/index.rst"
-        fi
-
         for f in `find . -type f -name "*list.txt"`
         do
             path=${f%/*}
@@ -125,17 +114,23 @@ function generate_pdf {
 
         cd ..
         make latexpdf
-        mkdir -p pdf
-        cp _build/latex/*.pdf pdf/$1_docs_${lang}.pdf
-        echo "shardingsphere_docs_${lang}.pdf"
+        cp _build/latex/*.pdf "$pdf_dir/${1}_docs_${lang}.pdf"
+        test -s "$pdf_dir/${1}_docs_${lang}.pdf"
+        if [[ "$(head -c 5 "$pdf_dir/${1}_docs_${lang}.pdf")" != '%PDF-' ]]; then
+            echo "Invalid PDF: ${1}_docs_${lang}.pdf" >&2
+            return 1
+        fi
         make clean
         rm -rf {_build,source}
     done
+    git pull --ff-only
+    mkdir -p pdf
+    cp "$pdf_dir/${1}_docs_en.pdf" "$pdf_dir/${1}_docs_cn.pdf" pdf/
+    mv "_$1/new_version_$1" "old_version_$1"
     rm -rf {_$1,Makefile}
-    git pull
     git add -- "pdf/${1}_docs_en.pdf" "pdf/${1}_docs_cn.pdf" "old_version_${1}"
     dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
-    git commit -m  "Update PDF files at $dateStr."
+    git commit --only -m "Update PDF files at $dateStr." -- "pdf/${1}_docs_en.pdf" "pdf/${1}_docs_cn.pdf" "old_version_${1}"
     git push
 
 }
@@ -158,10 +153,12 @@ function check_diff {
     fi
 }
 
-prepare
-
-clone_repo "shardingsphere"
-check_diff "shardingsphere"
-
-clone_repo "shardingsphere-elasticjob"
-check_diff "shardingsphere-elasticjob"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+    pdf_temp_dir=$(mktemp -d)
+    trap 'rm -rf "$pdf_temp_dir"' EXIT
+    prepare
+    clone_repo "shardingsphere"
+    check_diff "shardingsphere"
+    clone_repo "shardingsphere-elasticjob"
+    check_diff "shardingsphere-elasticjob"
+fi

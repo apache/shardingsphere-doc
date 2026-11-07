@@ -133,7 +133,7 @@ function generate_pdf {
     done
     rm -rf {_$1,Makefile}
     git pull
-    git add -A
+    git add -- "pdf/${1}_docs_en.pdf" "pdf/${1}_docs_cn.pdf" "old_version_${1}"
     dateStr=`date "+%Y-%m-%d %H:%M:%S %Z"`
     git commit -m  "Update PDF files at $dateStr."
     git push

@@ -1,424 +1,512 @@
-commit f150157de0086e7d87d7d61828bbade54dd0f676
+commit 801c75ae6954bc39986c888cdac869cde2058e69
 Author: Hengqian Ling <linghengqian@outlook.com>
-Date:   Tue Oct 27 11:25:20 2026 +0800
+Date:   Tue Nov 10 23:18:30 2026 +0800
 
-    Complete Annotation Job support (#2556)
-    
-    * Complete Annotation Job support
-    
-    * Adapt to metadata changes
+    Spring Boot Starter and Spring Namespace support etcd, Nacos and in-memory registry centers (#2548)
 
+diff --git a/docs/content/user-manual/configuration/graalvm-native-image.cn.md b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
+index 87d4940de..a34dacd73 100644
+--- a/docs/content/user-manual/configuration/graalvm-native-image.cn.md
++++ b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
+@@ -354,12 +354,16 @@ ElasticJob 定义了 `generateMetadata` 的 Maven Profile 用于在 GraalVM JIT
+ 
+ 以下命令仅为 `elasticjob-test-native` 生成 Conditional 形态的 GraalVM Reachability Metadata 的一个举例。
+ 生成的 GraalVM Reachability Metadata 位于 `elasticjob-reachability-metadata` 子模块下。
++末尾的 `native:metadata-copy` 目标为可选项，省略后仅携带 GraalVM Tracing Agent 执行单元测试，不生成 Metadata 文件。
+ 
+-对于测试类和测试文件独立使用的 GraalVM Reachability Metadata，贡献者应该放置到 `shardingsphere-test-native` 子模块的 classpath 的
++对于测试类和测试文件独立使用的 GraalVM Reachability Metadata，贡献者应该放置到 `elasticjob-test-native` 子模块的 classpath 的
+ `META-INF/native-image/elasticjob-test-native-test-metadata/` 下。
+ 
+ ```bash
+-git clone git@github.com:apache/shardingsphere.git
+-cd ./shardingsphere/
++git clone git@github.com:apache/shardingsphere-elasticjob.git
++cd ./shardingsphere-elasticjob/
++# 仅携带 GraalVM Tracing Agent 执行单元测试
++./mvnw -PgenerateMetadata -e -T1C clean test
++# 生成或覆盖 Conditional 形态的 GraalVM Reachability Metadata
+ ./mvnw -PgenerateMetadata -e -T1C clean test native:metadata-copy
+ ```
+diff --git a/docs/content/user-manual/configuration/graalvm-native-image.en.md b/docs/content/user-manual/configuration/graalvm-native-image.en.md
+index 85f70ce23..e67321690 100644
+--- a/docs/content/user-manual/configuration/graalvm-native-image.en.md
++++ b/docs/content/user-manual/configuration/graalvm-native-image.en.md
+@@ -365,12 +365,16 @@ while the entries in `META-INF/native-image/org.apache.shardingsphere.elasticjob
+ 
+ The following command is just an example of generating Conditional GraalVM Reachability Metadata for `elasticjob-test-native`.
+ The generated GraalVM Reachability Metadata is located in the `elasticjob-reachability-metadata` submodule.
++The trailing `native:metadata-copy` goal is optional: omit it to only execute the unit tests with the GraalVM Tracing Agent attached.
+ 
+ For GraalVM Reachability Metadata used independently by test classes and test files, 
+-contributors should place it in the classpath of the shardingsphere-test-native submodule under `META-INF/native-image/elasticjob-test-native-test-metadata/`.
++contributors should place it in the classpath of the elasticjob-test-native submodule under `META-INF/native-image/elasticjob-test-native-test-metadata/`.
+ 
+ ```bash
+-git clone git@github.com:apache/shardingsphere.git
+-cd ./shardingsphere/
++git clone git@github.com:apache/shardingsphere-elasticjob.git
++cd ./shardingsphere-elasticjob/
++# Only execute the unit tests with the GraalVM Tracing Agent attached
++./mvnw -PgenerateMetadata -e -T1C clean test
++# Generate or overwrite the Conditional GraalVM Reachability Metadata
+ ./mvnw -PgenerateMetadata -e -T1C clean test native:metadata-copy
+ ```
+diff --git a/docs/content/user-manual/configuration/java-api.cn.md b/docs/content/user-manual/configuration/java-api.cn.md
+index 8e4943ca5..e9ad7975e 100644
+--- a/docs/content/user-manual/configuration/java-api.cn.md
++++ b/docs/content/user-manual/configuration/java-api.cn.md
+@@ -36,6 +36,7 @@ ElasticJob 支持 `ZooKeeper`（默认）、`etcd`、`Nacos` 和内存注册中
+ | sessionTimeoutMilliseconds    | 否     |
+ | connectionTimeoutMilliseconds | 否     |
+ | digest                        | 否     |
++| ensembleTracker               | 否     |
+ 
+ ## 作业配置
+ 
+diff --git a/docs/content/user-manual/configuration/java-api.en.md b/docs/content/user-manual/configuration/java-api.en.md
+index 1f389d773..7fdee552b 100644
+--- a/docs/content/user-manual/configuration/java-api.en.md
++++ b/docs/content/user-manual/configuration/java-api.en.md
+@@ -37,6 +37,7 @@ Configuration:
+ | sessionTimeoutMilliseconds    | No                    |
+ | connectionTimeoutMilliseconds | No                    |
+ | digest                        | No                    |
++| ensembleTracker               | No                    |
+ 
+ ## Job Configuration
+ 
+diff --git a/docs/content/user-manual/configuration/registry-center/_index.cn.md b/docs/content/user-manual/configuration/registry-center/_index.cn.md
+index 7b6e8e1c1..33fc63deb 100644
+--- a/docs/content/user-manual/configuration/registry-center/_index.cn.md
++++ b/docs/content/user-manual/configuration/registry-center/_index.cn.md
+@@ -1,5 +1,4 @@
+ +++
+-pre = "<b>4.1.2.1 </b>"
+ title = "注册中心配置"
+ weight = 1
+ chapter = true
+@@ -21,5 +20,3 @@ ElasticJob 支持多种注册中心类型，用于协调分布式作业的调度
+ ## 配置方式
+ 
+ 上表中的每种注册中心文档都详细说明了其自身的配置属性与使用示例。
+-
+-需要注意的是，Spring Boot Starter 与 Spring Namespace 目前仅支持 ZooKeeper。其他注册中心类型只能通过 Java API 或 `RegistryCenterFactory` 使用。
+diff --git a/docs/content/user-manual/configuration/registry-center/_index.en.md b/docs/content/user-manual/configuration/registry-center/_index.en.md
+index f9a41c64e..3d4fc4b16 100644
+--- a/docs/content/user-manual/configuration/registry-center/_index.en.md
++++ b/docs/content/user-manual/configuration/registry-center/_index.en.md
+@@ -1,5 +1,4 @@
+ +++
+-pre = "<b>4.1.2.1 </b>"
+ title = "Registry Center Configuration"
+ weight = 1
+ chapter = true
+@@ -21,5 +20,3 @@ This section describes how to configure different types of registry centers.
+ ## How to Configure
+ 
+ The document of each registry center type above describes its own configuration properties and usage examples in detail.
+-
+-Please note that the Spring Boot Starter and the Spring Namespace currently only support ZooKeeper. Other registry center types can only be used through the Java API or `RegistryCenterFactory`.
+diff --git a/docs/content/user-manual/configuration/registry-center/etcd.cn.md b/docs/content/user-manual/configuration/registry-center/etcd.cn.md
+index 1ec7c7bab..355cff53c 100644
+--- a/docs/content/user-manual/configuration/registry-center/etcd.cn.md
++++ b/docs/content/user-manual/configuration/registry-center/etcd.cn.md
+@@ -26,6 +26,7 @@ etcd 是一个分布式键值存储系统，ElasticJob 支持使用 etcd3 作为
+ | connectionTimeoutMilliseconds | long   | 5000  | 连接超时毫秒数             |
+ | username                      | String |       | 认证用户名  |
+ | password                      | String |       | 认证密码  |
++| ssl                           | boolean | false | 是否使用 HTTPS |
+ | authority                     | String |       | HTTP/2 的 authority 头  |
+ 
+ ### 核心配置项说明
+@@ -73,7 +74,30 @@ public class EtcdRegistryCenterExample {
+ }
+ ```
+ 
+-### Spring Boot Starter 与 Spring Namespace
++### Spring Boot Starter
++
++```yaml
++elasticjob:
++  reg-center:
++    type: etcd
++    server-lists: http://host1:2379,http://host2:2379
++    namespace: elasticjob
++    connection-timeout-milliseconds: 5000
++    username: root
++    password: password
++    ssl: true
++    authority: host1:2379
++```
++
++### Spring Namespace
+ 
+-目前 Spring Boot Starter 和 Spring Namespace 仅支持 ZooKeeper，因此 etcd 只能通过 Java API 或
+-`RegistryCenterFactory` 使用。详见[注册中心配置](/cn/user-manual/configuration/registry-center)。
++```xml
++<elasticjob:etcd id="regCenter" 
++    server-lists="http://host1:2379,http://host2:2379" 
++    namespace="elasticjob"
++    connection-timeout-milliseconds="5000"
++    username="root"
++    password="password"
++    ssl="true"
++    authority="host1:2379" />
++```
+diff --git a/docs/content/user-manual/configuration/registry-center/etcd.en.md b/docs/content/user-manual/configuration/registry-center/etcd.en.md
+index bc3293ca8..b3e51b91d 100644
+--- a/docs/content/user-manual/configuration/registry-center/etcd.en.md
++++ b/docs/content/user-manual/configuration/registry-center/etcd.en.md
+@@ -26,6 +26,7 @@ etcd is a distributed key-value store system. ElasticJob supports using etcd3 as
+ | connectionTimeoutMilliseconds | long      | 5000          | Connection timeout in milliseconds                       |
+ | username                      | String    |               | Authentication username                                  |
+ | password                      | String    |               | Authentication password                                  |
++| ssl                           | boolean   | false         | Whether to use HTTPS                                     |
+ | authority                     | String    |               | Authority header for HTTP/2                              |
+ 
+ ### Core Configuration Description
+@@ -73,8 +74,30 @@ public class EtcdRegistryCenterExample {
+ }
+ ```
+ 
+-### Spring Boot Starter and Spring Namespace
++### Spring Boot Starter
++
++```yaml
++elasticjob:
++  reg-center:
++    type: etcd
++    server-lists: http://host1:2379,http://host2:2379
++    namespace: elasticjob
++    connection-timeout-milliseconds: 5000
++    username: root
++    password: password
++    ssl: true
++    authority: host1:2379
++```
++
++### Spring Namespace
+ 
+-The Spring Boot Starter and the Spring Namespace only support ZooKeeper at present,
+-so etcd can only be used through the Java API or `RegistryCenterFactory`.
+-See the [Registry Center Configuration](/en/user-manual/configuration/registry-center) page for details.
++```xml
++<elasticjob:etcd id="regCenter" 
++    server-lists="http://host1:2379,http://host2:2379" 
++    namespace="elasticjob"
++    connection-timeout-milliseconds="5000"
++    username="root"
++    password="password"
++    ssl="true"
++    authority="host1:2379" />
++```
+diff --git a/docs/content/user-manual/configuration/registry-center/memory.cn.md b/docs/content/user-manual/configuration/registry-center/memory.cn.md
+index 82fc6cd7e..e9d39e9e6 100644
+--- a/docs/content/user-manual/configuration/registry-center/memory.cn.md
++++ b/docs/content/user-manual/configuration/registry-center/memory.cn.md
+@@ -54,6 +54,21 @@ public class MemoryRegistryCenterExample {
+ }
+ ```
+ 
++### Spring Boot Starter
++
++```yaml
++elasticjob:
++  reg-center:
++    type: memory
++    namespace: elasticjob
++```
++
++### Spring 命名空间
++
++```xml
++<elasticjob:memory id="regCenter" namespace="elasticjob" />
++```
++
+ ### RegistryCenterFactory（SPI）
+ 
+ ```java
+diff --git a/docs/content/user-manual/configuration/registry-center/memory.en.md b/docs/content/user-manual/configuration/registry-center/memory.en.md
+index 6725426c4..a31fde71c 100644
+--- a/docs/content/user-manual/configuration/registry-center/memory.en.md
++++ b/docs/content/user-manual/configuration/registry-center/memory.en.md
+@@ -6,7 +6,7 @@ weight = 4
+ Memory is a built-in in-process registry center implementation. It stores all data in a static `ConcurrentHashMap` and requires no external server.
+ 
+ > Only for unit tests and local development in a single JVM.
+-> data is neither persisted nor shared across processes, and leader election is JVM-local.
++> Data is neither persisted nor shared across processes, and leader election is JVM-local.
+ 
+ Instances sharing the same namespace share the same in-memory data; different namespaces are isolated from each other.
+ Ephemeral nodes are removed when the registry center instance that created them is closed.
+@@ -54,6 +54,21 @@ public class MemoryRegistryCenterExample {
+ }
+ ```
+ 
++### Spring Boot Starter
++
++```yaml
++elasticjob:
++  reg-center:
++    type: memory
++    namespace: elasticjob
++```
++
++### Spring Namespace
++
++```xml
++<elasticjob:memory id="regCenter" namespace="elasticjob" />
++```
++
+ ### RegistryCenterFactory (SPI)
+ 
+ ```java
+diff --git a/docs/content/user-manual/configuration/registry-center/nacos.cn.md b/docs/content/user-manual/configuration/registry-center/nacos.cn.md
+index 5c2554484..88dbf3606 100644
+--- a/docs/content/user-manual/configuration/registry-center/nacos.cn.md
++++ b/docs/content/user-manual/configuration/registry-center/nacos.cn.md
+@@ -28,7 +28,7 @@ Nacos 是一个动态服务发现、配置和服务管理平台，ElasticJob 支
+ |----------------|:-------|:------|:------------------------------------|
+ | serverLists    | String |       | Nacos 服务器地址列表                     |
+ | namespace      | String |       | ElasticJob 命名空间，映射为 Nacos 配置 group |
+-| nacosNamespace | String |       | Nacos 租户（命名空间 ID），为空表示 `public`    |
++| tenant         | String |       | Nacos 租户（命名空间 ID），为空表示 `public`    |
+ | username       | String |       | 认证用户名                               |
+ | password       | String |       | 认证密码                                |
+ | timeoutMs      | long   | 3000  | 配置操作超时毫秒数                          |
+@@ -46,6 +46,11 @@ Nacos 是一个动态服务发现、配置和服务管理平台，ElasticJob 支
+ 
+ ElasticJob 命名空间，映射为 Nacos 配置 group，用于隔离不同的作业集群。建议使用有意义的名称，如：`elasticjob`。
+ 
++**tenant:**
++
++Nacos 租户（命名空间 ID），用于隔离开发、测试、生产等不同环境，为空表示 `public`。
++注意它与 ElasticJob 的 `namespace` 不同，后者映射为 Nacos 配置 group。
++
+ **username 和 password:**
+ 
+ Nacos 认证信息，也可以作为 `RegistryCenterFactory` 的 `digest` 参数（`username:password`）传入。
+@@ -82,6 +87,32 @@ public class NacosRegistryCenterExample {
+ }
+ ```
+ 
++### Spring Boot Starter
++
++```yaml
++elasticjob:
++  reg-center:
++    type: nacos
++    server-lists: nacos://127.0.0.1:8848,127.0.0.2:8848
++    namespace: elasticjob
++    tenant: ""
++    username: nacos
++    password: nacos
++    timeout-ms: 3000
++```
++
++### Spring Namespace
++
++```xml
++<elasticjob:nacos id="regCenter" 
++    server-lists="nacos://127.0.0.1:8848,127.0.0.2:8848" 
++    namespace="elasticjob"
++    tenant=""
++    username="nacos"
++    password="nacos"
++    timeout-ms="3000" />
++```
++
+ ### RegistryCenterFactory（SPI）
+ 
+ ```java
+diff --git a/docs/content/user-manual/configuration/registry-center/nacos.en.md b/docs/content/user-manual/configuration/registry-center/nacos.en.md
+index e989a9667..2639ece18 100644
+--- a/docs/content/user-manual/configuration/registry-center/nacos.en.md
++++ b/docs/content/user-manual/configuration/registry-center/nacos.en.md
+@@ -28,7 +28,7 @@ Because a Nacos `dataId` only accepts letters, digits and `_-.:`, every path seg
+ |-----------------|:----------|:---------------|:---------------------------------------------------------|
+ | serverLists     | String    |                | Nacos server address list                                |
+ | namespace       | String    |                | ElasticJob namespace, mapped to the Nacos config group   |
+-| nacosNamespace  | String    |                | Nacos tenant (namespace id), empty means `public`        |
++| tenant          | String    |                | Nacos tenant (namespace id), empty means `public`        |
+ | username        | String    |                | Authentication username                                  |
+ | password        | String    |                | Authentication password                                  |
+ | timeoutMs       | long      | 3000           | Timeout of config operations in milliseconds             |
+@@ -46,6 +46,11 @@ When using `RegistryCenterFactory` (SPI), the `nacos://` prefix is required so t
+ 
+ ElasticJob namespace, mapped to the Nacos config group for isolating different job clusters. It is recommended to use meaningful names, such as: `elasticjob`.
+ 
++**tenant:**
++
++The Nacos tenant (namespace id), used to isolate different environments such as development, test and production. Empty means `public`.
++Note that this is distinct from the ElasticJob `namespace`, which is mapped to the Nacos config group.
++
+ **username and password:**
+ 
+ Nacos authentication information. They can also be passed as the `digest` argument (`username:password`) of `RegistryCenterFactory`.
+@@ -82,6 +87,32 @@ public class NacosRegistryCenterExample {
+ }
+ ```
+ 
++### Spring Boot Starter
++
++```yaml
++elasticjob:
++  reg-center:
++    type: nacos
++    server-lists: nacos://127.0.0.1:8848,127.0.0.2:8848
++    namespace: elasticjob
++    tenant: ""
++    username: nacos
++    password: nacos
++    timeout-ms: 3000
++```
++
++### Spring Namespace
++
++```xml
++<elasticjob:nacos id="regCenter" 
++    server-lists="nacos://127.0.0.1:8848,127.0.0.2:8848" 
++    namespace="elasticjob"
++    tenant=""
++    username="nacos"
++    password="nacos"
++    timeout-ms="3000" />
++```
++
+ ### RegistryCenterFactory (SPI)
+ 
+ ```java
+diff --git a/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md b/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md
+index 76fba223e..0d8aaac02 100644
+--- a/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md
++++ b/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md
+@@ -24,10 +24,10 @@ Apache ZooKeeper 是 ElasticJob 默认且最成熟的注册中心实现。
+ | serverLists                   | String |       | 连接 ZooKeeper 服务器的列表 |
+ | namespace                     | String |       | ZooKeeper 的命名空间     |
+ | baseSleepTimeMilliseconds     | int    | 1000  | 等待重试的间隔时间的初始毫秒数     |
+-| maxSleepTimeMilliseconds      | String | 3000  | 等待重试的间隔时间的最大毫秒数     |
+-| maxRetries                    | String | 3     | 最大重试次数              |
+-| sessionTimeoutMilliseconds    | int    | 60000 | 会话超时毫秒数             |
+-| connectionTimeoutMilliseconds | int    | 15000 | 连接超时毫秒数             |
++| maxSleepTimeMilliseconds      | int    | 3000  | 等待重试的间隔时间的最大毫秒数     |
++| maxRetries                    | int    | 3     | 最大重试次数              |
++| sessionTimeoutMilliseconds    | int    | 0   | 会话超时毫秒数，`0` 表示使用 Curator 缺省值 |
++| connectionTimeoutMilliseconds | int    | 0   | 连接超时毫秒数，`0` 表示使用 Curator 缺省值 |
+ | digest                        | String | 无需验证  | 连接 ZooKeeper 的权限令牌  |
+ | ensembleTracker               | boolean | true | 是否监听集群配置变化 |
+ 
+diff --git a/docs/content/user-manual/configuration/registry-center/zookeeper.en.md b/docs/content/user-manual/configuration/registry-center/zookeeper.en.md
+index b400f4445..33876a5e8 100644
+--- a/docs/content/user-manual/configuration/registry-center/zookeeper.en.md
++++ b/docs/content/user-manual/configuration/registry-center/zookeeper.en.md
+@@ -24,10 +24,10 @@ Apache ZooKeeper is the default and most mature registry center implementation f
+ | serverLists                   | String    |               | ZooKeeper server IP list                                 |
+ | namespace                     | String    |               | ZooKeeper namespace                                      |
+ | baseSleepTimeMilliseconds     | int       | 1000          | The initial value of milliseconds for the retry interval |
+-| maxSleepTimeMilliseconds      | String    | 3000          | The maximum value of milliseconds for the retry interval |
+-| maxRetries                    | String    | 3             | Maximum number of retries                                |
+-| sessionTimeoutMilliseconds    | int       | 60000         | Session timeout in milliseconds                          |
+-| connectionTimeoutMilliseconds | int       | 15000         | Connection timeout in milliseconds                       |
++| maxSleepTimeMilliseconds      | int       | 3000          | The maximum value of milliseconds for the retry interval |
++| maxRetries                    | int       | 3             | Maximum number of retries                                |
++| sessionTimeoutMilliseconds    | int       | 0           | Session timeout in milliseconds, `0` means the Curator default |
++| connectionTimeoutMilliseconds | int       | 0           | Connection timeout in milliseconds, `0` means the Curator default |
+ | digest                        | String    | no need       | Permission token to connect to ZooKeeper                 |
+ | ensembleTracker               | boolean   | true          | Whether to watch ensemble configuration changes          |
+ 
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.cn.md b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-index 0e3b92fc9..43effd25f 100644
+index 43effd25f..150f10726 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.cn.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-@@ -74,6 +74,8 @@ elasticjob.reg-center.namespace=elasticjob-springboot
- | props                             | 否    |
- | disabled                          | 否    |
- | overwrite                         | 否    |
-+| label                             | 否    |
-+| static-sharding                   | 否    |
- | max-wait-millis                   | 否    |
+@@ -18,15 +18,16 @@ chapter = true
  
- **elasticJobClass 与 elasticJobType 互斥，每项作业只能有一种类型**
+ 配置前缀：`elasticjob.reg-center`
+ 
+-`type` 指定注册中心类型，目前仅支持 `zookeeper`（默认）。
++`type` 指定注册中心类型：`zookeeper`（默认）、`etcd`、`nacos` 或 `memory`。
++其余属性因类型而异，各类型的属性与 Spring Boot 配置示例见[注册中心配置](/cn/user-manual/configuration/registry-center)。
+ 
+ 可配置属性：
+ 
+-| 属性名        | 是否必填 |
+-|-------------|:---------|
+-| type        | 否       |
+-| server-lists | 是       |
+-| namespace   | 是       |
++| 属性名        | 是否必填                        |
++|-------------|:--------------------------------|
++| type        | 否                              |
++| server-lists | 是（zookeeper、etcd、nacos）      |
++| namespace   | 是                             |
+ 
+ 配置格式参考：
+ 
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.en.md b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-index 5b764aaab..8d9603a91 100644
+index 8d9603a91..057bbf468 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.en.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-@@ -74,6 +74,8 @@ Configuration:
- | props                             | No       |
- | disabled                          | No       |
- | overwrite                         | No       |
-+| label                             | No       |
-+| static-sharding                   | No       |
- | max-wait-millis                   | No       |
+@@ -18,15 +18,17 @@ To use the Spring boot, user need to add the dependency of the `elasticjob-sprin
  
- **"elasticJobClass" and "elasticJobType" are mutually exclusive.**
+ Prefix: `elasticjob.reg-center`
+ 
+-`type` selects the registry center, currently only `zookeeper` (default).
++`type` selects the registry center: `zookeeper` (default), `etcd`, `nacos` or `memory`.
++The remaining properties depend on the type, see [Registry Center Configuration](/en/user-manual/configuration/registry-center)
++for the properties and the Spring Boot example of each type.
+ 
+ Configuration:
+ 
+-| Property name | Required |
+-|---------------|:---------|
+-| type          | No       |
+-| server-lists  | Yes      |
+-| namespace     | Yes      |
++| Property name | Required                        |
++|---------------|:--------------------------------|
++| type          | No                              |
++| server-lists  | Yes (for zookeeper, etcd, nacos)|
++| namespace     | Yes                             |
+ 
+ Reference:
+ 
 diff --git a/docs/content/user-manual/configuration/spring-namespace.cn.md b/docs/content/user-manual/configuration/spring-namespace.cn.md
-index 901587c84..57874fbf0 100644
+index 57874fbf0..54cadcb8a 100644
 --- a/docs/content/user-manual/configuration/spring-namespace.cn.md
 +++ b/docs/content/user-manual/configuration/spring-namespace.cn.md
-@@ -65,8 +65,30 @@ chapter = true
- | props                             | 否    |
- | disabled                          | 否    |
- | overwrite                         | 否    |
-+| label                             | 否    |
-+| static-sharding                   | 否    |
- | max-wait-millis                   | 否    |
+@@ -33,6 +33,10 @@ chapter = true
+ | session-timeout-milliseconds    | 否    |
+ | connection-timeout-milliseconds | 否    |
+ | digest                          | 否    |
++| ensemble-tracker                | 否    |
++
++`<elasticjob:etcd />`、`<elasticjob:nacos />` 和 `<elasticjob:memory />` 也已支持，
++各类型的属性与配置示例见[注册中心配置](/cn/user-manual/configuration/registry-center)章节。
  
-+## 作业扫描配置
-+
-+\<elasticjob:job-scanner />
-+
-+通过 `@ElasticJobConfiguration` 声明作业配置后，可用作业扫描按包自动注册定时或一次性作业。
-+`cron` 非空创建 `ScheduleJobBootstrap` 并自动调度，`cron` 为空创建 `OneOffJobBootstrap` 需手动触发。
-+
-+可配置属性：
-+
-+| 属性名        | 是否必填 | 说明                              |
-+|------------|:-----|:--------------------------------|
-+| id         | 是    | 扫描配置 Bean 主键                    |
-+| base-package | 是    | 待扫描的包，支持单个包或逗号分隔的多个包        |
-+
-+配置参考：
-+
-+```xml
-+<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
-+```
-+
- ## 事件追踪配置
+ ## 作业配置
  
- \<elasticjob:rdb-tracing />
 diff --git a/docs/content/user-manual/configuration/spring-namespace.en.md b/docs/content/user-manual/configuration/spring-namespace.en.md
-index 1d35a0736..903dff051 100644
+index 903dff051..aa7b2480d 100644
 --- a/docs/content/user-manual/configuration/spring-namespace.en.md
 +++ b/docs/content/user-manual/configuration/spring-namespace.en.md
-@@ -60,12 +60,37 @@ Configuration:
- | job-sharding-strategy-type        | No       |
- | job-executor-service-handler-type | No       |
- | job-error-handler-type            | No       |
-+| job-listener-types                | No       |
- | description                       | No       |
- | props                             | No       |
- | disabled                          | No       |
- | overwrite                         | No       |
-+| label                             | No       |
-+| static-sharding                   | No       |
- | max-wait-millis                   | No       |
+@@ -20,7 +20,7 @@ Spring namespace: [http://shardingsphere.apache.org/schema/elasticjob/elasticjob
  
-+## Job Scanner Configuration
-+
-+\<elasticjob:job-scanner />
-+
-+After declaring job configuration with `@ElasticJobConfiguration`, use the job scanner to register
-+schedule or one-off jobs by base package automatically.
-+A non-empty `cron` creates a `ScheduleJobBootstrap` which is scheduled automatically;
-+an empty `cron` creates a `OneOffJobBootstrap` which must be triggered manually.
-+
+ \<elasticjob:zookeeper />
+ 
+-Configuration: 
 +Configuration:
-+
-+| Name         | Required | Description                                       |
-+|--------------|:---------|:--------------------------------------------------|
-+| id           | Yes      | Identify of the scanner in the Spring container   |
-+| base-package | Yes      | Base package to scan, single or comma-separated   |
-+
-+Reference:
-+
-+```xml
-+<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
-+```
-+
- ## Event Tracing Configuration
  
- \<elasticjob:rdb-tracing />
-diff --git a/docs/content/user-manual/usage/job-api/java-api.cn.md b/docs/content/user-manual/usage/job-api/java-api.cn.md
-index 87f6ebd9f..9d9e90334 100644
---- a/docs/content/user-manual/usage/job-api/java-api.cn.md
-+++ b/docs/content/user-manual/usage/job-api/java-api.cn.md
-@@ -13,6 +13,53 @@ ElasticJob 采用构建器模式创建作业配置对象。
-     JobConfiguration jobConfig = JobConfiguration.newBuilder("myJob", 3).cron("0/5 * * * * ?").shardingItemParameters("0=Beijing,1=Shanghai,2=Guangzhou").build();
- ```
+ | Name                            | Required |
+ |---------------------------------|:---------|
+@@ -33,6 +33,10 @@ Configuration:
+ | session-timeout-milliseconds    | No       |
+ | connection-timeout-milliseconds | No       |
+ | digest                          | No       |
++| ensemble-tracker                | No       |
++
++`<elasticjob:etcd />`, `<elasticjob:nacos />` and `<elasticjob:memory />` are also supported.
++Their attributes and examples are documented in the [registry center section](/en/user-manual/configuration/registry-center).
  
-+## 使用注解简化作业配置
-+
-+在作业类上使用 `@ElasticJobConfiguration` 声明作业配置，再通过 `JobAnnotationBuilder` 生成 `JobConfiguration`，
-+或让 `JobBootstrap` 自动从注解解析配置。
-+
-+```java
-+@ElasticJobConfiguration(
-+        jobName = "myJob",
-+        cron = "0/5 * * * * ?",
-+        shardingTotalCount = 3,
-+        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou",
-+        description = "my job")
-+public class MyJob implements SimpleJob {
-+    
-+    @Override
-+    public void execute(final ShardingContext shardingContext) {
-+        // do something
-+    }
-+}
-+```
-+
-+显式生成 `JobConfiguration`：
-+
-+```java
-+JobConfiguration jobConfig = JobAnnotationBuilder.generateJobConfiguration(MyJob.class);
-+new ScheduleJobBootstrap(createRegistryCenter(), new MyJob(), jobConfig).schedule();
-+```
-+
-+也可以省略 `JobConfiguration` 参数，让 Bootstrap 自动从注解解析。
-+`cron` 为空表示一次性作业：
-+
-+```java
-+// 定时作业，cron 不能为空
-+new ScheduleJobBootstrap(createRegistryCenter(), new MyJob()).schedule();
-+
-+// 一次性作业，cron 必须为空
-+new OneOffJobBootstrap(createRegistryCenter(), new MyOneOffJob()).execute();
-+```
-+
-+常用注解属性与 `JobConfiguration` 一一对应：
-+`jobName`、`cron`、`timeZone`、`shardingTotalCount`、`shardingItemParameters`、`jobParameter`、
-+`monitorExecution`、`failover`、`misfire`、`maxTimeDiffSeconds`、`reconcileIntervalMinutes`、
-+`jobShardingStrategyType`、`jobExecutorThreadPoolSizeProviderType`、`jobErrorHandlerType`、
-+`jobListenerTypes`、`extraConfigurations`、`description`、`props`、`disabled`、`overwrite`、
-+`label`、`staticSharding`、`maxWaitMillis`。
-+其中 `registryCenter` 仅用于 Spring 扫描时选择注册中心 Bean，会被 `JobAnnotationBuilder` 忽略。
-+
- ## 作业启动
+ ## Job Configuration
  
- ElasticJob 调度器分为定时调度和一次性调度两种类型。
-diff --git a/docs/content/user-manual/usage/job-api/java-api.en.md b/docs/content/user-manual/usage/job-api/java-api.en.md
-index 416863bb0..9d93984c1 100644
---- a/docs/content/user-manual/usage/job-api/java-api.en.md
-+++ b/docs/content/user-manual/usage/job-api/java-api.en.md
-@@ -13,6 +13,53 @@ The code example is as follows:
-     JobConfiguration jobConfig = JobConfiguration.newBuilder("myJob", 3).cron("0/5 * * * * ?").shardingItemParameters("0=Beijing,1=Shanghai,2=Guangzhou").build();
- ```
- 
-+## Use annotation to simplify job configuration
-+
-+Declare job configuration with `@ElasticJobConfiguration` on the job class, then build the `JobConfiguration` via `JobAnnotationBuilder`
-+or let the `JobBootstrap` resolve it from the annotation automatically.
-+
-+```java
-+@ElasticJobConfiguration(
-+        jobName = "myJob",
-+        cron = "0/5 * * * * ?",
-+        shardingTotalCount = 3,
-+        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou",
-+        description = "my job")
-+public class MyJob implements SimpleJob {
-+    
-+    @Override
-+    public void execute(final ShardingContext shardingContext) {
-+        // do something
-+    }
-+}
-+```
-+
-+Generate `JobConfiguration` explicitly:
-+
-+```java
-+JobConfiguration jobConfig = JobAnnotationBuilder.generateJobConfiguration(MyJob.class);
-+new ScheduleJobBootstrap(createRegistryCenter(), new MyJob(), jobConfig).schedule();
-+```
-+
-+Or omit the `JobConfiguration` parameter and let the bootstrap resolve it from the annotation.
-+An empty `cron` means a one-off job:
-+
-+```java
-+// Schedule job, cron must not be empty
-+new ScheduleJobBootstrap(createRegistryCenter(), new MyJob()).schedule();
-+
-+// One-off job, cron must be empty
-+new OneOffJobBootstrap(createRegistryCenter(), new MyOneOffJob()).execute();
-+```
-+
-+Common annotation attributes map one-to-one to `JobConfiguration`:
-+`jobName`, `cron`, `timeZone`, `shardingTotalCount`, `shardingItemParameters`, `jobParameter`,
-+`monitorExecution`, `failover`, `misfire`, `maxTimeDiffSeconds`, `reconcileIntervalMinutes`,
-+`jobShardingStrategyType`, `jobExecutorThreadPoolSizeProviderType`, `jobErrorHandlerType`,
-+`jobListenerTypes`, `extraConfigurations`, `description`, `props`, `disabled`, `overwrite`,
-+`label`, `staticSharding`, `maxWaitMillis`.
-+`registryCenter` is only used by Spring scanning to select the registry center bean and is ignored by `JobAnnotationBuilder`.
-+
- ## Job start
- 
- ElasticJob scheduler is divided into two types: timed scheduling and one-time scheduling.
-diff --git a/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md b/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
-index 73576879b..c833d59db 100644
---- a/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
-+++ b/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
-@@ -66,6 +66,49 @@ elasticjob:
-         script.command.line: "echo SCRIPT Job: "
- ```
- 
-+### 使用注解配置作业
-+
-+除了 `elasticjob.jobs` 配置，还可以用 `@ElasticJobConfiguration` 声明作业配置，
-+并用 `@ElasticJobScan` 开启扫描。扫描器会根据 `cron` 是否为空自动创建
-+`ScheduleJobBootstrap`（`cron` 非空）或 `OneOffJobBootstrap`（`cron` 为空）。
-+
-+```java
-+@Component
-+@ElasticJobConfiguration(
-+        jobName = "annotationSimpleJob",
-+        cron = "0/5 * * * * ?",
-+        shardingTotalCount = 3,
-+        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou")
-+public class AnnotationSimpleJob implements SimpleJob {
-+    
-+    @Override
-+    public void execute(final ShardingContext shardingContext) {
-+        // 处理作业
-+    }
-+}
-+```
-+
-+开启扫描，`value` 与 `basePackages` 均可指定待扫描的包：
-+
-+```java
-+@Configuration
-+@ElasticJobScan(basePackages = "org.example.job")
-+public class ElasticJobConfig {
-+}
-+```
-+
-+说明：
-+
-+- Bootstrap Bean 名称默认为 `jobName`，且必须与被扫描的作业 Bean 名称不同。`cron` 非空时创建 `ScheduleJobBootstrap`，
-+  应用启动后自动调度；`cron` 为空时创建 `OneOffJobBootstrap`，需要手动触发。
-+- `registryCenter` 可选，用于指定 `CoordinatorRegistryCenter` Bean 名称。
-+  为空时按类型注入容器中唯一的 `CoordinatorRegistryCenter`。
-+- 作业配置在运行时从注解解析（CGLIB 代理走超类回退）。Bean 定义中仅注册 Bean 引用以保持 Spring AOT 友好，注解类型由 GraalVM 可达性元数据覆盖，原生镜像下仍可工作。
-+- 注解属性覆盖 `timeZone`、`jobParameter`、`monitorExecution`、`failover`、`misfire`、
-+  `maxTimeDiffSeconds`、`reconcileIntervalMinutes`、`jobShardingStrategyType`、
-+  `jobExecutorThreadPoolSizeProviderType`、`jobErrorHandlerType`、`jobListenerTypes`、
-+  `extraConfigurations`、`description`、`props`、`disabled`、`overwrite`、`label`、`staticSharding`、`maxWaitMillis`。
-+
- ## 作业启动
- 
- ### 定时调度
-diff --git a/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md b/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
-index 8653c9061..a263812ce 100644
---- a/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
-+++ b/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
-@@ -67,6 +67,49 @@ elasticjob:
-         script.command.line: "echo SCRIPT Job: "
- ```
- 
-+### Configure jobs with annotation
-+
-+As an alternative to `elasticjob.jobs` properties, declare job configuration with `@ElasticJobConfiguration`
-+and enable scanning with `@ElasticJobScan`. The scanner creates `ScheduleJobBootstrap` (when `cron` is set)
-+or `OneOffJobBootstrap` (when `cron` is empty) automatically.
-+
-+```java
-+@Component
-+@ElasticJobConfiguration(
-+        jobName = "annotationSimpleJob",
-+        cron = "0/5 * * * * ?",
-+        shardingTotalCount = 3,
-+        shardingItemParameters = "0=Beijing,1=Shanghai,2=Guangzhou")
-+public class AnnotationSimpleJob implements SimpleJob {
-+    
-+    @Override
-+    public void execute(final ShardingContext shardingContext) {
-+        // do something
-+    }
-+}
-+```
-+
-+Enable scanning. Both `value` and `basePackages` accept base packages to scan:
-+
-+```java
-+@Configuration
-+@ElasticJobScan(basePackages = "org.example.job")
-+public class ElasticJobConfig {
-+}
-+```
-+
-+Notes:
-+
-+- The bootstrap bean name defaults to the `jobName`, which must differ from the scanned job bean name. A non-empty `cron` creates a `ScheduleJobBootstrap`
-+  which is scheduled automatically on startup; an empty `cron` creates a `OneOffJobBootstrap` which must be triggered manually.
-+- `registryCenter` optionally specifies the `CoordinatorRegistryCenter` bean name. When empty, the single
-+  `CoordinatorRegistryCenter` bean in the context is injected by type.
-+- Job configuration is resolved at runtime from the annotation (with superclass fallback for CGLIB proxies). Only bean references are registered so bean definitions stay Spring AOT friendly, and the annotation types are covered by GraalVM reachability metadata for native images.
-+- Annotation attributes cover `timeZone`, `jobParameter`, `monitorExecution`, `failover`, `misfire`,
-+  `maxTimeDiffSeconds`, `reconcileIntervalMinutes`, `jobShardingStrategyType`,
-+  `jobExecutorThreadPoolSizeProviderType`, `jobErrorHandlerType`, `jobListenerTypes`,
-+  `extraConfigurations`, `description`, `props`, `disabled`, `overwrite`, `label`, `staticSharding`, `maxWaitMillis`.
-+
- ## Job Start
- 
- ### Schedule Job
-diff --git a/docs/content/user-manual/usage/job-api/spring-namespace.cn.md b/docs/content/user-manual/usage/job-api/spring-namespace.cn.md
-index 485eb6c8b..b1f314921 100644
---- a/docs/content/user-manual/usage/job-api/spring-namespace.cn.md
-+++ b/docs/content/user-manual/usage/job-api/spring-namespace.cn.md
-@@ -39,6 +39,38 @@ ElasticJob 提供自定义的 Spring 命名空间，可以与 Spring 容器配
- </beans>
- ```
- 
-+### 使用注解扫描配置作业
-+
-+也可以用 `@ElasticJobConfiguration` 声明作业配置，再用 `<elasticjob:job-scanner />` 按包扫描。
-+`base-package` 支持单个包或逗号分隔的多个包。`cron` 非空时创建 `ScheduleJobBootstrap` 并自动调度，
-+`cron` 为空时创建 `OneOffJobBootstrap` 需要手动触发。
-+
-+```java
-+@ElasticJobConfiguration(
-+        jobName = "simpleJob",
-+        cron = "0/5 * * * * ?",
-+        shardingTotalCount = 3,
-+        shardingItemParameters = "0=a,1=b,2=c")
-+public class AnnotationSimpleJob implements SimpleJob {
-+    
-+    @Override
-+    public void execute(final ShardingContext shardingContext) {
-+        // 处理作业
-+    }
-+}
-+```
-+
-+```xml
-+<elasticjob:zookeeper id="regCenter" server-lists="yourhost:2181" namespace="my-job" />
-+<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
-+```
-+
-+说明：
-+
-+- Bootstrap Bean 名称默认为注解中的 `jobName`，且必须与被扫描的作业 Bean 名称不同。
-+- 注解中的 `registryCenter` 可指定注册中心 Bean 名称，为空时按类型注入唯一的 `CoordinatorRegistryCenter`。
-+- 作业配置在运行时从注解解析（CGLIB 代理走超类回退）。Bean 定义中仅注册 Bean 引用以保持 Spring AOT 友好，注解类型由 GraalVM 可达性元数据覆盖，原生镜像下仍可工作。
-+
- ## 作业启动
- 
- ### 定时调度
-diff --git a/docs/content/user-manual/usage/job-api/spring-namespace.en.md b/docs/content/user-manual/usage/job-api/spring-namespace.en.md
-index f9fd35ccc..b9d17652a 100644
---- a/docs/content/user-manual/usage/job-api/spring-namespace.en.md
-+++ b/docs/content/user-manual/usage/job-api/spring-namespace.en.md
-@@ -39,6 +39,39 @@ Through the way of DI (Dependency Injection), developers can easily use data sou
- </beans>
- ```
- 
-+### Configure jobs with annotation scanning
-+
-+As an alternative, declare job configuration with `@ElasticJobConfiguration` and scan it with `<elasticjob:job-scanner />`.
-+`base-package` accepts a single package or multiple comma-separated packages. A non-empty `cron` creates a
-+`ScheduleJobBootstrap` which is scheduled automatically; an empty `cron` creates a `OneOffJobBootstrap` which must be triggered manually.
-+
-+```java
-+@ElasticJobConfiguration(
-+        jobName = "simpleJob",
-+        cron = "0/5 * * * * ?",
-+        shardingTotalCount = 3,
-+        shardingItemParameters = "0=a,1=b,2=c")
-+public class AnnotationSimpleJob implements SimpleJob {
-+    
-+    @Override
-+    public void execute(final ShardingContext shardingContext) {
-+        // do something
-+    }
-+}
-+```
-+
-+```xml
-+<elasticjob:zookeeper id="regCenter" server-lists="yourhost:2181" namespace="my-job" />
-+<elasticjob:job-scanner id="jobScanner" base-package="org.example.job" />
-+```
-+
-+Notes:
-+
-+- The bootstrap bean name defaults to the `jobName` in the annotation, which must differ from the scanned job bean name.
-+- `registryCenter` in the annotation optionally specifies the registry center bean name. When empty, the single
-+  `CoordinatorRegistryCenter` bean is injected by type.
-+- Job configuration is resolved at runtime from the annotation (with superclass fallback for CGLIB proxies). Only bean references are registered so bean definitions stay Spring AOT friendly, and the annotation types are covered by GraalVM reachability metadata for native images.
-+
- ## Job Start
- 
- ### Schedule Job

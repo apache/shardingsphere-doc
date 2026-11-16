@@ -1,512 +1,415 @@
-commit 801c75ae6954bc39986c888cdac869cde2058e69
+commit 14d31aa7846dc2452bce3b221f5d74c98a491fa4
 Author: Hengqian Ling <linghengqian@outlook.com>
-Date:   Tue Nov 10 23:18:30 2026 +0800
+Date:   Mon Nov 16 01:28:30 2026 +0800
 
-    Spring Boot Starter and Spring Namespace support etcd, Nacos and in-memory registry centers (#2548)
+    Spring Boot Starter supports Spring Boot 2.7, 3.5 and 4.0 (#2568)
+    
+    * Spring Boot Starter supports Spring Boot 4
+    
+    Keep the default build on Spring Boot 2.7 and select Spring Boot 4.0.6 with the
+    spring-boot-4 Maven profile. Stop referencing Spring Boot 2 JDBC classes that
+    moved in Spring Boot 4, bind the tracing data source with a starter-owned
+    properties class, and run the starter tests against Spring Boot 4 in CI.
+    
+    Fixes #2506
+    
+    * Spring Boot Starter supports Spring Boot 2.7, 3.5 and 4.0
+    
+    Compile the starter against Spring Boot 2.7, the lowest supported line, so that the
+    published artifacts run on all three lines. The spring-boot-3 and spring-boot-4
+    profiles select the other lines; their versions are Maven properties in the root pom.
+    
+    CI builds and tests the starter and the Spring namespace module on Spring Boot 3 and
+    4, and runs the artifacts compiled against Spring Boot 2.7 on those lines.
+    
+    Document the supported lines, their JDK requirements and the profiles.
+    
+    Fixes #2506
+    
+    * Document Spring Framework compatibility of Spring Namespace
+    
+    The namespace module is compiled against Spring Framework 5.3, and it is tested with
+    Spring Framework 6.2 and 7.0, the Spring Framework versions of Spring Boot 3.5 and 4.0.
+    
+    * Support Spring Namespace jobs under GraalVM Native Image
+    
+    Spring AOT cannot process the private all-args constructor of JobConfiguration, nor the
+    null, collection and bean definition arguments that the namespace parser passed to it.
+    JobConfigurationFactoryBean now builds the job configuration from property values, and
+    the tracing configuration is referenced by name instead of being copied as a bean definition.
+    
+    Add native tests for one-off and scheduled jobs defined by the Spring Namespace with RDB tracing.
+    
+    Refs #2506
+    
+    * Fix Spring Namespace native job test context
+    
+    The Spring Namespace defines its own tracing configuration, so the RDB tracing of the starter
+    is disabled in SpringNamespaceJobTest. Otherwise the starter finds two TracingConfiguration beans
+    while creating the jobs of application.yml. The test also scans the same packages as the other
+    Spring Namespace native tests, so that those jobs can be created.
+    
+    Refs #2506
+    
+    * Assert the one-off job tracing by job name in Spring Namespace native test
+    
+    The assertion counted every JOB_EXECUTION_LOG row. The jobs of application.yml share the same
+    tracing storage, so they could satisfy it without the one-off job writing any event.
+    
+    Refs #2506
+    
+    * Document GraalVM Native Image coverage of Spring Namespace
+    
+    The native tests cover the registry center tags memory, etcd and nacos, one-off and
+    scheduled jobs defined by elasticjob:job with job-ref, and RDB tracing with
+    elasticjob:rdb-tracing. The zookeeper tag, the job scanner, the snapshot, and the dataflow
+    and script jobs are not covered by native tests yet.
+    
+    Refs #2506
+    
+    * Fix the error message of more than one TracingConfiguration beans
+    
+    The message named two classes that do not exist in this project, so its hint
+    pointed nowhere. Build the class name from TracingConfiguration, and suggest the
+    options that resolve the conflict: remove the extra bean, or do not set
+    elasticjob.tracing.type to RDB.
+    
+    Add ElasticJobBootstrapConfigurationTest to assert the message when the
+    application defines its own TracingConfiguration bean.
+    
+    Refs #2506
+    
+    * Compile the native test module with Java 17
+    
+    Spring AOT generates code that uses Java 9+ APIs, for example Map.of for the
+    properties of a job definition in the Spring Namespace. The native test module
+    compiles with native.java.version (17), while the rest of the project keeps
+    java.version (8).
+    
+    Refs #2506
+    
+    * Cover the dataflow and script jobs of the Spring Namespace in native tests
+    
+    The job elements of the Spring Namespace define a dataflow job with job-ref, and a
+    script job with job-type SCRIPT and the script.command.line property. The native
+    tests assert that the dataflow job processes data, and that the script job writes
+    RDB tracing events.
+    
+    The script job runs echo from the PATH, so it does not depend on the working
+    directory of the native test binary.
+    
+    Refs #2506
+    
+    * Cover the zookeeper, job-scanner and snapshot tags of the Spring Namespace in native tests
+    
+    The zookeeper test starts an in-process ZooKeeper server, which is shut down the same way as in
+    SpringBootDTest. The job-scanner test checks a schedule job and a one-off job registered by the
+    scanner. The snapshot test dumps job data through the dump port of the snapshot service.
+    
+    Refs #2506
+    
+    * Use a plain context in the Spring Namespace job-scanner native test
+    
+    The job-scanner test imported the auto-configuration through @SpringBootApplication. In the
+    native image, refreshing the context failed while parsing WebMvcAutoConfiguration, because a
+    class file it refers to is not available at runtime. Like AnnotationSpringBootTest, the context
+    now imports only the namespace resource and runs without a web environment, because only the
+    registration of the scanned jobs is asserted.
+    
+    Refs #2506
+    
+    * Keep the job scanner from registering annotation processors at native runtime
+    
+    After scanning, ClassPathBeanDefinitionScanner registers the annotation config processors into
+    the registry. The Spring AOT context of a native image does not contain them, so the job
+    scanner added a ConfigurationClassPostProcessor at runtime. That processor parsed the
+    configuration classes again, and could not read the auto configuration or the
+    @ImportResource of the test context in the native image.
+    
+    At native image runtime, JobScannerConfiguration no longer registers the annotation config
+    processors. Other runtimes keep the existing behavior, in which the processors are
+    registered like before.
+    
+    Refs #2506
+    
+    * Make the demo script of the native tests executable
+    
+    JavaTest, NacosJavaTest, MemoryJavaTest and EtcdJavaTest pass demo.sh to the script job by its
+    path, and the job runs the file directly. The file was committed as 100644, so running it fails
+    with Permission denied. These tests only schedule the job and shut it down, so the failure is
+    not observed in CI.
+    
+    Refs #2506
+    
+    * Document the Spring Namespace coverage of GraalVM Native Image tests
+    
+    The native tests cover the registry center tags memory, etcd, nacos and zookeeper, the job
+    scanner, the snapshot, RDB tracing, one-off, scheduled and non-streaming dataflow jobs defined
+    by elasticjob:job with job-ref, and script jobs with job-type SCRIPT. Jobs with other job types,
+    such as HTTP, are not covered yet.
+    
+    Refs #2506
+    
+    * Fix the Nacos registry center losing empty values and watch events
+    
+    Nacos rejects config content that is empty, and NacosIgnoredExceptionProvider ignores every
+    NacosException. Writing an empty value, such as the sharding necessary flag or the data of a
+    job node, therefore did nothing and reported no error, so the job never sharded and never ran.
+    
+    Store an empty value as a placeholder, and read the placeholder back as an empty value on every
+    read path: direct reads, the cache, and the data and cache listeners.
+    
+    Listing a pattern and cancelling that listing before the persistent watch of the same pattern
+    was registered lost all events of the watch on a real Nacos server. The persistent watches now
+    subscribe once and read their initial keys from that subscription.
+    
+    A content listener is registered at most once per data ID, because the initial listing and the
+    fuzzy watch events can both reach the same data ID.
+    
+    Refs #2506
+    
+    * Verify that the script and HTTP jobs run in native tests
+    
+    The script job tests only scheduled the job and shut it down, so they passed even when the
+    script could not run. The HTTP job tests sent their requests to https://www.apache.org and did
+    not wait for an execution either.
+    
+    The script job tests now wait for a successful execution in the RDB tracing events. The
+    Nacos and Memory script job tests get the RDB tracing configuration for that. The HTTP job
+    tests send their requests to a local HTTP server, and wait for the request and for a
+    successful execution in the RDB tracing events.
+    
+    Add a Spring Namespace test of a job with job-type HTTP. The native test image gets the http
+    URL protocol and the jdk.httpserver module.
+    
+    Refs #2506
+    
+    * Use a fixed port in the Spring Namespace HTTP job test
+    
+    The URI of the job was a placeholder, which the placeholder configurer resolves when the
+    context starts. In the native image the context is built from the AOT output, where the
+    properties of a namespace job are created with Map.of and are immutable, so the placeholder
+    cannot be replaced, and the context fails to load with an UnsupportedOperationException.
+    
+    The job now sends its requests to a fixed port of the local HTTP server, and the job
+    definition names that port as a literal. The test no longer needs a placeholder configurer.
+    
+    Refs #2506
+    
+    * Document the native coverage of HTTP jobs and the Nacos registry fix
+    
+    HTTP jobs defined by the Spring Namespace are covered by the native tests now. A native image
+    that runs HTTP jobs needs the http URL protocol, so the documentation says so.
+    
+    The release notes describe the fix of the Nacos registry center.
+    
+    Refs #2506
+    
+    * Keep Spring Namespace job properties resolvable under native image
+    
+    Spring AOT generates an immutable map for the properties of a namespace job. The placeholder
+    configurer replaces a placeholder in a property by changing the map in place, so a placeholder
+    that is resolved at runtime failed the application context with an UnsupportedOperationException
+    in the native image. A list of job listener types had the same problem.
+    
+    The properties and the job listener types are arrays in the bean definitions now, and
+    JobConfigurationFactoryBean converts them when it builds the job configuration. Spring AOT
+    generates arrays as mutable arrays, and the placeholder configurer replaces their elements.
+    
+    The Spring Namespace HTTP job test uses a placeholder for its URI again, so that it covers
+    this case.
+    
+    Refs #2506
+    
+    * Keep a single release note for this pull request
+    
+    The native test coverage and the Nacos registry center fix are described in the pull request
+    itself, so the release notes keep one entry for it.
+    
+    Refs #2506
+    
+    * Describe the custom job types that the native tests do not cover
+    
+    The built-in job types of the Spring Namespace, SCRIPT and HTTP, are covered by the native tests.
+    The remaining job types are custom typed job item executors registered through SPI, which the
+    native tests of ElasticJob do not cover.
+    
+    Refs #2506
+    
+    * Cover a custom typed job item executor registered through SPI in the native tests
+    
+    A job defined by the Spring Namespace with a custom job type runs the typed job item executor
+    that is registered through SPI. The native tests did not cover that path.
+    
+    The test executor is registered in META-INF/services. Its constructors and methods are
+    registered for reflection in the native image build. The job writes its RDB tracing events,
+    like the other namespace jobs of the native tests.
+    
+    Refs #2506
+    
+    * Document the native coverage of custom job types registered through SPI
+    
+    The native tests cover a job with a custom job type, whose typed job item executor is
+    registered through SPI. The documentation no longer lists custom job types as uncovered, and
+    says that the executor class is registered for reflection in the native image build.
+    
+    Refs #2506
+    
+    * Describe the native test metadata of the custom executor in reachability metadata format
+    
+    The native test metadata moves from reflect-config.json to reachability-metadata.json, the same
+    format as elasticjob-reachability-metadata. The executor is registered for reflection on the
+    condition that ElasticJobExecutor is reached, because that class loads the typed job item
+    executors through SPI, and the SPI service file is declared as a resource.
+    
+    The old file name is also the name of the reflect-config.json that Spring AOT generates into the
+    same directory, so one of the two copies overwrote the other in the build output. The new name
+    avoids that collision.
+    
+    Refs #2506
+    
+    * Remove the reachability metadata of the custom executor, which the native tests do not need
+    
+    The native tests pass with each of four variants of this file (no file, only the type, only the
+    public constructor, and only the SPI service resource), each with 61 of 61 test cases successful
+    on the GitHub runner. The variant without the file is the smallest one, so the file is removed.
+    The custom executor is registered through META-INF/services and has a public no-argument
+    constructor.
+    
+    Refs #2506
+    
+    * Describe the custom executor of the native tests without a reflection registration
+    
+    The native tests pass without reachability metadata for the custom executor, so the documentation
+    no longer says that the executor class is registered for reflection in the native image build.
+    
+    Refs #2506
 
 diff --git a/docs/content/user-manual/configuration/graalvm-native-image.cn.md b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
-index 87d4940de..a34dacd73 100644
+index a34dacd73..582dc3078 100644
 --- a/docs/content/user-manual/configuration/graalvm-native-image.cn.md
 +++ b/docs/content/user-manual/configuration/graalvm-native-image.cn.md
-@@ -354,12 +354,16 @@ ElasticJob 定义了 `generateMetadata` 的 Maven Profile 用于在 GraalVM JIT
+@@ -303,7 +303,9 @@ public class ExampleUtils {
  
- 以下命令仅为 `elasticjob-test-native` 生成 Conditional 形态的 GraalVM Reachability Metadata 的一个举例。
- 生成的 GraalVM Reachability Metadata 位于 `elasticjob-reachability-metadata` 子模块下。
-+末尾的 `native:metadata-copy` 目标为可选项，省略后仅携带 GraalVM Tracing Agent 执行单元测试，不生成 Metadata 文件。
+ 3. `企业微信通知策略`，`钉钉通知策略`，`邮件通知策略`尚未在 GraalVM Native Image 下可用。
  
--对于测试类和测试文件独立使用的 GraalVM Reachability Metadata，贡献者应该放置到 `shardingsphere-test-native` 子模块的 classpath 的
-+对于测试类和测试文件独立使用的 GraalVM Reachability Metadata，贡献者应该放置到 `elasticjob-test-native` 子模块的 classpath 的
- `META-INF/native-image/elasticjob-test-native-test-metadata/` 下。
+-4. ElasticJob 的 Spring 命名空间集成模块 `org.apache.shardingsphere.elasticjob:elasticjob-spring-namespace` 尚未在 GraalVM Native Image 下可用。
++4. ElasticJob 的 Spring 命名空间集成模块 `org.apache.shardingsphere.elasticjob:elasticjob-spring-namespace` 已有 native 测试覆盖注册中心标签 `elasticjob:memory`、`elasticjob:etcd`、`elasticjob:nacos` 和 `elasticjob:zookeeper`、作业扫描 `elasticjob:job-scanner`、快照导出 `elasticjob:snapshot`，以及 RDB 事件追踪 `elasticjob:rdb-tracing`。通过 `elasticjob:job` 和 `job-ref` 定义的一次性作业、定时作业和非流式数据流作业，以及 `job-type` 为 `SCRIPT` 和 `HTTP` 的脚本作业和 HTTP 作业，也已有 native 测试覆盖。`job-type` 为通过 SPI 注册的自定义类型化作业执行器的作业，也已有 native 测试覆盖。测试中的自定义执行器拥有公有无参构造器，无需额外的 reachability 元数据即可在 native 构建中运行。
++
++5. `job-type` 为 `HTTP` 的作业通过 `java.net.HttpURLConnection` 访问 `http` 地址，因此 GraalVM Native Image 构建时需要启用 `http` URL 协议，例如使用 `--enable-url-protocols=http`。
  
- ```bash
--git clone git@github.com:apache/shardingsphere.git
--cd ./shardingsphere/
-+git clone git@github.com:apache/shardingsphere-elasticjob.git
-+cd ./shardingsphere-elasticjob/
-+# 仅携带 GraalVM Tracing Agent 执行单元测试
-+./mvnw -PgenerateMetadata -e -T1C clean test
-+# 生成或覆盖 Conditional 形态的 GraalVM Reachability Metadata
- ./mvnw -PgenerateMetadata -e -T1C clean test native:metadata-copy
- ```
+ ## 贡献 GraalVM Reachability Metadata
+ 
 diff --git a/docs/content/user-manual/configuration/graalvm-native-image.en.md b/docs/content/user-manual/configuration/graalvm-native-image.en.md
-index 85f70ce23..e67321690 100644
+index e67321690..65fe6eb1d 100644
 --- a/docs/content/user-manual/configuration/graalvm-native-image.en.md
 +++ b/docs/content/user-manual/configuration/graalvm-native-image.en.md
-@@ -365,12 +365,16 @@ while the entries in `META-INF/native-image/org.apache.shardingsphere.elasticjob
+@@ -312,7 +312,9 @@ public class ExampleUtils {
  
- The following command is just an example of generating Conditional GraalVM Reachability Metadata for `elasticjob-test-native`.
- The generated GraalVM Reachability Metadata is located in the `elasticjob-reachability-metadata` submodule.
-+The trailing `native:metadata-copy` goal is optional: omit it to only execute the unit tests with the GraalVM Tracing Agent attached.
+ 3. `WeCom Notification Policy`, `DingTalk Notification Policy`, and `Email Notification Policy` are not yet available under GraalVM Native Image.
  
- For GraalVM Reachability Metadata used independently by test classes and test files, 
--contributors should place it in the classpath of the shardingsphere-test-native submodule under `META-INF/native-image/elasticjob-test-native-test-metadata/`.
-+contributors should place it in the classpath of the elasticjob-test-native submodule under `META-INF/native-image/elasticjob-test-native-test-metadata/`.
- 
- ```bash
--git clone git@github.com:apache/shardingsphere.git
--cd ./shardingsphere/
-+git clone git@github.com:apache/shardingsphere-elasticjob.git
-+cd ./shardingsphere-elasticjob/
-+# Only execute the unit tests with the GraalVM Tracing Agent attached
-+./mvnw -PgenerateMetadata -e -T1C clean test
-+# Generate or overwrite the Conditional GraalVM Reachability Metadata
- ./mvnw -PgenerateMetadata -e -T1C clean test native:metadata-copy
- ```
-diff --git a/docs/content/user-manual/configuration/java-api.cn.md b/docs/content/user-manual/configuration/java-api.cn.md
-index 8e4943ca5..e9ad7975e 100644
---- a/docs/content/user-manual/configuration/java-api.cn.md
-+++ b/docs/content/user-manual/configuration/java-api.cn.md
-@@ -36,6 +36,7 @@ ElasticJob 支持 `ZooKeeper`（默认）、`etcd`、`Nacos` 和内存注册中
- | sessionTimeoutMilliseconds    | 否     |
- | connectionTimeoutMilliseconds | 否     |
- | digest                        | 否     |
-+| ensembleTracker               | 否     |
- 
- ## 作业配置
- 
-diff --git a/docs/content/user-manual/configuration/java-api.en.md b/docs/content/user-manual/configuration/java-api.en.md
-index 1f389d773..7fdee552b 100644
---- a/docs/content/user-manual/configuration/java-api.en.md
-+++ b/docs/content/user-manual/configuration/java-api.en.md
-@@ -37,6 +37,7 @@ Configuration:
- | sessionTimeoutMilliseconds    | No                    |
- | connectionTimeoutMilliseconds | No                    |
- | digest                        | No                    |
-+| ensembleTracker               | No                    |
- 
- ## Job Configuration
- 
-diff --git a/docs/content/user-manual/configuration/registry-center/_index.cn.md b/docs/content/user-manual/configuration/registry-center/_index.cn.md
-index 7b6e8e1c1..33fc63deb 100644
---- a/docs/content/user-manual/configuration/registry-center/_index.cn.md
-+++ b/docs/content/user-manual/configuration/registry-center/_index.cn.md
-@@ -1,5 +1,4 @@
- +++
--pre = "<b>4.1.2.1 </b>"
- title = "注册中心配置"
- weight = 1
- chapter = true
-@@ -21,5 +20,3 @@ ElasticJob 支持多种注册中心类型，用于协调分布式作业的调度
- ## 配置方式
- 
- 上表中的每种注册中心文档都详细说明了其自身的配置属性与使用示例。
--
--需要注意的是，Spring Boot Starter 与 Spring Namespace 目前仅支持 ZooKeeper。其他注册中心类型只能通过 Java API 或 `RegistryCenterFactory` 使用。
-diff --git a/docs/content/user-manual/configuration/registry-center/_index.en.md b/docs/content/user-manual/configuration/registry-center/_index.en.md
-index f9a41c64e..3d4fc4b16 100644
---- a/docs/content/user-manual/configuration/registry-center/_index.en.md
-+++ b/docs/content/user-manual/configuration/registry-center/_index.en.md
-@@ -1,5 +1,4 @@
- +++
--pre = "<b>4.1.2.1 </b>"
- title = "Registry Center Configuration"
- weight = 1
- chapter = true
-@@ -21,5 +20,3 @@ This section describes how to configure different types of registry centers.
- ## How to Configure
- 
- The document of each registry center type above describes its own configuration properties and usage examples in detail.
--
--Please note that the Spring Boot Starter and the Spring Namespace currently only support ZooKeeper. Other registry center types can only be used through the Java API or `RegistryCenterFactory`.
-diff --git a/docs/content/user-manual/configuration/registry-center/etcd.cn.md b/docs/content/user-manual/configuration/registry-center/etcd.cn.md
-index 1ec7c7bab..355cff53c 100644
---- a/docs/content/user-manual/configuration/registry-center/etcd.cn.md
-+++ b/docs/content/user-manual/configuration/registry-center/etcd.cn.md
-@@ -26,6 +26,7 @@ etcd 是一个分布式键值存储系统，ElasticJob 支持使用 etcd3 作为
- | connectionTimeoutMilliseconds | long   | 5000  | 连接超时毫秒数             |
- | username                      | String |       | 认证用户名  |
- | password                      | String |       | 认证密码  |
-+| ssl                           | boolean | false | 是否使用 HTTPS |
- | authority                     | String |       | HTTP/2 的 authority 头  |
- 
- ### 核心配置项说明
-@@ -73,7 +74,30 @@ public class EtcdRegistryCenterExample {
- }
- ```
- 
--### Spring Boot Starter 与 Spring Namespace
-+### Spring Boot Starter
+-4. The Spring namespace integration module `org.apache.shardingsphere.elasticjob:elasticjob-spring-namespace` of ElasticJob is not yet available under GraalVM Native Image.
++4. The Spring namespace integration module `org.apache.shardingsphere.elasticjob:elasticjob-spring-namespace` is covered by native tests for the registry center tags `elasticjob:memory`, `elasticjob:etcd`, `elasticjob:nacos` and `elasticjob:zookeeper`, for the job scanner `elasticjob:job-scanner`, for the snapshot `elasticjob:snapshot`, and for RDB tracing with `elasticjob:rdb-tracing`. Jobs defined by `elasticjob:job` are covered for one-off, scheduled and non-streaming dataflow jobs with `job-ref`, and for script jobs and HTTP jobs with `job-type` as `SCRIPT` and `HTTP`. Jobs with a custom `job-type`, which is a typed job item executor registered through SPI, are covered by native tests as well. The custom executor in the tests has a public no-argument constructor and needs no additional reachability metadata to run in the native image build.
 +
-+```yaml
-+elasticjob:
-+  reg-center:
-+    type: etcd
-+    server-lists: http://host1:2379,http://host2:2379
-+    namespace: elasticjob
-+    connection-timeout-milliseconds: 5000
-+    username: root
-+    password: password
-+    ssl: true
-+    authority: host1:2379
-+```
-+
-+### Spring Namespace
++5. Jobs defined by `elasticjob:job` with `job-type` as `HTTP` connect to `http` URIs with `java.net.HttpURLConnection`, so the GraalVM Native Image build must enable the `http` URL protocol, for example with `--enable-url-protocols=http`.
  
--目前 Spring Boot Starter 和 Spring Namespace 仅支持 ZooKeeper，因此 etcd 只能通过 Java API 或
--`RegistryCenterFactory` 使用。详见[注册中心配置](/cn/user-manual/configuration/registry-center)。
-+```xml
-+<elasticjob:etcd id="regCenter" 
-+    server-lists="http://host1:2379,http://host2:2379" 
-+    namespace="elasticjob"
-+    connection-timeout-milliseconds="5000"
-+    username="root"
-+    password="password"
-+    ssl="true"
-+    authority="host1:2379" />
-+```
-diff --git a/docs/content/user-manual/configuration/registry-center/etcd.en.md b/docs/content/user-manual/configuration/registry-center/etcd.en.md
-index bc3293ca8..b3e51b91d 100644
---- a/docs/content/user-manual/configuration/registry-center/etcd.en.md
-+++ b/docs/content/user-manual/configuration/registry-center/etcd.en.md
-@@ -26,6 +26,7 @@ etcd is a distributed key-value store system. ElasticJob supports using etcd3 as
- | connectionTimeoutMilliseconds | long      | 5000          | Connection timeout in milliseconds                       |
- | username                      | String    |               | Authentication username                                  |
- | password                      | String    |               | Authentication password                                  |
-+| ssl                           | boolean   | false         | Whether to use HTTPS                                     |
- | authority                     | String    |               | Authority header for HTTP/2                              |
- 
- ### Core Configuration Description
-@@ -73,8 +74,30 @@ public class EtcdRegistryCenterExample {
- }
- ```
- 
--### Spring Boot Starter and Spring Namespace
-+### Spring Boot Starter
-+
-+```yaml
-+elasticjob:
-+  reg-center:
-+    type: etcd
-+    server-lists: http://host1:2379,http://host2:2379
-+    namespace: elasticjob
-+    connection-timeout-milliseconds: 5000
-+    username: root
-+    password: password
-+    ssl: true
-+    authority: host1:2379
-+```
-+
-+### Spring Namespace
- 
--The Spring Boot Starter and the Spring Namespace only support ZooKeeper at present,
--so etcd can only be used through the Java API or `RegistryCenterFactory`.
--See the [Registry Center Configuration](/en/user-manual/configuration/registry-center) page for details.
-+```xml
-+<elasticjob:etcd id="regCenter" 
-+    server-lists="http://host1:2379,http://host2:2379" 
-+    namespace="elasticjob"
-+    connection-timeout-milliseconds="5000"
-+    username="root"
-+    password="password"
-+    ssl="true"
-+    authority="host1:2379" />
-+```
-diff --git a/docs/content/user-manual/configuration/registry-center/memory.cn.md b/docs/content/user-manual/configuration/registry-center/memory.cn.md
-index 82fc6cd7e..e9d39e9e6 100644
---- a/docs/content/user-manual/configuration/registry-center/memory.cn.md
-+++ b/docs/content/user-manual/configuration/registry-center/memory.cn.md
-@@ -54,6 +54,21 @@ public class MemoryRegistryCenterExample {
- }
- ```
- 
-+### Spring Boot Starter
-+
-+```yaml
-+elasticjob:
-+  reg-center:
-+    type: memory
-+    namespace: elasticjob
-+```
-+
-+### Spring 命名空间
-+
-+```xml
-+<elasticjob:memory id="regCenter" namespace="elasticjob" />
-+```
-+
- ### RegistryCenterFactory（SPI）
- 
- ```java
-diff --git a/docs/content/user-manual/configuration/registry-center/memory.en.md b/docs/content/user-manual/configuration/registry-center/memory.en.md
-index 6725426c4..a31fde71c 100644
---- a/docs/content/user-manual/configuration/registry-center/memory.en.md
-+++ b/docs/content/user-manual/configuration/registry-center/memory.en.md
-@@ -6,7 +6,7 @@ weight = 4
- Memory is a built-in in-process registry center implementation. It stores all data in a static `ConcurrentHashMap` and requires no external server.
- 
- > Only for unit tests and local development in a single JVM.
--> data is neither persisted nor shared across processes, and leader election is JVM-local.
-+> Data is neither persisted nor shared across processes, and leader election is JVM-local.
- 
- Instances sharing the same namespace share the same in-memory data; different namespaces are isolated from each other.
- Ephemeral nodes are removed when the registry center instance that created them is closed.
-@@ -54,6 +54,21 @@ public class MemoryRegistryCenterExample {
- }
- ```
- 
-+### Spring Boot Starter
-+
-+```yaml
-+elasticjob:
-+  reg-center:
-+    type: memory
-+    namespace: elasticjob
-+```
-+
-+### Spring Namespace
-+
-+```xml
-+<elasticjob:memory id="regCenter" namespace="elasticjob" />
-+```
-+
- ### RegistryCenterFactory (SPI)
- 
- ```java
-diff --git a/docs/content/user-manual/configuration/registry-center/nacos.cn.md b/docs/content/user-manual/configuration/registry-center/nacos.cn.md
-index 5c2554484..88dbf3606 100644
---- a/docs/content/user-manual/configuration/registry-center/nacos.cn.md
-+++ b/docs/content/user-manual/configuration/registry-center/nacos.cn.md
-@@ -28,7 +28,7 @@ Nacos 是一个动态服务发现、配置和服务管理平台，ElasticJob 支
- |----------------|:-------|:------|:------------------------------------|
- | serverLists    | String |       | Nacos 服务器地址列表                     |
- | namespace      | String |       | ElasticJob 命名空间，映射为 Nacos 配置 group |
--| nacosNamespace | String |       | Nacos 租户（命名空间 ID），为空表示 `public`    |
-+| tenant         | String |       | Nacos 租户（命名空间 ID），为空表示 `public`    |
- | username       | String |       | 认证用户名                               |
- | password       | String |       | 认证密码                                |
- | timeoutMs      | long   | 3000  | 配置操作超时毫秒数                          |
-@@ -46,6 +46,11 @@ Nacos 是一个动态服务发现、配置和服务管理平台，ElasticJob 支
- 
- ElasticJob 命名空间，映射为 Nacos 配置 group，用于隔离不同的作业集群。建议使用有意义的名称，如：`elasticjob`。
- 
-+**tenant:**
-+
-+Nacos 租户（命名空间 ID），用于隔离开发、测试、生产等不同环境，为空表示 `public`。
-+注意它与 ElasticJob 的 `namespace` 不同，后者映射为 Nacos 配置 group。
-+
- **username 和 password:**
- 
- Nacos 认证信息，也可以作为 `RegistryCenterFactory` 的 `digest` 参数（`username:password`）传入。
-@@ -82,6 +87,32 @@ public class NacosRegistryCenterExample {
- }
- ```
- 
-+### Spring Boot Starter
-+
-+```yaml
-+elasticjob:
-+  reg-center:
-+    type: nacos
-+    server-lists: nacos://127.0.0.1:8848,127.0.0.2:8848
-+    namespace: elasticjob
-+    tenant: ""
-+    username: nacos
-+    password: nacos
-+    timeout-ms: 3000
-+```
-+
-+### Spring Namespace
-+
-+```xml
-+<elasticjob:nacos id="regCenter" 
-+    server-lists="nacos://127.0.0.1:8848,127.0.0.2:8848" 
-+    namespace="elasticjob"
-+    tenant=""
-+    username="nacos"
-+    password="nacos"
-+    timeout-ms="3000" />
-+```
-+
- ### RegistryCenterFactory（SPI）
- 
- ```java
-diff --git a/docs/content/user-manual/configuration/registry-center/nacos.en.md b/docs/content/user-manual/configuration/registry-center/nacos.en.md
-index e989a9667..2639ece18 100644
---- a/docs/content/user-manual/configuration/registry-center/nacos.en.md
-+++ b/docs/content/user-manual/configuration/registry-center/nacos.en.md
-@@ -28,7 +28,7 @@ Because a Nacos `dataId` only accepts letters, digits and `_-.:`, every path seg
- |-----------------|:----------|:---------------|:---------------------------------------------------------|
- | serverLists     | String    |                | Nacos server address list                                |
- | namespace       | String    |                | ElasticJob namespace, mapped to the Nacos config group   |
--| nacosNamespace  | String    |                | Nacos tenant (namespace id), empty means `public`        |
-+| tenant          | String    |                | Nacos tenant (namespace id), empty means `public`        |
- | username        | String    |                | Authentication username                                  |
- | password        | String    |                | Authentication password                                  |
- | timeoutMs       | long      | 3000           | Timeout of config operations in milliseconds             |
-@@ -46,6 +46,11 @@ When using `RegistryCenterFactory` (SPI), the `nacos://` prefix is required so t
- 
- ElasticJob namespace, mapped to the Nacos config group for isolating different job clusters. It is recommended to use meaningful names, such as: `elasticjob`.
- 
-+**tenant:**
-+
-+The Nacos tenant (namespace id), used to isolate different environments such as development, test and production. Empty means `public`.
-+Note that this is distinct from the ElasticJob `namespace`, which is mapped to the Nacos config group.
-+
- **username and password:**
- 
- Nacos authentication information. They can also be passed as the `digest` argument (`username:password`) of `RegistryCenterFactory`.
-@@ -82,6 +87,32 @@ public class NacosRegistryCenterExample {
- }
- ```
- 
-+### Spring Boot Starter
-+
-+```yaml
-+elasticjob:
-+  reg-center:
-+    type: nacos
-+    server-lists: nacos://127.0.0.1:8848,127.0.0.2:8848
-+    namespace: elasticjob
-+    tenant: ""
-+    username: nacos
-+    password: nacos
-+    timeout-ms: 3000
-+```
-+
-+### Spring Namespace
-+
-+```xml
-+<elasticjob:nacos id="regCenter" 
-+    server-lists="nacos://127.0.0.1:8848,127.0.0.2:8848" 
-+    namespace="elasticjob"
-+    tenant=""
-+    username="nacos"
-+    password="nacos"
-+    timeout-ms="3000" />
-+```
-+
- ### RegistryCenterFactory (SPI)
- 
- ```java
-diff --git a/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md b/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md
-index 76fba223e..0d8aaac02 100644
---- a/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md
-+++ b/docs/content/user-manual/configuration/registry-center/zookeeper.cn.md
-@@ -24,10 +24,10 @@ Apache ZooKeeper 是 ElasticJob 默认且最成熟的注册中心实现。
- | serverLists                   | String |       | 连接 ZooKeeper 服务器的列表 |
- | namespace                     | String |       | ZooKeeper 的命名空间     |
- | baseSleepTimeMilliseconds     | int    | 1000  | 等待重试的间隔时间的初始毫秒数     |
--| maxSleepTimeMilliseconds      | String | 3000  | 等待重试的间隔时间的最大毫秒数     |
--| maxRetries                    | String | 3     | 最大重试次数              |
--| sessionTimeoutMilliseconds    | int    | 60000 | 会话超时毫秒数             |
--| connectionTimeoutMilliseconds | int    | 15000 | 连接超时毫秒数             |
-+| maxSleepTimeMilliseconds      | int    | 3000  | 等待重试的间隔时间的最大毫秒数     |
-+| maxRetries                    | int    | 3     | 最大重试次数              |
-+| sessionTimeoutMilliseconds    | int    | 0   | 会话超时毫秒数，`0` 表示使用 Curator 缺省值 |
-+| connectionTimeoutMilliseconds | int    | 0   | 连接超时毫秒数，`0` 表示使用 Curator 缺省值 |
- | digest                        | String | 无需验证  | 连接 ZooKeeper 的权限令牌  |
- | ensembleTracker               | boolean | true | 是否监听集群配置变化 |
- 
-diff --git a/docs/content/user-manual/configuration/registry-center/zookeeper.en.md b/docs/content/user-manual/configuration/registry-center/zookeeper.en.md
-index b400f4445..33876a5e8 100644
---- a/docs/content/user-manual/configuration/registry-center/zookeeper.en.md
-+++ b/docs/content/user-manual/configuration/registry-center/zookeeper.en.md
-@@ -24,10 +24,10 @@ Apache ZooKeeper is the default and most mature registry center implementation f
- | serverLists                   | String    |               | ZooKeeper server IP list                                 |
- | namespace                     | String    |               | ZooKeeper namespace                                      |
- | baseSleepTimeMilliseconds     | int       | 1000          | The initial value of milliseconds for the retry interval |
--| maxSleepTimeMilliseconds      | String    | 3000          | The maximum value of milliseconds for the retry interval |
--| maxRetries                    | String    | 3             | Maximum number of retries                                |
--| sessionTimeoutMilliseconds    | int       | 60000         | Session timeout in milliseconds                          |
--| connectionTimeoutMilliseconds | int       | 15000         | Connection timeout in milliseconds                       |
-+| maxSleepTimeMilliseconds      | int       | 3000          | The maximum value of milliseconds for the retry interval |
-+| maxRetries                    | int       | 3             | Maximum number of retries                                |
-+| sessionTimeoutMilliseconds    | int       | 0           | Session timeout in milliseconds, `0` means the Curator default |
-+| connectionTimeoutMilliseconds | int       | 0           | Connection timeout in milliseconds, `0` means the Curator default |
- | digest                        | String    | no need       | Permission token to connect to ZooKeeper                 |
- | ensembleTracker               | boolean   | true          | Whether to watch ensemble configuration changes          |
+ ## Contribute GraalVM Reachability Metadata
  
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.cn.md b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-index 43effd25f..150f10726 100644
+index 150f10726..793bc3f48 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.cn.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.cn.md
-@@ -18,15 +18,16 @@ chapter = true
+@@ -14,6 +14,13 @@ chapter = true
+ </dependency>
+ ```
+ 
++## Spring Boot 兼容性
++
++Starter 以 Spring Boot 2.7 编译。同一套构件在 Spring Boot 2.7、3.5 和 4.0 上测试，应用无论运行在哪一条线上，都使用同一个依赖。
++
++- Spring Boot 2.7 要求 JDK 8 或更高版本。
++- Spring Boot 3.5 和 4.0 要求 JDK 17 或更高版本，与 Spring Boot 本身的要求一致。
++
+ ## 注册中心配置
  
  配置前缀：`elasticjob.reg-center`
- 
--`type` 指定注册中心类型，目前仅支持 `zookeeper`（默认）。
-+`type` 指定注册中心类型：`zookeeper`（默认）、`etcd`、`nacos` 或 `memory`。
-+其余属性因类型而异，各类型的属性与 Spring Boot 配置示例见[注册中心配置](/cn/user-manual/configuration/registry-center)。
- 
- 可配置属性：
- 
--| 属性名        | 是否必填 |
--|-------------|:---------|
--| type        | 否       |
--| server-lists | 是       |
--| namespace   | 是       |
-+| 属性名        | 是否必填                        |
-+|-------------|:--------------------------------|
-+| type        | 否                              |
-+| server-lists | 是（zookeeper、etcd、nacos）      |
-+| namespace   | 是                             |
- 
- 配置格式参考：
- 
 diff --git a/docs/content/user-manual/configuration/spring-boot-starter.en.md b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-index 8d9603a91..057bbf468 100644
+index 057bbf468..8dc574e51 100644
 --- a/docs/content/user-manual/configuration/spring-boot-starter.en.md
 +++ b/docs/content/user-manual/configuration/spring-boot-starter.en.md
-@@ -18,15 +18,17 @@ To use the Spring boot, user need to add the dependency of the `elasticjob-sprin
+@@ -14,6 +14,14 @@ To use the Spring boot, user need to add the dependency of the `elasticjob-sprin
+ </dependency>
+ ```
+ 
++## Spring Boot Compatibility
++
++The starter is compiled against Spring Boot 2.7. The same artifacts are tested on Spring Boot 2.7, 3.5 and 4.0,
++so applications on any of these lines use the same dependency.
++
++- Spring Boot 2.7 requires JDK 8 or above.
++- Spring Boot 3.5 and 4.0 require JDK 17 or above, as Spring Boot itself does.
++
+ ## Registry Center Configuration
  
  Prefix: `elasticjob.reg-center`
- 
--`type` selects the registry center, currently only `zookeeper` (default).
-+`type` selects the registry center: `zookeeper` (default), `etcd`, `nacos` or `memory`.
-+The remaining properties depend on the type, see [Registry Center Configuration](/en/user-manual/configuration/registry-center)
-+for the properties and the Spring Boot example of each type.
- 
- Configuration:
- 
--| Property name | Required |
--|---------------|:---------|
--| type          | No       |
--| server-lists  | Yes      |
--| namespace     | Yes      |
-+| Property name | Required                        |
-+|---------------|:--------------------------------|
-+| type          | No                              |
-+| server-lists  | Yes (for zookeeper, etcd, nacos)|
-+| namespace     | Yes                             |
- 
- Reference:
- 
 diff --git a/docs/content/user-manual/configuration/spring-namespace.cn.md b/docs/content/user-manual/configuration/spring-namespace.cn.md
-index 57874fbf0..54cadcb8a 100644
+index 54cadcb8a..0ea318199 100644
 --- a/docs/content/user-manual/configuration/spring-namespace.cn.md
 +++ b/docs/content/user-manual/configuration/spring-namespace.cn.md
-@@ -33,6 +33,10 @@ chapter = true
- | session-timeout-milliseconds    | 否    |
- | connection-timeout-milliseconds | 否    |
- | digest                          | 否    |
-+| ensemble-tracker                | 否    |
+@@ -16,6 +16,10 @@ chapter = true
+ 
+ 命名空间：[http://shardingsphere.apache.org/schema/elasticjob/elasticjob.xsd](http://shardingsphere.apache.org/schema/elasticjob/elasticjob.xsd)
+ 
++## Spring Framework 兼容性
 +
-+`<elasticjob:etcd />`、`<elasticjob:nacos />` 和 `<elasticjob:memory />` 也已支持，
-+各类型的属性与配置示例见[注册中心配置](/cn/user-manual/configuration/registry-center)章节。
++命名空间模块以 Spring Framework 5.3 编译，并使用 Spring Boot 3.5 和 4.0 对应的 Spring Framework 6.2 和 7.0 进行测试。Spring Framework 6 和 7 要求 JDK 17 或更高版本。
++
+ ## 注册中心配置
+ 
+ \<elasticjob:zookeeper />
+diff --git a/docs/content/user-manual/configuration/spring-namespace.en.md b/docs/content/user-manual/configuration/spring-namespace.en.md
+index aa7b2480d..f787c4606 100644
+--- a/docs/content/user-manual/configuration/spring-namespace.en.md
++++ b/docs/content/user-manual/configuration/spring-namespace.en.md
+@@ -16,6 +16,11 @@ To use the Spring namespace, user need to add the dependency of the `elasticjob-
+ 
+ Spring namespace: [http://shardingsphere.apache.org/schema/elasticjob/elasticjob.xsd](http://shardingsphere.apache.org/schema/elasticjob/elasticjob.xsd)
+ 
++## Spring Framework Compatibility
++
++The namespace module is compiled against Spring Framework 5.3, and it is tested with Spring Framework 6.2 and 7.0,
++the Spring Framework versions of Spring Boot 3.5 and 4.0. Spring Framework 6 and 7 require JDK 17 or above.
++
+ ## Registry Center Configuration
+ 
+ \<elasticjob:zookeeper />
+diff --git a/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md b/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
+index 242fc15cb..e4d8a215f 100644
+--- a/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
++++ b/docs/content/user-manual/usage/job-api/spring-boot-starter.cn.md
+@@ -8,8 +8,8 @@ ElasticJob 提供自定义的 Spring Boot Starter，可以与 Spring Boot 配合
+ 基于 ElasticJob Spring Boot Starter 使用 ElasticJob ，用户无需手动创建 CoordinatorRegistryCenter、JobBootstrap 等实例，
+ 只需实现核心作业逻辑并辅以少量配置，即可利用轻量、无中心化的 ElasticJob 解决分布式调度问题。
+ 
+-以下内容仅通过 Spring Boot 3 作为演示。 
+-相关内容在 Spring Boot 2 上仍可能有效，但由于 Spring Boot 2 已经结束维护，不对 Spring Boot 2 做任何可用性假设。
++以下内容以 Spring Boot 3 作为演示，同样适用于 Spring Boot 2.7 和 4.0，
++参见 [Spring Boot 兼容性](/cn/user-manual/configuration/spring-boot-starter/)。
  
  ## 作业配置
  
-diff --git a/docs/content/user-manual/configuration/spring-namespace.en.md b/docs/content/user-manual/configuration/spring-namespace.en.md
-index 903dff051..aa7b2480d 100644
---- a/docs/content/user-manual/configuration/spring-namespace.en.md
-+++ b/docs/content/user-manual/configuration/spring-namespace.en.md
-@@ -20,7 +20,7 @@ Spring namespace: [http://shardingsphere.apache.org/schema/elasticjob/elasticjob
+diff --git a/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md b/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
+index ec976e895..1a7a6e91c 100644
+--- a/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
++++ b/docs/content/user-manual/usage/job-api/spring-boot-starter.en.md
+@@ -8,8 +8,8 @@ ElasticJob provides a customized Spring Boot Starter, which can be used in conju
+ Developers are free from configuring CoordinatorRegistryCenter, JobBootstrap by using ElasticJob Spring Boot Starter.
+ What developers need to solve distributed scheduling problem are job implementations with a little configuration.
  
- \<elasticjob:zookeeper />
+-The following content is only demonstrated through Spring Boot 3. 
+-The relevant content may still be valid on Spring Boot 2, but since Spring Boot 2 has ended maintenance, no availability assumptions are made for Spring Boot 2.
++The following content is demonstrated through Spring Boot 3. The same content applies to Spring Boot 2.7 and 4.0,
++see [Spring Boot Compatibility](/en/user-manual/configuration/spring-boot-starter/#spring-boot-compatibility).
  
--Configuration: 
-+Configuration:
- 
- | Name                            | Required |
- |---------------------------------|:---------|
-@@ -33,6 +33,10 @@ Configuration:
- | session-timeout-milliseconds    | No       |
- | connection-timeout-milliseconds | No       |
- | digest                          | No       |
-+| ensemble-tracker                | No       |
-+
-+`<elasticjob:etcd />`, `<elasticjob:nacos />` and `<elasticjob:memory />` are also supported.
-+Their attributes and examples are documented in the [registry center section](/en/user-manual/configuration/registry-center).
- 
- ## Job Configuration
+ ## Job configuration
  

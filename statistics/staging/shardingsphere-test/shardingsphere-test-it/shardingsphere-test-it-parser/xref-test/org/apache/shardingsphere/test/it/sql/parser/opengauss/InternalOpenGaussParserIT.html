@@ -25,12 +25,35 @@
 <a class="jxr_linenumber" name="L17" href="#L17">17</a>  
 <a class="jxr_linenumber" name="L18" href="#L18">18</a>  <strong class="jxr_keyword">package</strong> org.apache.shardingsphere.test.it.sql.parser.opengauss;
 <a class="jxr_linenumber" name="L19" href="#L19">19</a>  
-<a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.test.it.sql.parser.internal.InternalSQLParserIT;
-<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.test.it.sql.parser.internal.InternalSQLParserITSettings;
-<a class="jxr_linenumber" name="L22" href="#L22">22</a>  
-<a class="jxr_linenumber" name="L23" href="#L23">23</a>  @InternalSQLParserITSettings(<span class="jxr_string">"openGauss"</span>)
-<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">class</strong> <a name="InternalOpenGaussParserIT" href="../../../../../../../../org/apache/shardingsphere/test/it/sql/parser/opengauss/InternalOpenGaussParserIT.html#InternalOpenGaussParserIT">InternalOpenGaussParserIT</a> <strong class="jxr_keyword">extends</strong> InternalSQLParserIT {
-<a class="jxr_linenumber" name="L25" href="#L25">25</a>  }
+<a class="jxr_linenumber" name="L20" href="#L20">20</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.engine.api.CacheOption;
+<a class="jxr_linenumber" name="L21" href="#L21">21</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.engine.api.SQLParserEngine;
+<a class="jxr_linenumber" name="L22" href="#L22">22</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.engine.api.SQLStatementVisitorEngine;
+<a class="jxr_linenumber" name="L23" href="#L23">23</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.InExpression;
+<a class="jxr_linenumber" name="L24" href="#L24">24</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.segment.dml.expr.ListExpression;
+<a class="jxr_linenumber" name="L25" href="#L25">25</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.sql.parser.statement.core.statement.type.dml.SelectStatement;
+<a class="jxr_linenumber" name="L26" href="#L26">26</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.test.it.sql.parser.internal.InternalSQLParserIT;
+<a class="jxr_linenumber" name="L27" href="#L27">27</a>  <strong class="jxr_keyword">import</strong> org.apache.shardingsphere.test.it.sql.parser.internal.InternalSQLParserITSettings;
+<a class="jxr_linenumber" name="L28" href="#L28">28</a>  <strong class="jxr_keyword">import</strong> org.junit.jupiter.api.Test;
+<a class="jxr_linenumber" name="L29" href="#L29">29</a>  
+<a class="jxr_linenumber" name="L30" href="#L30">30</a>  <strong class="jxr_keyword">import</strong> java.util.Collection;
+<a class="jxr_linenumber" name="L31" href="#L31">31</a>  <strong class="jxr_keyword">import</strong> java.util.stream.Collectors;
+<a class="jxr_linenumber" name="L32" href="#L32">32</a>  <strong class="jxr_keyword">import</strong> java.util.stream.IntStream;
+<a class="jxr_linenumber" name="L33" href="#L33">33</a>  
+<a class="jxr_linenumber" name="L34" href="#L34">34</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.hamcrest.MatcherAssert.assertThat;
+<a class="jxr_linenumber" name="L35" href="#L35">35</a>  <strong class="jxr_keyword">import</strong> <strong class="jxr_keyword">static</strong> org.hamcrest.Matchers.is;
+<a class="jxr_linenumber" name="L36" href="#L36">36</a>  
+<a class="jxr_linenumber" name="L37" href="#L37">37</a>  @InternalSQLParserITSettings(<span class="jxr_string">"openGauss"</span>)
+<a class="jxr_linenumber" name="L38" href="#L38">38</a>  <strong class="jxr_keyword">class</strong> <a name="InternalOpenGaussParserIT" href="../../../../../../../../org/apache/shardingsphere/test/it/sql/parser/opengauss/InternalOpenGaussParserIT.html#InternalOpenGaussParserIT">InternalOpenGaussParserIT</a> <strong class="jxr_keyword">extends</strong> InternalSQLParserIT {
+<a class="jxr_linenumber" name="L39" href="#L39">39</a>      
+<a class="jxr_linenumber" name="L40" href="#L40">40</a>      @Test
+<a class="jxr_linenumber" name="L41" href="#L41">41</a>      <strong class="jxr_keyword">void</strong> assertSelectWithLargeInList() {
+<a class="jxr_linenumber" name="L42" href="#L42">42</a>          Collection&lt;String&gt; expectedValues = IntStream.rangeClosed(1, 100000).mapToObj(String::valueOf).collect(Collectors.toList());
+<a class="jxr_linenumber" name="L43" href="#L43">43</a>          String sql = <span class="jxr_string">"SELECT * FROM foo_table WHERE foo_id IN ("</span> + String.join(<span class="jxr_string">", "</span>, expectedValues) + <span class="jxr_string">")"</span>;
+<a class="jxr_linenumber" name="L44" href="#L44">44</a>          SelectStatement actual = (SelectStatement) <strong class="jxr_keyword">new</strong> SQLStatementVisitorEngine(<span class="jxr_string">"openGauss"</span>).visit(<strong class="jxr_keyword">new</strong> SQLParserEngine(<span class="jxr_string">"openGauss"</span>, <strong class="jxr_keyword">new</strong> CacheOption(128, 1024L)).parse(sql, false));
+<a class="jxr_linenumber" name="L45" href="#L45">45</a>          ListExpression actualValues = (ListExpression) ((InExpression) actual.getWhere().get().getExpr()).getRight();
+<a class="jxr_linenumber" name="L46" href="#L46">46</a>          assertThat(actualValues.getItems().stream().map(each -&gt; sql.substring(each.getStartIndex(), each.getStopIndex() + 1)).collect(Collectors.toList()), is(expectedValues));
+<a class="jxr_linenumber" name="L47" href="#L47">47</a>      }
+<a class="jxr_linenumber" name="L48" href="#L48">48</a>  }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2026 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

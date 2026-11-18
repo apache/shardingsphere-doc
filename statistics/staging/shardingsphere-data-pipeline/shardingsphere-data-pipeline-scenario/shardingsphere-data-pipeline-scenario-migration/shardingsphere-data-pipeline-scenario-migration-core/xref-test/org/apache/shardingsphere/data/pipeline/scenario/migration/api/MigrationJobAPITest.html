@@ -294,35 +294,39 @@
 <a class="jxr_linenumber" name="L286" href="#L286">286</a>     <strong class="jxr_keyword">void</strong> assertRollbackNormalizesSchemaAndPreservesActualTable(<strong class="jxr_keyword">final</strong> String name, <strong class="jxr_keyword">final</strong> String schemaName, <strong class="jxr_keyword">final</strong> String expectedSchemaName) <strong class="jxr_keyword">throws</strong> SQLException {
 <a class="jxr_linenumber" name="L287" href="#L287">287</a>         String jobId = PipelineJobIdUtils.marshal(<strong class="jxr_keyword">new</strong> MigrationJobId(contextKey, Collections.emptyList()));
 <a class="jxr_linenumber" name="L288" href="#L288">288</a>         MigrationJobConfiguration jobConfig = mock(MigrationJobConfiguration.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L289" href="#L289">289</a>         when(jobConfig.getTargetTableNames()).thenReturn(Collections.singletonList(<span class="jxr_string">"T_Order"</span>));
-<a class="jxr_linenumber" name="L290" href="#L290">290</a>         when(jobConfig.getTargetTableSchemaMap()).thenReturn(Collections.singletonMap(<span class="jxr_string">"T_Order"</span>, schemaName));
-<a class="jxr_linenumber" name="L291" href="#L291">291</a>         Connection connection = mock(Connection.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L292" href="#L292">292</a>         Statement statement = mock(Statement.<strong class="jxr_keyword">class</strong>);
-<a class="jxr_linenumber" name="L293" href="#L293">293</a>         when(connection.createStatement()).thenReturn(statement);
-<a class="jxr_linenumber" name="L294" href="#L294">294</a>         <strong class="jxr_keyword">try</strong> (
-<a class="jxr_linenumber" name="L295" href="#L295">295</a>                 MockedStatic&lt;PipelineAPIFactory&gt; ignoredFactory = mockStatic(PipelineAPIFactory.<strong class="jxr_keyword">class</strong>, Answers.RETURNS_DEEP_STUBS);
-<a class="jxr_linenumber" name="L296" href="#L296">296</a>                 MockedConstruction&lt;PipelineJobConfigurationManager&gt; ignoredManager = mockConstruction(PipelineJobConfigurationManager.<strong class="jxr_keyword">class</strong>,
-<a class="jxr_linenumber" name="L297" href="#L297">297</a>                         (mock, context) -&gt; when(mock.getJobConfiguration(jobId)).thenReturn(jobConfig));
-<a class="jxr_linenumber" name="L298" href="#L298">298</a>                 MockedConstruction&lt;PipelineDataSource&gt; ignoredDataSource = mockConstruction(PipelineDataSource.<strong class="jxr_keyword">class</strong>, (mock, context) -&gt; {
-<a class="jxr_linenumber" name="L299" href="#L299">299</a>                     when(mock.getConnection()).thenReturn(connection);
-<a class="jxr_linenumber" name="L300" href="#L300">300</a>                     when(mock.getIdentifierContext()).thenReturn(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyFactory.newLowerCasePolicySet()));
-<a class="jxr_linenumber" name="L301" href="#L301">301</a>                 });
-<a class="jxr_linenumber" name="L302" href="#L302">302</a>                 MockedConstruction&lt;PipelinePrepareSQLBuilder&gt; builders = mockConstruction(PipelinePrepareSQLBuilder.<strong class="jxr_keyword">class</strong>,
-<a class="jxr_linenumber" name="L303" href="#L303">303</a>                         (mock, context) -&gt; when(mock.buildDropSQL(expectedSchemaName, <span class="jxr_string">"T_Order"</span>)).thenReturn(<span class="jxr_string">"DROP TABLE IF EXISTS target_table"</span>))) {
-<a class="jxr_linenumber" name="L304" href="#L304">304</a>             jobAPI.rollback(jobId);
-<a class="jxr_linenumber" name="L305" href="#L305">305</a>             verify(builders.constructed().get(0)).buildDropSQL(expectedSchemaName, <span class="jxr_string">"T_Order"</span>);
-<a class="jxr_linenumber" name="L306" href="#L306">306</a>             verify(statement).execute(<span class="jxr_string">"DROP TABLE IF EXISTS target_table"</span>);
-<a class="jxr_linenumber" name="L307" href="#L307">307</a>             verify(jobManager).drop(jobId);
-<a class="jxr_linenumber" name="L308" href="#L308">308</a>         }
-<a class="jxr_linenumber" name="L309" href="#L309">309</a>     }
-<a class="jxr_linenumber" name="L310" href="#L310">310</a>     
-<a class="jxr_linenumber" name="L311" href="#L311">311</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Stream&lt;Arguments&gt; provideRollbackSchemas() {
-<a class="jxr_linenumber" name="L312" href="#L312">312</a>         <strong class="jxr_keyword">return</strong> Stream.of(
-<a class="jxr_linenumber" name="L313" href="#L313">313</a>                 Arguments.of(<span class="jxr_string">"uppercase schema reference"</span>, <span class="jxr_string">"UPPER_SCHEMA"</span>, <span class="jxr_string">"upper_schema"</span>),
-<a class="jxr_linenumber" name="L314" href="#L314">314</a>                 Arguments.of(<span class="jxr_string">"absent schema"</span>, <strong class="jxr_keyword">null</strong>, <strong class="jxr_keyword">null</strong>),
-<a class="jxr_linenumber" name="L315" href="#L315">315</a>                 Arguments.of(<span class="jxr_string">"empty schema"</span>, <span class="jxr_string">""</span>, <span class="jxr_string">""</span>));
-<a class="jxr_linenumber" name="L316" href="#L316">316</a>     }
-<a class="jxr_linenumber" name="L317" href="#L317">317</a> }
+<a class="jxr_linenumber" name="L289" href="#L289">289</a>         when(jobConfig.getTargetDatabaseName()).thenReturn(<span class="jxr_string">"foo_db"</span>);
+<a class="jxr_linenumber" name="L290" href="#L290">290</a>         ContextManager contextManager = mock(ContextManager.<strong class="jxr_keyword">class</strong>, Answers.RETURNS_DEEP_STUBS);
+<a class="jxr_linenumber" name="L291" href="#L291">291</a>         when(jobConfig.getTargetTableNames()).thenReturn(Collections.singletonList(<span class="jxr_string">"T_Order"</span>));
+<a class="jxr_linenumber" name="L292" href="#L292">292</a>         when(jobConfig.getTargetTableSchemaMap()).thenReturn(Collections.singletonMap(<span class="jxr_string">"T_Order"</span>, schemaName));
+<a class="jxr_linenumber" name="L293" href="#L293">293</a>         Connection connection = mock(Connection.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L294" href="#L294">294</a>         Statement statement = mock(Statement.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L295" href="#L295">295</a>         when(connection.createStatement()).thenReturn(statement);
+<a class="jxr_linenumber" name="L296" href="#L296">296</a>         <strong class="jxr_keyword">try</strong> (
+<a class="jxr_linenumber" name="L297" href="#L297">297</a>                 MockedStatic&lt;PipelineAPIFactory&gt; ignoredFactory = mockStatic(PipelineAPIFactory.<strong class="jxr_keyword">class</strong>, Answers.RETURNS_DEEP_STUBS);
+<a class="jxr_linenumber" name="L298" href="#L298">298</a>                 MockedStatic&lt;PipelineContextManager&gt; ignoredContext = mockStatic(PipelineContextManager.<strong class="jxr_keyword">class</strong>);
+<a class="jxr_linenumber" name="L299" href="#L299">299</a>                 MockedConstruction&lt;PipelineJobConfigurationManager&gt; ignoredManager = mockConstruction(PipelineJobConfigurationManager.<strong class="jxr_keyword">class</strong>,
+<a class="jxr_linenumber" name="L300" href="#L300">300</a>                         (mock, context) -&gt; when(mock.getJobConfiguration(jobId)).thenReturn(jobConfig));
+<a class="jxr_linenumber" name="L301" href="#L301">301</a>                 MockedConstruction&lt;PipelineDataSource&gt; ignoredDataSource = mockConstruction(PipelineDataSource.<strong class="jxr_keyword">class</strong>, (mock, context) -&gt; {
+<a class="jxr_linenumber" name="L302" href="#L302">302</a>                     when(mock.getConnection()).thenReturn(connection);
+<a class="jxr_linenumber" name="L303" href="#L303">303</a>                     when(mock.getIdentifierContext()).thenReturn(<strong class="jxr_keyword">new</strong> DatabaseIdentifierContext(IdentifierCasePolicyFactory.newLowerCasePolicySet()));
+<a class="jxr_linenumber" name="L304" href="#L304">304</a>                 });
+<a class="jxr_linenumber" name="L305" href="#L305">305</a>                 MockedConstruction&lt;PipelinePrepareSQLBuilder&gt; builders = mockConstruction(PipelinePrepareSQLBuilder.<strong class="jxr_keyword">class</strong>,
+<a class="jxr_linenumber" name="L306" href="#L306">306</a>                         (mock, context) -&gt; when(mock.buildDropSQL(expectedSchemaName, <span class="jxr_string">"T_Order"</span>)).thenReturn(<span class="jxr_string">"DROP TABLE IF EXISTS target_table"</span>))) {
+<a class="jxr_linenumber" name="L307" href="#L307">307</a>             when(PipelineContextManager.getContext(contextKey)).thenReturn(contextManager);
+<a class="jxr_linenumber" name="L308" href="#L308">308</a>             jobAPI.rollback(jobId);
+<a class="jxr_linenumber" name="L309" href="#L309">309</a>             verify(builders.constructed().get(0)).buildDropSQL(expectedSchemaName, <span class="jxr_string">"T_Order"</span>);
+<a class="jxr_linenumber" name="L310" href="#L310">310</a>             verify(statement).execute(<span class="jxr_string">"DROP TABLE IF EXISTS target_table"</span>);
+<a class="jxr_linenumber" name="L311" href="#L311">311</a>             verify(jobManager).drop(jobId);
+<a class="jxr_linenumber" name="L312" href="#L312">312</a>         }
+<a class="jxr_linenumber" name="L313" href="#L313">313</a>     }
+<a class="jxr_linenumber" name="L314" href="#L314">314</a>     
+<a class="jxr_linenumber" name="L315" href="#L315">315</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> Stream&lt;Arguments&gt; provideRollbackSchemas() {
+<a class="jxr_linenumber" name="L316" href="#L316">316</a>         <strong class="jxr_keyword">return</strong> Stream.of(
+<a class="jxr_linenumber" name="L317" href="#L317">317</a>                 Arguments.of(<span class="jxr_string">"uppercase schema reference"</span>, <span class="jxr_string">"UPPER_SCHEMA"</span>, <span class="jxr_string">"upper_schema"</span>),
+<a class="jxr_linenumber" name="L318" href="#L318">318</a>                 Arguments.of(<span class="jxr_string">"absent schema"</span>, <strong class="jxr_keyword">null</strong>, <strong class="jxr_keyword">null</strong>),
+<a class="jxr_linenumber" name="L319" href="#L319">319</a>                 Arguments.of(<span class="jxr_string">"empty schema"</span>, <span class="jxr_string">""</span>, <span class="jxr_string">""</span>));
+<a class="jxr_linenumber" name="L320" href="#L320">320</a>     }
+<a class="jxr_linenumber" name="L321" href="#L321">321</a> }
 </pre>
 <hr/>
 <div id="footer">Copyright &#169; 2026 <a href="https://www.apache.org/">The Apache Software Foundation</a>. All rights reserved.</div>

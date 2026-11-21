@@ -145,6 +145,30 @@ echo git clone https://github.com/apache/shardingsphere-elasticjob
 
 git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-elasticjob _elasticjob 
 
+# ------------------------- build released docs --------------------------------------
+cd _elasticjob
+EJ_TAGS=(`git tag --sort=taggerdate | grep -E '^3\.0\.[0-9]+$'`)
+for tag in ${EJ_TAGS[@]}
+do
+  if [ ! -d ../elasticjob/$tag ] ; then
+    git checkout --force $tag
+    if [ -d docs -a -f docs/build.sh ] ; then
+      count=3
+      echo "generate elasticjob $tag document"
+      set -e
+      env HUGO_BASEURL="https://shardingsphere.apache.org/elasticjob/$tag/" \
+        HUGO_PARAMS_EDITURL="https://github.com/apache/shardingsphere-elasticjob/tree/$tag/docs/content/" \
+        bash docs/build.sh
+      set +e
+      find docs/public -name '*.html' -exec sed -i -e 's|value="/elasticjob/current|value="/elasticjob/'$tag'|g' {} \;
+      mv docs/public ../elasticjob/$tag
+    fi
+  fi
+done
+git checkout --force master
+cd ..
+# -----------------------------------------------------------------------------------
+
 echo check diff
 if  [ ! -s old_version_ej ]  ; then
     echo init > old_version_ej 

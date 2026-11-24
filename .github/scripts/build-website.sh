@@ -153,28 +153,38 @@ do
   if [ -d ../elasticjob/$tag ] ; then
     continue
   fi
-  git checkout --force $tag
-  if [ ! -f docs/build.sh ] ; then
+  rm -rf ../_ejtag
+  git worktree prune
+  if ! git worktree add --detach ../_ejtag $tag ; then
+    echo "::warning::elasticjob $tag checkout failed, skipped"
+    continue
+  fi
+  if [ ! -f ../_ejtag/docs/build.sh ] ; then
     echo "::warning::elasticjob $tag has no docs/build.sh, skipped"
     continue
   fi
   echo "generate elasticjob $tag document"
-  rm -rf docs/public
-  env HUGO_BASEURL="https://shardingsphere.apache.org/elasticjob/$tag/" \
-    HUGO_PARAMS_EDITURL="https://github.com/apache/shardingsphere-elasticjob/tree/$tag/docs/content/" \
-    bash docs/build.sh
-  if [ ! -f docs/public/en/overview/index.html ] ; then
+    (cd ../_ejtag/docs && env HUGO_BASEURL="https://shardingsphere.apache.org/elasticjob/$tag/" \
+      HUGO_PARAMS_EDITURL="https://github.com/apache/shardingsphere-elasticjob/tree/$tag/docs/content/" \
+      bash build.sh) 2>&1 | tee ../_ejtag/build.log
+    if grep -q '^Error' ../_ejtag/build.log \
+       || [ ! -f ../_ejtag/docs/public/en/overview/index.html ] \
+       || [ ! -f ../_ejtag/docs/public/cn/overview/index.html ] ; then
     echo "::warning::elasticjob $tag docs build failed, skipped"
-    rm -rf docs/public
     continue
   fi
-  find docs/public -name '*.html' -exec sed -i \
+  find ../_ejtag/docs/public -name '*.html' -exec sed -i \
     -e 's|value="/elasticjob/current|value="/elasticjob/'$tag'|g' \
     -e 's|https://shardingsphere.apache.org/elasticjob/current/|https://shardingsphere.apache.org/elasticjob/'$tag'/|g' {} \;
-  mv docs/public ../elasticjob/$tag
-  count=3
+  if mv ../_ejtag/docs/public ../elasticjob/$tag ; then
+    count=3
+  else
+    echo "::warning::elasticjob $tag could not be saved, skipped"
+    rm -rf ../elasticjob/$tag
+  fi
 done
-git checkout --force master
+rm -rf ../_ejtag
+git worktree prune
 cd ..
 # -----------------------------------------------------------------------------------
 

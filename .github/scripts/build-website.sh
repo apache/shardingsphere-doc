@@ -173,11 +173,20 @@ do
     echo "::warning::elasticjob $tag docs build failed, skipped"
     continue
   fi
-  find ../_ejtag/docs/public -name '*.html' -exec sed -i \
-    -e 's|value="/elasticjob/current|value="/elasticjob/'$tag'|g' \
-    -e 's|shardingsphere-elasticjob/tree/master/|shardingsphere-elasticjob/tree/'$tag'/|g' \
-        -e '/https:\/\/shardingsphere.apache.org\/pdf\/shardingsphere-elasticjob_docs_[a-z]*\.pdf/,/<\/a>/d' \
-    -e 's|https://shardingsphere.apache.org/elasticjob/current/|https://shardingsphere.apache.org/elasticjob/'$tag'/|g' {} \;
+    find ../_ejtag/docs/public -name '*.html' -exec sed -i \
+      -e 's|value="/elasticjob/current|value="/elasticjob/'$tag'|g' \
+      -e 's|shardingsphere-elasticjob/tree/master/|shardingsphere-elasticjob/tree/'$tag'/|g' \
+      -e '/https:\/\/shardingsphere.apache.org\/pdf\/shardingsphere-elasticjob_docs_[a-z]*\.pdf/,/<\/a>/d' \
+      -e 's#https://shardingsphere.apache.org/elasticjob/images/favicon.png#https://shardingsphere.apache.org/elasticjob/'$tag'/images/favicon.png#g' \
+      -e '/horsey\.css/d' \
+      -e 's#<a href="https://travis-ci.org/apache/shardingsphere-elasticjob"><img src="[^"]*" alt="Build Status"></a>##' \
+      -e 's#<a href="https://coveralls.io/github/apache/shardingsphere-elasticjob?branch=master"><img src="[^"]*" alt="Coverage Status"></a>##' \
+      -e 's|https://shardingsphere.apache.org/elasticjob/current/|https://shardingsphere.apache.org/elasticjob/'$tag'/|g' {} \;
+    # 3.0.5 has no user-manual/elasticjob/ directory, but its pages still link there
+    if [ "$tag" = "3.0.5" ] ; then
+      find ../_ejtag/docs/public -name '*.html' -exec sed -i -E \
+        -e 's#/elasticjob/3\.0\.5/(en|cn)/user-manual/elasticjob/#/elasticjob/3.0.5/\1/user-manual/#g' {} \;
+    fi
   if mv ../_ejtag/docs/public ../elasticjob/$tag ; then
     count=3
   else

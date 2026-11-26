@@ -256,6 +256,7 @@ echo git clone https://github.com/apache/shardingsphere-on-cloud
 
 git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-on-cloud _oncloud 
 
+if [ -d _oncloud ] ; then
 # ------------------------- build history docs --------------------------------------
 cd _oncloud
 TAGS=(`git tag --sort=taggerdate | grep -E '^[[:digit:]]+.[[:digit:]]+.*+'`)
@@ -327,6 +328,9 @@ else
     cp -fr octarget/current/* oncloud/current
     
     rm -rf octarget
+fi
+else
+    echo "::warning::oncloud clone failed, skipping OnCloud docs"
 fi
 rm -rf _oncloud
 

@@ -146,7 +146,7 @@ echo git clone https://github.com/apache/shardingsphere-elasticjob
 git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-elasticjob _elasticjob 
 
 # ------------------------- build released docs --------------------------------------
-cd _elasticjob
+if cd _elasticjob ; then
 EJ_TAGS=(`git tag --sort=taggerdate | grep -E '^3\.0\.[0-9]+$'`)
 for tag in ${EJ_TAGS[@]}
 do
@@ -186,8 +186,9 @@ done
 rm -rf ../_ejtag
 git worktree prune
 cd ..
+fi
 # -----------------------------------------------------------------------------------
-
+if [ -d _elasticjob ] ; then
 echo check diff
 if  [ ! -s old_version_ej ]  ; then
     echo init > old_version_ej 
@@ -231,6 +232,9 @@ else
     
     rm -rf ejtarget
     #ls -al
+fi
+else
+    echo "::warning::elasticjob clone failed, skipping ElasticJob docs"
 fi
 
 ################################################

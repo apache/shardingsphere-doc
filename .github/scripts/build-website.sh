@@ -146,6 +146,7 @@ echo git clone https://github.com/apache/shardingsphere-elasticjob
 git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-elasticjob _elasticjob 
 
 # ------------------------- build released docs --------------------------------------
+ej_skipped=0
 if cd _elasticjob ; then
 EJ_TAGS=(`git tag --sort=taggerdate | grep -E '^3\.0\.[0-9]+$'`)
 for tag in ${EJ_TAGS[@]}
@@ -156,11 +157,11 @@ do
   rm -rf ../_ejtag
   git worktree prune
   if ! git worktree add --detach ../_ejtag $tag ; then
-    echo "::warning::elasticjob $tag checkout failed, skipped"
+    echo "::warning::elasticjob $tag checkout failed, skipped"; ej_skipped=1
     continue
   fi
   if [ ! -f ../_ejtag/docs/build.sh ] ; then
-    echo "::warning::elasticjob $tag has no docs/build.sh, skipped"
+    echo "::warning::elasticjob $tag has no docs/build.sh, skipped"; ej_skipped=1
     continue
   fi
   echo "generate elasticjob $tag document"
@@ -170,7 +171,7 @@ do
     if grep -q '^Error' ../_ejtag/build.log \
        || [ ! -f ../_ejtag/docs/public/en/overview/index.html ] \
        || [ ! -f ../_ejtag/docs/public/cn/overview/index.html ] ; then
-    echo "::warning::elasticjob $tag docs build failed, skipped"
+    echo "::warning::elasticjob $tag docs build failed, skipped"; ej_skipped=1
     continue
   fi
     find ../_ejtag/docs/public -name '*.html' -exec sed -i \
@@ -190,7 +191,7 @@ do
   if mv ../_ejtag/docs/public ../elasticjob/$tag ; then
     count=3
   else
-    echo "::warning::elasticjob $tag could not be saved, skipped"
+    echo "::warning::elasticjob $tag could not be saved, skipped"; ej_skipped=1
     rm -rf ../elasticjob/$tag
   fi
 done
@@ -245,7 +246,7 @@ else
     #ls -al
 fi
 else
-    echo "::warning::elasticjob clone failed, skipping ElasticJob docs"
+    echo "::warning::elasticjob clone failed, skipping ElasticJob docs"; ej_skipped=1
 fi
 
 ################################################
@@ -349,4 +350,9 @@ else
     set -e
     git pull --rebase origin "${branch_name}"
     git push origin "${branch_name}"
+fi
+
+if [ "$ej_skipped" -ne 0 ] && [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] ; then
+    echo "::error::ElasticJob docs were skipped, see the warnings above"
+    exit 1
 fi

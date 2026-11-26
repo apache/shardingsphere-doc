@@ -175,6 +175,8 @@ do
   fi
   find ../_ejtag/docs/public -name '*.html' -exec sed -i \
     -e 's|value="/elasticjob/current|value="/elasticjob/'$tag'|g' \
+    -e 's|shardingsphere-elasticjob/tree/master/|shardingsphere-elasticjob/tree/'$tag'/|g' \
+        -e '/https:\/\/shardingsphere.apache.org\/pdf\/shardingsphere-elasticjob_docs_[a-z]*\.pdf/,/<\/a>/d' \
     -e 's|https://shardingsphere.apache.org/elasticjob/current/|https://shardingsphere.apache.org/elasticjob/'$tag'/|g' {} \;
   if mv ../_ejtag/docs/public ../elasticjob/$tag ; then
     count=3

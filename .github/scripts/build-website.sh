@@ -145,6 +145,65 @@ echo git clone https://github.com/apache/shardingsphere-elasticjob
 
 git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-elasticjob _elasticjob 
 
+# ------------------------- build released docs --------------------------------------
+ej_skipped=0
+if cd _elasticjob ; then
+ej_tags=(`git tag --sort=taggerdate | grep -E '^3\.0\.[0-9]+$'`)
+if [ ${#ej_tags[@]} -eq 0 ] ; then
+  echo "::warning::no elasticjob 3.0.x tags found, no released docs were built"; ej_skipped=1
+fi
+for tag in ${ej_tags[@]}
+do
+  if [ -d ../elasticjob/$tag ] ; then
+    continue
+  fi
+  rm -rf ../_ejtag
+  git worktree prune
+  if ! git worktree add --detach ../_ejtag $tag ; then
+    echo "::warning::elasticjob $tag checkout failed, skipped"; ej_skipped=1
+    continue
+  fi
+  if [ ! -f ../_ejtag/docs/build.sh ] ; then
+    echo "::warning::elasticjob $tag has no docs/build.sh, skipped"; ej_skipped=1
+    continue
+  fi
+  echo "generate elasticjob $tag document"
+    (cd ../_ejtag/docs && env HUGO_BASEURL="https://shardingsphere.apache.org/elasticjob/$tag/" \
+      HUGO_PARAMS_EDITURL="https://github.com/apache/shardingsphere-elasticjob/tree/$tag/docs/content/" \
+      bash build.sh) 2>&1 | tee ../_ejtag/build.log
+    if grep -q '^Error' ../_ejtag/build.log \
+       || [ ! -f ../_ejtag/docs/public/en/overview/index.html ] \
+       || [ ! -f ../_ejtag/docs/public/cn/overview/index.html ] ; then
+    echo "::warning::elasticjob $tag docs build failed, skipped"; ej_skipped=1
+    continue
+  fi
+    find ../_ejtag/docs/public -name '*.html' -exec sed -i \
+      -e 's|value="/elasticjob/current|value="/elasticjob/'$tag'|g' \
+      -e 's|shardingsphere-elasticjob/tree/master/|shardingsphere-elasticjob/tree/'$tag'/|g' \
+      -e '/https:\/\/shardingsphere.apache.org\/pdf\/shardingsphere-elasticjob_docs_[a-z]*\.pdf/,/<\/a>/d' \
+      -e 's#https://shardingsphere.apache.org/elasticjob/images/favicon.png#https://shardingsphere.apache.org/elasticjob/'$tag'/images/favicon.png#g' \
+      -e '/horsey\.css/d' \
+      -e 's#<a href="https://travis-ci.org/apache/shardingsphere-elasticjob"><img src="[^"]*" alt="Build Status"></a>##' \
+      -e 's#<a href="https://coveralls.io/github/apache/shardingsphere-elasticjob?branch=master"><img src="[^"]*" alt="Coverage Status"></a>##' \
+      -e 's|https://shardingsphere.apache.org/elasticjob/current/|https://shardingsphere.apache.org/elasticjob/'$tag'/|g' {} \;
+    # 3.0.5 has no user-manual/elasticjob/ directory, but its pages still link there
+    if [ "$tag" = "3.0.5" ] ; then
+      find ../_ejtag/docs/public -name '*.html' -exec sed -i -E \
+        -e 's#/elasticjob/3\.0\.5/(en|cn)/user-manual/elasticjob/#/elasticjob/3.0.5/\1/user-manual/#g' {} \;
+    fi
+  if mv ../_ejtag/docs/public ../elasticjob/$tag ; then
+    count=3
+  else
+    echo "::warning::elasticjob $tag could not be saved, skipped"; ej_skipped=1
+    rm -rf ../elasticjob/$tag
+  fi
+done
+rm -rf ../_ejtag
+git worktree prune
+cd ..
+fi
+# -----------------------------------------------------------------------------------
+if [ -d _elasticjob ] ; then
 echo check diff
 if  [ ! -s old_version_ej ]  ; then
     echo init > old_version_ej 
@@ -188,6 +247,9 @@ else
     
     rm -rf ejtarget
     #ls -al
+fi
+else
+    echo "::warning::elasticjob clone failed, skipping ElasticJob docs"; ej_skipped=1
 fi
 
 ################################################
@@ -287,4 +349,11 @@ else
     set -e
     git pull --rebase origin "${branch_name}"
     git push origin "${branch_name}"
+fi
+
+# A pull request run must not pass when an ElasticJob tag was skipped.
+# Push runs keep publishing whatever was built, so they do not fail here.
+if [ "$ej_skipped" -ne 0 ] && [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] ; then
+    echo "::error::ElasticJob docs were skipped, see the warnings above"
+    exit 1
 fi

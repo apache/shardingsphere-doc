@@ -148,11 +148,11 @@ git clone --filter=blob:none --no-single-branch https://github.com/apache/shardi
 # ------------------------- build released docs --------------------------------------
 ej_skipped=0
 if cd _elasticjob ; then
-EJ_TAGS=(`git tag --sort=taggerdate | grep -E '^3\.0\.[0-9]+$'`)
-if [ ${#EJ_TAGS[@]} -eq 0 ] ; then
+ej_tags=(`git tag --sort=taggerdate | grep -E '^3\.0\.[0-9]+$'`)
+if [ ${#ej_tags[@]} -eq 0 ] ; then
   echo "::warning::no elasticjob 3.0.x tags found, no released docs were built"; ej_skipped=1
 fi
-for tag in ${EJ_TAGS[@]}
+for tag in ${ej_tags[@]}
 do
   if [ -d ../elasticjob/$tag ] ; then
     continue
@@ -260,7 +260,6 @@ echo git clone https://github.com/apache/shardingsphere-on-cloud
 
 git clone --filter=blob:none --no-single-branch https://github.com/apache/shardingsphere-on-cloud _oncloud 
 
-if [ -d _oncloud ] ; then
 # ------------------------- build history docs --------------------------------------
 cd _oncloud
 TAGS=(`git tag --sort=taggerdate | grep -E '^[[:digit:]]+.[[:digit:]]+.*+'`)
@@ -333,9 +332,6 @@ else
     
     rm -rf octarget
 fi
-else
-    echo "::warning::oncloud clone failed, skipping OnCloud docs"
-fi
 rm -rf _oncloud
 
 if [ $count -eq 0 ];then
@@ -357,8 +353,6 @@ fi
 
 # A pull request run must not pass when an ElasticJob tag was skipped.
 # Push runs keep publishing whatever was built, so they do not fail here.
-# The OnCloud section is deliberately not part of this check: its tag loop is
-# unchanged and out of scope here, and only has the clone guard above.
 if [ "$ej_skipped" -ne 0 ] && [ "${GITHUB_EVENT_NAME:-}" = "pull_request" ] ; then
     echo "::error::ElasticJob docs were skipped, see the warnings above"
     exit 1
